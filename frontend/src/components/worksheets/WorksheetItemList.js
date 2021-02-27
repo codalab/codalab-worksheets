@@ -103,6 +103,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             updateSchemaItem={props.updateSchemaItem}
             saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
             key={props.key}
+            focusIndex={props.focusIndex}
             subFocusIndex={props.subFocusIndex}
             after_sort_key={props.after_sort_key}
             ids={props.ids}
@@ -249,6 +250,7 @@ class WorksheetItemList extends React.Component {
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
+                        setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
                     };
                     addWorksheetItems(
                         props,
@@ -306,6 +308,9 @@ class WorksheetItemList extends React.Component {
                             }}
                             create={true}
                             updateSchemaItem={this.props.updateSchemaItem}
+                            setDeleteSchemaItemCallback={this.props.setDeleteSchemaItemCallback}
+                            focusIndex={this.props.focusIndex}
+                            subFocusIndex={this.props.subFocusIndex}
                         />
                     )}
                     {worksheet_items}

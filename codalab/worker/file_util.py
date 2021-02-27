@@ -4,8 +4,6 @@ import gzip
 import os
 import shutil
 import subprocess
-import tarfile
-import zlib
 import bz2
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
@@ -143,32 +141,6 @@ def zip_directory(
             raise IOError(e.output)
 
 
-def un_tar_directory(fileobj, directory_path, compression='', force=False):
-    """
-    Extracts the given file-like object containing a tar archive into the given
-    directory, which will be created and should not already exist. If it already exists,
-    and `force` is `False`, an error is raised. If it already exists, and `force` is `True`,
-    the directory is removed and recreated.
-
-    compression specifies the compression scheme and can be one of '', 'gz' or
-    'bz2'.
-
-    Raises tarfile.TarError if the archive is not valid.
-    """
-    directory_path = os.path.realpath(directory_path)
-    if force:
-        remove_path(directory_path)
-    os.mkdir(directory_path)
-    with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
-        for member in tar:
-            # Make sure that there is no trickery going on (see note in
-            # TarFile.extractall() documentation.
-            member_path = os.path.realpath(os.path.join(directory_path, member.name))
-            if not member_path.startswith(directory_path):
-                raise tarfile.TarError('Archive member extracts outside the directory.')
-            tar.extract(member, directory_path)
-
-
 def unzip_directory(fileobj_or_name, directory_path, force=False):
     """
     Extracts the given file-like object containing a zip archive into the given
@@ -209,12 +181,15 @@ def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSE
 def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
+    Note: For right now, it's important for gzip to run in a separate process,
+    otherwise things on CodaLab grind to a halt!
     """
+    args = ['gzip', '-c', '-n', file_path]
     try:
-        data = open_file(file_path).read()
-        return BytesIO(gzip.compress(data))
-    except Exception as e:
-        raise IOError(e)
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        return proc.stdout
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
 
 
 def un_bz2_file(source, dest_path):
@@ -231,56 +206,6 @@ def un_bz2_file(source, dest_path):
         decompressor = bz2.BZ2Decompressor()
         for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
             dest.write(decompressor.decompress(data))
-
-
-def un_gzip_stream(fileobj):
-    """
-    Returns a file-like object containing the contents of the given file-like
-    object after gunzipping.
-
-    Raises an IOError if the archive is not valid.
-    """
-
-    class UnGzipStream(object):
-        def __init__(self, fileobj):
-            self._fileobj = fileobj
-            self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            self._buffer = b''
-            self._finished = False
-
-        def read(self, num_bytes=None):
-            # Read more data, if we need to.
-            while not self._finished and (num_bytes is None or len(self._buffer) < num_bytes):
-                chunk = (
-                    self._fileobj.read(num_bytes) if num_bytes is not None else self._fileobj.read()
-                )
-                if chunk:
-                    self._buffer += self._decoder.decompress(chunk)
-                else:
-                    self._buffer += self._decoder.flush()
-                    self._finished = True
-            if num_bytes is None:
-                num_bytes = len(self._buffer)
-            result = self._buffer[:num_bytes]
-            self._buffer = self._buffer[num_bytes:]
-            return result
-
-        def close(self):
-            self._fileobj.close()
-
-        def __getattr__(self, name):
-            """
-            Proxy any methods/attributes besides read() and close() to the
-            fileobj (for example, if we're wrapping an HTTP response object.)
-            Behavior is undefined if other file methods such as tell() are
-            attempted through this proxy.
-            """
-            return getattr(self._fileobj, name)
-
-    # Note, that we don't use gzip.GzipFile or the gunzip shell command since
-    # they require the input file-like object to support either tell() or
-    # fileno(). Our version requires only read() and close().
-    return UnGzipStream(fileobj)
 
 
 def gzip_bytestring(bytestring):

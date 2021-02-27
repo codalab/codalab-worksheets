@@ -1,5 +1,5 @@
 import unittest
-from mock import Mock
+from unittest.mock import Mock
 
 from codalab.objects.metadata_spec import MetadataSpec
 from codalab.server.bundle_manager import BundleManager
@@ -48,6 +48,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 4,
                 'gpus': 2,
                 'memory_bytes': 4 * 1000,
+                'free_disk_bytes': 4 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1, 2],
@@ -62,6 +63,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 4,
                 'gpus': 1,
                 'memory_bytes': 4 * 1000,
+                'free_disk_bytes': 4 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1, 2, 3],
@@ -76,6 +78,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 4,
                 'gpus': 0,
                 'memory_bytes': 4 * 1000,
+                'free_disk_bytes': 4 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [],
@@ -89,6 +92,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 4 * 1000,
+                'free_disk_bytes': 4 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1],
@@ -102,6 +106,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 4 * 1000,
+                'free_disk_bytes': 4 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': None,
                 'run_uuids': [1, 2],
@@ -116,6 +121,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 2 * 1000,
+                'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': 'worker_X',
                 'run_uuids': [],
@@ -129,6 +135,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 0,
                 'memory_bytes': 2 * 1000,
+                'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
                 'tag': 'worker_X',
                 'run_uuids': [],
@@ -142,6 +149,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'cpus': 6,
                 'gpus': 1,
                 'memory_bytes': 2 * 1000,
+                'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 0,
                 'tag': 'worker_X',
                 'run_uuids': [],

@@ -72,12 +72,6 @@ class BaseUploadDownloadBundleTest(TestBase):
             with self.download_manager.stream_file(target, gzipped=False) as f:
                 pass
 
-        with self.assertRaises(OSError):
-            with gzip.GzipFile(
-                fileobj=self.download_manager.stream_file(target, gzipped=True)
-            ) as f:
-                pass
-
         with self.assertRaises(IsADirectoryError):
             self.download_manager.read_file_section(target, offset=3, length=4, gzipped=False)
 
@@ -97,7 +91,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         with tarfile.open(
             fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
         ) as f:
-            self.assertEqual(f.getnames(), expected_members)
+            self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 
     def test_bundle_single_file(self):
         """Running get_target_info for a bundle with a single file."""
@@ -129,20 +123,29 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         # Directory size can vary based on platform, so removing it before checking equality.
+        info["contents"][0].pop("size")
         info["contents"][1].pop("size")
         self.assertEqual(
-            info["contents"],
-            [
-                {'name': 'item.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'},
-                {
-                    'name': 'src',
-                    'perm': 493,
-                    'type': 'directory',
-                    'contents': [
-                        {'name': 'item2.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'}
-                    ],
-                },
-            ],
+            sorted(info["contents"], key=lambda x: x["name"]),
+            sorted(
+                [
+                    {'name': 'item.txt', 'perm': self.DEFAULT_PERM, 'type': 'file'},
+                    {
+                        'name': 'src',
+                        'perm': 493,
+                        'type': 'directory',
+                        'contents': [
+                            {
+                                'name': 'item2.txt',
+                                'size': 11,
+                                'perm': self.DEFAULT_PERM,
+                                'type': 'file',
+                            }
+                        ],
+                    },
+                ],
+                key=lambda x: x["name"],
+            ),
         )
         self.check_folder_target_contents(
             target, expected_members=['.', './item.txt', './src', './src/item2.txt']

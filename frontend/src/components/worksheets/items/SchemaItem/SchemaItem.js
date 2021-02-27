@@ -24,10 +24,7 @@ import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { getAfterSortKey } from '../../../../util/worksheet_utils';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
-import WarningIcon from '@material-ui/icons/Warning';
-import CancelIcon from '@material-ui/icons/Cancel';
 import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -41,7 +38,6 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
-            confirmingDeletion: false,
         };
     }
 
@@ -53,7 +49,6 @@ class SchemaItem extends React.Component<{
         }
         if (save) {
             this.saveSchema();
-            this.setState({ confirmingDeletion: false });
         }
     };
 
@@ -62,7 +57,6 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
-            confirmingDeletion: false,
         });
     };
 
@@ -204,13 +198,38 @@ class SchemaItem extends React.Component<{
     };
 
     deleteThisSchema = () => {
-        this.setState({ showSchemaDetail: false, confirmingDeletion: false });
+        this.setState({ showSchemaDetail: false });
         this.props.updateSchemaItem([], this.props.item.ids, null, false, true);
+    };
+
+    getSchemaItemId = () => {
+        return document.getElementById(
+            'codalab-worksheet-item-' +
+                this.props.focusIndex +
+                '-subitem-' +
+                this.props.subFocusIndex,
+        )
+            ? 'codalab-worksheet-item-' +
+                  this.props.focusIndex +
+                  '-subitem-' +
+                  this.props.subFocusIndex +
+                  '-schema'
+            : 'codalab-worksheet-item-' + this.props.focusIndex + '-schema';
     };
 
     componentDidUpdate(prevProps, prevState) {
         if (this.state.newAddedRow !== -1 && this.state.rows.length === prevState.rows.length + 1) {
             document.getElementById('textbox-' + this.state.newAddedRow + '-0').focus();
+        }
+    }
+
+    // Scroll the newly opened schema editor into view
+    componentDidMount() {
+        if (this.props.create) {
+            const node = document.getElementById(this.getSchemaItemId());
+            if (node) {
+                node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
         }
     }
 
@@ -222,17 +241,16 @@ class SchemaItem extends React.Component<{
         const schemaName = schemaItem.schema_name;
         let headerHtml, bodyRowsHtml;
         const explanations = {
-            field: 'Column name that is displayed.',
+            field: 'field: Column name',
             'generalized-path':
-                'Either a bundle metadata field (e.g., uuid, name, time, state) or a file path inside the bundle (e.g., /stdout, /stats.json).',
+                'generalized-path: A bundle metadata field (e.g., uuid, name, time, state) or a file path inside the bundle (e.g., /stdout, /stats.json).',
             'post-processor':
-                '(Optional) How to render the value (e.g., %.3f renders 3 decimal points, [0:8] takes the first 8 characters, duration renders seconds, size renders bytes).',
+                'post-processor: (Optional) How to render the value (e.g., %.3f renders 3 decimal points, [0:8] takes the first 8 characters, duration renders seconds, size renders bytes).',
         };
-
-        const placeholderText = {
-            field: '<column name to display>',
-            'generalized-path': '<path to retrieve value>',
-            'post-processor': '<how to render value>',
+        const headerText = {
+            field: 'Column name',
+            'generalized-path': 'Path to render',
+            'post-processor': 'How to render',
         };
         headerHtml =
             (showSchemaDetail || this.props.create) &&
@@ -243,7 +261,7 @@ class SchemaItem extends React.Component<{
                         key={index}
                         style={{ padding: '5', fontSize: '16px', maxWidth: '100' }}
                     >
-                        {header}
+                        {headerText[header]}
                         <Tooltip
                             title={
                                 explanations[header] +
@@ -317,9 +335,8 @@ class SchemaItem extends React.Component<{
                                         this.props.onSubmit();
                                         return;
                                     }
-                                    this.setState({ confirmingDeletion: true });
+                                    this.props.setDeleteItemCallback(this.deleteThisSchema);
                                 }}
-                                disabled={this.state.confirmingDeletion}
                             >
                                 <DeleteForeverIcon fontSize='small' />
                             </IconButton>
@@ -344,7 +361,6 @@ class SchemaItem extends React.Component<{
                                 error={
                                     headerKey === 'field' && this.state.rows[ind]['field'] === ''
                                 }
-                                placeholder={editPermission ? placeholderText[headerKey] : '<none>'}
                                 helperText={
                                     headerKey === 'field' &&
                                     this.state.rows[ind]['field'] === '' &&
@@ -463,6 +479,7 @@ class SchemaItem extends React.Component<{
                     if (this.props.create) return;
                     this.props.setFocus(this.props.focusIndex, 0);
                 }}
+                id={this.getSchemaItemId()}
             >
                 <Grid container direction='row'>
                     <Tooltip
@@ -525,25 +542,6 @@ class SchemaItem extends React.Component<{
                             onChange={this.changeSchemaName}
                         />
                     )}
-                    <Grid item xs={2} spacing={0}>
-                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
-                            <Tooltip title={'This action is not revertable'}>
-                                <IconButton onClick={this.deleteThisSchema}>
-                                    <WarningIcon outlined fontSize='small' color='error' />
-                                    <Typography color='error'>Confirm</Typography>
-                                </IconButton>
-                            </Tooltip>
-                        )}
-                        {(showSchemaDetail || this.props.create) && this.state.confirmingDeletion && (
-                            <IconButton
-                                outlined
-                                onClick={() => this.setState({ confirmingDeletion: false })}
-                            >
-                                <CancelIcon fontSize='small' />
-                                <Typography>Cancel</Typography>
-                            </IconButton>
-                        )}
-                    </Grid>
                 </Grid>
                 {schemaTable}
             </div>

@@ -28,9 +28,19 @@ The following competitions are hosted on CodaLab Worksheets ([rough Google query
 
 # Hosting a competition
 
-The job execution and provenance facilities of CodaLab Worksheets enable a wide variety of applications in computational experimentation, including hosting competitions on machine learning tasks.
+The job execution and provenance facilities of CodaLab Worksheets enable a wide variety of applications in computational 
+experimentation, including hosting competitions on machine learning tasks.
 
-We provide a small application built on the [CodaLab Worksheets API](REST-API-Reference.md) for running small-scale Kaggle-like competitions. It is packaged as a simple Python script. Competition participants can "submit" their models to the competition by running them on an public dataset provided by the competition organizers, then tagging the resulting predictions bundle with a specific tag. The script searches for bundles with the configured tag, and "mimics" the submitted executions -- rerunning the models while replacing the public dataset with the hidden evaluation dataset. Competition organizers can run this script manually, as a cron job, or as a long-lived daemon.
+We provide a small application built on the [CodaLab Worksheets API](REST-API-Reference.md) for running small-scale 
+Kaggle-like competitions. It is packaged as a simple Python script. Competition participants can submit their models to 
+the competition by running them on an public dataset provided by the competition organizers, then tagging the resulting 
+predictions bundle with a specific tag. The script searches for bundles with the configured tag, and "mimics" the submitted 
+executions -- rerunning the models while replacing the public dataset with the hidden evaluation dataset. Competition 
+organizers can run this script manually, as a cron job, or as a long-lived daemon.
+
+Once you have finished setting up the submission tutorial worksheet and generating your leaderboard in JSON format, 
+please fill out this [form](https://docs.google.com/forms/d/e/1FAIpQLSdFdQTi4i0uXfXR00JD40HlW-j-Np2XCacgaPSZVfBdL4QwQg/viewform?usp=sf_link) 
+to register your competition. 
 
 ## Installation and setup
 
@@ -38,7 +48,8 @@ Install codalab package and its dependencies:
 
     pip3 install codalab
 
-Now when you run the competition script with the help flag `-h`, you should see something like this:
+Minimally verify CodaLab is installed properly by running the competition script with the help 
+flag `-h`. The output should look something like this:
 
     cl-competitiond -h
 
@@ -76,20 +87,33 @@ Now when you run the competition script with the help flag `-h`, you should see 
 The competition script takes in a config file (in YAML or JSON format) and performs the actions
 listed above, then generates a leaderboard in JSON format at the specified output path.
 
-First, let's create a config file for your competition. Start up your favorite editor and create
-a new file, say, at `~/competition-config.yml` (this can be anywhere), with the following contents:
+Construct a config file for your competition by starting up your favorite editor and creating
+a new file, say, at path `~/competition-config.yml` (this can be anywhere). Use the following
+as a template:
 
 ```yaml
-max_submissions_per_period: 5                               # allows at most 5 submissions per user per period, where period is 24 hours by default
-log_worksheet_uuid: '0x2263f854a967abcabade0b6c88f51f29'    # uuid of the worksheet to create new run bundles in
-submission_tag: cool-competition-submit                     # configure the tag that participants use to submit to the competition
+# Allows at most 5 submissions per user per period, where period is 24 hours by default.
+max_submissions_per_period: 5
 
-# Configure how to mimic the submitted prediction bundles
+# UUID of the worksheet where prediction and evaluation bundles are created for submissions.
+log_worksheet_uuid: '0x2263f854a967abcabade0b6c88f51f29'    
+
+# Configure the tag that participants use to submit to the competition.
+# In this example, any bundle with the tag `some-competition-submit` would be
+# considered as an official submission.
+submission_tag: some-competition-submit
+
+# Configure how to mimic the submitted prediction bundles. When evaluating a submission, 
+# `new` bundle will replace `old` bundle.
+# For a machine learning competition, `old` bundle might be the dev set and `new` bundle
+# might be the hidden test set.
 predict:
   mimic:
-  - {new: '0xbcd57bee090b421c982906709c8c27e1', old: '0x4870af25abc94b0687a1927fcec66392'}  # replace `old` bundle with `new` bundle
+  - {new: '0xbcd57bee090b421c982906709c8c27e1', old: '0x4870af25abc94b0687a1927fcec66392'}
 
-## Configure how to evaluate the new prediction bundles
+# Configure how to evaluate the new prediction bundles.
+# In this example, evaluate.py is script that takes in the paths of the test labels and 
+# predicted labels and outputs the evaluation results.
 evaluate:
   # Essentially
   #     cl run evaluate.py:0x089063eb85b64b239b342405b5ebab57 \
@@ -103,33 +127,48 @@ evaluate:
   - {child_path: predictions.json, parent_path: predictions.json, parent_uuid: '{predict}'}
   command: python evaluate.py test.json predictions.json
 
-# Define how to extract the scores from the evaluation bundle
+# Define how to extract the scores from the evaluation bundle.
+# In this example, result.json is a JSON file outputted from the evaluation step
+# with F1 and exact match metrics (e.g. {"f1": 91, "exact_match": 92}).
 score_specs:
-- {key: '/stdout:f1', name: f1}
-- {key: '/stdout:exact_match', name: exact_match}
+- {key: '/result.json:f1', name: f1}
+- {key: '/result.json:exact_match', name: exact_match}
 ```
 
 ## Running the competition
 
-There are many ways you could choose to set up the competition. The recommended way is to set up a static webpage that loads the generated leaderboard JSON file and formats it into a leaderboard table using a simple templating language such as [Mustache](https://mustache.github.io/). We even provide an [example HTML page that does just that](https://github.com/codalab/codalab-cli/blob/ecbc9146918415b3a53d1e61dc8c9c9185cc10ba/scripts/leaderboard.html). Just make sure to tweak it for your own purposes.
+There are many ways you could choose to set up the competition. The recommended way is to set up a static webpage that 
+loads the generated leaderboard JSON file and formats it into a leaderboard table using a simple templating language such 
+as [Mustache](https://mustache.github.io/). We even provide an 
+[example HTML page that does just that](https://github.com/codalab/codalab-cli/blob/ecbc9146918415b3a53d1e61dc8c9c9185cc10ba/scripts/leaderboard.html). 
+Just make sure to tweak it for your own purposes.
 
-Running the competition script in daemon mode will start a long-running process that periodically checks for new submissions, runs them, then updates the leaderboard file.
+Running the competition script in daemon mode will start a long-running process that periodically checks for new submissions, 
+runs them, then updates the leaderboard file.
 
     cl-competitiond -d ~/competition-config.yml /var/www/leaderboard.json
 
 ## Submitting a model (as a participant)
 
-For the participant, submitting a model involves uploading their code, running it against a public dataset provided by the competition organizers, tagging the bundle appropriately, then waiting for the next time the competition script checks for new submissions. The [submission tutorial for the SQuAD competition](https://worksheets.codalab.org/worksheets/0x8403d867f9a3444685c344f4f0bc8d34/) provides a good example.
+For the participant, submitting a model involves uploading their code, running it against a public dataset provided by the 
+competition organizers, tagging the bundle appropriately, then waiting for the next time the competition script checks for 
+new submissions. The [submission tutorial for the SQuAD competition](https://worksheets.codalab.org/worksheets/0x8403d867f9a3444685c344f4f0bc8d34/) 
+provides a good example.
 
 ## FAQ / Known issues
 
 * Q: How do I reset the quota for a participant?
-  * A: Delete their associated evaluation bundles from the log worksheet, and their quota values should go down accordingly the next time that the leaderboard is generated.
+  * A: Delete their associated evaluation bundles from the log worksheet, and their quota values should go down accordingly 
+  the next time that the leaderboard is generated.
 * Q: Which submissions correspond to the scores displayed in the leaderboard?
   * A: The last submission submitted by each participant chronologically. (No max is performed.)
 * Q: Why is there a finite `max_leaderboard_size`? Why not just support any leaderboard size?
-  * A: Because of a quirk in the CodaLab search API, we need to specific a finite "limit" to the number of search results. Just make this number big enough and it should be fine.
+  * A: Because of a quirk in the CodaLab search API, we need to specific a finite "limit" to the number of search results. 
+  Just make this number big enough and it should be fine.
 * Q: This script is really slow.
-  * A: The script is pretty bare bones and doesn't do much in the way of optimizing API calls. The implementation is pretty small, so feel free to shoot us some pull requests to make it better!
+  * A: The script is pretty bare bones and doesn't do much in the way of optimizing API calls. The implementation is pretty small, 
+  so feel free to shoot us some pull requests to make it better!
 * Q: How can I let participants debug their own submissions when they fail?
-  * A: There are some rare cases where a submission succeeds on the public dataset but fails on the hidden dataset. Unfortunately, the competition organizers will have to manually send the participants stacktraces for those failed runs, unless they are willing to make the prediction bundles public (`make_predictions_public: true` in config).
+  * A: There are some rare cases where a submission succeeds on the public dataset but fails on the hidden dataset. Unfortunately, 
+  the competition organizers will have to manually send the participants stacktraces for those failed runs, unless they are willing 
+  to make the prediction bundles public (`make_predictions_public: true` in config).

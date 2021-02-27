@@ -124,6 +124,8 @@ class WorksheetSchema(Schema):
     title = fields.String()
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
+    date_created = fields.DateTime(allow_none=True)
+    date_last_modified = fields.DateTime(allow_none=True)
     tags = fields.List(fields.String(validate=validate_ascii))
     group_permissions = fields.Relationship(
         include_resource_linkage=True, type_='worksheet-permissions', id_field='id', many=True
@@ -266,6 +268,7 @@ class UserSchema(Schema):
     affiliation = fields.String(allow_none=True)
     url = fields.Url(allow_none=True)
     date_joined = fields.LocalDateTime("%c")
+    avatar_id = fields.String(allow_none=True)
 
     class Meta:
         type_ = 'users'

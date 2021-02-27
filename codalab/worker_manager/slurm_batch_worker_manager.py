@@ -3,6 +3,7 @@ import uuid
 import subprocess
 import getpass
 import re
+import sys
 import textwrap
 from pathlib import Path
 
@@ -56,6 +57,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             '--gpus', type=int, default=1, help='Default number of GPUs for each worker'
         )
         subparser.add_argument('--gpu-type', type=str, help='GPU type to request from Slurm')
+        subparser.add_argument('--constraint', type=str, help='Constraints to request from Slurm')
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
         )
@@ -87,10 +89,17 @@ class SlurmBatchWorkerManager(WorkerManager):
             default='slurm-worker-scratch',
             help='Directory where to store Slurm batch scripts, logs, etc',
         )
+        subparser.add_argument(
+            '--exit-after-num-failed',
+            type=int,
+            help='Stop the worker manager when this many jobs have failed to start',
+        )
 
     def __init__(self, args):
         super().__init__(args)
         self.username = self.args.user
+        self.exit_after_num_failed = self.args.exit_after_num_failed
+        self.num_failed = 0
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
         self.submitted_jobs = self.load_worker_jobs()
 
@@ -138,12 +147,28 @@ class SlurmBatchWorkerManager(WorkerManager):
             job_acct = self.run_command(
                 [self.SCONTROL, 'show', 'jobid', '-d', job_id, '--oneliner'], verbose=False
             )
+            # Sometimes, we fail to get the job details (e.g., if there's no memory on the host).
+            # In this case, just skip and hopefully we'll be able to fetch job details next time,
+            # rather than trying to run a re.search on an empty string.
+            if job_acct == "":
+                logger.info("Failed to get state of job {}, skipping".format(job_id))
+                continue
             # Extract out the JobState from the full scontrol output.
             job_state = re.search(r'JobState=(.*)\sReason', job_acct).group(1)
             logger.info("Job ID {} has state {}".format(job_id, job_state))
             if 'FAILED' in job_state:
                 jobs_to_remove.add(job_id)
                 logger.error("Failed to start job {}".format(job_id))
+                self.num_failed += 1
+                if (
+                    self.exit_after_num_failed is not None
+                    and self.num_failed > self.exit_after_num_failed
+                ):
+                    logger.info(
+                        f"Failed to start {self.num_failed} jobs in total, which is more than {self.exit_after_num_failed}"
+                    )
+                    logger.info("Exiting...")
+                    sys.exit(0)
             elif 'COMPLETED' in job_state or 'CANCELLED' in job_state or "TIMEOUT" in job_state:
                 jobs_to_remove.add(job_id)
                 logger.info("Removing job ID {}".format(job_id))
@@ -383,6 +408,8 @@ class SlurmBatchWorkerManager(WorkerManager):
             gpu_gres_value += ":" + self.args.gpu_type
         gpu_gres_value += ":" + str(self.args.gpus)
         slurm_args['gres'] = gpu_gres_value
+        if self.args.constraint:
+            slurm_args['constraint'] = self.args.constraint
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)

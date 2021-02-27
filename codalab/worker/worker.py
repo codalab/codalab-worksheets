@@ -19,6 +19,7 @@ import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT
 from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
@@ -64,6 +65,7 @@ class Worker:
         exit_when_idle,  # type: str
         exit_after_num_runs,  # type: int
         idle_seconds,  # type: int
+        checkin_frequency_seconds,  # type: int
         bundle_service,  # type: BundleServiceClient
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
@@ -83,7 +85,7 @@ class Worker:
         self.state_committer = JsonStateCommitter(commit_file)
         self.bundle_service = bundle_service
 
-        self.docker = docker.from_env()
+        self.docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
         self.cpuset = cpuset
         self.gpuset = gpuset
         self.max_memory = (
@@ -112,6 +114,7 @@ class Worker:
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
 
+        self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin_successful = False
         self.last_time_ran = None  # type: Optional[bool]
 
@@ -155,12 +158,13 @@ class Worker:
         # that might have been created by other workers.
         try:
             self.docker.networks.prune(filters={"until": "1h"})
-        except (docker.errors.APIError, requests.exceptions.ReadTimeout) as e:
+        except (docker.errors.APIError, requests.exceptions.RequestException) as e:
             # docker.errors.APIError is raised when a prune is already running:
             # https://github.com/codalab/codalab-worksheets/issues/2635
             # docker.errors.APIError: 409 Client Error: Conflict ("a prune operation is already running").
-            # requests.exceptions.ReadTimeout is raised when the request to the Docker socket times out.
-            # https://github.com/docker/docker-py/issues/2266
+            # Any number of requests.exceptions.RequestException s are raised when the request to
+            # the Docker socket times out or otherwise fails.
+            # For example: https://github.com/docker/docker-py/issues/2266
             # Since pruning is a relatively non-essential routine (i.e., it's ok if pruning fails
             # on one or two iterations), we just ignore this issue.
             logger.warning("Cannot prune docker networks: %s", str(e))
@@ -233,8 +237,18 @@ class Worker:
         now = time.time()
         if len(self.runs) > 0 or self.last_time_ran is None:
             self.last_time_ran = now
-        is_idle = now - self.last_time_ran > self.idle_seconds
-        return self.exit_when_idle and is_idle and self.last_checkin_successful
+
+        idle_duration_seconds = now - self.last_time_ran
+        if (
+            self.exit_when_idle
+            and idle_duration_seconds > self.idle_seconds
+            and self.last_checkin_successful
+        ):
+            logger.warning(
+                "Worker was idle for {} seconds. Exiting...".format(idle_duration_seconds)
+            )
+            return True
+        return False
 
     def check_num_runs_stop(self):
         """
@@ -260,6 +274,8 @@ class Worker:
                 self.save_state()
                 if self.check_idle_stop() or self.check_num_runs_stop():
                     self.terminate = True
+                else:
+                    time.sleep(self.checkin_frequency_seconds)
             except Exception:
                 self.last_checkin_successful = False
                 if using_sentry():

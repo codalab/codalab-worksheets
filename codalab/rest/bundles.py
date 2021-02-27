@@ -185,7 +185,9 @@ def build_bundles_document(bundle_uuids):
     if 'owner' in include_set:
         owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
         json_api_include(
-            document, UserSchema(), local.model.get_users(user_ids=owner_ids)['results']
+            document,
+            UserSchema(),
+            local.model.get_users(user_ids=owner_ids, limit=len(owner_ids))['results'],
         )
 
     if 'group_permissions' in include_set:
@@ -588,12 +590,18 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Type: <guess of mimetype based on file extension>`
     - `Content-Encoding: [gzip|identity]`
     - `Target-Type: file`
+    - `X-CodaLab-Target-Size: <size of the target>`
 
     HTTP Response headers (for directories):
     - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
     - `Content-Type: application/gzip`
     - `Content-Encoding: identity`
     - `Target-Type: directory`
+    - `X-CodaLab-Target-Size: <size of the target>`
+
+    Note that X-CodaLab-Target-Size is the uncompressed version of the target size. This means that it will
+    be equivalent to the downloaded file if from a single-file target, but will be the size of the uncompressed
+    archive, not the compressed archive, if from a directory target.
     """
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
@@ -676,6 +684,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
+    response.set_header('X-Codalab-Target-Size', target_info['size'])
 
     return fileobj
 
@@ -914,3 +923,9 @@ def set_bundle_permissions(new_permissions):
     # Sequentially set bundle permissions
     for p in new_permissions:
         local.model.set_group_bundle_permission(p['group_uuid'], p['object_uuid'], p['permission'])
+
+
+def search_bundles(keywords):
+    keywords = resolve_owner_in_keywords(keywords)
+    results = local.model.search_bundles(request.user.user_id, keywords)
+    return results

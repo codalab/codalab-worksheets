@@ -1315,7 +1315,7 @@ class BundleModel(object):
         clauses = []
         offset = 0
         limit = SEARCH_RESULTS_LIMIT
-        sort_key = [cl_worksheet.c.name]
+        sort_key = [cl_worksheet.c.date_last_modified.desc(), cl_worksheet.c.name]
 
         # Number nested subqueries
         subquery_index = [0]
@@ -1479,6 +1479,7 @@ class BundleModel(object):
             cl_worksheet.c.title,
             cl_worksheet.c.frozen,
             cl_worksheet.c.owner_id,
+            cl_worksheet.c.date_last_modified,
         ]
         query = (
             select(cols_to_select)
@@ -1491,7 +1492,7 @@ class BundleModel(object):
 
         # Sort
         if sort_key[0] is not None:
-            query = query.order_by(sort_key[0])
+            query = query.order_by(*sort_key)
 
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
@@ -1518,6 +1519,7 @@ class BundleModel(object):
         """
         Save the given (empty) worksheet to the database. On success, set its id.
         """
+        now = datetime.datetime.utcnow()
         message = 'save_worksheet called with non-empty worksheet: %s' % (worksheet,)
         precondition(not worksheet.items, message)
         worksheet.validate()
@@ -1525,6 +1527,8 @@ class BundleModel(object):
         worksheet_value.pop('tags')
         worksheet_value.pop('items')
         worksheet_value.pop('last_item_id')
+        worksheet_value['date_created'] = now
+        worksheet_value['date_last_modified'] = now
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
@@ -1594,6 +1598,7 @@ class BundleModel(object):
                 for idx, (bundle_uuid, subworksheet_uuid, value, type) in enumerate(items)
             ]
             self.do_multirow_insert(connection, cl_worksheet_item, items_to_insert)
+        self.update_worksheet_last_modified_date(worksheet_uuid)
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         """
@@ -1676,6 +1681,15 @@ class BundleModel(object):
             if result.rowcount < length:
                 raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
             self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
+        self.update_worksheet_last_modified_date(worksheet_uuid)
+
+    def update_worksheet_last_modified_date(self, worksheet_id):
+        """
+        Update worksheet's last modified date to now.
+        Calling update_worksheet_metadata with an empty argument is equivalent to updating the last modified date.
+        """
+        worksheet = self.get_worksheet(worksheet_id, fetch_items=False)
+        self.update_worksheet_metadata(worksheet, {})
 
     def update_worksheet_metadata(self, worksheet, info):
         """
@@ -1689,6 +1703,10 @@ class BundleModel(object):
             worksheet.owner_id = info['owner_id']
         if 'title' in info:
             info['title'] = self.encode_str(info['title'])
+        # Always update worksheet's last modified date to current timestamp (UTC)
+        info['date_last_modified'] = datetime.datetime.utcnow()
+        worksheet.date_last_modified = info['date_last_modified']
+
         worksheet.validate()
         with self.engine.begin() as connection:
             if 'tags' in info:
@@ -2174,19 +2192,27 @@ class BundleModel(object):
             user_ids = [user_id]
         if username is not None:
             usernames = [username]
-        result = self.get_users(user_ids=user_ids, usernames=usernames, check_active=check_active)
+        result = self.get_users(
+            user_ids=user_ids, usernames=usernames, check_active=check_active, limit=1
+        )
         if result['results']:
             return result['results'][0]
         return None
 
-    def get_users(self, keywords=None, user_ids=None, usernames=None, check_active=True):
+    def get_users(
+        self,
+        keywords=None,
+        user_ids=None,
+        usernames=None,
+        check_active=True,
+        limit=SEARCH_RESULTS_LIMIT,
+    ):
         """
         see the documentation for `cl uls` for information about keyword structure.
         """
         clauses = []
         offset = 0
         format_func = None
-        limit = SEARCH_RESULTS_LIMIT
         count = False
         sort_key = [None]
         aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
@@ -2364,6 +2390,7 @@ class BundleModel(object):
         has_access=False,
         time_used=0,
         disk_used=0,
+        avatar_id=None,
     ):
         """
         Create a brand new unverified user.
@@ -2402,6 +2429,7 @@ class BundleModel(object):
                         "disk_used": disk_used,
                         "affiliation": affiliation,
                         "url": None,
+                        "avatar_id": avatar_id,
                     }
                 )
             )

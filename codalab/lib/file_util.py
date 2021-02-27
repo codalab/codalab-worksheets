@@ -5,11 +5,8 @@ memory-efficent ways.
 
 import sys
 from . import formatting
-import urllib.request
-import urllib.parse
-import urllib.error
 import subprocess
-from codalab.common import URLOPEN_TIMEOUT_SECONDS
+from codalab.common import urlopen_with_retry
 
 BUFFER_SIZE = 2 * 1024 * 1024
 
@@ -66,7 +63,7 @@ def download_url(source_url, target_path, print_status=False):
     """
     Download the file at |source_url| and write it to |target_path|.
     """
-    in_file = urllib.request.urlopen(source_url, timeout=URLOPEN_TIMEOUT_SECONDS)
+    in_file = urlopen_with_retry(source_url)
     total_bytes = in_file.info().get('Content-Length')
     if total_bytes:
         total_bytes = int(total_bytes)

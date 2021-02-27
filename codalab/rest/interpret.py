@@ -16,7 +16,7 @@ import json
 import yaml
 from bottle import get, post, local, request, abort, httplib
 
-from codalab.common import UsageError, NotFoundError
+from codalab.common import UsageError, NotFoundError, PermissionError
 from codalab.lib import formatting, spec_util
 from codalab.lib.worksheet_util import (
     TYPE_DIRECTIVE,
@@ -36,6 +36,7 @@ from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.server.authenticated_plugin import ProtectedPlugin
 from codalab.rest.worksheets import get_worksheet_info, search_worksheets
+from codalab.rest.bundles import search_bundles
 from codalab.rest.worksheet_block_schemas import (
     BlockModes,
     MarkupBlockSchema,
@@ -62,7 +63,10 @@ def _interpret_search():
     }
     ```
     """
-    return interpret_search(request.json)  # NOQA - F821: undefined function name
+    query = request.json
+    if 'keywords' not in query:
+        abort(httplib.BAD_REQUEST, 'Missing `keywords`')
+    return {'response': interpret_search(query['keywords'])}
 
 
 @post('/interpret/wsearch', apply=ProtectedPlugin())
@@ -225,7 +229,6 @@ def fetch_interpreted_worksheet(uuid):
     brief = request.query.get("brief", "0") == "1"
 
     directive = request.query.get("directive", None)
-    print(directive)
     search_results = []
 
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
@@ -297,17 +300,17 @@ def fetch_interpreted_worksheet(uuid):
     # The bundle_infos for bundles that don't need updating are also None.
     if bundle_uuids:
         for i, block in enumerate(interpreted_blocks['blocks']):
-            if 'bundle_info' not in block:
+            if not ('bundles_spec' in block and 'bundle_infos' in block['bundles_spec']):
                 interpreted_blocks['blocks'][i] = None
             else:
-                if isinstance(block['bundle_info'], dict):
-                    block['bundle_info'] = [block['bundle_info']]
+                if isinstance(block['bundles_spec']['bundle_infos'], dict):
+                    block['bundles_spec']['bundle_infos'] = [block['bundles_spec']['bundle_infos']]
                 is_relevant_block = False
-                for j, bundle in enumerate(block['bundle_info']):
+                for j, bundle in enumerate(block['bundles_spec']['bundle_infos']):
                     if bundle['uuid'] in bundle_uuids:
                         is_relevant_block = True
                     else:
-                        block['bundle_info'][j] = None
+                        block['bundles_spec']['bundle_infos'][j] = None
                 if not is_relevant_block:
                     interpreted_blocks['blocks'][i] = None
     # Grouped individual items into blocks
@@ -344,7 +347,7 @@ def fetch_interpreted_worksheet(uuid):
     # Frontend doesn't use individual 'items' for now
     del worksheet_info['items']
     if bundle_uuids:
-        return {'blocks': worksheet_info['blocks']}
+        return {'blocks': worksheet_info['blocks'], 'uuid': uuid}
     return worksheet_info
 
 
@@ -503,6 +506,34 @@ def resolve_interpreted_blocks(interpreted_blocks, brief):
     return interpreted_blocks
 
 
+def interpret_search(keywords):
+    """
+    Return a list of row dicts, one per bundle.
+
+    Each keyword is either:
+    - <key>=<value>
+    - .floating: return bundles not in any worksheet
+    - .offset=<int>: return bundles starting at this offset
+    - .limit=<int>: maximum number of bundles to return
+    - .count: just return the number of bundles
+    - .shared: shared with me through a group
+    - .mine: sugar for owner_id=user_id
+    - .last: sugar for id=.sort-
+    Keys are one of the following:
+    - Bundle fields (e.g., uuid)
+    - Metadata fields (e.g., time)
+    - Special fields (e.g., dependencies)
+    Values can be one of the following:
+    - .sort: sort in increasing order
+    - .sort-: sort by decreasing order
+    - .sum: add up the numbers
+    Bare keywords: sugar for uuid_name=.*<word>.*
+    Search only bundles which are readable by user_id.
+    """
+
+    return search_bundles(keywords)
+
+
 def interpret_wsearch(keywords):
     """
     Return a list of row dicts, one per worksheet. These dicts do NOT contain
@@ -649,6 +680,10 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
                             info = ''.join(contents)
         except NotFoundError:
             pass
+        except PermissionError:
+            # Use an array of length 1 to pass the PermissionError to the frontend
+            info = ["Forbidden"]
+            return info
 
         # Try to interpret the structure of the file by looking inside it.
         target_cache[target] = info

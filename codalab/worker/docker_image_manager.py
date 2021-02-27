@@ -10,6 +10,7 @@ from docker import DockerClient
 from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.worker_thread import ThreadDict
@@ -39,9 +40,9 @@ class DockerImageManager:
         :param max_image_size: Total size in bytes that the image can have
         """
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
-        self._docker = docker.from_env()  # type: DockerClient
+        self._docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)  # type: DockerClient
         self._downloading = ThreadDict(
-            fields={'success': False, 'status': 'Download starting.'}, lock=True
+            fields={'success': False, 'status': 'Download starting'}, lock=True
         )
         self._max_image_cache_size = max_image_cache_size
         self._max_image_size = max_image_size

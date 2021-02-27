@@ -1,5 +1,6 @@
-apache-beam==2.24.0
+apache-beam==2.25.0
 bottle==0.12.18
+dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
@@ -21,3 +22,6 @@ sentry-sdk==0.18.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
 markdown2==2.3.10
+wheel==0.35.1
+urllib3<1.26
+retry==0.9.2

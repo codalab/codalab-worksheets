@@ -163,10 +163,16 @@ class BundleRow extends Component {
                     rowContent = rowContent['path'].split('/')[1];
                 }
             }
-            if (Array.isArray(rowContent) && rowContent.length === 3) {
-                // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
-                // This means that the cell is only briefly loaded.
-                rowContent = <span style={{ color: 'grey' }}>Loading...</span>;
+            if (Array.isArray(rowContent)) {
+                if (rowContent.length === 1) {
+                    // This means that the user has no access to the cell since PermissionError occurred.
+                    // ['Forbidden'] will be returned
+                    rowContent = <span style={{ color: 'grey' }}>Forbidden</span>;
+                } else if (rowContent.length === 3) {
+                    // Cell is a bundle genpath triple -- see is_bundle_genpath_triple() in backend.
+                    // This means that the cell is only briefly loaded.
+                    rowContent = <span style={{ color: 'grey' }}>Loading...</span>;
+                }
             }
             if (url)
                 rowContent = (
@@ -292,13 +298,6 @@ class BundleRow extends Component {
                                     [classes.lowlight]: !this.props.focused,
                                 }),
                             }}
-                            id={
-                                'codalab-worksheet-item-' +
-                                this.state.focusIndex +
-                                'subitem-' +
-                                this.props.rowIndex +
-                                '-detail'
-                            }
                         >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
@@ -317,16 +316,7 @@ class BundleRow extends Component {
                                 showDetail={showDetail}
                                 handleDetailClick={this.handleDetailClick}
                                 editPermission={editPermission}
-                                onOpen={() => {
-                                    const node = document.getElementById(
-                                        'codalab-worksheet-item-' +
-                                            this.state.focusIndex +
-                                            'subitem-' +
-                                            this.props.rowIndex +
-                                            '-detail',
-                                    );
-                                    node.scrollIntoView({ block: 'center' });
-                                }}
+                                onOpen={() => {}}
                             />
                         </TableCell>
                     </TableRow>

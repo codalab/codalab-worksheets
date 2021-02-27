@@ -22,6 +22,8 @@ class UserTest(BaseTestCase):
         del data["attributes"]["time_used"]
         del data["attributes"]["date_joined"]
         del data["attributes"]["last_login"]
+        del data["attributes"]["disk_quota"]
+        del data["attributes"]["time_quota"]
         self.assertEqual(
             data,
             {
@@ -31,12 +33,11 @@ class UserTest(BaseTestCase):
                     "first_name": "",
                     "parallel_run_quota": 100,
                     "last_name": "",
-                    "time_quota": 3153600000,
-                    "disk_quota": 107374000000,
                     "url": None,
                     "notifications": 2,
                     "user_name": "codalab",
                     "affiliation": "",
+                    "avatar_id": None,
                 },
                 "id": "0",
             },

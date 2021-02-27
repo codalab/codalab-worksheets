@@ -1,10 +1,11 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '0.5.25';
+export const CODALAB_VERSION = '0.5.40';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
 
 export const NAVBAR_HEIGHT = 60;
+export const HEADER_HEIGHT = 170;
 
 // Worksheet width
 export const EXPANDED_WORKSHEET_WIDTH = '99%';
@@ -20,6 +21,7 @@ export const DIALOG_TYPES = {
     OPEN_DELETE_MARKDOWN: 'delete_markdown_block',
     OPEN_DELETE_WORKSHEET: 'delete_whole_worksheet',
     OPEN_ERROR_DIALOG: 'error_dialog',
+    OPEN_DELETE_SCHEMA: 'delete_schema',
 };
 
 // Bundle fetch status values; corresponds with FetchStatusCodes in backend
@@ -34,3 +36,19 @@ export const FETCH_STATUS_SCHEMA = {
 
 // Default Duration for dialogs shown on the screen
 export const AUTO_HIDDEN_DURATION = 1500;
+
+// All possible bundle states
+export const BUNDLE_STATES: String[] = [
+    'uploading',
+    'created',
+    'staged',
+    'making',
+    'starting',
+    'preparing',
+    'running',
+    'finalizing',
+    'ready',
+    'failed',
+    'killed',
+    'worker_offline',
+];

@@ -414,12 +414,10 @@ def interpret_genpath(bundle_info, genpath, db_model=None, owner_cache=None):
         def friendly_render_dep(dep):
             key = dep['child_path'] or dep['parent_name']
             friendly_parent_name = formatting.verbose_contents_str(dep['parent_name'])
-            value = (
-                key
-                + '{'
-                + (friendly_parent_name + ':' if key != dep['parent_name'] else '')
-                + dep['parent_uuid'][0:4]
-                + '}'
+            value = "%s{%s%s}" % (
+                key,
+                friendly_parent_name + ':' if key != dep['parent_name'] else '',
+                dep['parent_uuid'][0:4],
             )
             return key, value
 
@@ -1008,6 +1006,7 @@ def interpret_items(schemas, raw_items, db_model=None):
                     raw_to_block.append((len(blocks) - 1, 0))
             elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
+                appended_directive_blocks_index = False
                 if command == '%' or command == '' or command is None:
                     # Comment
                     pass
@@ -1019,6 +1018,9 @@ def interpret_items(schemas, raw_items, db_model=None):
                     current_schema_ids.append(item_id)
                     current_schema_name = name
                     schemas[name] = current_schema = []
+                    # Schema block should also be considered when calculating the focus index
+                    raw_to_block.append((len(blocks) - 1 + len(current_schema_ids), 0))
+                    appended_directive_blocks_index = True
                 elif command == 'addschema':
                     # Add to schema
                     if current_schema is None:
@@ -1050,12 +1052,13 @@ def interpret_items(schemas, raw_items, db_model=None):
                         )
                         .data
                     )
-
+                    appended_directive_blocks_index = True
                     raw_to_block.append((len(blocks) - 1, 0))
                 else:
                     raise UsageError("unknown directive `%s`" % command)
-
-                raw_to_block.append(None)
+                # Add an empty item placeholder for other directives, since they do not represent substantial items
+                if not appended_directive_blocks_index:
+                    raw_to_block.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 

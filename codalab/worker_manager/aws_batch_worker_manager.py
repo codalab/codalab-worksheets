@@ -1,21 +1,22 @@
 import logging
 import os
 import re
-from shlex import quote
 import uuid
-from .worker_manager import WorkerManager, WorkerJob
+from argparse import ArgumentParser
+from shlex import quote
 
+from .worker_manager import WorkerManager, WorkerJob
 from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
 
 logger = logging.getLogger(__name__)
 
 
 class AWSBatchWorkerManager(WorkerManager):
-    NAME = 'aws-batch'
-    DESCRIPTION = 'Worker manager for submitting jobs to AWS Batch'
+    NAME: str = 'aws-batch'
+    DESCRIPTION: str = 'Worker manager for submitting jobs to AWS Batch'
 
     @staticmethod
-    def add_arguments_to_subparser(subparser):
+    def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         subparser.add_argument(
             '--region', type=str, default='us-east-1', help='AWS region to run jobs in'
         )

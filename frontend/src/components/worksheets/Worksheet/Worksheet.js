@@ -2,13 +2,19 @@ import * as React from 'react';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
-import { renderPermissions, getAfterSortKey, createAlertText } from '../../../util/worksheet_utils';
+import {
+    renderPermissions,
+    getAfterSortKey,
+    createAlertText,
+    addUTCTimeZone,
+} from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
 import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
 import {
     NAVBAR_HEIGHT,
+    HEADER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
     DEFAULT_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
@@ -57,7 +63,7 @@ class Worksheet extends React.Component {
             },
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
-            activeComponent: 'list', // Where the focus is (action, list, or side_panel)
+            activeComponent: 'itemList', // Where the focus is (terminal, itemList)
             inSourceEditMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
@@ -125,6 +131,8 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(info) {
+                info['date_created'] = addUTCTimeZone(info['date_created']);
+                info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
                 this.setState({
                     ws: {
                         ...this.state.ws,
@@ -199,6 +207,20 @@ class Worksheet extends React.Component {
         }
     }
 
+    _createWsItemsIdDict(info) {
+        let wsItemsIdDict = {};
+        for (let i = 0; i < info.blocks.length; i++) {
+            if (info.blocks[i].bundles_spec) {
+                for (let j = 0; j < (this._numTableRows(info.blocks[i]) || 1); j++) {
+                    wsItemsIdDict[info.blocks[i].bundles_spec.bundle_infos[j].uuid] = [i, j];
+                }
+            } else if (info.blocks[i].ids) {
+                wsItemsIdDict[info.blocks[i].ids[0]] = [i, 0];
+            }
+        }
+        return wsItemsIdDict;
+    }
+
     handleClickForDeselect = (event) => {
         //Deselecting when clicking outside worksheet_items component
         if (event.target === event.currentTarget) {
@@ -222,6 +244,7 @@ class Worksheet extends React.Component {
         //      shouldn't be necessary. However, if we want more control on what happens after
         //      bulk operation, this might be useful
         let bundlesCount = this.state.uuidBundlesCheckedCount;
+        document.activeElement.blur();
         if (check) {
             //A bundle is checked
             if (
@@ -275,6 +298,20 @@ class Worksheet extends React.Component {
         }
     };
 
+    _getToastMsg = (command, state, count) => {
+        // Creates a toast message for a given command.
+        // count is the number of bundles on which this command was performed, if applicable.
+        // state can take the value of 0 or 1
+        // 0 represents the command is being executed
+        // 1 represents the command has already been executed
+        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
+        let toastMsg =
+            (command in cmdMsgMap
+                ? count + ' bundles ' + cmdMsgMap[command][state]
+                : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
+            (state === 0 ? '...' : '!');
+        return toastMsg;
+    };
     handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
         // This function runs the command for bulk bundle operations
         // The uuid are recorded by handleCheckBundle
@@ -282,6 +319,15 @@ class Worksheet extends React.Component {
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
         this.setState({ updating: true });
+        const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
+        // This toast info is used for showing a message when a command is being performed
+        const toastId = toast.info(this._getToastMsg(cmd, 0, bundleCount), {
+            position: 'top-right',
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: true,
+        });
         executeCommand(
             buildTerminalCommand([
                 cmd,
@@ -292,7 +338,10 @@ class Worksheet extends React.Component {
         )
             .done(() => {
                 this.clearCheckedBundles(() => {
-                    toast.info('Executing ' + cmd + ' command', {
+                    // This toast info is used for showing a message when a command has finished executing
+                    toast.update(toastId, {
+                        render: this._getToastMsg(cmd, 1, bundleCount),
+                        type: toast.TYPE.SUCCESS,
                         position: 'top-right',
                         autoClose: 2000,
                         hideProgressBar: true,
@@ -301,7 +350,10 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
-                this.reloadWorksheet();
+
+                const fromDeleteCommand = cmd === 'rm';
+                const param = { fromDeleteCommand };
+                this.reloadWorksheet(undefined, undefined, param);
             })
             .fail((e) => {
                 this.setState({
@@ -595,7 +647,7 @@ class Worksheet extends React.Component {
                     const param = { textDeleted };
                     this.reloadWorksheet(undefined, undefined, param);
                 } else {
-                    const moveIndex = false;
+                    const moveIndex = true;
                     const param = { moveIndex };
                     this.reloadWorksheet(undefined, undefined, param);
                 }
@@ -611,6 +663,13 @@ class Worksheet extends React.Component {
             },
         });
         this.autoHideOpenedMessagePopover();
+    };
+
+    setDeleteSchemaItemCallback = (callback) => {
+        this.setState({
+            deleteItemCallback: callback,
+            openedDialog: DIALOG_TYPES.OPEN_DELETE_SCHEMA,
+        });
     };
 
     autoHideOpenedMessagePopover() {
@@ -630,11 +689,11 @@ class Worksheet extends React.Component {
 
     setFocus = (index, subIndex, shouldScroll = true) => {
         let info = this.state.ws.info;
+
         // prevent multiple clicking from resetting the index
         if (index === this.state.focusIndex && subIndex === this.state.subFocusIndex) {
             return;
         }
-        const item = this.refs.list.refs['item' + index];
 
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
@@ -650,22 +709,17 @@ class Worksheet extends React.Component {
                 let elementHeight = element.height();
                 let screenScrollTop = $(window).scrollTop();
                 let screenHeight = $(window).height();
-                let scrollIsAboveElement = elementOffsetTop + elementHeight - screenScrollTop >= 0;
+                // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
+                // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
+                let scrollIsAboveElement =
+                    elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
                 let elementIsVisibleOnScreen =
                     screenScrollTop + screenHeight - elementOffsetTop >= 0;
                 return scrollIsAboveElement && elementIsVisibleOnScreen;
             }
             shouldScroll = !isOnScreen(element);
         }
-        if (item && (!item.props || !item.props.item)) {
-            // Skip "no search results" items and scroll past them.
-            const offset = index - this.state.focusIndex;
-            if (offset === 0) {
-                return;
-            }
-            this.setFocus(index + offset, subIndex, shouldScroll);
-            return;
-        }
+
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
@@ -680,19 +734,11 @@ class Worksheet extends React.Component {
         if (subIndex === 'end') {
             subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
         }
-        if (
-            index < -1 ||
-            index >= info.blocks.length ||
-            subIndex < -1 ||
-            subIndex >= (this._numTableRows(info.blocks[index]) || 1)
-        ) {
-            console.log('Out of bounds');
-            return; // Out of bounds (note index = -1 is okay)
-        }
+
         let focusedBundleUuidList = [];
         if (index !== -1) {
             // index !== -1 means something is selected.
-            // focusedBundleUuidList is a list of uuids of all bundles after the selected bundle (itself included)
+            // focusedBundleUuidList is a list of uuids of all bundles and ids of all other items after the selected bundle (itself included)
             // Say the selected bundle has focusIndex 1 and subFocusIndex 2, then focusedBundleUuidList will include the uuids of
             // all the bundles that have focusIndex 1 and subFocusIndex >= 2, and also all the bundles that have focusIndex > 1
             for (let i = index; i < info.blocks.length; i++) {
@@ -703,9 +749,21 @@ class Worksheet extends React.Component {
                             info.blocks[i].bundles_spec.bundle_infos[j].uuid,
                         );
                     }
+                } else {
+                    focusedBundleUuidList = focusedBundleUuidList.concat(info.blocks[i].ids);
                 }
             }
         }
+
+        // If we met a out of bound, we default it to the last item
+        // A protection mechanism to avoid possible error
+        if (index >= info.blocks.length) {
+            index = info.blocks.length - 1;
+            if (subIndex >= info.blocks[index].length || 1) {
+                subIndex = 0;
+            }
+        }
+
         // Change the focus - triggers updating of all descendants.
         this.setState({
             focusIndex: index,
@@ -784,7 +842,7 @@ class Worksheet extends React.Component {
     }
 
     handleTerminalFocus = (event) => {
-        this.setState({ activeComponent: 'action' });
+        this.setState({ activeComponent: 'terminal' });
         // just scroll to the top of the page.
         // Add the stop() to keep animation events from building up in the queue
         $('#command_line').data('resizing', null);
@@ -795,7 +853,7 @@ class Worksheet extends React.Component {
     handleTerminalBlur = (event) => {
         // explicitly close terminal because we're leaving the terminal
         // $('#command_line').terminal().focus(false);
-        this.setState({ activeComponent: 'list' });
+        this.setState({ activeComponent: 'itemList' });
         $('#command_line').data('resizing', null);
         $('#ws_search').removeAttr('style');
     };
@@ -825,7 +883,7 @@ class Worksheet extends React.Component {
             this.reloadWorksheet();
         }.bind(this);
 
-        if (this.state.activeComponent === 'action') {
+        if (this.state.activeComponent === 'terminal') {
             // no need for other keys, we have the terminal focused
             return;
         }
@@ -889,7 +947,6 @@ class Worksheet extends React.Component {
                     var focusIndex = this.state.focusIndex;
                     var subFocusIndex = this.state.subFocusIndex;
                     var wsItems = this.state.ws.info.blocks;
-
                     if (focusIndex === 0 && subFocusIndex === 0) {
                         // Deselect all item when selecting up above the first item.
                         this.setFocus(-1, 0);
@@ -898,13 +955,9 @@ class Worksheet extends React.Component {
                         (wsItems[focusIndex].mode === 'table_block' ||
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
-                        // worksheet_item_interface and table_item_interface do the exact same thing anyway right now
-                        if (focusIndex === 0 && subFocusIndex === 0) {
-                            // stay on the first row
-                            return;
-                        }
                         if (subFocusIndex - 1 < 0) {
-                            this.setFocus(focusIndex - 1 < 0 ? 0 : focusIndex - 1, 'end'); // Move out of this table to the item above the current table
+                            // focusIndex must > 0
+                            this.setFocus(focusIndex - 1, 'end'); // Move out of this table to the item above the current table
                         } else {
                             this.setFocus(focusIndex, subFocusIndex - 1);
                         }
@@ -927,9 +980,12 @@ class Worksheet extends React.Component {
                         (wsItems[focusIndex].mode === 'table_block' ||
                             wsItems[focusIndex].mode === 'subworksheets_block')
                     ) {
-                        if (subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])) {
+                        if (
+                            focusIndex < wsItems.length - 1 &&
+                            subFocusIndex + 1 >= this._numTableRows(wsItems[focusIndex])
+                        ) {
                             this.setFocus(focusIndex + 1, 0);
-                        } else {
+                        } else if (subFocusIndex + 1 < this._numTableRows(wsItems[focusIndex])) {
                             this.setFocus(focusIndex, subFocusIndex + 1);
                         }
                     } else {
@@ -1026,6 +1082,7 @@ class Worksheet extends React.Component {
                     return;
                 }
                 this.toggleCmdDialogNoEvent('copy');
+                Mousetrap.reset();
             });
             if (this.state.ws.info.edit_permission) {
                 Mousetrap.bind(['backspace', 'del'], () => {
@@ -1045,12 +1102,14 @@ class Worksheet extends React.Component {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('kill');
+                    Mousetrap.reset();
                 });
                 Mousetrap.bind(['a d'], () => {
                     if (this.state.openedDialog) {
                         return;
                     }
                     this.toggleCmdDialogNoEvent('cut');
+                    Mousetrap.reset();
                 });
 
                 // Confirm bulk bundle operation
@@ -1094,24 +1153,32 @@ class Worksheet extends React.Component {
             if (this.hasEditPermission()) {
                 var editor = ace.edit('worksheet-editor');
                 if (saveChanges) {
-                    this.setState({
-                        ws: {
-                            ...this.state.ws,
-                            info: {
-                                ...this.state.ws.info,
-                                source: editor.getValue().split('\n'),
+                    // Use callback function to ensure the worksheet info will not be sent to the backend until the frontend state has finished updating
+                    this.setState(
+                        {
+                            ws: {
+                                ...this.state.ws,
+                                info: {
+                                    ...this.state.ws.info,
+                                    source: editor.getValue().split('\n'),
+                                },
                             },
                         },
-                    });
-                }
-                var rawIndex = editor.getCursorPosition().row;
-                this.setState({
-                    inSourceEditMode: false,
-                    editorEnabled: false,
-                }); // Needs to be after getting the raw contents
-                if (saveChanges) {
-                    this.saveAndUpdateWorksheet(saveChanges, rawIndex);
+                        () => {
+                            var rawIndex = editor.getCursorPosition().row;
+                            this.setState({
+                                inSourceEditMode: false,
+                                editorEnabled: false,
+                            }); // Needs to be after getting the raw contents
+                            this.saveAndUpdateWorksheet(saveChanges, rawIndex);
+                        },
+                    );
                 } else {
+                    var rawIndex = editor.getCursorPosition().row;
+                    this.setState({
+                        inSourceEditMode: false,
+                        editorEnabled: false,
+                    });
                     this.reloadWorksheet(undefined, rawIndex);
                 }
             } else {
@@ -1138,7 +1205,7 @@ class Worksheet extends React.Component {
         var self = this;
         var queryParams = Object.keys(bundleUuids)
             .map(function(bundle_uuid) {
-                return 'uuid=' + bundle_uuid;
+                return 'bundle_uuid=' + bundle_uuid;
             })
             .join('&');
         $.ajax({
@@ -1296,7 +1363,7 @@ class Worksheet extends React.Component {
     }
 
     focusTerminal() {
-        this.setState({ activeComponent: 'action' });
+        this.setState({ activeComponent: 'terminal' });
         this.setState({ showTerminal: true });
         $('#command_line')
             .terminal()
@@ -1325,14 +1392,19 @@ class Worksheet extends React.Component {
 
     // If partialUpdateItems is undefined, we will fetch the whole worksheet.
     // Otherwise, partialUpdateItems is a list of item parallel to ws.info.blocks that contain only items that need updating.
-    // More spefically, all items that don't contain run bundles that need updating are null.
+    // More specifically, all items that don't contain run bundles that need updating are null.
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
     reloadWorksheet = (
         partialUpdateItems,
         rawIndexAfterEditMode,
-        { moveIndex = false, textDeleted = false } = {},
+        {
+            moveIndex = false,
+            textDeleted = false,
+            fromDeleteCommand = false,
+            uploadFiles = false,
+        } = {},
     ) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
@@ -1370,8 +1442,9 @@ class Worksheet extends React.Component {
                             this.setFocus(focusIndexPair[0], focusIndexPair[1]);
                         }
                     } else if (
-                        this.state.numOfBundles !== -1 &&
-                        numOfBundles > this.state.numOfBundles
+                        (this.state.numOfBundles !== -1 &&
+                            numOfBundles > this.state.numOfBundles) ||
+                        uploadFiles
                     ) {
                         // If the number of bundles increases then the focus should be on the new bundle.
                         // if the current focus is not on a table
@@ -1388,22 +1461,34 @@ class Worksheet extends React.Component {
                             this.setFocus(focus >= 0 ? focus : 'end', 'end');
                         }
                     } else if (numOfBundles < this.state.numOfBundles) {
-                        // If the number of bundles decreases, then focus should be on the same bundle as before
-                        // unless that bundle doesn't exist anymore, in which case we select the one above it.
-                        // the deleted bundle is the only item of the table
-                        if (this.state.subFocusIndex === 0) {
-                            // the deleted item is the last item of the worksheet
-                            if (items.length === focus + 1) {
-                                this.setFocus(focus - 1, 0);
-                            } else {
-                                this.setFocus(focus, 0);
-                            }
-                            // the deleted bundle is the last item of the table
-                            // note that for some reason subFocusIndex begins with 1, not 0
-                        } else if (this._numTableRows(items[focus]) === this.state.subFocusIndex) {
-                            this.setFocus(focus, this.state.subFocusIndex - 1);
+                        // Bundles are deleted
+                        // When delete something, cursor should be after the thing that was deleted
+                        // The method also works when deleting multiple (non-consecutive) bundles.
+                        if (focus === -1) {
+                            // No focus has been set
+                            // Move focus to the virtual item
+                            this.setFocus(focus, 0);
                         } else {
-                            this.setFocus(focus, this.state.subFocusIndex);
+                            // Move focus to the next available item
+                            // First, create an id list containing the ids of all the items on the current page
+                            const wsItemsIdDict = this._createWsItemsIdDict(this.state.ws.info);
+                            let hasSetFocus = false;
+                            for (let k = 0; k < this.state.focusedBundleUuidList.length; k++) {
+                                // Find the first current available item by searching for its id
+                                if (this.state.focusedBundleUuidList[k] in wsItemsIdDict) {
+                                    this.setFocus(
+                                        wsItemsIdDict[this.state.focusedBundleUuidList[k]][0],
+                                        wsItemsIdDict[this.state.focusedBundleUuidList[k]][1],
+                                    );
+                                    hasSetFocus = true;
+                                    break;
+                                }
+                            }
+                            // If all the following items of the previous focused item have been delete
+                            // Move focus to the last item on the page.
+                            if (!hasSetFocus) {
+                                this.setFocus(items.length - 1, 'end');
+                            }
                         }
                     } else {
                         if (moveIndex) {
@@ -1414,7 +1499,12 @@ class Worksheet extends React.Component {
                             // When deleting text, we want the focus to stay at the same index,
                             // unless it is the last item in the worksheet, at which point the
                             // focus goes to the last item in the worksheet.
-                            this.setFocus(items.length === focus ? items.length - 1 : focus, 'end');
+                            this.setFocus(items.length === focus ? items.length - 1 : focus, 0);
+                        }
+                        if (fromDeleteCommand) {
+                            // Executed 'rm' command but no bundle deleted
+                            // So bundles are deleted through a search directive
+                            this.setFocus(focus, this.state.subFocusIndex);
                         }
                     }
                     this.setState({
@@ -1437,9 +1527,28 @@ class Worksheet extends React.Component {
         } else {
             var ws = _.clone(this.state.ws);
             for (var i = 0; i < partialUpdateItems.length; i++) {
-                if (!partialUpdateItems[i]) continue;
+                if (
+                    !partialUpdateItems[i] ||
+                    !(
+                        'bundles_spec' in partialUpdateItems[i] &&
+                        'bundle_infos' in partialUpdateItems[i]['bundles_spec']
+                    )
+                )
+                    // Partial Update mechanism only designs for the blocks consisting of bundles
+                    // Check whether the block contains the field of 'bundle_infos' to determine whether it is a non-None block containing a list of bundle_infos, which represent a list of bundles
+                    continue;
+                // Update rows
+                ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
                 // update interpreted items
-                ws.info.blocks[i] = partialUpdateItems[i];
+                for (
+                    let j = 0;
+                    j < partialUpdateItems[i]['bundles_spec']['bundle_infos'].length;
+                    j++
+                ) {
+                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j])
+                        ws.info.blocks[i]['bundles_spec']['bundle_infos'][j] =
+                            partialUpdateItems[i]['bundles_spec']['bundle_infos'][j];
+                }
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);
@@ -1636,11 +1745,10 @@ class Worksheet extends React.Component {
 
         let terminalDisplay = (
             <WorksheetTerminal
-                ref={'action'}
                 ws={this.state.ws}
                 handleFocus={this.handleTerminalFocus}
                 handleBlur={this.handleTerminalBlur}
-                active={this.state.activeComponent === 'action'}
+                active={this.state.activeComponent === 'terminal'}
                 reloadWorksheet={this.reloadWorksheet}
                 openWorksheet={this.openWorksheet}
                 editMode={() => {
@@ -1653,8 +1761,7 @@ class Worksheet extends React.Component {
 
         let itemsDisplay = (
             <WorksheetItemList
-                ref={'list'}
-                active={this.state.activeComponent === 'list'}
+                active={this.state.activeComponent === 'itemList'}
                 ws={this.state.ws}
                 version={this.state.version}
                 focusIndex={this.state.focusIndex}
@@ -1680,6 +1787,7 @@ class Worksheet extends React.Component {
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
+                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
             />
         );
 
