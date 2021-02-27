@@ -97,8 +97,6 @@ class UploadManager(object):
                                 simplify_archive=simplify_archives,
                             )
                 elif is_local_path:
-                    # TODO (Ashwin): check if this code path is used (it appears not),
-                    # and if not, remove it.
                     source_path = path_util.normalize(source)
                     path_util.check_isvalid(source_path, 'upload')
 
