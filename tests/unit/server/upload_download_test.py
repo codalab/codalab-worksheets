@@ -7,27 +7,46 @@ from io import BytesIO
 import gzip
 import tarfile
 import unittest
+from unittest.mock import patch, MagicMock
+from urllib.response import addinfourl
+import urllib
 
 
-class BaseUploadDownloadBundleTest(TestBase):
-    """Base class for UploadDownload tests.
-    All subclasses must implement the upload_folder
-    and upload_file methods.
-    """
-
-    DEFAULT_PERM = 0o644
-
-    def upload_folder(self, bundle, contents):
-        raise NotImplementedError
-
-    def upload_file(self, bundle, contents):
-        raise NotImplementedError
-
+class NotFoundTest(TestBase):
     def test_not_found(self):
         """Running get_target_info for a nonexistent bundle should raise an error."""
         with self.assertRaises(NotFoundError):
             target = BundleTarget(generate_uuid(), "")
             self.download_manager.get_target_info(target, 0)
+
+
+class BaseUploadDownloadBundleTest(TestBase):
+    """Base class for UploadDownload tests.
+    """
+
+    def create_fileobj_to_upload(self):
+        raise NotImplementedError
+
+    def create_bundle(self):
+        bundle = self.create_run_bundle()
+        self.save_bundle(bundle)
+        return bundle
+
+    def get_sources(self, fileobj):
+        raise NotImplementedError
+
+    def do_upload(self, bundle, sources):
+        raise NotImplementedError
+
+    def check_contents(self, bundle):
+        raise NotImplementedError
+
+    def test_main(self):
+        f = self.create_fileobj_to_upload()
+        bundle = self.create_bundle()
+        sources = self.get_sources(f)
+        self.do_upload(bundle, sources)
+        self.check_contents(bundle)
 
     def check_file_target_contents(self, target):
         """Checks to make sure that the specified file has the contents 'hello world'."""
@@ -74,29 +93,14 @@ class BaseUploadDownloadBundleTest(TestBase):
         ) as f:
             self.assertEqual(sorted(f.getnames()), sorted(expected_members))
 
-    def test_bundle_single_file(self):
-        """Running get_target_info for a bundle with a single file."""
-        bundle = self.create_run_bundle()
-        self.save_bundle(bundle)
-        self.upload_file(bundle, b"hello world")
-        target = BundleTarget(bundle.uuid, "")
-        self.assertEqual(bundle.is_dir, False)
-        self.assertEqual(bundle.storage_type, self.expected_storage_type)
 
-        info = self.download_manager.get_target_info(target, 0)
-        self.assertEqual(info["name"], bundle.uuid)
-        self.assertEqual(info["size"], 11)
+class FolderBase(TestBase):
+    """Upload a folder.
+    """
 
-        self.assertEqual(info["perm"], self.DEFAULT_PERM)
-        self.assertEqual(info["type"], "file")
-        self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
-        self.check_file_target_contents(target)
+    is_dir = True
 
-    def test_bundle_folder(self):
-        """Running get_target_info for a bundle with a folder, and with subpaths."""
-        bundle = self.create_run_bundle()
-        self.save_bundle(bundle)
-
+    def create_fileobj_to_upload(self):
         f = BytesIO()
 
         def writestr(tf, name, contents):
@@ -114,7 +118,10 @@ class BaseUploadDownloadBundleTest(TestBase):
             writestr(tf, "./item.txt", "hello world")
             writestr(tf, "./src/item2.txt", "hello world")
         f.seek(0)
-        self.upload_folder(bundle, f)
+        return f
+
+    def check_contents(self, bundle):
+        """Running get_target_info for a bundle with a folder, and with subpaths."""
         self.assertEqual(bundle.is_dir, True)
         self.assertEqual(bundle.storage_type, self.expected_storage_type)
 
@@ -131,18 +138,13 @@ class BaseUploadDownloadBundleTest(TestBase):
             sorted(info["contents"], key=lambda x: x["name"]),
             sorted(
                 [
-                    {'name': 'item.txt', 'perm': self.DEFAULT_PERM, 'type': 'file'},
+                    {'name': 'item.txt', 'perm': 0o644, 'type': 'file'},
                     {
                         'name': 'src',
                         'perm': 0o755,
                         'type': 'directory',
                         'contents': [
-                            {
-                                'name': 'item2.txt',
-                                'size': 11,
-                                'perm': self.DEFAULT_PERM,
-                                'type': 'file',
-                            }
+                            {'name': 'item2.txt', 'size': 11, 'perm': 0o644, 'type': 'file',}
                         ],
                     },
                 ],
@@ -166,8 +168,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:src")
         self.assertEqual(
-            info["contents"],
-            [{'name': 'item2.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'}],
+            info["contents"], [{'name': 'item2.txt', 'size': 11, 'perm': 0o644, 'type': 'file'}],
         )
         self.check_folder_target_contents(target, expected_members=['.', './item2.txt'])
 
@@ -179,13 +180,37 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.check_file_target_contents(target)
 
 
-class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
-    """Test uploading and downloading from / to a regular, file-based bundle store."""
+class FileBase(TestBase):
+    """Upload a file.
+    """
+
+    is_dir = False
+
+    def create_fileobj_to_upload(self):
+        return BytesIO(b"hello world")
+
+    def check_contents(self, bundle):
+        """Running get_target_info for a bundle with a single file."""
+        target = BundleTarget(bundle.uuid, "")
+        self.assertEqual(bundle.is_dir, False)
+        self.assertEqual(bundle.storage_type, self.expected_storage_type)
+
+        info = self.download_manager.get_target_info(target, 0)
+        self.assertEqual(info["name"], bundle.uuid)
+        self.assertEqual(info["size"], 11)
+
+        self.assertEqual(info["perm"], 0o644)
+        self.assertEqual(info["type"], "file")
+        self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
+        self.check_file_target_contents(target)
+
+
+class DiskBundleStoreBase(TestBase):
+    """Upload sources to disk bundle store."""
 
     expected_storage_type = StorageType.DISK_STORAGE.value
 
-    def upload_folder(self, bundle, f):
-        sources = [["contents.tar.gz", f]]
+    def do_upload(self, bundle, sources):
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
@@ -198,28 +223,13 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             use_azure_blob_beta=False,
         )
 
-    def upload_file(self, bundle, contents):
-        sources = [["contents", BytesIO(contents)]]
-        self.upload_manager.upload_to_bundle_store(
-            bundle,
-            sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
-            git=False,
-            unpack=False,
-            simplify_archives=True,
-            use_azure_blob_beta=False,
-        )
 
-
-class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
-    """Test uploading and downloading from / to Azure Blob storage."""
+class BlobBundleStoreBase(TestBase):
+    """Upload sources to Blob bundle store."""
 
     expected_storage_type = StorageType.AZURE_BLOB_STORAGE.value
 
-    def upload_folder(self, bundle, f):
-        sources = [["contents.tar.gz", f]]
+    def do_upload(self, bundle, sources):
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
@@ -232,16 +242,125 @@ class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             use_azure_blob_beta=True,
         )
 
-    def upload_file(self, bundle, contents):
-        sources = [["contents", BytesIO(contents)]]
-        self.upload_manager.upload_to_bundle_store(
-            bundle,
-            sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
-            git=False,
-            unpack=False,
-            simplify_archives=True,
-            use_azure_blob_beta=True,
-        )
+
+class FileObjUploadBase(TestBase):
+    """Upload sources as a file object."""
+
+    def get_sources(self, fileobj):
+        return [["contents.tar.gz" if self.is_dir else "contents", fileobj]]
+
+
+class URLUploadBase(TestBase):
+    """Upload sources as a URL."""
+
+    def get_sources(self, fileobj):
+        url = "https://codalab/item.tar.gz" if self.is_dir else "https://codalab/item"
+        size = len(fileobj.read())
+        fileobj.seek(0)
+        urllib.request.urlopen = MagicMock()
+        urllib.request.urlopen.return_value = addinfourl(fileobj, {"content-length": size}, url)
+        return [url]
+
+
+class DiskUploadFileTest(
+    FileBase,
+    DiskBundleStoreBase,
+    FileObjUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a file as a fileobj to the disk bundle store."""
+
+    pass
+
+
+class DiskUploadFolderTest(
+    FolderBase,
+    DiskBundleStoreBase,
+    FileObjUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a folder as a fileobj to the disk bundle store."""
+
+    pass
+
+
+class BlobUploadFileTest(
+    FileBase,
+    BlobBundleStoreBase,
+    FileObjUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a file as a fileobj to the blob bundle store."""
+
+    pass
+
+
+class BlobUploadFolderTest(
+    FolderBase,
+    BlobBundleStoreBase,
+    FileObjUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a folder as a fileobj to the blob bundle store."""
+
+    pass
+
+
+class DiskUploadFileURLTest(
+    FileBase,
+    DiskBundleStoreBase,
+    URLUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a file as a URL to the disk bundle store."""
+
+    pass
+
+
+class DiskUploadFolderURLTest(
+    FolderBase,
+    DiskBundleStoreBase,
+    URLUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a folder as a URL to the disk bundle store."""
+
+    pass
+
+
+class BlobUploadFileURLTest(
+    FileBase,
+    BlobBundleStoreBase,
+    URLUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a file as a URL to the blob bundle store."""
+
+    pass
+
+
+class BlobUploadFolderURLTest(
+    FolderBase,
+    BlobBundleStoreBase,
+    URLUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a folder as a URL to the blob bundle store."""
+
+    pass
