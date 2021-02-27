@@ -156,11 +156,7 @@ class WorksheetDialogs extends React.Component {
                         Delete this WORKSHEET permanently?
                     </DialogTitle>
                     <DialogContent>
-                        <DialogContentText
-                            id='alert-dialog-description'
-                            style={{ color: 'red', marginBottom: '20px' }}
-                        >
-                            {'WORKSHEET deletion cannot be undone. Continue worksheet deletion:'}
+                        <DialogContentText id='alert-dialog-check'>
                             <Checkbox
                                 checked={this.state.deleteWorksheetCheck}
                                 onChange={this.toggleDeleteWorksheet}
@@ -168,6 +164,13 @@ class WorksheetDialogs extends React.Component {
                                     'aria-label': 'primary checkbox',
                                 }}
                             />
+                            {'Yes, I want to delete this worksheet permanently.'}
+                        </DialogContentText>
+                        <DialogContentText
+                            id='alert-dialog-description'
+                            style={{ color: 'red', marginLeft: '35px', marginBottom: '20px' }}
+                        >
+                            {'WORKSHEET deletion cannot be undone.'}
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
                             {'Note: Deleting a worksheet does not delete its bundles.'}
