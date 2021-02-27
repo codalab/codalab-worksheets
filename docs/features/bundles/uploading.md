@@ -82,7 +82,7 @@ Here is an example of using the link functionality:
 % cl upload /u/nlp/data/a.txt --link
 ```
 
-In the above example, the upload command happens instantaneously (with no data transfer of the actual file), and the server will retrieve the data from the given link path when the bundle is required as a dependency. The bundle is thus a **linked bundle**.
+In the above example, the upload command will be executed instantaneously (with no data transfer of the actual file), and the server will retrieve the data from the given link path when the bundle is required as a dependency. The bundle is thus a **linked bundle**.
 
 Linked bundles are useful if, for example, the bundle is very large and the workers already have access to the original file through a shared filesystem, as it avoids having to upload the entire file to the bundle store.
 
