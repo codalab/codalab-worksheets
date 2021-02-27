@@ -25,28 +25,38 @@ class BaseUploadDownloadBundleTest(TestBase):
     """
 
     def create_fileobj_to_upload(self):
+        """Create the fileobj that is to be uploaded."""
         raise NotImplementedError
 
-    def create_bundle(self):
-        bundle = self.create_run_bundle()
-        self.save_bundle(bundle)
-        return bundle
-
     def get_sources(self, fileobj):
+        """Construct a sources array from the given fileobj that can be sent to upload_to_bundle_store."""
         raise NotImplementedError
 
     def do_upload(self, bundle, sources):
+        """Perform the upload (call upload_to_bundle_store) given the specified bundle and sources."""
         raise NotImplementedError
 
     def check_contents(self, bundle):
+        """Check contents of a given bundle."""
+        raise NotImplementedError
+
+    @property
+    def ext(self):
+        """Source extension."""
         raise NotImplementedError
 
     def test_main(self):
+        """Main test -- create file object, bundle, sources, do the upload, then check the contents."""
         f = self.create_fileobj_to_upload()
         bundle = self.create_bundle()
         sources = self.get_sources(f)
         self.do_upload(bundle, sources)
         self.check_contents(bundle)
+
+    def create_bundle(self):
+        bundle = self.create_run_bundle()
+        self.save_bundle(bundle)
+        return bundle
 
     def check_file_target_contents(self, target):
         """Checks to make sure that the specified file has the contents 'hello world'."""
@@ -95,10 +105,13 @@ class BaseUploadDownloadBundleTest(TestBase):
 
 
 class FolderBase(TestBase):
-    """Upload a folder.
+    """Upload a folder. Subclasses must define `ext` and `mode`.
     """
 
-    is_dir = True
+    @property
+    def mode(self):
+        """Mode (gz, bz2, etc.)"""
+        raise NotImplementedError
 
     def create_fileobj_to_upload(self):
         f = BytesIO()
@@ -114,7 +127,7 @@ class FolderBase(TestBase):
             tf.addfile(tinfo, BytesIO())
 
         f.seek(0)
-        with tarfile.open(fileobj=f, mode="w:gz") as tf:
+        with tarfile.open(fileobj=f, mode=f"w:{self.mode}") as tf:
             writestr(tf, "./item.txt", "hello world")
             writestr(tf, "./src/item2.txt", "hello world")
         f.seek(0)
@@ -180,11 +193,25 @@ class FolderBase(TestBase):
         self.check_file_target_contents(target)
 
 
+class TarGzFolderBase(FolderBase):
+    """Upload a .tar.gz folder"""
+
+    ext = ".tar.gz"
+    mode = "gz"
+
+
+class TarBz2FolderBase(FolderBase):
+    """Upload a .tar.bz2 folder."""
+
+    ext = ".tar.bz2"
+    mode = "bz2"
+
+
 class FileBase(TestBase):
     """Upload a file.
     """
 
-    is_dir = False
+    ext = ""
 
     def create_fileobj_to_upload(self):
         return BytesIO(b"hello world")
@@ -247,14 +274,14 @@ class FileObjUploadBase(TestBase):
     """Upload sources as a file object."""
 
     def get_sources(self, fileobj):
-        return [["contents.tar.gz" if self.is_dir else "contents", fileobj]]
+        return [[f"contents{self.ext}", fileobj]]
 
 
 class URLUploadBase(TestBase):
     """Upload sources as a URL."""
 
     def get_sources(self, fileobj):
-        url = "https://codalab/item.tar.gz" if self.is_dir else "https://codalab/item"
+        url = f"https://codalab/contents{self.ext}"
         size = len(fileobj.read())
         fileobj.seek(0)
         urllib.request.urlopen = MagicMock()
@@ -276,7 +303,7 @@ class DiskUploadFileTest(
 
 
 class DiskUploadFolderTest(
-    FolderBase,
+    TarGzFolderBase,
     DiskBundleStoreBase,
     FileObjUploadBase,
     BaseUploadDownloadBundleTest,
@@ -302,7 +329,7 @@ class BlobUploadFileTest(
 
 
 class BlobUploadFolderTest(
-    FolderBase,
+    TarGzFolderBase,
     BlobBundleStoreBase,
     FileObjUploadBase,
     BaseUploadDownloadBundleTest,
@@ -328,7 +355,7 @@ class DiskUploadFileURLTest(
 
 
 class DiskUploadFolderURLTest(
-    FolderBase,
+    TarGzFolderBase,
     DiskBundleStoreBase,
     URLUploadBase,
     BaseUploadDownloadBundleTest,
@@ -354,7 +381,7 @@ class BlobUploadFileURLTest(
 
 
 class BlobUploadFolderURLTest(
-    FolderBase,
+    TarGzFolderBase,
     BlobBundleStoreBase,
     URLUploadBase,
     BaseUploadDownloadBundleTest,
@@ -362,5 +389,18 @@ class BlobUploadFolderURLTest(
     unittest.TestCase,
 ):
     """Upload a folder as a URL to the blob bundle store."""
+
+    pass
+
+
+class BlobUploadTarBz2FolderURLTest(
+    TarBz2FolderBase,
+    BlobBundleStoreBase,
+    URLUploadBase,
+    BaseUploadDownloadBundleTest,
+    TestBase,
+    unittest.TestCase,
+):
+    """Upload a .tar.bz2 folder as a URL to the blob bundle store."""
 
     pass
