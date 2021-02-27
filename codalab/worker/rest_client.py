@@ -175,7 +175,7 @@ class RestClient(object):
                     response = conn.getresponse()
                     got_response = True
                 except socket.timeout:
-                    logging.debug("Socket timeout, retrying")
+                    logging.debug("Socket timeout, retrying url: %s", url)
                     conn.send(b'\0')
             logging.debug("Finished reading the response, url: %s", url)
             if response.status != 200:
