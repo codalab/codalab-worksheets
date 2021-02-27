@@ -198,6 +198,7 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             git=False,
             unpack=True,
             simplify_archives=True,
+            use_azure_blob_beta=False,
         )
 
     def upload_file(self, bundle, contents):
@@ -211,6 +212,7 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             git=False,
             unpack=False,
             simplify_archives=True,
+            use_azure_blob_beta=False,
         )
 
 
