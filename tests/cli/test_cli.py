@@ -1111,6 +1111,9 @@ def test_worksheet_freeze_unfreeze(ctx):
     # Verify that we can make multiple edits to a frozen worksheet,
     # as long as we unfreeze at the same time.
     _run_command([cl, 'wedit', '--freeze'])
+    # Can't re-freeze a frozen worksheet
+    _run_command([cl, 'wedit', '--freeze'], 1)
+    _run_command([cl, 'wedit', '--freeze', '-t', 'new_title'], 1)  # would edit
     _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
     # can edit if we unfreeze at the same time
     _run_command([cl, 'wedit', '-t', 'new_title', '--unfreeze'])
