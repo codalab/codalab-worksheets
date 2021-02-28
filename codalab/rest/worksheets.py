@@ -219,6 +219,7 @@ def replace_items(worksheet_uuid):
     """
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
+    worksheet_util.check_worksheet_not_frozen(worksheet)
 
     ids = request.json.get('ids', [])
     item_type = request.json.get('item_type', 'markup')
@@ -277,6 +278,7 @@ def set_worksheet_permissions():
 
     for p in new_permissions:
         worksheet = local.model.get_worksheet(p['object_uuid'], fetch_items=False)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
         set_worksheet_permission(worksheet, p['group_uuid'], p['permission'])
     return WorksheetPermissionSchema(many=True).dump(new_permissions).data
 
@@ -388,6 +390,13 @@ def update_worksheet_metadata(uuid, info):
             # ignore the value the client provided, just freeze as long as it's truthy
             value = datetime.datetime.utcnow()
         metadata[key] = value
+
+    # If we're updating any metadata key, we want to ensure that the worksheet
+    # isn't frozen. The exception is if we're also unfreezing the worksheet---regardless of
+    # whether the worksheet is frozen or not, we're going to unfreeze it, so allow all
+    # other updates as well.
+    if "frozen" not in metadata or metadata["frozen"] is True:
+        worksheet_util.check_worksheet_not_frozen(worksheet)
 
     local.model.update_worksheet_metadata(worksheet, metadata)
 

@@ -1077,14 +1077,14 @@ def test(ctx):
     check_contains('non_root_user', _run_command([cl, 'uls']))
 
 
-@TestModule.register('freeze_unfreeze')
+@TestModule.register('worksheet_freeze_unfreeze')
 def test_freeze(ctx):
     _run_command([cl, 'work', '-u'])
     wname = random_name()
     wuuid = _run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
     check_contains(['Switched', wname, wuuid], _run_command([cl, 'work', wuuid]))
-    # Before freezing: can modify everything
+    # Before freezing: can modify everything on the worksheet
     uuid1 = _run_command([cl, 'upload', '-c', 'hello'])
     _run_command([cl, 'add', 'text', 'message'])
     _run_command([cl, 'wedit', '-t', 'new_title'])
@@ -1092,12 +1092,12 @@ def test_freeze(ctx):
 
     _run_command([cl, 'wedit', '--freeze'])
 
-    # After freezing: can only modify contents
+    # After freezing: cannot modify anything
     _run_command([cl, 'detach', uuid1], 1)  # would remove an item
     _run_command([cl, 'rm', uuid1], 1)  # would remove an item
     _run_command([cl, 'add', 'text', 'message'], 1)  # would add an item
-    _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
-    _run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
+    _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
+    _run_command([cl, 'wperm', wuuid, 'public', 'a'], 1)  # would edit
 
     _run_command([cl, 'wedit', '--unfreeze'])
 
@@ -1107,6 +1107,13 @@ def test_freeze(ctx):
     _run_command([cl, 'add', 'text', 'message'])  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
     _run_command([cl, 'wperm', wuuid, 'public', 'n'])  # can edit
+
+    # Verify that we can make multiple edits to a frozen worksheet,
+    # as long as we unfreeze at the same time.
+    _run_command([cl, 'wedit', '--freeze'])
+    _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
+    # can edit if we unfreeze at the same time
+    _run_command([cl, 'wedit', '-t', 'new_title', '--unfreeze'])
 
 
 @TestModule.register('detach')
