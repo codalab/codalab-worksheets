@@ -40,6 +40,7 @@ bundle = Table(
     Column('data_hash', String(63), nullable=True),
     Column('state', String(63), nullable=False),
     Column('owner_id', String(255), nullable=True),
+    Column('frozen', DateTime, nullable=True),  # When the bundle was frozen, if it is.
     Column('is_anonymous', Boolean, nullable=False, default=False),
     UniqueConstraint('uuid', name='uix_1'),
     Index('bundle_data_hash_index', 'data_hash'),
