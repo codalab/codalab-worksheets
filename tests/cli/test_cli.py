@@ -1106,7 +1106,7 @@ def test_freeze(ctx):
     _run_command([cl, 'rm', uuid1])  # would remove an item
     _run_command([cl, 'add', 'text', 'message'])  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
-    _run_command([cl, 'wperm', wuuid, 'public', 'n'])  # can edit
+    _run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
 
     # Verify that we can make multiple edits to a frozen worksheet,
     # as long as we unfreeze at the same time.
