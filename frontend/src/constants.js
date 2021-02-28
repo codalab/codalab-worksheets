@@ -34,7 +34,7 @@ export const FETCH_STATUS_SCHEMA = {
     NO_PERMISSION: 'no_permission',
 };
 
-// Default Duration for dialogs shown on the screen
+// Default Duration for messagePopover shown on the worksheet
 export const AUTO_HIDDEN_DURATION = 1500;
 
 // All possible bundle states
