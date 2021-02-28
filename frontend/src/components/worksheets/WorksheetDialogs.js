@@ -170,7 +170,7 @@ class WorksheetDialogs extends React.Component {
                             id='alert-dialog-description'
                             style={{ color: 'red', marginLeft: '35px', marginBottom: '20px' }}
                         >
-                            {'WORKSHEET deletion cannot be undone.'}
+                            {'Worksheet deletion cannot be undone.'}
                         </DialogContentText>
                         <DialogContentText id='alert-dialog-description' style={{ color: 'grey' }}>
                             {'Note: Deleting a worksheet does not delete its bundles.'}
