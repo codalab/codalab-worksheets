@@ -87,7 +87,7 @@ class BundleInfo(object):
         self.command = command
         self.data_hash = data_hash
         self.state = state
-        self.is_frozen = is_frozen
+        self.frozen = frozen
         self.is_anonymous = is_anonymous
         self.metadata = metadata
         self.args = args
