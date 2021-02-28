@@ -196,6 +196,7 @@ class BundleSchema(Schema):
     data_hash = fields.String()
     state = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
+    frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
     metadata = fields.Dict(values=fields.String(validate=validate_ascii))
     dependencies = fields.Nested(BundleDependencySchema, many=True)

@@ -219,6 +219,7 @@ Name | Type
 `data_hash` | String
 `state` | String
 `owner` | Relationship([users](#users))
+`frozen` | DateTime
 `is_anonymous` | Boolean
 `metadata` | Dict
 `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
