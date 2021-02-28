@@ -2338,7 +2338,15 @@ class BundleCLI(object):
         lines = []  # The output that we're accumulating
 
         # Bundle fields
-        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'frozen', 'is_anonymous'):
+        for key in (
+            'bundle_type',
+            'uuid',
+            'data_hash',
+            'state',
+            'command',
+            'frozen',
+            'is_anonymous',
+        ):
             if not raw:
                 if key not in info:
                     continue
