@@ -28,6 +28,7 @@ def bundle_to_bundle_info(model, bundle):
         bundle.command,
         bundle.data_hash,
         bundle.state,
+        bundle.frozen,
         bundle.is_anonymous,
         bundle.metadata.to_dict(),
         dependencies,

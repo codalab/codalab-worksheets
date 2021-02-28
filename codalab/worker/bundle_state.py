@@ -74,6 +74,7 @@ class BundleInfo(object):
         command,  # type: str
         data_hash,  # type: str
         state,  # type: State
+        frozen,  # type: Optional[str]
         is_anonymous,  # type: bool
         metadata,  # type: Dict[Any, Any]
         dependencies,  # type: List[Dict[str, str]]
@@ -86,6 +87,7 @@ class BundleInfo(object):
         self.command = command
         self.data_hash = data_hash
         self.state = state
+        self.is_frozen = is_frozen
         self.is_anonymous = is_anonymous
         self.metadata = metadata
         self.args = args
@@ -121,6 +123,7 @@ class BundleInfo(object):
             command=dct["command"],
             data_hash=dct["data_hash"],
             state=dct["state"],
+            frozen=dct["frozen"],
             is_anonymous=dct["is_anonymous"],
             metadata=dct["metadata"],
             dependencies=dct["dependencies"],
