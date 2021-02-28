@@ -1078,7 +1078,7 @@ def test(ctx):
 
 
 @TestModule.register('worksheet_freeze_unfreeze')
-def test_freeze(ctx):
+def test_worksheet_freeze_unfreeze(ctx):
     _run_command([cl, 'work', '-u'])
     wname = random_name()
     wuuid = _run_command([cl, 'new', wname])
