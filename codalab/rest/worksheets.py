@@ -395,7 +395,7 @@ def update_worksheet_metadata(uuid, info):
     # isn't frozen. The exception is if we're also unfreezing the worksheet---regardless of
     # whether the worksheet is frozen or not, we're going to unfreeze it, so allow all
     # other updates as well.
-    if "frozen" not in metadata or metadata["frozen"] is True:
+    if "frozen" not in metadata or metadata["frozen"]:
         worksheet_util.check_worksheet_not_frozen(worksheet)
 
     local.model.update_worksheet_metadata(worksheet, metadata)
