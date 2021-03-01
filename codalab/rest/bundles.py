@@ -283,7 +283,7 @@ def _create_bundles():
         local.model.save_bundle(bundle)
 
         if not detached:
-            # Inherit worksheet permissions
+            # Inherit worksheet permissions; else, only the user will have all permissions on the bundle
             group_permissions = local.model.get_group_worksheet_permissions(
                 request.user.user_id, worksheet_uuid
             )
