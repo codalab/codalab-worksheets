@@ -242,7 +242,6 @@ class EditableAvatar extends React.Component {
             const file = this.state.file;
             // Rename the file to let it be related to the user
             const fileName: string = this.props.userInfo.user_name + '.JPG';
-            // Specify the bundle is an avatar
             // So no parent worksheet ID is needed that the bundle is a detached bundle
             const bundle = await createImageBundle(
                 `/rest/bundles?detached=1`,
