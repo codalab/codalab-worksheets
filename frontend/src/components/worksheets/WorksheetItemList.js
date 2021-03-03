@@ -201,6 +201,7 @@ class WorksheetItemList extends React.Component {
                     text: '',
                     mode: 'markup_block',
                     sort_keys: [-1],
+                    sort_keys: [0], // default sort_key is 0
                     ids: [null],
                     is_refined: true,
                 },
@@ -266,7 +267,7 @@ class WorksheetItemList extends React.Component {
                     {this.props.showNewText && !focusedItem && (
                         <TextEditorItem
                             mode='create'
-                            after_sort_key={-1}
+                            after_sort_key={0}
                             worksheetUUID={info.uuid}
                             reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
                             closeEditor={() => {
@@ -277,7 +278,7 @@ class WorksheetItemList extends React.Component {
                     {this.props.showNewRun && !focusedItem && (
                         <div className={this.props.classes.insertBox}>
                             <NewRun
-                                after_sort_key={-1}
+                                after_sort_key={0}
                                 ws={this.props.ws}
                                 onSubmit={() => this.props.onHideNewRun()}
                                 reloadWorksheet={() =>
@@ -288,7 +289,7 @@ class WorksheetItemList extends React.Component {
                     )}
                     {this.props.showNewSchema && !focusedItem && (
                         <SchemaItem
-                            after_sort_key={-1}
+                            after_sort_key={0}
                             ws={this.props.ws}
                             onSubmit={() => this.props.onHideNewSchema()}
                             reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
@@ -304,7 +305,7 @@ class WorksheetItemList extends React.Component {
                                 ],
                                 header: ['field', 'generalized-path', 'post-processor'],
                                 schema_name: '',
-                                sort_keys: [-1],
+                                sort_keys: [1],
                             }}
                             create={true}
                             updateSchemaItem={this.props.updateSchemaItem}

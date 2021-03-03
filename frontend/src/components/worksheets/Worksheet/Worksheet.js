@@ -526,7 +526,7 @@ class Worksheet extends React.Component {
         } else {
             // If no location for the insertion is specified,
             // insert the new item at the top of the worksheet in default.
-            actualData['after_sort_key'] = -1;
+            actualData['after_sort_key'] = 0;
         }
         actualData['item_type'] = 'bundle';
         $.ajax({
@@ -1454,6 +1454,10 @@ class Worksheet extends React.Component {
                             items[focus].mode !== 'table_block'
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
+                        } else if (this.state.focusIndex === -1) {
+                            // if currently the virtual item is focused and a new bundle has been uploaded to the worksheet
+                            // then the first item on the worksheet should be focused
+                            this.setFocus(0, 0);
                         } else if (this.state.subFocusIndex !== undefined) {
                             // Focus on the next bundle row
                             this.setFocus(focus >= 0 ? focus : 'end', this.state.subFocusIndex + 1);
