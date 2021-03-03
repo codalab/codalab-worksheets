@@ -32,6 +32,7 @@ class UploadManagerTest(unittest.TestCase):
         git=False,
         unpack=True,
         simplify_archives=True,
+        use_azure_blob_beta=False,
     ):
         class FakeBundle(object):
             def __init__(self):
@@ -47,6 +48,7 @@ class UploadManagerTest(unittest.TestCase):
             git,
             unpack,
             simplify_archives,
+            use_azure_blob_beta,
         )
 
     def test_single_local_path(self):
