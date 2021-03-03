@@ -53,10 +53,10 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.key = props.id = 'codalab-worksheet-item-' + props.focusIndex;
     props.url = url;
     props.prevItem = prevItem;
-    props.after_sort_key = getAfterSortKey(
-        props.item,
-        props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
-    );
+    // an item's after_sort_key is defined by its previous item's sort_keys
+    // since we want to get the largest sort_key in the previous item's sort_keys,
+    // set subFocusIndex as undefined
+    props.after_sort_key = getAfterSortKey(prevItem, undefined);
     props.ids = getIds(item);
     // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
     // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
