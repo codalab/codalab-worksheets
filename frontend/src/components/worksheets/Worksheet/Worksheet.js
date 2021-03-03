@@ -1404,6 +1404,7 @@ class Worksheet extends React.Component {
             textDeleted = false,
             fromDeleteCommand = false,
             uploadFiles = false,
+            addImage = false, // whether the reload is caused by adding an image
         } = {},
     ) => {
         if (partialUpdateItems === undefined) {
@@ -1511,11 +1512,31 @@ class Worksheet extends React.Component {
                             this.setFocus(focus, this.state.subFocusIndex);
                         }
                     }
-                    this.setState({
-                        updating: false,
-                        version: this.state.version + 1,
-                        numOfBundles: numOfBundles,
-                    });
+                    this.setState(
+                        {
+                            updating: false,
+                            version: this.state.version + 1,
+                            numOfBundles: numOfBundles,
+                        },
+                        () => {
+                            if (addImage) {
+                                const subFocusIndex = this.state.subFocusIndex
+                                    ? this.state.subFocusIndex
+                                    : 0;
+                                let focusIndexPair = this.state.focusIndex + ',' + subFocusIndex;
+                                let index = this.state.ws.info.block_to_raw[focusIndexPair];
+                                if (index === undefined) {
+                                    // the newly uploaded image currently does not create a new block
+                                    // retry to get the raw index
+                                    focusIndexPair =
+                                        this.state.focusIndex - 1 + ',' + (subFocusIndex + 1);
+                                    index = this.state.ws.info.block_to_raw[focusIndexPair];
+                                }
+                                // index is the raw index of the new uploaded image
+                                this.addImageDisplay(index);
+                            }
+                        },
+                    );
                     this.checkRunBundle(this.state.ws.info);
                 }.bind(this),
                 error: function(xhr, status, err) {
@@ -1630,6 +1651,38 @@ class Worksheet extends React.Component {
         this.setState({ uploadAnchor: e.currentTarget });
     };
 
+    showNewImage = (e) => {
+        document.querySelector('label[for=codalab-image-upload-input]').click();
+    };
+
+    /**
+     * @param index index of new image's source line
+     */
+    addImageDisplay = (index: number) => {
+        // add %display line to the worksheet source right before the newly uploaded image
+        this.setState(
+            (prevState) => {
+                const items = ['% display image / width=250'];
+                return {
+                    ws: {
+                        ...prevState.ws,
+                        info: {
+                            ...prevState.ws.info,
+                            source: [
+                                ...prevState.ws.info.source.slice(0, index),
+                                ...items,
+                                ...prevState.ws.info.source.slice(index),
+                            ],
+                        },
+                    },
+                };
+            },
+            () => {
+                // since one line has been added before the newly uploaded image, now the rawIndex should be added by 1
+                this.saveAndUpdateWorksheet(false, index + 1);
+            },
+        );
+    };
     render() {
         const { classes } = this.props;
         const { anchorEl, uploadAnchor } = this.state;
@@ -1792,6 +1845,7 @@ class Worksheet extends React.Component {
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
                 setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
+                addImageDisplay={this.addImageDisplay}
             />
         );
 
@@ -1820,6 +1874,7 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     onShowNewSchema={() => this.setState({ showNewSchema: true })}
+                    showNewImage={this.showNewImage}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {

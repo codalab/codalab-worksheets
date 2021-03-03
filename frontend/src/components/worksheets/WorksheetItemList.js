@@ -14,6 +14,7 @@ import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
+import ImageEditor from './items/ImageEditor';
 import TextEditorItem from './items/TextEditorItem';
 import NewRun from './NewRun';
 import { withStyles } from '@material-ui/core/styles';
@@ -200,7 +201,6 @@ class WorksheetItemList extends React.Component {
                     isDummyItem: true,
                     text: '',
                     mode: 'markup_block',
-                    sort_keys: [-1],
                     sort_keys: [0], // default sort_key is 0
                     ids: [null],
                     is_refined: true,
@@ -237,10 +237,12 @@ class WorksheetItemList extends React.Component {
                         showNewText: this.props.showNewText,
                         showNewRerun: this.props.showNewRerun,
                         showNewSchema: this.props.showNewSchema,
+                        showNewImage: this.props.showNewImage,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
                         onHideNewRerun: this.props.onHideNewRerun,
                         onHideNewSchema: this.props.onHideNewSchema,
+                        onHideNewImage: this.props.onHideNewImage,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
@@ -252,6 +254,7 @@ class WorksheetItemList extends React.Component {
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
                         setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
+                        addImageDispay: this.props.addImageDispay,
                     };
                     addWorksheetItems(
                         props,
@@ -325,6 +328,17 @@ class WorksheetItemList extends React.Component {
                         // (otherwise, chrome will not call onchange on a file input when
                         // the file hasn't changed)
                         onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
+                    />
+                    <ImageEditor
+                        key={this.state.newUploadKey + 1}
+                        after_sort_key={getAfterSortKey(focusedItem, this.props.subFocusIndex)}
+                        worksheetUUID={info.uuid}
+                        reloadWorksheet={this.props.reloadWorksheet}
+                        onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
+                        addImageDisplay={this.props.addImageDisplay}
+                        ws={this.props.ws}
+                        focusIndex={this.props.focusIndex}
+                        subFocusIndex={this.props.subFocusIndex}
                     />
                 </>
             );
