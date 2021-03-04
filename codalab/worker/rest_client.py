@@ -140,3 +140,29 @@ class RestClient(object):
             }
             # use in-built encoding
             conn.request(method, parsed_base_url.path + path, body=fileobj, headers=headers, encode_chunked=True)
+
+            # Read the response.
+            logging.debug("About to read the response... url: %s", url)
+
+            # Sometimes, it may take a while for the server to process
+            # the data and send the response. In this case, we want to
+            # periodically keep sending empty bytes so that the
+            # connection doesn't drop before the response is available.
+            got_response = False
+            while not got_response:
+                try:
+                    response = conn.getresponse()
+                    got_response = True
+                except socket.timeout:
+                    logging.debug("Socket timeout, retrying url: %s", url)
+                    conn.send(b'\0')
+            logging.debug("Finished reading the response, url: %s", url)
+            if response.status != 200:
+                # Low-level httplib module doesn't throw HTTPError
+                raise urllib.error.HTTPError(
+                    self._base_url + path,
+                    response.status,
+                    response.reason,
+                    dict(response.getheaders()),
+                    StringIO(response.read().decode()),
+                )
