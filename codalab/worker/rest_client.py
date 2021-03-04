@@ -139,7 +139,13 @@ class RestClient(object):
                 'X-Requested-With': 'XMLHttpRequest',
             }
             # use in-built encoding
-            conn.request(method, parsed_base_url.path + path, body=fileobj, headers=headers, encode_chunked=True)
+            conn.request(
+                method,
+                parsed_base_url.path + path,
+                body=fileobj,
+                headers=headers,
+                encode_chunked=True
+            )
 
             # Read the response.
             logging.debug("About to read the response... url: %s", url)
