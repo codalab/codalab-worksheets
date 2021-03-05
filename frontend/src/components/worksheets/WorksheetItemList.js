@@ -251,7 +251,7 @@ class WorksheetItemList extends React.Component {
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
                         setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
-                        addImageDispay: this.props.addImageDispay,
+                        addImageDisplay: this.props.addImageDisplay,
                     };
                     addWorksheetItems(
                         props,
