@@ -9,14 +9,14 @@ from codalab.worker.file_util import (
     gzip_bytestring,
     remove_path,
     tar_gzip_directory,
-    un_gzip_stream,
     un_bz2_file,
     un_gzip_bytestring,
-    un_tar_directory,
     read_file_section,
     zip_directory,
     unzip_directory,
 )
+from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_tar_directory import un_tar_directory
 
 FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
 IGNORE_TEST_DIR = os.path.join(FILES_DIR, 'ignore_test')

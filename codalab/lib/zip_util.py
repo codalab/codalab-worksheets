@@ -7,16 +7,17 @@ import os
 import shutil
 import tarfile
 import tempfile
+import logging
 
 from codalab.common import UsageError
 from codalab.worker.file_util import (
     gzip_file,
     tar_gzip_directory,
     un_bz2_file,
-    un_gzip_stream,
-    un_tar_directory,
     unzip_directory,
 )
+from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_tar_directory import un_tar_directory
 
 
 # Files with these extensions are considered archive.
@@ -71,7 +72,8 @@ def unpack(ext, source, dest_path):
             unzip_directory(source, dest_path)
         else:
             raise UsageError('Not an archive.')
-    except (tarfile.TarError, IOError):
+    except (tarfile.TarError, IOError) as e:
+        logging.error("Invalid archive upload: %s", e)
         raise UsageError('Invalid archive upload.')
     finally:
         if close_source:

@@ -6,8 +6,10 @@ import urllib.request
 import urllib.parse
 import urllib.error
 from typing import Dict
+import logging
+import socket
 
-from .file_util import un_gzip_stream
+from .un_gzip_stream import un_gzip_stream
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, urlopen_with_retry
 
 
@@ -124,13 +126,14 @@ class RestClient(object):
         runs to completion
         """
         CHUNK_SIZE = 16 * 1024
+        TIMEOUT = 60
         # Start the request.
         parsed_base_url = urllib.parse.urlparse(self._base_url)
         path = url + '?' + urllib.parse.urlencode(query_params)
         if parsed_base_url.scheme == 'http':
-            conn = http.client.HTTPConnection(parsed_base_url.netloc)
+            conn = http.client.HTTPConnection(parsed_base_url.netloc, timeout=TIMEOUT)
         else:
-            conn = http.client.HTTPSConnection(parsed_base_url.netloc)
+            conn = http.client.HTTPSConnection(parsed_base_url.netloc, timeout=TIMEOUT)
         with closing(conn):
             conn.putrequest(method, parsed_base_url.path + path)
 
@@ -160,7 +163,21 @@ class RestClient(object):
             conn.send(b'0\r\n\r\n')
 
             # Read the response.
-            response = conn.getresponse()
+            logging.debug("About to read the response... url: %s", url)
+
+            # Sometimes, it may take a while for the server to process
+            # the data and send the response. In this case, we want to
+            # periodically keep sending empty bytes so that the
+            # connection doesn't drop before the response is available.
+            got_response = False
+            while not got_response:
+                try:
+                    response = conn.getresponse()
+                    got_response = True
+                except socket.timeout:
+                    logging.debug("Socket timeout, retrying url: %s", url)
+                    conn.send(b'\0')
+            logging.debug("Finished reading the response, url: %s", url)
             if response.status != 200:
                 # Low-level httplib module doesn't throw HTTPError
                 raise urllib.error.HTTPError(

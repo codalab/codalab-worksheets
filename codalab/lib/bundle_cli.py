@@ -51,7 +51,6 @@ from codalab.common import (
     ensure_str,
 )
 from codalab.lib import (
-    bundle_util,
     file_util,
     formatting,
     metadata_util,
@@ -59,7 +58,6 @@ from codalab.lib import (
     spec_util,
     ui_actions,
     worksheet_util,
-    zip_util,
     bundle_fuse,
 )
 from codalab.lib.cli_util import (
@@ -95,9 +93,8 @@ from codalab.lib.completers import (
     WorksheetsCompleter,
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
-from codalab.lib.interactive_session import InteractiveSession
 from codalab.lib.print_util import FileTransferProgress
-from codalab.worker.file_util import un_tar_directory
+from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
@@ -1271,11 +1268,20 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
+            Commands.Argument(
+                '-a',
+                '--use-azure-blob-beta',
+                help='Use Azure Blob Storage to store files (beta feature).',
+                action='store_true',
+                default=False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
+        from codalab.lib import zip_util
+
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
 
@@ -1324,6 +1330,7 @@ class BundleCLI(object):
                     'unpack': False,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1341,6 +1348,7 @@ class BundleCLI(object):
                     'git': args.git,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1397,6 +1405,7 @@ class BundleCLI(object):
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
+                        'use_azure_blob_beta': args.use_azure_blob_beta,
                     },
                     progress_callback=progress.update,
                 )
@@ -1724,6 +1733,8 @@ class BundleCLI(object):
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
 
         if args.interactive:
+            from codalab.lib.interactive_session import InteractiveSession
+
             # Disable cl run --interactive on headless systems
             self._fail_if_headless(args)
 
@@ -2499,7 +2510,7 @@ class BundleCLI(object):
         info = self.print_target_info(client, target, head=args.head, tail=args.tail)
         if info is None:
             raise UsageError(
-                'Target {} doesn\'t exist in bundle {}'.format(target.subpath, target.bundle_uuid)
+                "Target '{}' doesn't exist in bundle {}".format(target.subpath, target.bundle_uuid)
             )
 
     # Helper: shared between info and cat
@@ -2774,6 +2785,8 @@ class BundleCLI(object):
         """
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
         """
+        from codalab.lib import bundle_util
+
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         try:
             bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundles)

@@ -3,7 +3,7 @@ import os
 import shutil
 
 from codalab.common import UsageError
-from codalab.lib import crypt_util, file_util, path_util, zip_util
+from codalab.lib import crypt_util, file_util, path_util
 
 
 class UploadManager(object):
@@ -13,11 +13,14 @@ class UploadManager(object):
     """
 
     def __init__(self, bundle_model, bundle_store):
+        from codalab.lib import zip_util
+
         # exclude these patterns by default
         DEFAULT_EXCLUDE_PATTERNS = ['.DS_Store', '__MACOSX', '^\._.*']
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
         self._default_exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
+        self.zip_util = zip_util
 
     def upload_to_bundle_store(
         self,
@@ -29,6 +32,7 @@ class UploadManager(object):
         git,
         unpack,
         simplify_archives,
+        use_azure_blob_beta,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -45,6 +49,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
+        |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
@@ -57,10 +62,6 @@ class UploadManager(object):
             if exclude_patterns
             else self._default_exclude_patterns
         )
-        bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        if bundle_link_url:
-            # Don't do anything for linked bundles.
-            return
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
@@ -78,7 +79,7 @@ class UploadManager(object):
                         if unpack and self._can_unpack_file(source_output_path):
                             self._unpack_file(
                                 source_output_path,
-                                zip_util.strip_archive_ext(source_output_path),
+                                self.zip_util.strip_archive_ext(source_output_path),
                                 remove_source=True,
                                 simplify_archive=simplify_archives,
                             )
@@ -89,7 +90,7 @@ class UploadManager(object):
                     if unpack and self._can_unpack_file(source_path):
                         self._unpack_file(
                             source_path,
-                            zip_util.strip_archive_ext(source_output_path),
+                            self.zip_util.strip_archive_ext(source_output_path),
                             remove_source=remove_sources,
                             simplify_archive=simplify_archives,
                         )
@@ -103,11 +104,11 @@ class UploadManager(object):
                             exclude_patterns=exclude_patterns,
                         )
                 elif is_fileobj:
-                    if unpack and zip_util.path_is_archive(filename):
+                    if unpack and self.zip_util.path_is_archive(filename):
                         self._unpack_fileobj(
                             source[0],
                             source[1],
-                            zip_util.strip_archive_ext(source_output_path),
+                            self.zip_util.strip_archive_ext(source_output_path),
                             simplify_archive=simplify_archives,
                         )
                     else:
@@ -136,17 +137,19 @@ class UploadManager(object):
         return is_url, is_local_path, is_fileobj, filename
 
     def _can_unpack_file(self, path):
-        return os.path.isfile(path) and zip_util.path_is_archive(path)
+        return os.path.isfile(path) and self.zip_util.path_is_archive(path)
 
     def _unpack_file(self, source_path, dest_path, remove_source, simplify_archive):
-        zip_util.unpack(zip_util.get_archive_ext(source_path), source_path, dest_path)
+        self.zip_util.unpack(self.zip_util.get_archive_ext(source_path), source_path, dest_path)
         if remove_source:
             path_util.remove(source_path)
         if simplify_archive:
             self._simplify_archive(dest_path)
 
     def _unpack_fileobj(self, source_filename, source_fileobj, dest_path, simplify_archive):
-        zip_util.unpack(zip_util.get_archive_ext(source_filename), source_fileobj, dest_path)
+        self.zip_util.unpack(
+            self.zip_util.get_archive_ext(source_filename), source_fileobj, dest_path
+        )
         if simplify_archive:
             self._simplify_archive(dest_path)
 

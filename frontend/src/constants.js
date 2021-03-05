@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '0.5.37';
+export const CODALAB_VERSION = '0.5.41';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -34,7 +34,7 @@ export const FETCH_STATUS_SCHEMA = {
     NO_PERMISSION: 'no_permission',
 };
 
-// Default Duration for dialogs shown on the screen
+// Default Duration for messagePopover shown on the worksheet
 export const AUTO_HIDDEN_DURATION = 1500;
 
 // All possible bundle states
