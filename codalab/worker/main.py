@@ -209,7 +209,7 @@ def connect_to_codalab_server(server, password_file):
 def main():
     args = parse_args()
 
-    if not args.tag.isalnum():
+    if args.tag and not args.tag.isalnum():
         raise argparse.ArgumentTypeError(
             "Worker tag must be alphanumeric (only contain letters and numbers)."
         )
