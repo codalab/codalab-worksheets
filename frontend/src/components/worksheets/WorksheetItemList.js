@@ -267,7 +267,6 @@ class WorksheetItemList extends React.Component {
                     {this.props.showNewText && !focusedItem && (
                         <TextEditorItem
                             mode='create'
-                            after_sort_key={0}
                             after_sort_key={-1}
                             worksheetUUID={info.uuid}
                             reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
