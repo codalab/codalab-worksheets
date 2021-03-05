@@ -219,6 +219,8 @@ def _create_bundles():
     - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
       as an item immediately after this bundle in its parent worksheet).
     - `detached`: 1 if should not add new bundle to any worksheet,
+      so the bundle does not have a hosted worksheet.
+      This is set to 1, for example, if the user is uploading their avatar as a bundle.
       or 0 otherwise. Default is 0.
     - `wait_for_upload`: 1 if the bundle state should be initialized to
       "uploading" regardless of the bundle type, or 0 otherwise. Used when
@@ -229,7 +231,7 @@ def _create_bundles():
     shadow_parent_uuid = request.query.get('shadow')
     after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
-    if worksheet_uuid is None:
+    if not detached and worksheet_uuid is None:
         abort(
             http.client.BAD_REQUEST,
             "Parent worksheet id must be specified as" "'worksheet' query parameter",
@@ -243,9 +245,10 @@ def _create_bundles():
     )
 
     # Check for all necessary permissions
-    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
-    check_worksheet_has_all_permission(local.model, request.user, worksheet)
-    worksheet_util.check_worksheet_not_frozen(worksheet)
+    if not detached:
+        worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+        check_worksheet_has_all_permission(local.model, request.user, worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
     request.user.check_quota(need_time=True, need_disk=True)
 
     created_uuids = []
@@ -266,7 +269,10 @@ def _create_bundles():
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
-        bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
+        if not detached:
+            bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
+        else:
+            bundle['is_anonymous'] = False
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
@@ -277,20 +283,21 @@ def _create_bundles():
         # Save bundle into model
         local.model.save_bundle(bundle)
 
-        # Inherit worksheet permissions
-        group_permissions = local.model.get_group_worksheet_permissions(
-            request.user.user_id, worksheet_uuid
-        )
-        set_bundle_permissions(
-            [
-                {
-                    'object_uuid': bundle_uuid,
-                    'group_uuid': p['group_uuid'],
-                    'permission': p['permission'],
-                }
-                for p in group_permissions
-            ]
-        )
+        if not detached:
+            # Inherit worksheet permissions; else, only the user will have all permissions on the bundle
+            group_permissions = local.model.get_group_worksheet_permissions(
+                request.user.user_id, worksheet_uuid
+            )
+            set_bundle_permissions(
+                [
+                    {
+                        'object_uuid': bundle_uuid,
+                        'group_uuid': p['group_uuid'],
+                        'permission': p['permission'],
+                    }
+                    for p in group_permissions
+                ]
+            )
 
         # Add as item to worksheet
         if not detached:
@@ -637,8 +644,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             abort(http.client.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
         # Always tar and gzip directories
         gzipped_stream = False  # but don't set the encoding to 'gzip'
-        mimetype = 'application/gzip'
-        filename += '.tar.gz'
+        mimetype = "application/gzip"
+        filename += ".tar.gz"
         fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
@@ -718,6 +725,9 @@ def _update_bundle_contents_blob(uuid):
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
+    - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
+      Default is False. If CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set, this parameter
+      is disregarded, as Azure Blob Storage will always be used.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -727,6 +737,9 @@ def _update_bundle_contents_blob(uuid):
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     finalize_on_success = query_get_bool('finalize_on_success', default=True)
+    use_azure_blob_beta = os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") or query_get_bool(
+        'use_azure_blob_beta', default=False
+    )
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(
@@ -747,7 +760,12 @@ def _update_bundle_contents_blob(uuid):
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
             sources = [(filename, request['wsgi.input'])]
-        if sources:
+        bundle_link_url = getattr(bundle.metadata, "link_url", None)
+        if bundle_link_url:
+            # Don't upload to bundle store if using --link, as the path
+            # already exists.
+            pass
+        elif sources:
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
@@ -757,6 +775,7 @@ def _update_bundle_contents_blob(uuid):
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
+                use_azure_blob_beta=use_azure_blob_beta,
             )  # See UploadManager for full explanation of 'simplify'
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
@@ -902,7 +921,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
-        # check first is needs to be deleted
         bundle_link_url = bundle_link_urls.get(uuid)
         if bundle_link_url:
             # Don't physically delete linked bundles.

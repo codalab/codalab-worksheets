@@ -1268,6 +1268,13 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
+            Commands.Argument(
+                '-a',
+                '--use-azure-blob-beta',
+                help='Use Azure Blob Storage to store files (beta feature).',
+                action='store_true',
+                default=False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1323,6 +1330,7 @@ class BundleCLI(object):
                     'unpack': False,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1340,6 +1348,7 @@ class BundleCLI(object):
                     'git': args.git,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1396,6 +1405,7 @@ class BundleCLI(object):
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
+                        'use_azure_blob_beta': args.use_azure_blob_beta,
                     },
                     progress_callback=progress.update,
                 )
@@ -2500,7 +2510,7 @@ class BundleCLI(object):
         info = self.print_target_info(client, target, head=args.head, tail=args.tail)
         if info is None:
             raise UsageError(
-                'Target {} doesn\'t exist in bundle {}'.format(target.subpath, target.bundle_uuid)
+                "Target '{}' doesn't exist in bundle {}".format(target.subpath, target.bundle_uuid)
             )
 
     # Helper: shared between info and cat
