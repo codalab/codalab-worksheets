@@ -301,9 +301,9 @@ export function createHandleRedirectFn(worksheetUuid) {
 // Return the sort key at index subFocusIndex, if subFocusIndex is defined.
 // Otherwise, return the largest sort_key.
 export function getAfterSortKey(item, subFocusIndex) {
-    // the default after_sort_key is 0 when inserting an item on top of the worksheet
-    // so the items' sort_key should always > 0 (sort_key > after_sort_key)
-    if (!item) return 0;
+    // the default after_sort_key is -1 when inserting an item on top of the worksheet
+    // so the items' sort_key should always >= 0 (sort_key > after_sort_key)
+    if (!item) return -1;
     if (item.mode === 'image_block') {
         // image_block has different format with other blocks
         return item['bundles_spec']['bundle_infos'][0]['sort_key'];

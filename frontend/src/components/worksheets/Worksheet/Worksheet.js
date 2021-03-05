@@ -526,7 +526,7 @@ class Worksheet extends React.Component {
         } else {
             // If no location for the insertion is specified,
             // insert the new item at the top of the worksheet in default.
-            actualData['after_sort_key'] = 0;
+            actualData['after_sort_key'] = -1;
         }
         actualData['item_type'] = 'bundle';
         $.ajax({

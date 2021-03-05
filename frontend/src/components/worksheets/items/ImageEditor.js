@@ -73,7 +73,6 @@ class ImageEditor extends React.Component<{
         let promises = [...files].map(async (file) => {
             const createBundleData = getDefaultBundleMetadata(name || file.name, description);
             let url = `/rest/bundles?worksheet=${worksheetUUID}`;
-            // the default after_sort_key is 0
             if (after_sort_key || after_sort_key === 0) {
                 url += `&after_sort_key=${after_sort_key}`;
             }
