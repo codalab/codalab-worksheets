@@ -138,7 +138,7 @@ class RestClient(object):
                 'Authorization': 'Bearer ' + self._get_access_token(),
                 'X-Requested-With': 'XMLHttpRequest',
             }
-            # use in-built encoding
+            # Enable Python's in-built chunked encoding by passing encode_chunked=True
             conn.request(
                 method,
                 parsed_base_url.path + path,
