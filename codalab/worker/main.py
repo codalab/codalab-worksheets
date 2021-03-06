@@ -254,10 +254,12 @@ def main():
         os.makedirs(local_bundles_dir, 0o770)
 
     docker_runtime = docker_utils.get_available_runtime()
+    docker_image_download_status = []
     image_manager = DockerImageManager(
         os.path.join(args.work_dir, 'images-state.json'),
         args.max_image_cache_size,
         args.max_image_size,
+        docker_image_download_status
     )
 
     worker = Worker(
