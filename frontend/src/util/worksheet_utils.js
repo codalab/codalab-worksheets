@@ -305,7 +305,7 @@ export function getAfterSortKey(item, subFocusIndex) {
     // so the items' sort_key should always >= 0 (sort_key > after_sort_key)
     if (!item) return -1;
     if (item.mode === 'image_block') {
-        // image_block has different format with other blocks
+        // image_block stores the sort_key in a different property than do other blocks
         return item['bundles_spec']['bundle_infos'][0]['sort_key'];
     }
     const sort_keys = item.sort_keys || [];
