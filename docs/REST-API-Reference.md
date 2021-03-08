@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.39_
+_version 0.5.40_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -395,6 +395,8 @@ Query parameters:
 - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
   as an item immediately after this bundle in its parent worksheet).
 - `detached`: 1 if should not add new bundle to any worksheet,
+  so the bundle does not have a hosted worksheet.
+  This is set to 1, for example, if the user is uploading their avatar as a bundle.
   or 0 otherwise. Default is 0.
 - `wait_for_upload`: 1 if the bundle state should be initialized to
   "uploading" regardless of the bundle type, or 0 otherwise. Used when
@@ -623,6 +625,9 @@ Query parameters:
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
   Default is 'ready'.
+- `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
+  Default is False. If CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set, this parameter
+  is disregarded, as Azure Blob Storage will always be used.
 
 
 &uarr; [Back to Top](#table-of-contents)

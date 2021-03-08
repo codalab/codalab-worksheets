@@ -15,6 +15,15 @@ import CloseIcon from '@material-ui/icons/Close';
 import { DIALOG_TYPES } from '../../constants';
 
 class WorksheetDialogs extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { deleteWorksheetCheck: false };
+    }
+
+    toggleDeleteWorksheet = () => {
+        this.setState({ deleteWorksheetCheck: !this.state.deleteWorksheetCheck });
+    };
+
     render() {
         const { classes } = this.props;
         return (
@@ -144,12 +153,22 @@ class WorksheetDialogs extends React.Component {
                     aria-describedby='delete-worksheet-confirmation-description'
                 >
                     <DialogTitle id='delete-worksheet-confirmation-title' style={{ color: 'red' }}>
-                        Delete this worksheet permanently?
+                        Delete this WORKSHEET permanently?
                     </DialogTitle>
                     <DialogContent>
+                        <DialogContentText id='alert-dialog-check'>
+                            <Checkbox
+                                checked={this.state.deleteWorksheetCheck}
+                                onChange={this.toggleDeleteWorksheet}
+                                inputProps={{
+                                    'aria-label': 'primary checkbox',
+                                }}
+                            />
+                            {'Yes, I want to delete this worksheet permanently.'}
+                        </DialogContentText>
                         <DialogContentText
                             id='alert-dialog-description'
-                            style={{ color: 'red', marginBottom: '20px' }}
+                            style={{ color: 'red', marginLeft: '35px', marginBottom: '20px' }}
                         >
                             {'Worksheet deletion cannot be undone.'}
                         </DialogContentText>
@@ -164,6 +183,7 @@ class WorksheetDialogs extends React.Component {
                                 color='primary'
                                 variant='contained'
                                 onClick={this.props.deleteWorksheetAction}
+                                disabled={!this.state.deleteWorksheetCheck}
                             >
                                 DELETE
                             </Button>
