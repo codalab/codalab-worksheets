@@ -24,7 +24,6 @@ class ActionButtons extends React.Component<{
     onShowNewRun: () => void,
     onShowNewText: () => void,
     showUploadMenu: () => void,
-    uploadNewImage: () => void,
 }> {
     handleClick = (event) => {
         this.setState({ anchorEl: event.currentTarget });
@@ -34,13 +33,16 @@ class ActionButtons extends React.Component<{
         this.setState({ anchorEl: null });
     };
 
+    uploadNewImage = (e) => {
+        document.querySelector('label[for=codalab-image-upload-input]').click();
+    };
+
     render() {
         const {
             classes,
             onShowNewRun,
             onShowNewText,
             onShowNewSchema,
-            uploadNewImage,
             showUploadMenu,
             closeUploadMenu,
             uploadAnchor,
@@ -190,7 +192,7 @@ class ActionButtons extends React.Component<{
                         size='small'
                         color='inherit'
                         aria-label='image'
-                        onClick={uploadNewImage}
+                        onClick={this.uploadNewImage}
                         disabled={!editPermission}
                         id='add-image-button'
                     >

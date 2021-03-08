@@ -323,6 +323,7 @@ class BundleRow extends Component {
                 )}
                 {/** ---------------------------------------------------------------------------------------------------
                  *  Rerun
+                 *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key
                  */}
                 {showNewRun === 1 && (
                     <TableRow>
@@ -347,7 +348,7 @@ class BundleRow extends Component {
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
                             <div className={classes.insertBox}>
                                 <NewRun
-                                    after_sort_key={this.props.after_sort_key + 1} // insert the new run below the bundle row, so add 1 to after_sort_key
+                                    after_sort_key={this.props.after_sort_key + 1}
                                     ws={this.props.ws}
                                     onSubmit={() => this.props.onHideNewRun()}
                                     reloadWorksheet={reloadWorksheet}

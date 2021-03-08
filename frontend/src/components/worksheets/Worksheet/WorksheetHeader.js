@@ -24,7 +24,6 @@ export default ({
     onShowNewRun,
     onShowNewText,
     onShowNewSchema,
-    uploadNewImage,
     showUploadMenu,
     closeUploadMenu,
     uploadAnchor,
@@ -146,7 +145,6 @@ export default ({
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
                                 onShowNewSchema={onShowNewSchema}
-                                uploadNewImage={uploadNewImage}
                                 showUploadMenu={showUploadMenu}
                                 closeUploadMenu={closeUploadMenu}
                                 uploadAnchor={uploadAnchor}

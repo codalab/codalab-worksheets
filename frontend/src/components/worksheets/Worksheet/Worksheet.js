@@ -1456,7 +1456,7 @@ class Worksheet extends React.Component {
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
                         } else if (this.state.focusIndex === -1) {
-                            // if currently the virtual item is focused and a new bundle has been uploaded to the worksheet
+                            // if currently the top of the worksheet is focused and a new bundle has been uploaded to the worksheet
                             // then the first item on the worksheet should be focused
                             this.setFocus(0, 0);
                         } else if (this.state.subFocusIndex !== undefined) {
@@ -1520,13 +1520,11 @@ class Worksheet extends React.Component {
                         },
                         () => {
                             if (addImage) {
-                                const subFocusIndex = this.state.subFocusIndex
-                                    ? this.state.subFocusIndex
-                                    : 0;
+                                const subFocusIndex = this.state.subFocusIndex || 0;
                                 let focusIndexPair = this.state.focusIndex + ',' + subFocusIndex;
                                 let index = this.state.ws.info.block_to_raw[focusIndexPair];
                                 if (index === undefined) {
-                                    // the newly uploaded image currently does not create a new block
+                                    // the newly uploaded image currently does not create a new separate block (e.g. be added as a bundle row to a table)
                                     // retry to get the raw index
                                     focusIndexPair =
                                         this.state.focusIndex - 1 + ',' + (subFocusIndex + 1);
@@ -1649,10 +1647,6 @@ class Worksheet extends React.Component {
         });
 
         this.setState({ uploadAnchor: e.currentTarget });
-    };
-
-    uploadNewImage = (e) => {
-        document.querySelector('label[for=codalab-image-upload-input]').click();
     };
 
     /**
@@ -1874,7 +1868,6 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     onShowNewSchema={() => this.setState({ showNewSchema: true })}
-                    uploadNewImage={this.uploadNewImage}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {
