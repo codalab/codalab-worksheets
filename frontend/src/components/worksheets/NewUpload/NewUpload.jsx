@@ -288,7 +288,8 @@ class NewUpload extends React.Component<{
         return (
             <React.Fragment>
                 <input
-                    key={this.props.after_sort_key} // force the NewUpload to update when after_sort_key changes
+                    key={this.props.after_sort_key} // force the NewUpload to update when the focused item changes
+
                     type="file"
                     id="codalab-file-upload-input"
                     multiple={true}
