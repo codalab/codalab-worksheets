@@ -1456,7 +1456,7 @@ class Worksheet extends React.Component {
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
                         } else if (this.state.focusIndex === -1) {
-                            // if currently the top of the worksheet is focused and a new bundle has been uploaded to the worksheet
+                            // If currently the top of the worksheet is focused and a new bundle has been uploaded to the worksheet,
                             // the first item on the worksheet should be focused.
                             this.setFocus(0, 0);
                         } else if (this.state.subFocusIndex !== undefined) {
