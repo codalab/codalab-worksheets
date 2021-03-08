@@ -1651,7 +1651,7 @@ class Worksheet extends React.Component {
         this.setState({ uploadAnchor: e.currentTarget });
     };
 
-    showNewImage = (e) => {
+    uploadNewImage = (e) => {
         document.querySelector('label[for=codalab-image-upload-input]').click();
     };
 
@@ -1874,7 +1874,7 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     onShowNewSchema={() => this.setState({ showNewSchema: true })}
-                    showNewImage={this.showNewImage}
+                    uploadNewImage={this.uploadNewImage}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {

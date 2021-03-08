@@ -24,7 +24,7 @@ class ActionButtons extends React.Component<{
     onShowNewRun: () => void,
     onShowNewText: () => void,
     showUploadMenu: () => void,
-    showNewImage: () => void,
+    uploadNewImage: () => void,
 }> {
     handleClick = (event) => {
         this.setState({ anchorEl: event.currentTarget });
@@ -40,7 +40,7 @@ class ActionButtons extends React.Component<{
             onShowNewRun,
             onShowNewText,
             onShowNewSchema,
-            showNewImage,
+            uploadNewImage,
             showUploadMenu,
             closeUploadMenu,
             uploadAnchor,
@@ -190,7 +190,7 @@ class ActionButtons extends React.Component<{
                         size='small'
                         color='inherit'
                         aria-label='image'
-                        onClick={showNewImage}
+                        onClick={uploadNewImage}
                         disabled={!editPermission}
                         id='add-image-button'
                     >

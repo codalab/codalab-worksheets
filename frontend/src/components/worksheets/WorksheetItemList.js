@@ -234,7 +234,7 @@ class WorksheetItemList extends React.Component {
                         showNewText: this.props.showNewText,
                         showNewRerun: this.props.showNewRerun,
                         showNewSchema: this.props.showNewSchema,
-                        showNewImage: this.props.showNewImage,
+                        uploadNewImage: this.props.uploadNewImage,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
                         onHideNewRerun: this.props.onHideNewRerun,
@@ -251,7 +251,6 @@ class WorksheetItemList extends React.Component {
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
                         setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
-                        addImageDisplay: this.props.addImageDisplay,
                     };
                     addWorksheetItems(
                         props,
@@ -332,7 +331,6 @@ class WorksheetItemList extends React.Component {
                         worksheetUUID={info.uuid}
                         reloadWorksheet={this.props.reloadWorksheet}
                         onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
-                        addImageDisplay={this.props.addImageDisplay}
                         ws={this.props.ws}
                         focusIndex={this.props.focusIndex}
                         subFocusIndex={this.props.subFocusIndex}

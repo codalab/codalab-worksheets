@@ -128,8 +128,7 @@ class NewUpload extends React.Component<{
         let promises = [...files].map(async file => {
             const createBundleData = getDefaultBundleMetadata(name || file.name, description);
             let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
-            // if after_sort_key == 0, we still need to pass it to the backend
-            // otherwise the backend will treat the after_sort_key as None and then set the sort_key to be NULL
+            // after_sort_key can be equal to 0
             if (after_sort_key || after_sort_key === 0) {
                 url += `&after_sort_key=${ after_sort_key }`;
             }
