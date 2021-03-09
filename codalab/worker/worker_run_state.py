@@ -167,7 +167,6 @@ class RunStateMachine(StateTransitioner):
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
         docker_image_download_status,
-
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -299,9 +298,8 @@ class RunStateMachine(StateTransitioner):
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
             )
             if len(self.docker_image_download_status) > 0:
-                latest_status = self.docker_image_download_status[len(self.docker_image_download_status) - 1]
                 status_messages += (
-                    f'\nPulling status:\n {get_message_of_download_status(latest_status)}'
+                    f'\nPulling status:\n {get_message_of_download_status(self.docker_image_download_status[0])}'
                 )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:

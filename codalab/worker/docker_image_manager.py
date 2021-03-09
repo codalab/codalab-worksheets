@@ -33,7 +33,9 @@ class DockerImageManager:
 
     CACHE_TAG = 'codalab-image-cache/last-used'
 
-    def __init__(self, commit_file, max_image_cache_size, max_image_size, docker_image_download_status):
+    def __init__(
+            self, commit_file, max_image_cache_size, max_image_size, docker_image_download_status
+    ):
         """
         Initializes a DockerImageManager
         :param commit_file: String path to where the state file should be committed
@@ -248,7 +250,7 @@ class DockerImageManager:
                         client = docker.APIClient(base_url='unix://var/run/docker.sock')
                         self.generator = client.pull(image_spec, stream=True, decode=True)
                         for line in self.generator:
-                            self.docker_image_download_status.append(line)
+                            self.docker_image_download_status[0] = line
 
                         logger.debug('Download for Docker image %s complete', image_spec)
                         self._downloading[image_spec]['success'] = True

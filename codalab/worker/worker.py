@@ -133,7 +133,7 @@ class Worker:
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
-            docker_image_download_status=docker_image_download_status
+            docker_image_download_status=docker_image_download_status,
         )
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):

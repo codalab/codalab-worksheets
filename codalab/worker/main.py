@@ -259,7 +259,7 @@ def main():
         os.path.join(args.work_dir, 'images-state.json'),
         args.max_image_cache_size,
         args.max_image_size,
-        docker_image_download_status
+        docker_image_download_status,
     )
 
     worker = Worker(
