@@ -5,6 +5,7 @@ import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import HighlightOffIcon from '@material-ui/icons/HighlightOff';
 import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
+import DescriptionIcon from '@material-ui/icons/Description';
 import Button from '@material-ui/core/Button';
 
 class BundleBulkActionMenu extends React.Component {
@@ -66,6 +67,16 @@ class BundleBulkActionMenu extends React.Component {
                 >
                     <FileCopyOutlinedIcon className={classes.buttonIcon} />
                     <Typography variant='inherit'>Cut</Typography>
+                </Button>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Content'
+                    disabled={!this.props.editPermission}
+                    onClick={this.props.showBundleContent}
+                >
+                    <DescriptionIcon className={classes.buttonIcon} />
+                    <Typography variant='inherit'>Content</Typography>
                 </Button>
             </div>
         );

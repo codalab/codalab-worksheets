@@ -39,6 +39,7 @@ class TableItem extends React.Component<{
             openSchemaTextBox: false,
         };
         this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
+        this.showCheckedBundleRowsContents = this.showCheckedBundleRowsContents.bind(this);
     }
 
     // BULK OPERATION RELATED CODE
@@ -115,6 +116,19 @@ class TableItem extends React.Component<{
         });
     };
 
+    showCheckedBundleRowsContents = () => {
+        let item = this.props.item;
+        let rows = [...Array(item.rows.length).keys()].filter((item, index) => {
+            return this.state.childrenCheckState[index];
+        });
+        return rows.map((rowIndex, index) => {
+            let bundleIndex = {};
+            // Get the raw index of each checked bundle row
+            bundleIndex.rawIndex = item.first_bundle_source_index + rowIndex;
+            return bundleIndex;
+        });
+    };
+
     // BULK OPERATION RELATED CODE ABOVE
 
     updateRowIndex = (rowIndex) => {
@@ -129,6 +143,10 @@ class TableItem extends React.Component<{
         const { classes, worksheetUUID, setFocus, editPermission } = this.props;
         // Provide copy data callback
         this.props.addCopyBundleRowsCallback(this.props.itemID, this.copyCheckedBundleRows);
+        this.props.addShowContentBundleRowsCallback(
+            this.props.itemID,
+            this.showCheckedBundleRowsContents,
+        );
         let tableClassName = this.props.focused ? 'table focused' : 'table';
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;

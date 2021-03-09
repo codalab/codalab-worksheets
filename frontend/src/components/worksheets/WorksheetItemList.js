@@ -244,6 +244,8 @@ class WorksheetItemList extends React.Component {
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
                         editPermission: info && info.edit_permission,
                         addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
+                        addShowContentBundleRowsCallback: this.props
+                            .addShowContentBundleRowsCallback,
                         itemID: index,
                         updateBundleBlockSchema: this.props.updateBundleBlockSchema,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,

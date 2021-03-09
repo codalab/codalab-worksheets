@@ -100,6 +100,7 @@ class Worksheet extends React.Component {
             },
         };
         this.copyCallbacks = [];
+        this.showContentCallbacks = [];
         this.bundleTableID = new Set();
 
         // Throttle so that if keys are held down, we don't suffer a huge lag.
@@ -391,6 +392,10 @@ class Worksheet extends React.Component {
         this.copyCallbacks[tableID] = callback;
     };
 
+    addShowContentBundleRowsCallback = (tableID, callback) => {
+        this.showContentCallbacks[tableID] = callback;
+    };
+
     // Helper functions to deal with commands
     toggleCmdDialog = (cmd_type) => () => {
         this.handleCommand(cmd_type);
@@ -572,6 +577,7 @@ class Worksheet extends React.Component {
         );
         this.bundleTableID = new Set();
         this.copyCallbacks = {};
+        this.showContentCallbacks = {};
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
@@ -1677,6 +1683,64 @@ class Worksheet extends React.Component {
             },
         );
     };
+
+    showBundleContent = () => {
+        let validBundles = [];
+        let showContentCounts = 0;
+        let tableIDs = Object.keys(this.showContentCallbacks).sort();
+
+        tableIDs.forEach((tableID) => {
+            let showContentBundleCallback = this.showContentCallbacks[tableID];
+            let bundlesChecked = showContentBundleCallback();
+            bundlesChecked.forEach((bundle) => {
+                if (bundle.name === '<invalid>') {
+                    return;
+                }
+                validBundles.push(bundle.rawIndex);
+                showContentCounts += 1;
+            });
+        });
+        let newSource = [...this.state.ws.info.source];
+        const items = ['% display contents / '];
+        // Add %display line to the worksheet source right before each checked bundle
+        validBundles.forEach((index, i) => {
+            newSource = [...newSource.slice(0, index + i), ...items, ...newSource.slice(index + i)];
+        });
+        const toastString =
+            showContentCounts > 0
+                ? 'Show contents for ' +
+                  showContentCounts +
+                  ' bundle' +
+                  (showContentCounts > 1 ? 's' : '')
+                : 'No bundle(s) selected';
+        this.clearCheckedBundles(() => {
+            toast.info(toastString, {
+                position: 'top-right',
+                autoClose: 1300,
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: false,
+                draggable: true,
+            });
+        });
+        this.setState(
+            (prevState) => {
+                return {
+                    ws: {
+                        ...prevState.ws,
+                        info: {
+                            ...prevState.ws.info,
+                            source: newSource,
+                        },
+                    },
+                };
+            },
+            () => {
+                this.saveAndUpdateWorksheet(false, validBundles ? validBundles[0] + 1 : undefined);
+            },
+        );
+    };
+
     render() {
         const { classes } = this.props;
         const { anchorEl, uploadAnchor } = this.state;
@@ -1835,6 +1899,7 @@ class Worksheet extends React.Component {
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
+                addShowContentBundleRowsCallback={this.addShowContentBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
@@ -1882,6 +1947,7 @@ class Worksheet extends React.Component {
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
+                    showBundleContent={this.showBundleContent}
                 />
                 {terminalDisplay}
                 <ToastContainer
