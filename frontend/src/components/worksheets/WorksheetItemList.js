@@ -198,7 +198,7 @@ class WorksheetItemList extends React.Component {
                     isDummyItem: true,
                     text: '',
                     mode: 'markup_block',
-                    sort_keys: [-1], // default sort_key is -1
+                    sort_keys: [-1], // the dummy item represents the top of the worksheet, so its sort key is -1
                     ids: [null],
                     is_refined: true,
                 },
