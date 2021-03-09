@@ -4,6 +4,7 @@ import Typography from '@material-ui/core/Typography';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import HighlightOffIcon from '@material-ui/icons/HighlightOff';
 import FileCopyOutlinedIcon from '@material-ui/icons/FileCopyOutlined';
+import FileCopyIcon from '@material-ui/icons/FileCopy';
 import Button from '@material-ui/core/Button';
 
 class BundleBulkActionMenu extends React.Component {
@@ -53,7 +54,7 @@ class BundleBulkActionMenu extends React.Component {
                     onClick={this.props.toggleCmdDialog('copy')}
                     id='copy-button'
                 >
-                    <FileCopyOutlinedIcon className={classes.buttonIcon} />
+                    <FileCopyIcon className={classes.buttonIcon} />
                     <Typography variant='inherit'>Copy</Typography>
                 </Button>
                 <Button
