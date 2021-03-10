@@ -1685,10 +1685,14 @@ class Worksheet extends React.Component {
     };
 
     showBundleContent = () => {
+        this.setState({ openedDialog: DIALOG_TYPES.OPEN_CREATE_CONTENT });
+    };
+    showBundleContentCallback = (path) => () => {
+        // Default path for content block is '/'
+        path = path || '/';
         let validBundles = [];
         let showContentCounts = 0;
         let tableIDs = Object.keys(this.showContentCallbacks).sort();
-
         tableIDs.forEach((tableID) => {
             let showContentBundleCallback = this.showContentCallbacks[tableID];
             let bundlesChecked = showContentBundleCallback();
@@ -1700,8 +1704,9 @@ class Worksheet extends React.Component {
                 showContentCounts += 1;
             });
         });
+
         let newSource = [...this.state.ws.info.source];
-        const items = ['% display contents / '];
+        const items = ['% display contents ' + path];
         // Add %display line to the worksheet source right before each checked bundle
         validBundles.forEach((index, i) => {
             newSource = [...newSource.slice(0, index + i), ...items, ...newSource.slice(index + i)];
@@ -1733,6 +1738,7 @@ class Worksheet extends React.Component {
                             source: newSource,
                         },
                     },
+                    openedDialog: null,
                 };
             },
             () => {
@@ -2021,6 +2027,7 @@ class Worksheet extends React.Component {
                     forceDelete={this.state.forceDelete}
                     handleForceDelete={this.handleForceDelete}
                     deleteItemCallback={this.state.deleteItemCallback}
+                    showBundleContentCallback={this.showBundleContentCallback}
                 />
                 <InformationModal
                     showInformationModal={this.state.showInformationModal}

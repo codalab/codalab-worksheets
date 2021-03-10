@@ -13,15 +13,21 @@ import Button from '@material-ui/core/Button';
 import Grid from '@material-ui/core/Grid';
 import CloseIcon from '@material-ui/icons/Close';
 import { DIALOG_TYPES } from '../../constants';
+import TextField from '@material-ui/core/TextField';
 
 class WorksheetDialogs extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { deleteWorksheetCheck: false };
+        this.state = { deleteWorksheetCheck: false, pathValue: null };
     }
 
     toggleDeleteWorksheet = () => {
         this.setState({ deleteWorksheetCheck: !this.state.deleteWorksheetCheck });
+    };
+
+    // Implementation of setPathValue method
+    setPathValue = (event) => {
+        this.setState({ pathValue: event.target.value });
     };
 
     render() {
@@ -249,6 +255,39 @@ class WorksheetDialogs extends React.Component {
                                 onClick={this.props.deleteItemCallback}
                             >
                                 DELETE
+                            </Button>
+                        </DialogActions>
+                    </DialogContent>
+                </Dialog>
+                {/* Specify path for content block */}
+                <Dialog
+                    open={this.props.openedDialog === DIALOG_TYPES.OPEN_CREATE_CONTENT}
+                    onClose={this.props.closeDialog}
+                    aria-labelledby='create-content-block-title'
+                    aria-describedby='create-content-block-description'
+                >
+                    <DialogTitle id='create-content-block-title' style={{ color: 'red' }}>
+                        Specify the subpath inside the bundle you want to display content for
+                    </DialogTitle>
+                    <DialogContent>
+                        <TextField
+                            autoFocus
+                            onChange={this.setPathValue}
+                            margin='dense'
+                            id='content-block-path'
+                            label='Default Path: /'
+                            fullWidth
+                        />
+                        <DialogActions>
+                            <Button color='primary' onClick={this.props.closeDialog}>
+                                CANCEL
+                            </Button>
+                            <Button
+                                color='primary'
+                                variant='contained'
+                                onClick={this.props.showBundleContentCallback(this.state.pathValue)}
+                            >
+                                SUBMIT
                             </Button>
                         </DialogActions>
                     </DialogContent>
