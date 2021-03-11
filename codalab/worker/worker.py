@@ -59,7 +59,7 @@ class Worker:
         gpuset,  # type: Set[str]
         max_memory,  # type: Optional[int]
         worker_id,  # type: str
-        tag,  # type: str
+        tag,  # type: List[str]
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
