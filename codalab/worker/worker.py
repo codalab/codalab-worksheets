@@ -70,7 +70,6 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
-        docker_image_download_status,  # type: list
         docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
@@ -133,7 +132,6 @@ class Worker:
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
-            docker_image_download_status=docker_image_download_status,
         )
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
