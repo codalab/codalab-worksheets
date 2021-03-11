@@ -4,7 +4,6 @@ import datetime
 import logging
 import os
 import random
-import re
 import sys
 import threading
 import time
@@ -844,9 +843,13 @@ class BundleManager(object):
         prefix = "tag="
         if request_queue.startswith(prefix):
             # Strip off "tag=" from the request_queue value
-            request_queue = request_queue[len(prefix):]
+            request_queue = request_queue[len(prefix) :]
         if request_queue:
-            return [worker for worker in workers if (worker["tag"] and request_queue in worker["tag"].split(","))]
+            return [
+                worker
+                for worker in workers
+                if (worker["tag"] and request_queue in worker["tag"].split(","))
+            ]
         return []
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):

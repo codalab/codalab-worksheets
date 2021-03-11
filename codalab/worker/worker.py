@@ -8,7 +8,7 @@ import traceback
 import socket
 import http.client
 import sys
-from typing import Optional, Set, Dict
+from typing import List, Optional, Set, Dict
 
 import psutil
 

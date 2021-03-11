@@ -231,9 +231,10 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         )
         self.assertEqual(len(sorted_workers_list), 3)
         self.assertEqual(sorted_workers_list[0]['worker_id'], 6)
-        self.assertEqual(set([sorted_workers_list[1]['worker_id'],
-                              sorted_workers_list[2]['worker_id']]),
-                         set([5, 8]))
+        self.assertEqual(
+            set([sorted_workers_list[1]['worker_id'], sorted_workers_list[2]['worker_id']]),
+            set([5, 8]),
+        )
 
     def test_get_matched_workers_with_tag(self):
         self.bundle.metadata.request_queue = "tag=worker_X"

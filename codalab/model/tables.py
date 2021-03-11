@@ -417,7 +417,9 @@ worker = Table(
     Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
     Column('worker_id', String(127), primary_key=True, nullable=False),
     Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=True),
-    Column('tag', Text, nullable=True),  # Comma-separated list of tags that allows for scheduling runs on specific workers.
+    Column(
+        'tag', Text, nullable=True
+    ),  # Comma-separated list of tags that allows for scheduling runs on specific workers.
     Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
     Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.
     Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.

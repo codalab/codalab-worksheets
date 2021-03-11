@@ -30,7 +30,9 @@ DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument(
-        '--tag', nargs="+", help='Alphanumeric tag(s) that allows for scheduling runs on specific workers.',
+        '--tag',
+        nargs="+",
+        help='Alphanumeric tag(s) that allows for scheduling runs on specific workers.',
     )
     parser.add_argument(
         '--server',
