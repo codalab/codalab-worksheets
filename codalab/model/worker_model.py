@@ -59,7 +59,9 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             worker_row = {
-                'tag': tag,
+                # Maintain backwards compatibility with workers that have string tags
+                # TODO(nfliu): remove support for string-only tags.
+                'tag': tag if (isinstance(tag, str) or not tag) else ",".join(tag),
                 'cpus': cpus,
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
