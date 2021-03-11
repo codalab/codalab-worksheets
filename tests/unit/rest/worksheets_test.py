@@ -118,7 +118,7 @@ class WorksheetsTest(BaseTestCase):
                         },
                         'dependencies': [],
                     },
-                }
+                },
             ]
         }
         response = self.app.post_json(f'/rest/bundles?worksheet={worksheet_id}', body)
@@ -127,7 +127,9 @@ class WorksheetsTest(BaseTestCase):
         bundle_id = data[0]["id"]
 
         # Verify that only the queried bundle info should be returned, so there will only be 1 non-null element in the block_infos
-        refreshed_bundles = self.app.get("/rest/interpret/worksheet/" + worksheet_id + "?bundle_uuid=" + bundle_id).json
+        refreshed_bundles = self.app.get(
+            "/rest/interpret/worksheet/" + worksheet_id + "?bundle_uuid=" + bundle_id
+        ).json
         blocks_info = refreshed_bundles["blocks"][0]["bundles_spec"]["bundle_infos"]
         bundles_count = sum(1 for bundle in blocks_info if bundle)
         self.assertEqual(1, bundles_count)

@@ -323,6 +323,7 @@ class BundleRow extends Component {
                 )}
                 {/** ---------------------------------------------------------------------------------------------------
                  *  Rerun
+                 *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key
                  */}
                 {showNewRun === 1 && (
                     <TableRow>
@@ -334,7 +335,7 @@ class BundleRow extends Component {
                                         this.setState({ showNewRun: 0, showDetail: false });
                                         onHideNewRerun();
                                     }}
-                                    after_sort_key={this.props.after_sort_key}
+                                    after_sort_key={this.props.after_sort_key + 1}
                                     reloadWorksheet={reloadWorksheet}
                                     defaultRun={runProp}
                                 />
@@ -347,7 +348,7 @@ class BundleRow extends Component {
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
                             <div className={classes.insertBox}>
                                 <NewRun
-                                    after_sort_key={this.props.after_sort_key}
+                                    after_sort_key={this.props.after_sort_key + 1}
                                     ws={this.props.ws}
                                     onSubmit={() => this.props.onHideNewRun()}
                                     reloadWorksheet={reloadWorksheet}
@@ -363,7 +364,7 @@ class BundleRow extends Component {
                                 <TextEditorItem
                                     ids={this.props.ids}
                                     mode='create'
-                                    after_sort_key={this.props.after_sort_key}
+                                    after_sort_key={this.props.after_sort_key + 1}
                                     worksheetUUID={this.props.worksheetUUID}
                                     reloadWorksheet={reloadWorksheet}
                                     closeEditor={() => {
@@ -379,7 +380,7 @@ class BundleRow extends Component {
                         <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
                             <div className={classes.insertBox}>
                                 <SchemaItem
-                                    after_sort_key={this.props.after_sort_key}
+                                    after_sort_key={this.props.after_sort_key + 1}
                                     ws={this.props.ws}
                                     onSubmit={() => this.props.onHideNewSchema()}
                                     reloadWorksheet={reloadWorksheet}
@@ -395,7 +396,7 @@ class BundleRow extends Component {
                                         ],
                                         header: ['field', 'generalized-path', 'post-processor'],
                                         schema_name: '',
-                                        sort_keys: [-1],
+                                        sort_keys: [this.props.after_sort_key + 2],
                                     }}
                                     create={true}
                                     updateSchemaItem={this.props.updateSchemaItem}
