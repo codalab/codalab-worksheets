@@ -33,6 +33,7 @@ class UploadManager(object):
         git,
         unpack,
         simplify_archives,
+        use_azure_blob_beta,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -49,6 +50,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
+        |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
@@ -61,10 +63,6 @@ class UploadManager(object):
             if exclude_patterns
             else self._default_exclude_patterns
         )
-        bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        if bundle_link_url:
-            # Don't do anything for linked bundles.
-            return
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)

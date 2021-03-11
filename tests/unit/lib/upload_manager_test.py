@@ -52,6 +52,7 @@ class UploadManagerTest(unittest.TestCase):
             git,
             unpack,
             simplify_archives,
+            use_azure_blob_beta,
         )
 
     def test_single_local_path(self):

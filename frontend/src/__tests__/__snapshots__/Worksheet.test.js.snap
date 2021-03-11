@@ -263,6 +263,41 @@ Object {
                           class="MuiTouchRipple-root-238"
                         />
                       </button>
+                      <button
+                        aria-label="image"
+                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        id="add-image-button"
+                        tabindex="0"
+                        title="Add an image"
+                        type="button"
+                      >
+                        <span
+                          class="MuiButton-label-116"
+                        >
+                          <label
+                            for="codalab-image-upload-input"
+                          />
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"
+                            />
+                            <path
+                              d="M0 0h24v24H0z"
+                              fill="none"
+                            />
+                          </svg>
+                          Image
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-238"
+                        />
+                      </button>
                     </div>
                   </div>
                   <div
@@ -687,6 +722,12 @@ Object {
                       type="file"
                       webkitdirectory="true"
                     />
+                    <input
+                      accept="image/*"
+                      id="codalab-image-upload-input"
+                      style="display: none;"
+                      type="file"
+                    />
                   </div>
                 </div>
               </div>
@@ -1052,6 +1093,41 @@ Object {
                           />
                         </svg>
                         Schema
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-238"
+                      />
+                    </button>
+                    <button
+                      aria-label="image"
+                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                      id="add-image-button"
+                      tabindex="0"
+                      title="Add an image"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-116"
+                      >
+                        <label
+                          for="codalab-image-upload-input"
+                        />
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"
+                          />
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                        </svg>
+                        Image
                       </span>
                       <span
                         class="MuiTouchRipple-root-238"
@@ -1480,6 +1556,12 @@ Object {
                     style="display: none;"
                     type="file"
                     webkitdirectory="true"
+                  />
+                  <input
+                    accept="image/*"
+                    id="codalab-image-upload-input"
+                    style="display: none;"
+                    type="file"
                   />
                 </div>
               </div>
