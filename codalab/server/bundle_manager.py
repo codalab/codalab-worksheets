@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 import traceback
-from typing import List
+from typing import List, Sequence
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -848,9 +848,18 @@ class BundleManager(object):
             return [
                 worker
                 for worker in workers
-                if (worker["tag"] and request_queue in worker["tag"].split(","))
+                if (
+                    worker["tag"]
+                    and BundleManager._request_queue_matches_worker_tags(
+                        request_queue=request_queue, worker_tags=worker["tag"].split(",")
+                    )
+                )
             ]
         return []
+
+    @staticmethod
+    def _request_queue_matches_worker_tags(request_queue: str, worker_tags: Sequence[str]):
+        return request_queue in worker_tags
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """
