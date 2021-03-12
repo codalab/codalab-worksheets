@@ -44,6 +44,6 @@ class RequestQueueParser:
         tree = self.parser.parse(request_queue)
         function_string = self.function_transformer.transform(tree)
         # NOTE: this is potentially dangerous. The parser is designed to only accept alphanumeric input
-        # (excepting its operators). Similarly, self.collection_name should be alphanumeric.
-        # These two constraints make it hard to call functions or do bad things with double-underscores.
+        # (excepting its operators). This constraint makes it hard to call functions or
+        # do bad things with double-underscores.
         return eval(f"lambda worker_tags : {function_string}")
