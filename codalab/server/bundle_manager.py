@@ -20,6 +20,8 @@ from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State, RunResources
 
+import lark
+
 
 logger = logging.getLogger(__name__)
 
@@ -847,16 +849,20 @@ class BundleManager(object):
             # Strip off "tag=" from the request_queue value
             request_queue = request_queue[len(prefix) :]
         if request_queue:
-            return [
-                worker
-                for worker in workers
-                if (
-                    worker["tag"]
-                    and cls._request_queue_matches_worker_tags(
-                        request_queue=request_queue, worker_tags=worker["tag"].split(",")
+            try:
+                return [
+                    worker
+                    for worker in workers
+                    if (
+                        worker["tag"]
+                        and cls._request_queue_matches_worker_tags(
+                            request_queue=request_queue, worker_tags=worker["tag"].split(",")
+                        )
                     )
-                )
-            ]
+                ]
+            except lark.exceptions.LarkError as e:
+                logger.debug(traceback.format_exc())
+                return []
         return []
 
     @classmethod
