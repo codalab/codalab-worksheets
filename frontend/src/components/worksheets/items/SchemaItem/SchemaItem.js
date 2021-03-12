@@ -150,17 +150,15 @@ class SchemaItem extends React.Component<{
         let originalRows = this.props.item.field_rows;
         if (this.state.rows.length !== originalRows.length) return true;
         const headerKeys = this.props.item.header;
-        let textFieldChanged = false;
         for (let ind = 0; ind < originalRows.length; ind++) {
-            let candTextFieldChanged = false;
-            headerKeys.forEach((key) => {
+            for (let keyInd = 0; keyInd < headerKeys.length; keyInd++) {
+                const key = headerKeys[keyInd];
                 if (originalRows[ind][key] !== this.state.rows[ind][key]) {
-                    candTextFieldChanged = true;
+                    return true;
                 }
-            });
-            textFieldChanged = candTextFieldChanged;
+            }
         }
-        return textFieldChanged;
+        return false;
     };
 
     moveFieldRow = (idx, direction) => () => {
