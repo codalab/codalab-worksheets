@@ -15,7 +15,7 @@ from codalab.objects.permission import (
     check_bundle_have_run_permission,
 )
 from codalab.common import NotFoundError, PermissionError
-from codalab.lib import bundle_util, formatting, path_util
+from codalab.lib import bundle_util, formatting, parsing_util, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State, RunResources
@@ -40,6 +40,8 @@ class BundleManager(object):
     """
     Assigns run bundles to workers and makes make bundles.
     """
+
+    _request_queue_parser = parsing_util.RequestQueueParser()
 
     def __init__(self, codalab_manager, worker_timeout_seconds=60):
         config = codalab_manager.config.get('workers')
@@ -832,8 +834,8 @@ class BundleManager(object):
                 )
         return None
 
-    @staticmethod
-    def _get_matched_workers(request_queue, workers):
+    @classmethod
+    def _get_matched_workers(cls, request_queue, workers):
         """
         Get all of the workers that match with the name of the requested worker
         :param request_queue: a tag with the format "tag=worker_X" or "worker_X" that can be used to match workers
@@ -850,16 +852,18 @@ class BundleManager(object):
                 for worker in workers
                 if (
                     worker["tag"]
-                    and BundleManager._request_queue_matches_worker_tags(
+                    and cls._request_queue_matches_worker_tags(
                         request_queue=request_queue, worker_tags=worker["tag"].split(",")
                     )
                 )
             ]
         return []
 
-    @staticmethod
-    def _request_queue_matches_worker_tags(request_queue: str, worker_tags: Sequence[str]):
-        return request_queue in worker_tags
+    @classmethod
+    def _request_queue_matches_worker_tags(cls, request_queue: str, worker_tags: Sequence[str]):
+        return cls._request_queue_parser.parse_request_queue_to_callable(
+            request_queue=request_queue
+        )(worker_tags)
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """
