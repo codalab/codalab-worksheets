@@ -7,8 +7,8 @@ from codalab.worker_manager.worker_manager import BundlesPayload
 
 
 class SlurmBatchWorkerManagerTest(unittest.TestCase):
-    def test_base_command(self):
-        args: SimpleNamespace = SimpleNamespace(
+    def setUp(self):
+        self.worker_manager_args: SimpleNamespace = SimpleNamespace(
             server='some_server',
             temp_session=True,
             user='some_user',
@@ -30,7 +30,8 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             exit_after_num_failed=None,
         )
 
-        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
+    def test_base_command(self):
+        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(self.worker_manager_args)
         command: List[str] = worker_manager.setup_codalab_worker('some_worker_id')
 
         # --pass-down-termination should always be set for Slurm worker managers
@@ -46,30 +47,11 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
         self.assertEqual(' '.join(command), expected_command_str)
 
     def test_filter_bundles(self):
-        args: SimpleNamespace = SimpleNamespace(
-            server='some_server',
-            temp_session=True,
-            user='some_user',
-            partition='some_partition',
-            worker_executable='cl-worker',
-            worker_idle_seconds='888',
-            worker_tag='some_tag',
-            worker_group='some_group',
-            worker_exit_after_num_runs=8,
-            worker_max_work_dir_size='88g',
-            worker_work_dir_prefix='/some/path',
-            worker_delete_work_dir_on_exit=False,
-            worker_exit_on_exception=False,
-            worker_tag_exclusive=False,
-            worker_pass_down_termination=False,
-            password_file=None,
-            exit_after_num_failed=None,
-            memory_mb=1024,
-            cpus=3,
-            gpus=1,
-        )
+        self.worker_manager_args.memory_mb = 1024
+        self.worker_manager_args.cpus = 3
+        self.worker_manager_args.gpus = 1
 
-        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
+        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(self.worker_manager_args)
         filtered_bundles: BundlesPayload = worker_manager.filter_bundles(
             [
                 {
@@ -95,3 +77,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
                 'metadata': {'request_cpus': 3, 'request_gpus': 1, 'request_memory': '1g'},
             },
         )
+
+    def test_run_command(self):
+        worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(self.worker_manager_args)
+        self.assertEqual(worker_manager.run_command(['echo', 'hi']), 'hi\n')
