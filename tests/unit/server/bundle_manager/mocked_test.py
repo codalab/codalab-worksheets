@@ -298,7 +298,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.assertEqual(matched_workers[2]['worker_id'], 7)
         self.assertEqual(matched_workers[3]['worker_id'], 8)
 
-    def test_get_matched_workers_non_existent_or_existing_tag(self):
+    def test_get_matched_workers_non_existent_and_existing_tag(self):
         self.bundle.metadata.request_queue = "workerZ & workerX"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list

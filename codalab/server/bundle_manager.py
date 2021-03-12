@@ -860,7 +860,7 @@ class BundleManager(object):
                         )
                     )
                 ]
-            except lark.exceptions.LarkError as e:
+            except lark.exceptions.LarkError:
                 logger.debug(traceback.format_exc())
                 return []
         return []
