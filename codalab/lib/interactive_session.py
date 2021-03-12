@@ -31,7 +31,7 @@ class InteractiveSession:
         9. Stop and remove the interactive session container.
     """
 
-    _BASH_HISTORY_CONTAINER_PATH = "/usr/sbin/.bash_history"
+    _BASH_HISTORY_CONTAINER_PATH = "/root/.bash_history"
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n#\n"
         "# Choose the commands to use for cl run:\n"
@@ -144,13 +144,11 @@ class InteractiveSession:
 
         name = self._get_container_name()
         # Start a container as a non-root user. Root (id = 0) is the default user within a container.
-        # When passing a numeric ID, the user does not have to exist in the container.
         command = [
             'docker run',
             '-it',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
-            '-u 1',
         ]
         command.extend(
             [
