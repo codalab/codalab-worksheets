@@ -143,12 +143,14 @@ class InteractiveSession:
                 volumes[get_docker_path(key)] = dependency_local_path
 
         name = self._get_container_name()
-        # Start a container as a non-root user. Root (id = 0) is the default user within a container.
+        # Start a container as a root user. Root (id = 0) is the default user within a container.
         command = [
             'docker run',
             '-it',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
+            # TODO: figure out a way to run as a non-root user and be able to save the bash_history on any machine
+            # '-u 1',
         ]
         command.extend(
             [
