@@ -286,3 +286,29 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
             self.bundle.metadata.request_queue, self.workers_list
         )
         self.assertEqual(len(matched_workers), 0)
+
+    def test_get_matched_workers_non_existent_or_existing_tag(self):
+        self.bundle.metadata.request_queue = "workerZ|workerX"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 4)
+        self.assertEqual(matched_workers[0]['worker_id'], 5)
+        self.assertEqual(matched_workers[1]['worker_id'], 6)
+        self.assertEqual(matched_workers[2]['worker_id'], 7)
+        self.assertEqual(matched_workers[3]['worker_id'], 8)
+
+    def test_get_matched_workers_non_existent_or_existing_tag(self):
+        self.bundle.metadata.request_queue = "workerZ & workerX"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 0)
+
+    def test_get_matched_workers_non_existent_nested_or_existing_tags(self):
+        self.bundle.metadata.request_queue = "workerZ | (workerX & workerY)"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 1)
+        self.assertEqual(matched_workers[0]['worker_id'], 8)
