@@ -407,7 +407,7 @@ class Worker:
         processes must be handled asynchronously.
         """
         request = {
-            'tag': self.tag,
+            'tag': ",".join(self.tag),
             'group_name': self.group_name,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),
