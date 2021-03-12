@@ -28,10 +28,10 @@ class FunctionTransformer(Transformer):
         return f"({' and '.join(exprs)})"
 
     def not_expr(self, atom):
-        return f" not {atom}"
+        return f"not ({atom})"
 
     def name(self, n):
-        return f"'{n}' in worker_tag"
+        return f"'{n}' in worker_tags"
 
 
 class RequestQueueParser:
@@ -46,4 +46,4 @@ class RequestQueueParser:
         # NOTE: this is potentially dangerous. The parser is designed to only accept alphanumeric input
         # (excepting its operators). Similarly, self.collection_name should be alphanumeric.
         # These two constraints make it hard to call functions or do bad things with double-underscores.
-        return eval(f"lambda worker_tag : {function_string}")
+        return eval(f"lambda worker_tags : {function_string}")
