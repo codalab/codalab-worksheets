@@ -123,7 +123,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
-                'tag': 'worker_X',
+                'tag': 'workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -137,7 +137,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
-                'tag': 'worker_X',
+                'tag': 'workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -151,7 +151,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 0,
-                'tag': 'worker_X',
+                'tag': 'workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -165,7 +165,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
-                'tag': 'worker_Y,worker_X',
+                'tag': 'workerY,workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -225,7 +225,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
     def test_filter_and_sort_workers_tag_exclusive_priority(self):
         # All other things being equal, tag_exclusive workers
         # should appear in the top from the returned sorted workers list.
-        self.bundle.metadata.request_queue = "tag=worker_X"
+        self.bundle.metadata.request_queue = "tag=workerX"
         sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.workers_list, self.bundle, self.bundle_resources
         )
@@ -237,7 +237,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         )
 
     def test_get_matched_workers_with_tag(self):
-        self.bundle.metadata.request_queue = "tag=worker_X"
+        self.bundle.metadata.request_queue = "tag=workerX"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
@@ -255,7 +255,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.assertEqual(len(matched_workers), 0)
 
     def test_get_matched_workers_without_tag_prefix(self):
-        self.bundle.metadata.request_queue = "worker_X"
+        self.bundle.metadata.request_queue = "workerX"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
@@ -266,7 +266,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.assertEqual(matched_workers[3]['worker_id'], 8)
 
     def test_get_matched_workers_multiple_tags(self):
-        self.bundle.metadata.request_queue = "worker_Y"
+        self.bundle.metadata.request_queue = "workerY"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
@@ -274,7 +274,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.assertEqual(matched_workers[0]['worker_id'], 8)
 
     def test_get_matched_workers_not_exist_tag(self):
-        self.bundle.metadata.request_queue = "worker_Z"
+        self.bundle.metadata.request_queue = "workerZ"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
