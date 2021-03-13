@@ -13,7 +13,7 @@ from retry import retry
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.41'
+CODALAB_VERSION = '0.5.42'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
