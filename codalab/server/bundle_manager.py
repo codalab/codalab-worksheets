@@ -520,7 +520,7 @@ class BundleManager(object):
             workers_list = [
                 worker
                 for worker in workers_list
-                if not worker['tag_exclusive'] or not worker['tag']
+                if not worker['tag_exclusive'] or not worker['tags']
             ]
 
         # Filter by CPUs.
@@ -849,9 +849,9 @@ class BundleManager(object):
                 worker
                 for worker in workers
                 if (
-                    worker["tag"]
+                    worker["tags"]
                     and BundleManager._request_queue_matches_worker_tags(
-                        request_queue=request_queue, worker_tags=worker["tag"].split(",")
+                        request_queue=request_queue, worker_tags=worker["tags"].split(",")
                     )
                 )
             ]

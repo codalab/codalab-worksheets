@@ -418,7 +418,7 @@ worker = Table(
     Column('worker_id', String(127), primary_key=True, nullable=False),
     Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=True),
     Column(
-        'tag', Text, nullable=True
+        'tags', Text, nullable=True
     ),  # Comma-separated list of tags that allows for scheduling runs on specific workers.
     Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
     Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.
@@ -433,7 +433,7 @@ worker = Table(
     ),  # Whether the worker and the server have a shared filesystem.
     Column(
         'tag_exclusive', Boolean, nullable=False
-    ),  # Whether worker runs bundles if and only if they match tags.
+    ),  # Whether worker runs bundles that are untagged.
     Column(
         'exit_after_num_runs', Integer, nullable=False
     ),  # Number of jobs allowed to run on worker.

@@ -28,7 +28,8 @@ def checkin(worker_id):
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
-        request.json.get("tag"),
+        # TODO(nfliu): deprecate passing "tag" in the request. The right key is "tags".
+        request.json.get("tags", request.json.get("tag")),
         request.json.get("group_name"),
         request.json.get("cpus"),
         request.json.get("gpus"),
