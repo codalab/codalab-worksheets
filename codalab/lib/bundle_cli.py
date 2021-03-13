@@ -1190,7 +1190,7 @@ class BundleCLI(object):
                     ),
                     'group': worker['group_uuid'],
                     # TODO(nfliu): deprecate support for old servers that still send worker "tag" over "tags"
-                    'tags': worker.get('tags', worker['tag']),
+                    'tags': worker['tags'] if 'tags' in worker else worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],

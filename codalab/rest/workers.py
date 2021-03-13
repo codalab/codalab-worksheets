@@ -29,7 +29,7 @@ def checkin(worker_id):
         request.user.user_id,
         worker_id,
         # TODO(nfliu): deprecate passing "tag" in the request. The right key is "tags".
-        request.json.get("tags", request.json.get("tag")),
+        request.json.get("tags") if "tags" in request.json else request.json.get("tag"),
         request.json.get("group_name"),
         request.json.get("cpus"),
         request.json.get("gpus"),
