@@ -222,21 +222,6 @@ class RunStateMachine(StateTransitioner):
             #   dependency_path:docker_dependency_path:ro
             docker_dependencies.append((dependency.parent_path, dependency.docker_path))
 
-        def get_message_of_download_status(status_dict: dict) -> str:
-            logger.info('status dict is ' + str(status_dict))
-            result: str = 'not started\n'
-
-            if 'status' in status_dict:
-                status: str = status_dict['status']
-                result = f'status: {status}'
-            if 'id' in status_dict:
-                image_id: str = status_dict['id']
-                result = f'{result}\nlayer being extracted: {image_id}'
-            if 'progress' in status_dict:
-                progress = status_dict['progress']
-                result = f'{result}\n{progress}'
-            return result
-
         if run_state.is_killed or run_state.is_restaged:
             log_bundle_transition(
                 bundle_uuid=run_state.bundle.uuid,
@@ -295,12 +280,6 @@ class RunStateMachine(StateTransitioner):
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
             )
-            # if "message" in self.docker_image_manager._downloading[docker_image]:
-
-            if image_state.message:
-                status_messages += (
-                    f'\nPulling status:\n {get_message_of_download_status(image_state.message)}'
-                )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
