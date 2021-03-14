@@ -28,7 +28,6 @@ ImageCacheEntry = namedtuple(
 )
 
 
-
 class DockerImageManager:
 
     CACHE_TAG = 'codalab-image-cache/last-used'
