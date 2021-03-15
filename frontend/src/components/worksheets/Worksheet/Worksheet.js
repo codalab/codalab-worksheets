@@ -1706,10 +1706,15 @@ class Worksheet extends React.Component {
         });
 
         let newSource = [...this.state.ws.info.source];
-        const items = ['% display contents ' + path];
+
         // Add %display line to the worksheet source right before each checked bundle
         validBundles.forEach((index, i) => {
-            newSource = [...newSource.slice(0, index + i), ...items, ...newSource.slice(index + i)];
+            const items = ['% display contents ' + path, newSource[index], ''];
+            newSource = [
+                ...newSource.slice(0, index + 3 * i + 1),
+                ...items,
+                ...newSource.slice(index + 3 * i + 1),
+            ];
         });
         const toastString =
             showContentCounts > 0
