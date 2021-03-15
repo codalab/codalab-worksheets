@@ -281,7 +281,13 @@ class RunStateMachine(StateTransitioner):
             logger.debug(image_state)
             msg = 'Pulling docker image %s' % docker_image
             if isinstance(image_state.message, dict) and image_state.message['progressDetail']:
-                msg += '(%d%%)' % ((image_state.message['progressDetail']['current'] / image_state.message['progressDetail']['total']) * 100)
+                msg += '(%d%%)' % (
+                    (
+                        image_state.message['progressDetail']['current']
+                        / image_state.message['progressDetail']['total']
+                    )
+                    * 100
+                )
 
             status_messages.append(msg)
             dependencies_ready = False
