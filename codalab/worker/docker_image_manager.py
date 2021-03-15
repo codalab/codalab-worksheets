@@ -243,11 +243,11 @@ class DockerImageManager:
                 def download():
                     logger.debug('Downloading Docker image %s', image_spec)
                     try:
-                        # client = docker.APIClient(base_url='unix://var/run/docker.sock')
-                        self.generator = self._docker.images.pull(image_spec)
-                        # self.generator = client.pull(image_spec, stream=True, decode=True)
+                        client = docker.APIClient(base_url='unix://var/run/docker.sock')
+                        self.generator = client.pull(image_spec, stream=True, decode=True)
                         for line in self.generator:
-                            self._downloading[image_spec]['message'] = line
+                            logger.debug(line)
+                            self._downloading[image_spec]['status'] = line
 
                         logger.debug('Download for Docker image %s complete', image_spec)
                         self._downloading[image_spec]['success'] = True

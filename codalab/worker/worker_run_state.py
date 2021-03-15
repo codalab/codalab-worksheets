@@ -273,13 +273,17 @@ class RunStateMachine(StateTransitioner):
                         % (dep.child_path, dependency_state.message),
                     )
 
+        logger.debug(dependencies_ready)
         # get the docker image
         docker_image = run_state.resources.docker_image
         image_state = self.docker_image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
-            status_messages.append(
-                'Pulling docker image: ' + (image_state.message or docker_image or "")
-            )
+            logger.debug(image_state)
+            msg = 'Pulling docker image %s' % docker_image
+            if isinstance(image_state.message, dict) and image_state.message['progressDetail']:
+                msg += '(%d%%)' % ((image_state.message['progressDetail']['current'] / image_state.message['progressDetail']['total']) * 100)
+
+            status_messages.append(msg)
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
@@ -287,6 +291,7 @@ class RunStateMachine(StateTransitioner):
             logger.error(message)
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
 
+        logger.debug(dependencies_ready)
         # stop proceeding if dependency and image downloads aren't all done
         if not dependencies_ready:
             status_message = status_messages.pop()
