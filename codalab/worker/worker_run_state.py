@@ -273,12 +273,10 @@ class RunStateMachine(StateTransitioner):
                         % (dep.child_path, dependency_state.message),
                     )
 
-        logger.debug(dependencies_ready)
         # get the docker image
         docker_image = run_state.resources.docker_image
         image_state = self.docker_image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
-            logger.debug(image_state)
             msg = 'Pulling docker image %s' % docker_image
             if isinstance(image_state.message, dict) and image_state.message['progressDetail']:
                 msg += '(%d%%)' % (
