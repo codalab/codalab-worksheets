@@ -287,7 +287,7 @@ class NewRun extends React.Component<{
 
         for (let dep of dependencies) {
             const key = dep.alias;
-            let value = shorten_uuid(dep.target.uuid);
+            let value = dep.target.uuid;
             if(dep.target.path) value += '/' + dep.target.path;
             args.push(key + ':' + value);
         }
