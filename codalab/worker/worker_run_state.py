@@ -17,7 +17,6 @@ from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -277,7 +276,9 @@ class RunStateMachine(StateTransitioner):
         docker_image = run_state.resources.docker_image
         image_state = self.docker_image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
-            status_messages.append(image_state.message)
+            status_messages.append(
+                'Pulling docker image %s%s' % (docker_image, image_state.message)
+            )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
@@ -289,9 +290,8 @@ class RunStateMachine(StateTransitioner):
         if not dependencies_ready:
             status_message = status_messages.pop()
             if status_messages:
-                status_message += (
-                    "\n(and downloading %d other dependencies and docker images)"
-                    % len(status_messages)
+                status_message += "(and downloading %d other dependencies and docker images)" % len(
+                    status_messages
                 )
             logger.info(
                 f'bundle is not ready yet. uuid: {run_state.bundle.uuid}. status message: {status_message}'

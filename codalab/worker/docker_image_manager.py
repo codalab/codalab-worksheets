@@ -243,14 +243,11 @@ class DockerImageManager:
                 def download():
                     logger.debug('Downloading Docker image %s', image_spec)
                     try:
-                        client = docker.APIClient(base_url='unix://var/run/docker.sock')
-                        self.generator = client.pull(image_spec, stream=True, decode=True)
+                        self.generator = self._docker.api.pull(image_spec, stream=True, decode=True)
                         for line in self.generator:
-                            self._downloading[image_spec]['status'] = (
-                                'Pulling docker image %s' % image_spec
-                            )
+                            self._downloading[image_spec]['status'] = ''
                             if line['status'] == 'Downloading':
-                                self._downloading[image_spec]['status'] += ' (%d%%)' % (
+                                self._downloading[image_spec]['status'] = ' (%d%%)' % (
                                     line['progressDetail']['current']
                                     * 100
                                     / line['progressDetail']['total']

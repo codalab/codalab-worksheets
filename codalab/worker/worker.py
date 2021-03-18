@@ -79,7 +79,6 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
     ):
-
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
         self.reader = Reader()
