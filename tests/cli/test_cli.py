@@ -1097,7 +1097,7 @@ def test_worksheet_freeze_unfreeze(ctx):
     _run_command([cl, 'add', 'text', 'message'], 1)  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
     _run_command([cl, 'wperm', wuuid, 'public', 'a'], 1)  # would edit
-    
+
     # Can't re-freeze a frozen worksheet
     _run_command([cl, 'wedit', '--freeze'], 1)
 
