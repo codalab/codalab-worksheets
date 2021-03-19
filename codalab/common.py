@@ -146,14 +146,16 @@ class StorageType(Enum):
     DISK_STORAGE = "disk"
     AZURE_BLOB_STORAGE = "azure_blob"
 
+
 class StorageURLScheme(Enum):
     """Possible storage URL schemes. URLs for the
     corresponding storage type will begin with the
     scheme specified.
     """
+
     DISK_STORAGE = ""
     AZURE_BLOB_STORAGE = "azfs://"
-    
+
 
 @dataclass(frozen=True)
 class LinkedBundlePath:
