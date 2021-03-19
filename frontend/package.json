@@ -23,7 +23,7 @@
     "jszip": "^3.5.0",
     "lint-staged": "^10.2.13",
     "lodash": "^4.17.20",
-    "marked": "^1.1.1",
+    "marked": "^2.0.0",
     "material-ui-chip-input": "^1.1.0",
     "query-string": "^6.13.1",
     "react": "^16.13.1",
