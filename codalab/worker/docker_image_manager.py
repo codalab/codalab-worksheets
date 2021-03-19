@@ -247,7 +247,7 @@ class DockerImageManager:
                             self._downloading[image_spec]['status'] = ''
                             # Set the status to the percent completed
                             if line['status'] == 'Downloading':
-                                self._downloading[image_spec]['status'] = ' (%d%%)' % (
+                                self._downloading[image_spec]['status'] = '(%d%%)' % (
                                     line['progressDetail']['current']
                                     * 100
                                     / line['progressDetail']['total']
