@@ -144,11 +144,13 @@ class InteractiveSession:
 
         name = self._get_container_name()
         # Start a container as a root user. Root (id = 0) is the default user within a container.
+        container_work_dir = f'{os.path.sep}{self._session_uuid}'
         command = [
             'docker run',
             '-it',
             f'--name {name}',
-            f'-w {os.path.sep}{self._session_uuid}',
+            f'-w {container_work_dir}',
+            f'-env HOME={container_work_dir}',
             '-u 1',
         ]
         command.extend(
@@ -158,11 +160,7 @@ class InteractiveSession:
                 for docker_path, local_path in volumes.items()
             ]
         )
-        command.append(
-            '-v {}:{}:rw'.format(
-                self._host_bash_history_path, InteractiveSession._BASH_HISTORY_CONTAINER_PATH
-            )
-        )
+        command.append('-v {}:{}:rw'.format(self._host_bash_history_path, container_work_dir))
         command.append(self._docker_image)
         command.append('bash')
         return ' '.join(command)
