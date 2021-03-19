@@ -160,7 +160,11 @@ class InteractiveSession:
                 for docker_path, local_path in volumes.items()
             ]
         )
-        command.append('-v {}:{}:rw'.format(self._host_bash_history_path, container_work_dir))
+        command.append(
+            '-v {}:{}:rw'.format(
+                self._host_bash_history_path, os.path.join(container_work_dir, '.bash_history')
+            )
+        )
         command.append(self._docker_image)
         command.append('bash')
         return ' '.join(command)
