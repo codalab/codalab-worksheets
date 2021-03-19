@@ -1,7 +1,7 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useEffect, useState, forwardRef } from 'react';
 import queryString from 'query-string';
 import './PlaceholderItem.scss';
-import useSWR from 'swr';
+import useSWR, { cache } from 'swr';
 
 const fetcher = (url) =>
     fetch(url, {
@@ -17,30 +17,40 @@ export default forwardRef((props, ref) => {
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
     const { directive, sort_keys } = props.item;
-
+    function setBlocks(data) {
+        const blocks = data.blocks;
+        try {
+            setItem(blocks.length === 0 ? null : blocks[0]);
+            if (blocks.length > 0) {
+                let actualBlock = blocks[0];
+                // replace with existing sort keys if there is one
+                if (sort_keys) {
+                    actualBlock['sort_keys'] = sort_keys;
+                }
+                actualBlock.loadedFromPlaceholder = true;
+                onAsyncItemLoad(actualBlock);
+            }
+        } catch (e) {
+            console.error(e);
+            setError(e);
+        }
+    }
     const url =
         '/rest/interpret/worksheet/' + worksheetUUID + '?' + queryString.stringify({ directive });
+    // use data stored in cache
+    if (cache.has(url)) {
+        useEffect(() => {
+            setBlocks(cache.get(url));
+        });
+    } else {
+        // fetch data only once
+        useSWR(url, fetcher, {
+            onSuccess: (data, key, config) => {
+                setBlocks(data);
+            },
+        });
+    }
 
-    useSWR(url, () => fetcher(url), {
-        onSuccess: (data, key, config) => {
-            const blocks = data.blocks;
-            try {
-                setItem(blocks.length === 0 ? null : blocks[0]);
-                if (blocks.length > 0) {
-                    let actualBlock = blocks[0];
-                    // replace with existing sort keys if there is one
-                    if (sort_keys) {
-                        actualBlock['sort_keys'] = sort_keys;
-                    }
-                    actualBlock.loadedFromPlaceholder = true;
-                    onAsyncItemLoad(actualBlock);
-                }
-            } catch (e) {
-                console.error(e);
-                setError(e);
-            }
-        },
-    });
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
