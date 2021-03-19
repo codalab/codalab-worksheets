@@ -25,11 +25,6 @@ class WorksheetDialogs extends React.Component {
         this.setState({ deleteWorksheetCheck: !this.state.deleteWorksheetCheck });
     };
 
-    // Implementation of setPathValue method
-    setPathValue = (event) => {
-        this.setState({ pathValue: event.target.value });
-    };
-
     render() {
         const { classes } = this.props;
         return (
@@ -272,7 +267,9 @@ class WorksheetDialogs extends React.Component {
                     <DialogContent>
                         <TextField
                             autoFocus
-                            onChange={this.setPathValue}
+                            onChange={(event) => {
+                                this.setState({ pathValue: event.target.value });
+                            }}
                             margin='dense'
                             id='content-block-path'
                             label='Default Path: /'

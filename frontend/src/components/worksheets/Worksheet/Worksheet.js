@@ -1707,9 +1707,9 @@ class Worksheet extends React.Component {
 
         let newSource = [...this.state.ws.info.source];
 
-        // Add %display line to the worksheet source right before each checked bundle
         validBundles.forEach((index, i) => {
             const items = ['% display contents ' + path, newSource[index], ''];
+            // For each checked bundle, we are adding 3 new lines to the source right after each checked bundle
             newSource = [
                 ...newSource.slice(0, index + 3 * i + 1),
                 ...items,
@@ -1718,9 +1718,7 @@ class Worksheet extends React.Component {
         });
         const toastString =
             showContentCounts > 0
-                ? 'Show contents for ' +
-                  showContentCounts +
-                  ' bundle' +
+                ? `Show contents for ${showContentCounts} bundle...` +
                   (showContentCounts > 1 ? 's' : '')
                 : 'No bundle(s) selected';
         this.clearCheckedBundles(() => {
