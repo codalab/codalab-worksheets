@@ -1090,30 +1090,28 @@ def test_worksheet_freeze_unfreeze(ctx):
     _run_command([cl, 'wedit', '-t', 'new_title'])
     _run_command([cl, 'wperm', wuuid, 'public', 'n'])
 
-    _run_command([cl, 'wedit', '--freeze'])
-
     # After freezing: cannot modify anything
+    _run_command([cl, 'wedit', '--freeze'])
     _run_command([cl, 'detach', uuid1], 1)  # would remove an item
     _run_command([cl, 'rm', uuid1], 1)  # would remove an item
     _run_command([cl, 'add', 'text', 'message'], 1)  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
     _run_command([cl, 'wperm', wuuid, 'public', 'a'], 1)  # would edit
-
-    _run_command([cl, 'wedit', '--unfreeze'])
+    
+    # Can't re-freeze a frozen worksheet
+    _run_command([cl, 'wedit', '--freeze'], 1)
 
     # After unfreezing: can modify everything
+    _run_command([cl, 'wedit', '--unfreeze'])
     _run_command([cl, 'detach', uuid1])  # would remove an item
     _run_command([cl, 'rm', uuid1])  # would remove an item
     _run_command([cl, 'add', 'text', 'message'])  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
     _run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
 
-    # Verify that we can make multiple edits to a frozen worksheet,
-    # as long as we unfreeze at the same time.
+    # Verify that we can make an edit to a frozen worksheet,
+    # as long as we unfreeze at the same time
     _run_command([cl, 'wedit', '--freeze'])
-    # Can't re-freeze a frozen worksheet
-    _run_command([cl, 'wedit', '--freeze'], 1)
-    _run_command([cl, 'wedit', '--freeze', '-t', 'new_title'], 1)  # would edit
     _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
     # can edit if we unfreeze at the same time
     _run_command([cl, 'wedit', '-t', 'new_title', '--unfreeze'])
