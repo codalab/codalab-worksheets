@@ -198,6 +198,8 @@ class BundleSchema(Schema):
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
+    storage_type = fields.String()
+    is_dir = fields.Bool()
     metadata = fields.Dict(values=fields.String(validate=validate_ascii))
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(

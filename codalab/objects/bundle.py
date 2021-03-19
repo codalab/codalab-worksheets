@@ -28,6 +28,8 @@ class Bundle(ORMObject):
         'owner_id',
         'frozen',
         'is_anonymous',
+        'storage_type',
+        'is_dir',
     )
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type

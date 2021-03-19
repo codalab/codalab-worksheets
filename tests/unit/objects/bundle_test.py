@@ -49,6 +49,8 @@ class BundleTest(unittest.TestCase):
             owner_id=0,
             frozen=None,
             is_anonymous=False,
+            storage_type=None,
+            is_dir=None,
             # worker_command=self.worker_command,
         )
 
