@@ -1,38 +1,30 @@
-import React, { useState, useEffect, forwardRef } from 'react';
-import $ from 'jquery';
+import React, { useState, forwardRef } from 'react';
 import queryString from 'query-string';
 import './PlaceholderItem.scss';
-import { semaphore } from '../../../util/async_loading_utils';
+import useSWR from 'swr';
 
-async function fetchData({ worksheetUUID, directive }) {
-    return semaphore.use(async () => {
-        const queryParams = {
-            directive,
-        };
-        const info = await $.ajax({
-            type: 'GET',
-            url:
-                '/rest/interpret/worksheet/' +
-                worksheetUUID +
-                '?' +
-                queryString.stringify(queryParams),
-            async: true,
-            dataType: 'json',
-            cache: false,
-        });
-        return info;
+const fetcher = (url) =>
+    fetch(url, {
+        type: 'GET',
+        async: true,
+        dataType: 'json',
+    }).then((r) => {
+        return r.json();
     });
-}
 
 export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
     const { directive, sort_keys } = props.item;
-    useEffect(() => {
-        (async function() {
+
+    const url =
+        '/rest/interpret/worksheet/' + worksheetUUID + '?' + queryString.stringify({ directive });
+
+    useSWR(url, () => fetcher(url), {
+        onSuccess: (data, key, config) => {
+            const blocks = data.blocks;
             try {
-                const { blocks } = await fetchData({ directive, worksheetUUID });
                 setItem(blocks.length === 0 ? null : blocks[0]);
                 if (blocks.length > 0) {
                     let actualBlock = blocks[0];
@@ -47,10 +39,8 @@ export default forwardRef((props, ref) => {
                 console.error(e);
                 setError(e);
             }
-        })();
-        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [directive, onAsyncItemLoad, sort_keys, worksheetUUID]);
+        },
+    });
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
