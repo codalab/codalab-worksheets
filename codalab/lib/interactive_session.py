@@ -151,7 +151,7 @@ class InteractiveSession:
             f'--name {name}',
             f'-w {container_work_dir}',
             f'--env HOME={container_work_dir}',
-            '-u 1',
+            '-u 0',
         ]
         command.extend(
             [
@@ -160,13 +160,15 @@ class InteractiveSession:
                 for docker_path, local_path in volumes.items()
             ]
         )
+
+        bash_history_container_path = os.path.join(container_work_dir, '.bash_history')
         command.append(
             '-v {}:{}:rw'.format(
-                self._host_bash_history_path, os.path.join(container_work_dir, '.bash_history')
+                self._host_bash_history_path, bash_history_container_path
             )
         )
         command.append(self._docker_image)
-        command.append(f'chmod +w {container_work_dir} && bash')
+        command.append(f'chmod o+r {bash_history_container_path} && bash')
         return ' '.join(command)
 
     def cleanup(self):
