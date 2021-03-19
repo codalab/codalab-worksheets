@@ -246,6 +246,7 @@ class DockerImageManager:
                         self.generator = self._docker.api.pull(image_spec, stream=True, decode=True)
                         for line in self.generator:
                             self._downloading[image_spec]['status'] = ''
+                            # Set the status to the percent completed
                             if line['status'] == 'Downloading':
                                 self._downloading[image_spec]['status'] = ' (%d%%)' % (
                                     line['progressDetail']['current']
