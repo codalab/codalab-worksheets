@@ -150,7 +150,7 @@ class InteractiveSession:
             '-it',
             f'--name {name}',
             f'-w {container_work_dir}',
-            f'-env HOME={container_work_dir}',
+            f'--env HOME={container_work_dir}',
             '-u 1',
         ]
         command.extend(
