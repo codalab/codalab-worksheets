@@ -138,8 +138,8 @@ class RunBundleBuilder extends React.Component<Props> {
         for (var i = 0; i < dependencyKeyList.length; i++) {
             var key = dependencyKeyList[i];
             var target = selectedDependencies[i];
-            var shortUuid = shorten_uuid(target.uuid);
-            target = target.path === '' ? shortUuid : shortUuid + '/' + target.path;
+            var uuid = target.uuid;
+            target = target.path === '' ? uuid : uuid + '/' + target.path;
             clCommand.push(key + ':' + target);
         }
         if (command !== null) clCommand.push(command);
