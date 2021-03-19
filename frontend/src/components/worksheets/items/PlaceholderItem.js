@@ -39,18 +39,19 @@ export default forwardRef((props, ref) => {
         '/rest/interpret/worksheet/' + worksheetUUID + '?' + queryString.stringify({ directive });
     // use data stored in cache
 
-        useEffect(() => {if (cache.has(url)) {
+    useEffect(() => {
+        if (cache.has(url)) {
             setBlocks(cache.get(url));
-        }});
+        }
+    });
 
-        // fetch data only once
-        useSWR(url, fetcher, {
-            revalidateOnMount: !cache.has(url),
-            onSuccess: (data, key, config) => {
-                setBlocks(data);
-            },
-        });
-
+    // fetch data only once
+    useSWR(url, fetcher, {
+        revalidateOnMount: !cache.has(url),
+        onSuccess: (data, key, config) => {
+            setBlocks(data);
+        },
+    });
 
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
