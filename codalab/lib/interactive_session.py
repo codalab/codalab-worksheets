@@ -31,7 +31,7 @@ class InteractiveSession:
         9. Stop and remove the interactive session container.
     """
 
-    _BASH_HISTORY_CONTAINER_PATH = "/root/.bash_history"
+    _BASH_HISTORY_CONTAINER_PATH = "/usr/sbin/.bash_history"
     _CHOOSE_COMMAND_INSTRUCTIONS = (
         "\n\n#\n"
         "# Choose the commands to use for cl run:\n"
@@ -149,8 +149,7 @@ class InteractiveSession:
             '-it',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
-            # TODO: figure out a way to run as a non-root user and be able to save the bash_history on any machine
-            # '-u 1',
+            '-u 1',
         ]
         command.extend(
             [
