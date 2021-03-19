@@ -48,6 +48,8 @@ class BundleTest(unittest.TestCase):
             dependencies=[],
             owner_id=0,
             is_anonymous=False,
+            storage_type=None,
+            is_dir=None,
             # worker_command=self.worker_command,
         )
 
