@@ -166,7 +166,7 @@ class InteractiveSession:
             )
         )
         command.append(self._docker_image)
-        command.append('bash')
+        command.append(f'chmod +w {container_work_dir} && bash')
         return ' '.join(command)
 
     def cleanup(self):
