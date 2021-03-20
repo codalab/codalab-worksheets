@@ -7,7 +7,7 @@
 # Only for development
 -r requirements.dev.txt
 
-boto3==1.15.7
+boto3==1.17.33
 azure-batch==9.0.0
 
 # For testing
