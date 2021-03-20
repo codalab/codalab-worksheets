@@ -80,7 +80,8 @@ jobs:
     strategy:
       matrix:
         test:
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
+          - refs binary rm make worksheet_search worksheet_tags worksheet_freeze_unfreeze detach perm search_time groups
           - worker_manager service
           - run
           - run2
@@ -237,7 +238,8 @@ jobs:
     strategy:
       matrix:
         test:
-          - basic status batch anonymous competition unicode rest1 upload1 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - basic status batch anonymous competition unicode rest1 upload1 download
+          - refs binary rm make worksheet_search worksheet_tags worksheet_freeze_unfreeze detach perm search_time groups
           - run
           - search read kill write mimic workers
           - copy netcat
