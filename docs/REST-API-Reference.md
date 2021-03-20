@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.40_
+_version 0.5.43_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -220,6 +220,8 @@ Name | Type
 `state` | String
 `owner` | Relationship([users](#users))
 `is_anonymous` | Boolean
+`storage_type` | String
+`is_dir` | Boolean
 `metadata` | Dict
 `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
 `children` | Relationship([bundles](#bundles))
@@ -395,6 +397,8 @@ Query parameters:
 - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
   as an item immediately after this bundle in its parent worksheet).
 - `detached`: 1 if should not add new bundle to any worksheet,
+  so the bundle does not have a hosted worksheet.
+  This is set to 1, for example, if the user is uploading their avatar as a bundle.
   or 0 otherwise. Default is 0.
 - `wait_for_upload`: 1 if the bundle state should be initialized to
   "uploading" regardless of the bundle type, or 0 otherwise. Used when

@@ -128,7 +128,8 @@ class NewUpload extends React.Component<{
         let promises = [...files].map(async file => {
             const createBundleData = getDefaultBundleMetadata(name || file.name, description);
             let url = `/rest/bundles?worksheet=${ worksheetUUID }`;
-            if (after_sort_key) {
+            // after_sort_key can be equal to 0
+            if (after_sort_key || after_sort_key === 0) {
                 url += `&after_sort_key=${ after_sort_key }`;
             }
             async function createFileBundle(url, data) {
@@ -287,6 +288,8 @@ class NewUpload extends React.Component<{
         return (
             <React.Fragment>
                 <input
+                    key={this.props.after_sort_key} // force the NewUpload to update when the focused item changes
+
                     type="file"
                     id="codalab-file-upload-input"
                     multiple={true}

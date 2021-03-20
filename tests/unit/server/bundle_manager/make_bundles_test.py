@@ -59,8 +59,6 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
         bundle, parent = self.create_bundle_single_dep(
             bundle_type=MakeBundle, bundle_state=State.STAGED
         )
-        self.save_bundle(parent)
-        self.save_bundle(bundle)
 
         self.make_bundles_and_wait()
 
@@ -73,9 +71,6 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
     def test_multiple_dependencies(self):
         """A MakeBundle with two dependencies should be made."""
         bundle, parent1, parent2 = self.create_bundle_two_deps()
-        self.save_bundle(bundle)
-        self.save_bundle(parent1)
-        self.save_bundle(parent2)
 
         self.make_bundles_and_wait()
 
