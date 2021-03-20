@@ -333,9 +333,10 @@ Usage: `cl <command> <arguments>`
       -t, --title       Change title of worksheet.
       -T, --tags        Change tags (must appear after worksheet_spec).
       -o, --owner-spec  Change owner of worksheet.
-      --freeze          Freeze worksheet to prevent future modification (PERMANENT!).
+      --freeze          Freeze worksheet to prevent future modification.
+      --unfreeze        Unfreeze worksheet to allow future modification.
       --anonymous       Set worksheet to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the worksheet).
-      --not-anonymous   Set bundle to be NOT anonymous.
+      --not-anonymous   Set worksheet to be NOT anonymous.
       -f, --file        Replace the contents of the current worksheet with this file.
 
 ### wrm
