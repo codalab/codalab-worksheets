@@ -24,7 +24,7 @@ from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
-from .worker_run_state import RunStateMachine, RunStage, RunState
+from .worker_run_state import RunStateMachine, RunStage, RunState, BundleProfileStats
 from .reader import Reader
 
 logger = logging.getLogger(__name__)
@@ -476,6 +476,8 @@ class Worker:
         for uuid in self.runs:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
+            # all the _replace calls for the namedtuple are propogated here
+            self.save_time_stats(uuid, run_state)
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
@@ -622,6 +624,7 @@ class Worker:
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
+                bundle_profile_stats=BundleProfileStats(),
                 resources=resources,
                 bundle_start_time=time.time(),
                 container_time_total=0,
@@ -643,6 +646,7 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
+            self.runs[bundle.uuid].bundle_profile_stats.stages[self.runs[bundle.uuid].stage].start()
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
@@ -758,6 +762,11 @@ class Worker:
             self.bundle_service.reply_data(self.id, socket_id, message, data)
         else:
             self.bundle_service.reply(self.id, socket_id, message)
+
+    # this is sus. is there a better way to do this?
+    def save_time_stats(self, uuid, from_stage):
+        self.runs[uuid].bundle_profile_stats.stages[from_stage].finished()
+        self.runs[uuid].bundle_profile_stats.stages[self.runs[uuid].stage].start()
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):

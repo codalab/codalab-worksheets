@@ -103,8 +103,39 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
+        'bundle_profile_stats',  # BundleProfileStats
     ],
 )
+
+class StageStats(object):
+
+    def __init__(self):
+        self.start = 0
+        self.end = 0
+
+    def elapsed(self):
+        return self.end - self.start
+
+    def start(self):
+        self.start = time.time()
+
+    def finished(self):
+        self.end = time.time()
+
+
+# todo is there a better data structure to hold this?
+class BundleProfileStats(object):
+
+    def __init__(self):
+        self.stages = {
+            'PREPARING': StageStats(),
+            'RUNNING': StageStats(),
+            'CLEANING_UP': StageStats(),
+            'UPLOADING_RESULTS': StageStats(),
+            'FINALIZING': StageStats()
+        }
+
+
 
 """Dependency that is mounted.
 
