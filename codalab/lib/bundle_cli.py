@@ -1268,6 +1268,13 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
+            Commands.Argument(
+                '-a',
+                '--use-azure-blob-beta',
+                help='Use Azure Blob Storage to store files (beta feature).',
+                action='store_true',
+                default=False,
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1323,6 +1330,7 @@ class BundleCLI(object):
                     'unpack': False,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1340,6 +1348,7 @@ class BundleCLI(object):
                     'git': args.git,
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
+                    'use_azure_blob_beta': args.use_azure_blob_beta,
                 },
             )
 
@@ -1396,6 +1405,7 @@ class BundleCLI(object):
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
+                        'use_azure_blob_beta': args.use_azure_blob_beta,
                     },
                     progress_callback=progress.update,
                 )
@@ -2500,7 +2510,7 @@ class BundleCLI(object):
         info = self.print_target_info(client, target, head=args.head, tail=args.tail)
         if info is None:
             raise UsageError(
-                'Target {} doesn\'t exist in bundle {}'.format(target.subpath, target.bundle_uuid)
+                "Target '{}' doesn't exist in bundle {}".format(target.subpath, target.bundle_uuid)
             )
 
     # Helper: shared between info and cat
@@ -3166,7 +3176,12 @@ class BundleCLI(object):
             Commands.Argument('-o', '--owner-spec', help='Change owner of worksheet.'),
             Commands.Argument(
                 '--freeze',
-                help='Freeze worksheet to prevent future modification (PERMANENT!).',
+                help='Freeze worksheet to prevent future modification.',
+                action='store_true',
+            ),
+            Commands.Argument(
+                '--unfreeze',
+                help='Unfreeze worksheet to allow future modification.',
                 action='store_true',
             ),
             Commands.Argument(
@@ -3178,7 +3193,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--not-anonymous',
-                help='Set bundle to be NOT anonymous.',
+                help='Set worksheet to be NOT anonymous.',
                 dest='anonymous',
                 action='store_false',
             ),
@@ -3197,9 +3212,13 @@ class BundleCLI(object):
             worksheet_uuid,
             params={'include': ['items', 'items.bundle', 'items.subworksheet']},
         )
-        if args.freeze or any(
-            arg is not None
-            for arg in (args.name, args.title, args.tags, args.owner_spec, args.anonymous)
+        if (
+            args.freeze
+            or args.unfreeze
+            or any(
+                arg is not None
+                for arg in (args.name, args.title, args.tags, args.owner_spec, args.anonymous)
+            )
         ):
             # Update the worksheet metadata.
             info = {'id': worksheet_info['id']}
@@ -3214,6 +3233,8 @@ class BundleCLI(object):
                 info['owner'] = JsonApiRelationship('users', owner['id'])
             if args.freeze:
                 info['frozen'] = datetime.datetime.utcnow().isoformat()
+            if args.unfreeze:
+                info['frozen'] = None
             if args.anonymous is not None:
                 info['is_anonymous'] = args.anonymous
 

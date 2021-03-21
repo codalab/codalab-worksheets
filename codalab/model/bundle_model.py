@@ -1208,6 +1208,10 @@ class BundleModel(object):
             return dict((r.uuid, r.state) for r in rows)
 
     def get_bundle_storage_info(self, uuid):
+        """
+        Return (storage_type, is_dir) for the bundle
+        with the given uuid.
+        """
         result_dict = self.get_bundle_storage_infos([uuid])
         if uuid not in result_dict:
             return None, None
