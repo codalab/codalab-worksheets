@@ -39,7 +39,7 @@ from distutils.util import strtobool
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
-from codalab.lib.bundle_store import MultiDiskBundleStore, MultiDiskBundleStoreWithBlobStorage
+from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
