@@ -248,13 +248,9 @@ class CodaLabManager(object):
         depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
         MultiDiskBundleStore.
         """
-        store_type = self.config.get('bundle_store', 'MultiDiskBundleStoreWithBlobStorage')
+        store_type = self.config.get('bundle_store', 'MultiDiskBundleStore')
         if store_type == MultiDiskBundleStore.__name__:
             return MultiDiskBundleStore(self.model(), self.codalab_home)
-        elif store_type == MultiDiskBundleStoreWithBlobStorage.__name__:
-            return MultiDiskBundleStoreWithBlobStorage(
-                self.model(), self.codalab_home, AZURE_BLOB_ACCOUNT_NAME
-            )
         else:
             print("Invalid bundle store type \"%s\"", store_type, file=sys.stderr)
             sys.exit(1)
