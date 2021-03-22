@@ -626,14 +626,23 @@ class Worker:
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
+                # bundle_profile_stats={
+                #     RunStage.PREPARING: vars(StageStats()),  # type:  StageStats
+                #     RunStage.RUNNING: vars(StageStats()),  # type:  StageStats
+                #     RunStage.CLEANING_UP: vars(StageStats()),  # type:  StageStats
+                #     RunStage.UPLOADING_RESULTS: vars(StageStats()),  # type:  StageStats
+                #     RunStage.FINALIZING: vars(StageStats()),  # type:  StageStats
+                #     RunStage.FINISHED: vars(StageStats()),  # type:  StageStats
+                #     RunStage.RESTAGED: vars(StageStats())  # type:  StageStats
+                # },
                 bundle_profile_stats={
-                    RunStage.PREPARING: StageStats(),  # type:  StageStats
-                    RunStage.RUNNING: StageStats(),  # type:  StageStats
-                    RunStage.CLEANING_UP: StageStats(),  # type:  StageStats
-                    RunStage.UPLOADING_RESULTS: StageStats(),  # type:  StageStats
-                    RunStage.FINALIZING: StageStats(),  # type:  StageStats
-                    RunStage.FINISHED: StageStats(),  # type:  StageStats
-                    RunStage.RESTAGED: StageStats()  # type:  StageStats
+                    RunStage.PREPARING: self.initstats(),
+                    RunStage.RUNNING: self.initstats(),
+                    RunStage.CLEANING_UP: self.initstats(),
+                    RunStage.UPLOADING_RESULTS: self.initstats(),
+                    RunStage.FINALIZING: self.initstats(),
+                    RunStage.FINISHED: self.initstats(),
+                    RunStage.RESTAGED: self.initstats()
                 },
                 resources=resources,
                 bundle_start_time=time.time(),
@@ -657,7 +666,7 @@ class Worker:
                 is_restaged=False,
             )
             self.start_stage(bundle.uuid, RunStage.PREPARING)
-            logger.debug("FUCK YOu")
+            logger.debug(self.runs[bundle.uuid].bundle_profile_stats)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
@@ -785,7 +794,7 @@ class Worker:
         # and then it tries to read them here
 
     def start_stage(self, uuid, stage):
-        # setattr(self.runs[uuid].bundle_profile_stats[stage], 'start', time.time())
+        setattr(self.runs[uuid].bundle_profile_stats[stage], 'start', time.time())
         logger.debug(self.runs[uuid].bundle_profile_stats)
         logger.debug("YO")
 
@@ -794,6 +803,13 @@ class Worker:
         logger.debug("ending")
         setattr(self.runs[uuid].bundle_profile_stats[stage], 'end', time.time())
         setattr(self.runs[uuid].bundle_profile_stats[stage], 'elapsed', self.runs[uuid].bundle_profile_stats[stage]['end'] - self.runs[uuid].bundle_profile_stats[stage]['start'])
+
+    def initstats(self):
+        return {
+            'start': 0,
+            'end': 0,
+            'elapsed': -1
+        }
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):

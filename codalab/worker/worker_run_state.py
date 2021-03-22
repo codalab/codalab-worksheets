@@ -122,6 +122,13 @@ class StageStats:
     # def finished(self):
     #     self.end = time.time()
 
+    @property
+    def as_dict(self):
+        return generic_to_dict(self)
+
+    def __str__(self):
+        return str(self.as_dict)
+
 
 
 
