@@ -24,7 +24,7 @@ from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
-from .worker_run_state import RunStateMachine, RunStage, RunState, BundleProfileStats
+from .worker_run_state import RunStateMachine, RunStage, RunState, StageStats
 from .reader import Reader
 
 logger = logging.getLogger(__name__)
@@ -185,10 +185,11 @@ class Worker:
         # Remove complex container objects from state before serializing, these can be retrieved
         runs = {
             uuid: state._replace(
-                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict
+                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
             )
             for uuid, state in self.runs.items()
         }
+        logger.debug(runs)
         self.state_committer.commit(runs)
 
     def load_state(self):
@@ -477,6 +478,7 @@ class Worker:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
             # all the _replace calls for the namedtuple are propogated here
+            logger.debug(run_state)
             self.save_time_stats(uuid, run_state)
 
         # 2. filter out finished runs and clean up containers
@@ -624,7 +626,15 @@ class Worker:
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
-                bundle_profile_stats=BundleProfileStats(),
+                bundle_profile_stats={
+                    RunStage.PREPARING: StageStats(),  # type:  StageStats
+                    RunStage.RUNNING: StageStats(),  # type:  StageStats
+                    RunStage.CLEANING_UP: StageStats(),  # type:  StageStats
+                    RunStage.UPLOADING_RESULTS: StageStats(),  # type:  StageStats
+                    RunStage.FINALIZING: StageStats(),  # type:  StageStats
+                    RunStage.FINISHED: StageStats(),  # type:  StageStats
+                    RunStage.RESTAGED: StageStats()  # type:  StageStats
+                },
                 resources=resources,
                 bundle_start_time=time.time(),
                 container_time_total=0,
@@ -646,7 +656,8 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
-            self.runs[bundle.uuid].bundle_profile_stats.stages[self.runs[bundle.uuid].stage].start()
+            self.start_stage(bundle.uuid, RunStage.PREPARING)
+            logger.debug("FUCK YOu")
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
@@ -765,8 +776,24 @@ class Worker:
 
     # this is sus. is there a better way to do this?
     def save_time_stats(self, uuid, from_stage):
-        self.runs[uuid].bundle_profile_stats.stages[from_stage].finished()
-        self.runs[uuid].bundle_profile_stats.stages[self.runs[uuid].stage].start()
+        # self.runs[uuid].bundle_profile_stats.stages[from_stage.stage].finished()
+        self.end_stage(uuid, from_stage.stage)
+        # self.runs[uuid].bundle_profile_stats.stages[self.runs[uuid].stage].begin()
+        self.start_stage(uuid, self.runs[uuid].stage)
+        # todo:
+        # annoying because runs gets overwritten with the dict values for bundle_profile_stats,
+        # and then it tries to read them here
+
+    def start_stage(self, uuid, stage):
+        # setattr(self.runs[uuid].bundle_profile_stats[stage], 'start', time.time())
+        logger.debug(self.runs[uuid].bundle_profile_stats)
+        logger.debug("YO")
+
+    def end_stage(self, uuid, stage):
+        logger.debug(self.runs[uuid])
+        logger.debug("ending")
+        setattr(self.runs[uuid].bundle_profile_stats[stage], 'end', time.time())
+        setattr(self.runs[uuid].bundle_profile_stats[stage], 'elapsed', self.runs[uuid].bundle_profile_stats[stage]['end'] - self.runs[uuid].bundle_profile_stats[stage]['start'])
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
-from codalab.worker.bundle_state import State, DependencyKey
+from codalab.worker.bundle_state import State, DependencyKey, generic_to_dict
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
 
@@ -103,37 +103,25 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
-        'bundle_profile_stats',  # BundleProfileStats
+        'bundle_profile_stats',  # dict
     ],
 )
 
-class StageStats(object):
-
+class StageStats:
     def __init__(self):
-        self.start = 0
-        self.end = 0
+        self.start = 0  # type: int
+        self.end = 0  # type: int
+        self.elapsed = -1  # type: int
 
-    def elapsed(self):
-        return self.end - self.start
+    # def elapsed(self):
+    #     return self.end - self.start
+    #
+    # def begin(self):
+    #     self.start = time.time()
+    #
+    # def finished(self):
+    #     self.end = time.time()
 
-    def start(self):
-        self.start = time.time()
-
-    def finished(self):
-        self.end = time.time()
-
-
-# todo is there a better data structure to hold this?
-class BundleProfileStats(object):
-
-    def __init__(self):
-        self.stages = {
-            'PREPARING': StageStats(),
-            'RUNNING': StageStats(),
-            'CLEANING_UP': StageStats(),
-            'UPLOADING_RESULTS': StageStats(),
-            'FINALIZING': StageStats()
-        }
 
 
 
