@@ -478,7 +478,6 @@ class Worker:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
             # all the _replace calls for the namedtuple are propogated here
-            logger.debug(run_state)
             self.save_time_stats(uuid, run_state)
 
         # 2. filter out finished runs and clean up containers
@@ -626,15 +625,6 @@ class Worker:
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
-                # bundle_profile_stats={
-                #     RunStage.PREPARING: vars(StageStats()),  # type:  StageStats
-                #     RunStage.RUNNING: vars(StageStats()),  # type:  StageStats
-                #     RunStage.CLEANING_UP: vars(StageStats()),  # type:  StageStats
-                #     RunStage.UPLOADING_RESULTS: vars(StageStats()),  # type:  StageStats
-                #     RunStage.FINALIZING: vars(StageStats()),  # type:  StageStats
-                #     RunStage.FINISHED: vars(StageStats()),  # type:  StageStats
-                #     RunStage.RESTAGED: vars(StageStats())  # type:  StageStats
-                # },
                 bundle_profile_stats={
                     RunStage.PREPARING: self.initstats(),
                     RunStage.RUNNING: self.initstats(),
@@ -665,8 +655,8 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
-            self.start_stage(bundle.uuid, RunStage.PREPARING)
             logger.debug(self.runs[bundle.uuid].bundle_profile_stats)
+            self.start_stage(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
@@ -783,26 +773,17 @@ class Worker:
         else:
             self.bundle_service.reply(self.id, socket_id, message)
 
-    # this is sus. is there a better way to do this?
     def save_time_stats(self, uuid, from_stage):
-        # self.runs[uuid].bundle_profile_stats.stages[from_stage.stage].finished()
         self.end_stage(uuid, from_stage.stage)
-        # self.runs[uuid].bundle_profile_stats.stages[self.runs[uuid].stage].begin()
         self.start_stage(uuid, self.runs[uuid].stage)
-        # todo:
-        # annoying because runs gets overwritten with the dict values for bundle_profile_stats,
-        # and then it tries to read them here
 
     def start_stage(self, uuid, stage):
-        setattr(self.runs[uuid].bundle_profile_stats[stage], 'start', time.time())
-        logger.debug(self.runs[uuid].bundle_profile_stats)
-        logger.debug("YO")
+        self.runs[uuid].bundle_profile_stats[stage]['start'] = time.time()
 
     def end_stage(self, uuid, stage):
-        logger.debug(self.runs[uuid])
-        logger.debug("ending")
-        setattr(self.runs[uuid].bundle_profile_stats[stage], 'end', time.time())
-        setattr(self.runs[uuid].bundle_profile_stats[stage], 'elapsed', self.runs[uuid].bundle_profile_stats[stage]['end'] - self.runs[uuid].bundle_profile_stats[stage]['start'])
+        self.runs[uuid].bundle_profile_stats[stage]['end'] = time.time()
+        self.runs[uuid].bundle_profile_stats[stage]['elapsed'] = self.runs[uuid].bundle_profile_stats[stage]['end'] - self.runs[uuid].bundle_profile_stats[stage]['start']
+
 
     def initstats(self):
         return {
