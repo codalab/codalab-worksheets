@@ -157,6 +157,14 @@ class NavBar extends React.Component<{
         </div>
     );
 
+    categoryRenderer = ({ name }) => {
+        return (
+            <Link to={`/users/${name}`}>
+                <div>{name}</div>
+            </Link>
+        );
+    };
+
     handleSearchFocus = () => {
         // Disable the terminal to avoid the search bar text being mirrored in the terminal
         if (
@@ -339,6 +347,7 @@ class NavBar extends React.Component<{
                                     onFocus={this.handleSearchFocus}
                                     placeholder='search worksheets...'
                                     resultRenderer={this.resultRenderer}
+                                    categoryRenderer={this.categoryRenderer}
                                     results={results}
                                     value={value}
                                     showNoResults={true}
