@@ -159,7 +159,7 @@ class NavBar extends React.Component<{
 
     categoryRenderer = ({ name }) => {
         return (
-            <Link to={`/users/${name}`}>
+            <Link target='_blank' to={`/users/${name}`}>
                 <div>{name}</div>
             </Link>
         );
