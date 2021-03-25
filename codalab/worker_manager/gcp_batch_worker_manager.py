@@ -98,7 +98,7 @@ class GCPBatchWorkerManager(WorkerManager):
             pods: client.V1PodList = self.k8_api.list_namespaced_pod(
                 'default', field_selector='status.phase==Running'
             )
-            print(pods.items)
+            logger.debug(pods.items)
             return [WorkerJob(True) for _ in pods.items]
         except client.ApiException as e:
             logger.error(f'Exception when calling Kubernetes CoreV1Api->list_namespaced_pod: {e}')
