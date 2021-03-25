@@ -933,6 +933,7 @@ class BundleModel(object):
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
+        logger.debug(worker_run)
         metadata_update = {
             'run_status': worker_run.run_status,
             'last_updated': int(time.time()),

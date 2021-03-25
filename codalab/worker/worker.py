@@ -189,7 +189,6 @@ class Worker:
             )
             for uuid, state in self.runs.items()
         }
-        logger.debug(runs)
         self.state_committer.commit(runs)
 
     def load_state(self):
@@ -557,6 +556,7 @@ class Worker:
                 remote=self.id,
                 exitcode=run_state.exitcode,
                 failure_message=run_state.failure_message,
+                bundle_profile_stats=run_state.bundle_profile_stats,
             )
             for run_state in self.runs.values()
         ]
