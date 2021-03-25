@@ -47,7 +47,6 @@ from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
-from codalab.lib.beam.filesystems import AZURE_BLOB_ACCOUNT_NAME
 
 MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
