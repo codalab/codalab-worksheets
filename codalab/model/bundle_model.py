@@ -988,7 +988,7 @@ class BundleModel(object):
             If the user running the bundle was the CodaLab root user,
             increments the time used by the bundle owner.
         """
-        failure_message, exitcode, bundle_stats = worker_run.failure_message, worker_run.exitcode, worker_run.bundle_profile_stats
+        failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
         # Build metadata
@@ -997,8 +997,6 @@ class BundleModel(object):
             metadata['failure_message'] = failure_message
         if exitcode is not None:
             metadata['exitcode'] = exitcode
-        if bundle_stats is not None:
-            metadata['bundle_profile_stats'] = bundle_stats
 
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 

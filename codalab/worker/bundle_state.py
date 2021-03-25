@@ -188,7 +188,6 @@ class BundleCheckinState(object):
         remote,  # type: str
         exitcode,  # type: Optional[str]
         failure_message,  # type: Optional[str]
-        bundle_profile_stats,  #  type: dict
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -201,7 +200,6 @@ class BundleCheckinState(object):
         self.remote = remote
         self.exitcode = exitcode
         self.failure_message = failure_message
-        self.bundle_profile_stats = bundle_profile_stats
 
     @classmethod
     def from_dict(cls, dct):
@@ -217,7 +215,6 @@ class BundleCheckinState(object):
             remote=dct['remote'],
             exitcode=dct['exitcode'],
             failure_message=dct['failure_message'],
-            # bundle_profile_stats=dct['bundle_profile_stats'],
         )
 
     @property

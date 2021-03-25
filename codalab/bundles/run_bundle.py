@@ -47,12 +47,6 @@ class RunBundle(DerivedBundle):
                                        formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of user time (seconds) used by this run.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of system time (seconds) used by this run.', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_preparing', float, 'Amount of system time in the PREPARING stage', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_running', float, 'Amount of system time in the RUNNING stage', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_cleaning_up', float, 'Amount of system time in the CLEANING_UP stage', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_uploading_results', float, 'Amount of system time in the UPLOADING_RESULTS stage', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_finalizing', float, 'Amount of system time in the FINALIZING stage', generated=True, formatting='duration'))
-
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('memory_max', float, 'Maximum amount of memory (bytes) used by this run at any time during execution.', generated=True, formatting='size'))
 
