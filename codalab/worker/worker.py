@@ -189,7 +189,6 @@ class Worker:
             )
             for uuid, state in self.runs.items()
         }
-        logger.debug(runs)
         self.state_committer.commit(runs)
 
     def load_state(self):
@@ -422,6 +421,7 @@ class Worker:
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
             'is_terminating': self.terminate or self.terminate_and_restage,
         }
+        logger.debug(request)
         try:
             response = self.bundle_service.checkin(self.id, request)
             if not self.last_checkin_successful:
@@ -473,11 +473,12 @@ class Worker:
         self.run_state_manager.docker_network_external = self.docker_network_external
         self.run_state_manager.docker_network_internal = self.docker_network_internal
 
-        # 1. transition all runs
+        # 1. transition alzl runs
         for uuid in self.runs:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
             # all the _replace calls for the namedtuple are propogated here
+            logger.debug(run_state.stage)
             self.save_time_stats(uuid, run_state)
 
         # 2. filter out finished runs and clean up containers
@@ -557,6 +558,7 @@ class Worker:
                 remote=self.id,
                 exitcode=run_state.exitcode,
                 failure_message=run_state.failure_message,
+                bundle_profile_stats=run_state.bundle_profile_stats,
             )
             for run_state in self.runs.values()
         ]
@@ -655,7 +657,6 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
-            logger.debug(self.runs[bundle.uuid].bundle_profile_stats)
             self.start_stage(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
