@@ -212,6 +212,10 @@ If you want to modify the database schema, use `alembic` to create a migration. 
         docker exec -ti codalab_mysql_1 bash
         mysql -u codalab -p codalab_bundles   # Type in `codalab` as the password
 
+If you want to undo the previously done migration, you can run:
+
+        docker exec codalab_rest-server_1 alembic downgrade -1
+
 # Production
 
 If you want to make the CodaLab instance more permanent and exposed to a larger

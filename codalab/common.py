@@ -9,11 +9,13 @@ import http.client
 import urllib.request
 import urllib.error
 
+from dataclasses import dataclass
 from retry import retry
+from enum import Enum
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.41'
+CODALAB_VERSION = '0.5.43'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
@@ -133,3 +135,83 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     :return: the response object
     """
     return urllib.request.urlopen(request, timeout=timeout)
+
+
+class StorageType(Enum):
+    """Possible storage types for bundles.
+    When updating this enum, sync it with with the enum in the storage_type column
+    in codalab.model.tables and add the appropriate migrations to reflect the column change.
+    """
+
+    DISK_STORAGE = "disk"
+    AZURE_BLOB_STORAGE = "azure_blob"
+
+
+class StorageURLScheme(Enum):
+    """Possible storage URL schemes. URLs for the
+    corresponding storage type will begin with the
+    scheme specified.
+    """
+
+    DISK_STORAGE = ""
+    AZURE_BLOB_STORAGE = "azfs://"
+
+
+@dataclass(frozen=True)
+class LinkedBundlePath:
+    """A LinkedBundlePath refers to a path that points to the location of a linked bundle within a specific storage location.
+    It can either point directly to the bundle, or to a file that is located within that bundle.
+    It is constructed by parsing a given bundle link URL by calling parse_bundle_url().
+
+    Attributes:
+        storage_type (StorageType): Which storage type is used to store this bundle.
+
+        bundle_path (str): Path to the bundle contents in that particular storage.
+
+        is_archive (bool): Whether this bundle is stored as a .tar.gz file on this storage medium stores folders. Only done currently by Azure Blob Storage.
+
+        uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
+
+        archive_subpath (str): If is_archive is True, returns the subpath within the archive file for the file that this BundlePath points to.
+
+        bundle_uuid (str): UUID of the bundle that this path refers to.
+    """
+
+    storage_type: StorageType
+    bundle_path: str
+    is_archive: bool
+    uses_beam: bool
+    archive_subpath: str
+    bundle_uuid: str
+
+
+def parse_linked_bundle_url(url):
+    """Parses a linked bundle URL. This bundle URL usually refers to:
+        - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz"
+        - a single file that is stored within a subpath of an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
+
+        Returns a LinkedBundlePath instance to encode this information.
+    """
+    if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+        uses_beam = True
+        storage_type = StorageType.AZURE_BLOB_STORAGE.value
+        url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
+        storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
+        bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
+        is_archive = contents_file.endswith(".tar.gz")
+        archive_subpath = remainder[0] if is_archive and len(remainder) else None
+    else:
+        storage_type = StorageType.DISK_STORAGE.value
+        bundle_path = url
+        is_archive = False
+        uses_beam = False
+        archive_subpath = None
+        bundle_uuid = None
+    return LinkedBundlePath(
+        storage_type=storage_type,
+        bundle_path=bundle_path,
+        is_archive=is_archive,
+        uses_beam=uses_beam,
+        archive_subpath=archive_subpath,
+        bundle_uuid=bundle_uuid,
+    )
