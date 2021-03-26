@@ -107,30 +107,6 @@ RunState = namedtuple(
     ],
 )
 
-class StageStats:
-    def __init__(self):
-        self.start = 0  # type: int
-        self.end = 0  # type: int
-        self.elapsed = -1  # type: int
-
-    # def elapsed(self):
-    #     return self.end - self.start
-    #
-    # def begin(self):
-    #     self.start = time.time()
-    #
-    # def finished(self):
-    #     self.end = time.time()
-
-    @property
-    def as_dict(self):
-        return generic_to_dict(self)
-
-    def __str__(self):
-        return str(self.as_dict)
-
-
-
 
 """Dependency that is mounted.
 

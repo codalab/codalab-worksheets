@@ -41,7 +41,6 @@ def checkin(worker_id):
         request.json.get("is_terminating", False),
     )
 
-    print(request.json["runs"])
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)

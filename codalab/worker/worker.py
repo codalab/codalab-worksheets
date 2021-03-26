@@ -24,7 +24,7 @@ from .docker_image_manager import DockerImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
-from .worker_run_state import RunStateMachine, RunStage, RunState, StageStats
+from .worker_run_state import RunStateMachine, RunStage, RunState
 from .reader import Reader
 
 logger = logging.getLogger(__name__)
@@ -632,7 +632,7 @@ class Worker:
                     RunStage.UPLOADING_RESULTS: self.initstats(),
                     RunStage.FINALIZING: self.initstats(),
                     RunStage.FINISHED: self.initstats(),
-                    RunStage.RESTAGED: self.initstats()
+                    RunStage.RESTAGED: self.initstats(),
                 },
                 resources=resources,
                 bundle_start_time=time.time(),
@@ -782,15 +782,13 @@ class Worker:
 
     def end_stage(self, uuid, stage):
         self.runs[uuid].bundle_profile_stats[stage]['end'] = time.time()
-        self.runs[uuid].bundle_profile_stats[stage]['elapsed'] = self.runs[uuid].bundle_profile_stats[stage]['end'] - self.runs[uuid].bundle_profile_stats[stage]['start']
-
+        self.runs[uuid].bundle_profile_stats[stage]['elapsed'] = (
+            self.runs[uuid].bundle_profile_stats[stage]['end']
+            - self.runs[uuid].bundle_profile_stats[stage]['start']
+        )
 
     def initstats(self):
-        return {
-            'start': 0,
-            'end': 0,
-            'elapsed': -1
-        }
+        return {'start': 0, 'end': 0, 'elapsed': -1}
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):
