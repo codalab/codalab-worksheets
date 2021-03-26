@@ -13,7 +13,7 @@ from pathlib import Path
 
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
-from codalab.worker.bundle_state import State, DependencyKey, generic_to_dict
+from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
 
@@ -106,7 +106,6 @@ RunState = namedtuple(
         'bundle_profile_stats',  # dict
     ],
 )
-
 
 """Dependency that is mounted.
 

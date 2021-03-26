@@ -655,7 +655,6 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
-            logger.debug(self.runs[bundle.uuid].bundle_profile_stats)
             self.start_stage(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
