@@ -188,7 +188,7 @@ class BundleCheckinState(object):
         remote,  # type: str
         exitcode,  # type: Optional[str]
         failure_message,  # type: Optional[str]
-        bundle_profile_stats,  #  type: dict
+        bundle_profile_stats,  # type: dict
     ):
         self.uuid = uuid
         self.run_status = run_status

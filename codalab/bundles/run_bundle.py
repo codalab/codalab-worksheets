@@ -55,9 +55,9 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('run_status', str, 'Execution status of the bundle.', generated=True))
     METADATA_SPECS.append(MetadataSpec('staged_status', str, 'Information about the status of the staged bundle.', generated=True))
     METADATA_SPECS.append(MetadataSpec('time_preparing', float, 'Amount of system time in the PREPARING stage.', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_running', float, 'Amount of system time in the RUNNING stage.', generated=True,formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_cleaning_up', float, 'Amount of system time in the CLEANING_UP stage.', generated=True,formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_uploading_results', float, 'Amount of system time in the UPLOADING_RESULTS stage.',generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_running', float, 'Amount of system time in the RUNNING stage.', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_cleaning_up', float, 'Amount of system time in the CLEANING_UP stage.', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_uploading_results', float, 'Amount of system time in the UPLOADING_RESULTS stage.', generated=True, formatting='duration'))
 
     # Information about running
     METADATA_SPECS.append(MetadataSpec('docker_image', str, 'Which docker image was used to run the process.', generated=True, hide_when_anonymous=True))
