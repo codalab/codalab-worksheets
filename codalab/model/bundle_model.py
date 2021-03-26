@@ -946,6 +946,12 @@ class BundleModel(object):
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
 
+        if worker_run.bundle_profile_stats is not None:
+            metadata_update['time_preparing'] = worker_run.bundle_profile_stats['RUN_STAGE.PREPARING']
+            metadata_update['time_running'] = worker_run.bundle_profile_stats['RUN_STAGE.RUNNING']
+            metadata_update['time_cleaning_up'] = worker_run.bundle_profile_stats['RUN_STAGE.CLEANING_UP']
+            metadata_update['time_uploading_results'] = worker_run.bundle_profile_stats['RUN_STAGE.UPLOADING_RESULTS']
+
         self.update_bundle(
             bundle, {'state': worker_run.state, 'metadata': metadata_update}, connection
         )
