@@ -39,6 +39,9 @@ class GCPBatchWorkerManager(WorkerManager):
             help='Path to the GCP service account json file',
             required=True,
         )
+        subparser.add_argument(
+            '--cert-path', type=str, default='.', help='Path to the generated SSL cert.'
+        )
 
         # Job-related arguments
         subparser.add_argument(
@@ -49,11 +52,6 @@ class GCPBatchWorkerManager(WorkerManager):
         )
         subparser.add_argument(
             '--memory-mb', type=int, default=2048, help='Default memory (in MB) for each worker'
-        )
-
-        # Output path
-        subparser.add_argument(
-            '--output-path', type=str, default='.', help='Path to the output directory'
         )
 
     def __init__(self, args):
@@ -77,7 +75,7 @@ class GCPBatchWorkerManager(WorkerManager):
         )
 
         # Save SSL certificate to connect to the GKE cluster securely
-        cert_path = os.path.join(self.args.output_path, 'gke.crt')
+        cert_path = os.path.join(self.args.cert_path, 'gke.crt')
         with open(cert_path, 'wb') as f:
             f.write(base64.b64decode(cluster.master_auth.cluster_ca_certificate))
 
