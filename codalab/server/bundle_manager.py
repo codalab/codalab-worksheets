@@ -549,6 +549,11 @@ class BundleManager(object):
         # Filter by the number of jobs allowed to run on this worker.
         workers_list = [worker for worker in workers_list if worker['exit_after_num_runs'] > 0]
 
+        # Filter by worker's available disk space.
+        workers_list = [
+            worker for worker in workers_list if worker['free_disk_bytes'] >= bundle_resources.disk
+        ]
+
         # Sort workers list according to these keys in the following succession:
         #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs
         #  - number of dependencies available, descending
