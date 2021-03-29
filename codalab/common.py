@@ -156,7 +156,7 @@ class StorageURLScheme(Enum):
     DISK_STORAGE = ""
     AZURE_BLOB_STORAGE = "azfs://"
 
-    
+
 @dataclass(frozen=True)
 class LinkedBundlePath:
     """A LinkedBundlePath refers to a path that points to the location of a linked bundle within a specific storage location.
