@@ -631,8 +631,6 @@ class Worker:
                     RunStage.CLEANING_UP: self.initstats(),
                     RunStage.UPLOADING_RESULTS: self.initstats(),
                     RunStage.FINALIZING: self.initstats(),
-                    RunStage.FINISHED: self.initstats(),
-                    RunStage.RESTAGED: self.initstats(),
                 },
                 resources=resources,
                 bundle_start_time=time.time(),
@@ -655,7 +653,7 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
-            self.start_stage(bundle.uuid, RunStage.PREPARING)
+            self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
@@ -773,10 +771,14 @@ class Worker:
             self.bundle_service.reply(self.id, socket_id, message)
 
     def save_time_stats(self, uuid, from_stage):
+        """
+        Saves the time taken running in a stage after a transition
+        from that stage.
+        """
         self.end_stage(uuid, from_stage.stage)
-        self.start_stage(uuid, self.runs[uuid].stage)
+        self.start_stage_stats(uuid, self.runs[uuid].stage)
 
-    def start_stage(self, uuid, stage):
+    def start_stage_stats(self, uuid, stage):
         self.runs[uuid].bundle_profile_stats[stage]['start'] = time.time()
 
     def end_stage(self, uuid, stage):
@@ -787,7 +789,7 @@ class Worker:
         )
 
     def initstats(self):
-        return {'start': 0, 'end': 0, 'elapsed': -1}
+        return {'start': 0, 'end': 0, 'elapsed': None}
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):
