@@ -43,7 +43,7 @@ export default forwardRef((props, ref) => {
         if (cache.has(url)) {
             setBlocks(cache.get(url));
         }
-    }, []);
+    });
 
     // fetch data only once
     useSWR(url, fetcher, {
