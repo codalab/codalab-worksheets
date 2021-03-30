@@ -52,6 +52,7 @@ class ActionButtons extends React.Component<{
             toggleCmdDialogNoEvent,
             info,
             showPasteButton,
+            showBundleContent,
         } = this.props;
         let editPermission = info && info.edit_permission;
         return (
@@ -159,6 +160,7 @@ class ActionButtons extends React.Component<{
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
                         toggleCmdDialog={toggleCmdDialog}
                         toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
+                        showBundleContent={showBundleContent}
                     />
                 ) : null}
                 <Tooltip title='Paste cut/copied bundles to this worksheet'>

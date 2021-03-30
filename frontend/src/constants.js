@@ -22,6 +22,7 @@ export const DIALOG_TYPES = {
     OPEN_DELETE_WORKSHEET: 'delete_whole_worksheet',
     OPEN_ERROR_DIALOG: 'error_dialog',
     OPEN_DELETE_SCHEMA: 'delete_schema',
+    OPEN_CREATE_CONTENT: 'create_content_block',
 };
 
 // Bundle fetch status values; corresponds with FetchStatusCodes in backend
