@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.41_
+_version 0.5.43_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -220,6 +220,8 @@ Name | Type
 `state` | String
 `owner` | Relationship([users](#users))
 `is_anonymous` | Boolean
+`storage_type` | String
+`is_dir` | Boolean
 `metadata` | Dict
 `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
 `children` | Relationship([bundles](#bundles))
