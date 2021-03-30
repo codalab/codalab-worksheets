@@ -1708,13 +1708,13 @@ class Worksheet extends React.Component {
         let newSource = [...this.state.ws.info.source];
 
         validBundles.forEach((index, i) => {
-            const items = ['% display contents ' + path, newSource[index], ''];
-            // For each checked bundle, we are adding 3 new lines to the source right after each checked bundle
-            newSource = [
-                ...newSource.slice(0, index + 3 * i + 1),
-                ...items,
-                ...newSource.slice(index + 3 * i + 1),
-            ];
+            newSource.splice(
+                index + 3 * i + 1,
+                0,
+                '% display contents ' + path,
+                newSource[index],
+                '',
+            );
         });
         const toastString =
             showContentCounts > 0
