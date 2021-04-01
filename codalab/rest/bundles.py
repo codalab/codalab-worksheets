@@ -695,7 +695,9 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         size = target_info['size']
     elif not path and bundle_name:
         # return data_size if the user requests the actual bundle
-        size = local.model.get_bundle_metadata([target.bundle_uuid], 'data_size')[target.bundle_uuid]
+        size = local.model.get_bundle_metadata([target.bundle_uuid], 'data_size').get(
+            target.bundle_uuid, 0
+        )
     else:
         # if request is for a subdir in a bundle then return 0
         size = 0
