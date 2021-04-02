@@ -476,7 +476,6 @@ class Worker:
         for uuid in self.runs:
             run_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(run_state)
-            # all the _replace calls for the namedtuple are propogated here
             self.save_time_stats(uuid, run_state)
 
         # 2. filter out finished runs and clean up containers
