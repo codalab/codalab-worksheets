@@ -59,6 +59,7 @@ class NavBar extends React.Component<{
             value: '',
             isLoading: false,
             results: [],
+            avatar: '',
         };
     }
 
@@ -76,7 +77,12 @@ class NavBar extends React.Component<{
             success: (data) => {
                 const userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
-                this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
+                this.setState(
+                    { userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` },
+                    () => {
+                        this.fetchImg(this.state.userInfo.avatar_id);
+                    },
+                );
             },
             error: (xhr, status, err) => {
                 console.error(xhr.responseText);
@@ -139,6 +145,40 @@ class NavBar extends React.Component<{
                 console.error(xhr.responseText);
             },
         });
+    }
+
+    // Fetch the image file represented by the bundle
+    fetchImg(bundleUuid) {
+        // Set defaults
+        let url = '/rest/bundles/' + bundleUuid + '/contents/blob/';
+
+        fetch(url)
+            .then(function(response) {
+                if (response.ok) {
+                    return response.arrayBuffer();
+                }
+                throw new Error('Network response was not ok.');
+            })
+            .then(function(data) {
+                let dataUrl =
+                    'data:image/png;base64,' +
+                    btoa(
+                        new Uint8Array(data).reduce(
+                            (data, byte) => data + String.fromCharCode(byte),
+                            '',
+                        ),
+                    );
+                return dataUrl;
+            })
+            .then((dataUrl) => {
+                // Update avatar shown on the page
+                this.setState({
+                    avatar: dataUrl,
+                });
+            })
+            .catch(function(error) {
+                console.log(url, error.responseText);
+            });
     }
 
     handleResultSelect = (e, { result }) => {
@@ -368,8 +408,8 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Link to='/worksheets?name=dashboard'>
-                                    <Button color='primary'>Dashboard</Button>
+                                <Link to='/users'>
+                                    <Button color='primary'>My Profile</Button>
                                 </Link>
                                 <Tooltip title='New Worksheet'>
                                     <IconButton
@@ -413,7 +453,17 @@ class NavBar extends React.Component<{
                                             this.setState({ accountEl: e.currentTarget })
                                         }
                                     >
-                                        <AccountIcon />
+                                        {this.state.avatar ? (
+                                            <div>
+                                                <img
+                                                    src={this.state.avatar}
+                                                    className={classes.avatar}
+                                                    alt='CodaLab'
+                                                />
+                                            </div>
+                                        ) : (
+                                            <AccountIcon />
+                                        )}
                                     </IconButton>
                                 </Tooltip>
                                 <Menu
@@ -429,6 +479,13 @@ class NavBar extends React.Component<{
                                         onClick={() => (window.location.href = '/account/profile')}
                                     >
                                         My Account
+                                    </MenuItem>
+                                    <MenuItem
+                                        onClick={() =>
+                                            (window.location.href = '/worksheets?name=dashboard')
+                                        }
+                                    >
+                                        My Dashboard
                                     </MenuItem>
                                     <MenuItem onClick={this.props.auth.signout}>Logout</MenuItem>
                                 </Menu>
@@ -554,6 +611,11 @@ const styles = (theme) => ({
     },
     logo: {
         maxHeight: 40,
+    },
+    avatar: {
+        maxHeight: 30,
+        maxWidth: 30,
+        borderRadius: 15,
     },
     snackbarMessage: {
         display: 'flex',

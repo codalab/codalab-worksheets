@@ -202,18 +202,35 @@ class MainPanel extends React.Component<{
             <div>
                 <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
                     <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
-                        <h3 className={classes.heading}>Worksheets</h3>
+                        <h3 className={classes.heading}>
+                            Worksheets &nbsp;&nbsp;
+                            {this.props.ownDashboard ? (
+                                <Tooltip title='Dashboard'>
+                                    <Button
+                                        variant='contained'
+                                        color='primary'
+                                        onClick={() =>
+                                            (window.location.href = '/worksheets?name=dashboard')
+                                        }
+                                    >
+                                        Dashboard
+                                    </Button>
+                                </Tooltip>
+                            ) : null}
+                        </h3>
                         &nbsp;&nbsp;&nbsp;&nbsp;
-                        <Tooltip title='New Worksheet'>
-                            <Button
-                                variant='contained'
-                                className={classes.button}
-                                startIcon={<NewWorksheetIcon />}
-                                onClick={() => this.setState({ newWorksheetShowDialog: true })}
-                            >
-                                ADD
-                            </Button>
-                        </Tooltip>
+                        {this.props.ownDashboard ? (
+                            <Tooltip title='New Worksheet'>
+                                <Button
+                                    variant='contained'
+                                    className={classes.button}
+                                    startIcon={<NewWorksheetIcon />}
+                                    onClick={() => this.setState({ newWorksheetShowDialog: true })}
+                                >
+                                    ADD
+                                </Button>
+                            </Tooltip>
+                        ) : null}
                     </div>
 
                     {this.state.worksheets}

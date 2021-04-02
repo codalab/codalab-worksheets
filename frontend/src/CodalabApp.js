@@ -50,7 +50,7 @@ function CodalabApp() {
                                     <HomePage
                                         {...props}
                                         auth={fakeAuth}
-                                        redirectAuthToDashboard={true}
+                                        redirectAuthToProfile={true}
                                     />
                                 )}
                             />
@@ -61,7 +61,7 @@ function CodalabApp() {
                                     <HomePage
                                         {...props}
                                         auth={fakeAuth}
-                                        redirectAuthToDashboard={false}
+                                        redirectAuthToProfile={false}
                                     />
                                 )}
                             />
