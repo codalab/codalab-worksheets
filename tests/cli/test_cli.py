@@ -1392,6 +1392,7 @@ def test_link(ctx):
     # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
     # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
 
+    # Test file is created by tests/test-setup.sh
     host_filename = "/tmp/codalab/link-mounts/test.txt"
     uuid = _run_command([cl, 'upload', host_filename, '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))
@@ -1404,7 +1405,7 @@ def test_link(ctx):
     check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
     # Upload directory
-
+    # Test file and directory is created by tests/test-setup.sh
     host_dirname = "/tmp/codalab/link-mounts/test"
     uuid = _run_command([cl, 'upload', host_dirname, '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))

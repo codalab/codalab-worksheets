@@ -115,7 +115,7 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
-          sh ./test-setup.sh
+          sh ./tests/test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
@@ -214,7 +214,7 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run shared filesystem tests
         run: |
-          sh ./test-setup.sh
+          sh ./tests/test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
