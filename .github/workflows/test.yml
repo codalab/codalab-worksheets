@@ -115,6 +115,7 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
+          sh ./test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
