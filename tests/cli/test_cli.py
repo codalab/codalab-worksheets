@@ -1391,14 +1391,8 @@ def test_link(ctx):
     # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
     # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
     # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
-    link_mounts_dir = "/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts"
 
-    os.makedirs(link_mounts_dir, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode='w', dir=link_mounts_dir, suffix=".txt", delete=False,
-    ) as f:
-        f.write("hello world!")
-    _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
+    host_filename = "/tmp/codalab/link-mounts/test.txt"
     uuid = _run_command([cl, 'upload', host_filename, '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))
     check_equals(host_filename, get_info(uuid, 'link_url'))
@@ -1409,23 +1403,18 @@ def test_link(ctx):
     wait(run_uuid)
     check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
-    os.remove(f.name)
-
     # Upload directory
-    with tempfile.TemporaryDirectory(dir=link_mounts_dir) as dirname:
-        with open(os.path.join(dirname, "test.txt"), "w+") as f:
-            f.write("hello world!")
 
-        _, host_dirname = dirname.split("/opt/codalab-worksheets-link-mounts")
-        uuid = _run_command([cl, 'upload', host_dirname, '--link'])
-        check_equals(State.READY, get_info(uuid, 'state'))
-        check_equals(host_dirname, get_info(uuid, 'link_url'))
-        check_equals('raw', get_info(uuid, 'link_format'))
-        check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
+    host_dirname = "/tmp/codalab/link-mounts/test"
+    uuid = _run_command([cl, 'upload', host_dirname, '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(host_dirname, get_info(uuid, 'link_url'))
+    check_equals('raw', get_info(uuid, 'link_format'))
+    check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
 
-        run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
-        wait(run_uuid)
-        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
+    wait(run_uuid)
+    check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
     # Upload with a relative path.
     # This test only ensures that the link_url is properly set from
