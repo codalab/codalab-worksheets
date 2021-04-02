@@ -58,11 +58,18 @@ const styles = ({ palette }) => {
             fontSize: 14,
             color: palette.grey[500],
         },
-        name: {
+        fullname: {
             fontFamily: 'Roboto',
             fontStyle: 'normal',
             fontWeight: 500,
             fontSize: 20,
+            letterSpacing: 0.15,
+        },
+        username: {
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 400,
+            fontSize: 18,
             letterSpacing: 0.15,
         },
         progress: {
@@ -164,7 +171,10 @@ class SideBar extends React.Component {
                 ></AvatarEditorModal>
                 {/*<Avatar className={classes.avatar}>{userInfo.user_name.charAt(0)}</Avatar>*/}
                 <div className={classes.box}>
-                    <h3 className={classes.name}>{userInfo.user_name}</h3>
+                    <h3 className={classes.fullname}>
+                        {userInfo.first_name + ' ' + userInfo.last_name}
+                    </h3>
+                    <h4 className={classes.username}>{userInfo.user_name}</h4>
                     {userInfo.affiliation ? (
                         <p className={classes.affiliation}>Affiliation: {userInfo.affiliation}</p>
                     ) : null}
