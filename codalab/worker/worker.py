@@ -633,7 +633,7 @@ class Worker:
                     RunStage.FINALIZING: self.initstats(),
                     # note: this is not sent over the api, but
                     # the start time needs to be set
-                    RunStage.FINISHED: self.initstats()
+                    RunStage.FINISHED: self.initstats(),
                 },
                 resources=resources,
                 bundle_start_time=time.time(),
