@@ -60,6 +60,7 @@ from codalab.lib import (
     worksheet_util,
     bundle_fuse,
 )
+from codalab.lib.bundle_util import get_directory_size
 from codalab.lib.cli_util import (
     nested_dict_get,
     parse_key_target,
@@ -1303,6 +1304,7 @@ class BundleCLI(object):
             'bundle_type': 'dataset',  # TODO: deprecate Dataset and ProgramBundles
             'metadata': metadata,
         }
+        print(metadata)
 
         # Option 1: --link
         if args.link:
@@ -1362,6 +1364,11 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
+            print(sources)
+            # if sources is an array check the cumulative size with the users disk quota
+            total_size = sum([get_directory_size(source) for source in sources])
+            # user = client.fetch('users', args.user_spec)
+            print(total_size)
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -1390,6 +1397,7 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
+            print(json.dumps(new_bundle))
             print(
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
