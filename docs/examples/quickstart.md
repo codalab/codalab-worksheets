@@ -10,10 +10,10 @@ upload some code and data, and run your first experiment.
 1.  Go to [http://worksheets.codalab.org](http://worksheets.codalab.org) and click "Sign Up" in the top-right corner of the navigation bar.
 2.  Fill out the subsequent form.
 3.  A verification email will be sent to the email address you used to sign up. When you open it, there will be a link to follow in order to verify your account.
-4.  After verifying your account, sign in again. This will bring you to your **User Dashboard**. 
+4.  After verifying your account, sign in again. This will bring you to your **User Profile Page**. 
 This is the page where contains your account information, and an overview of your bundles and worksheets. 
-You can get back to this page at any time by clicking the "Dashboard" button in the top-right of the navigation bar or directly going to [http://worksheets.codalab.org/users](http://worksheets.codalab.org/users)
-![Dashboard](../images/quickstart/dashboard.png)
+You can get back to this page at any time by clicking the "MY PROFILE" button in the top-right of the navigation bar or directly going to [http://worksheets.codalab.org/users](http://worksheets.codalab.org/users)
+![Dashboard](../images/quickstart/profile.png)
 5. You can click the "Edit Avatar" button to upload and edit your profile image.
 ![Dashboard](../images/quickstart/edit-avatar.png)
 6. Your account information, including the usage of disk and time (these will only be visible to you), will be shown in the side bar of the dashboard.
@@ -21,7 +21,7 @@ You can get back to this page at any time by clicking the "Dashboard" button in 
 ![Dashboard](../images/quickstart/add-worksheet.png)
 
 #
-*You can also view the old "My Dashboard" worksheet by going to [http://worksheets.codalab.org/worksheets/?name=dashboard](http://worksheets.codalab.org/worksheets/?name=dashboard).
+*You can also view the old "My Dashboard" worksheet by clickng on the "Dashboard" button on the profile page or directly going to [http://worksheets.codalab.org/worksheets/?name=dashboard](http://worksheets.codalab.org/worksheets/?name=dashboard).
 This is a **special, read-only worksheet** that contains an
 overview of your bundles and worksheets.*
 
