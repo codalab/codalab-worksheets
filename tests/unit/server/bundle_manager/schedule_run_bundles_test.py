@@ -96,23 +96,23 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
             self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_preparing")[
                 bundle.uuid
             ],
-            0,
+            5,
         )
         self.assertNotEqual(
             self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_running")[
                 bundle.uuid
             ],
-            0,
+            5,
         )
         self.assertNotEqual(
             self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_uploading_results")[
                 bundle.uuid
             ],
-            0,
+            5,
         )
         self.assertNotEqual(
             self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_cleaning_up")[
                 bundle.uuid
             ],
-            0,
+            5,
         )
