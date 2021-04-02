@@ -1387,10 +1387,6 @@ def test_link(ctx):
     # Upload file
     # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
     # when no other argument for CODALAB_LINK_MOUNTS is specified.
-    #
-    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
-    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
-    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
 
     # Test file is created by tests/test-setup.sh
     host_filename = "/tmp/codalab/link-mounts/test.txt"
