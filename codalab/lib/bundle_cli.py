@@ -61,7 +61,7 @@ from codalab.lib import (
     worksheet_util,
     bundle_fuse,
 )
-from codalab.lib.bundle_util import get_directory_size
+from codalab.lib.bundle_util import get_path_size
 from codalab.lib.cli_util import (
     nested_dict_get,
     parse_key_target,
@@ -1365,7 +1365,7 @@ class BundleCLI(object):
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
             # if sources is an array check the cumulative size with the users disk quota
-            total_bundle_size = sum([get_directory_size(source) for source in sources])
+            total_bundle_size = sum([get_path_size(source) for source in sources])
             user = client.fetch('users', client.fetch('user')['user_name'])
             disk_left = user['disk_quota'] - user['disk_used']
             if disk_left - total_bundle_size <= 0:
