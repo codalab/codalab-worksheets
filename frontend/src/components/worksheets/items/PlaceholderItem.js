@@ -1,56 +1,58 @@
-import React, { useState, useEffect, forwardRef } from 'react';
-import $ from 'jquery';
+import React, { useEffect, useState, forwardRef } from 'react';
 import queryString from 'query-string';
 import './PlaceholderItem.scss';
-import { semaphore } from '../../../util/async_loading_utils';
+import useSWR, { cache } from 'swr';
 
-async function fetchData({ worksheetUUID, directive }) {
-    return semaphore.use(async () => {
-        const queryParams = {
-            directive,
-        };
-        const info = await $.ajax({
-            type: 'GET',
-            url:
-                '/rest/interpret/worksheet/' +
-                worksheetUUID +
-                '?' +
-                queryString.stringify(queryParams),
-            async: true,
-            dataType: 'json',
-            cache: false,
-        });
-        return info;
+const fetcher = (url) =>
+    fetch(url, {
+        type: 'GET',
+        async: true,
+        dataType: 'json',
+    }).then((r) => {
+        return r.json();
     });
-}
 
 export default forwardRef((props, ref) => {
     const [item, setItem] = useState(undefined);
     const [error, setError] = useState(false);
     const { worksheetUUID, onAsyncItemLoad, itemHeight } = props;
     const { directive, sort_keys } = props.item;
-    useEffect(() => {
-        (async function() {
-            try {
-                const { blocks } = await fetchData({ directive, worksheetUUID });
-                setItem(blocks.length === 0 ? null : blocks[0]);
-                if (blocks.length > 0) {
-                    let actualBlock = blocks[0];
-                    // replace with existing sort keys if there is one
-                    if (sort_keys) {
-                        actualBlock['sort_keys'] = sort_keys;
-                    }
-                    actualBlock.loadedFromPlaceholder = true;
-                    onAsyncItemLoad(actualBlock);
+    function setBlocks(data) {
+        const blocks = data.blocks;
+        try {
+            setItem(blocks.length === 0 ? null : blocks[0]);
+            if (blocks.length > 0) {
+                let actualBlock = blocks[0];
+                // replace with existing sort keys if there is one
+                if (sort_keys) {
+                    actualBlock['sort_keys'] = sort_keys;
                 }
-            } catch (e) {
-                console.error(e);
-                setError(e);
+                actualBlock.loadedFromPlaceholder = true;
+                onAsyncItemLoad(actualBlock);
             }
-        })();
-        // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [directive, onAsyncItemLoad, sort_keys, worksheetUUID]);
+        } catch (e) {
+            console.error(e);
+            setError(e);
+        }
+    }
+    const url =
+        '/rest/interpret/worksheet/' + worksheetUUID + '?' + queryString.stringify({ directive });
+    // use data stored in cache
+
+    useEffect(() => {
+        if (cache.has(url)) {
+            setBlocks(cache.get(url));
+        }
+    });
+
+    // fetch data only once
+    useSWR(url, fetcher, {
+        revalidateOnMount: !cache.has(url),
+        onSuccess: (data, key, config) => {
+            setBlocks(data);
+        },
+    });
+
     if (error) {
         return <div ref={ref}>Error loading item.</div>;
     }
