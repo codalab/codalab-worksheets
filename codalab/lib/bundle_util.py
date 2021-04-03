@@ -360,4 +360,3 @@ def get_directory_size(directory):
         # if for whatever reason we can't open the folder, return 0
         return 0
     return total
-
