@@ -301,7 +301,7 @@ class DockerImageManager:
                     message=self._downloading[image_spec]['status'],
                 )
         except Exception as ex:
-            capture_exception(ex)
+            logger.error(ex)
             return ImageAvailabilityState(
                 digest=None, stage=DependencyStage.FAILED, message=str(ex)
             )
