@@ -166,7 +166,14 @@ class BundleManager(object):
         for bundle, failure_message in bundles_to_fail:
             logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
             self._model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': failure_message}}
+                bundle,
+                {
+                    'state': State.FAILED,
+                    'metadata': {
+                        'failure_message': failure_message,
+                        'error_traceback': traceback.format_exc(),
+                    },
+                },
             )
         for bundle in bundles_to_stage:
             logger.info('Staging %s', bundle.uuid)
@@ -250,7 +257,14 @@ class BundleManager(object):
         except Exception as e:
             logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
             self._model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': str(e)}}
+                bundle,
+                {
+                    'state': State.FAILED,
+                    'metadata': {
+                        'failure_message': str(e),
+                        'error_traceback': traceback.format_exc(),
+                    },
+                },
             )
         finally:
             with self._make_uuids_lock:
@@ -762,7 +776,13 @@ class BundleManager(object):
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
                     bundle,
-                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
+                    {
+                        'state': State.FAILED,
+                        'metadata': {
+                            'failure_message': failure_message,
+                            'error_traceback': traceback.format_exc(),
+                        },
+                    },
                 )
 
     def _schedule_run_bundles(self):
@@ -920,7 +940,13 @@ class BundleManager(object):
 
                 self._model.update_bundle(
                     bundle,
-                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
+                    {
+                        'state': State.FAILED,
+                        'metadata': {
+                            'failure_message': failure_message,
+                            'error_traceback': traceback.format_exc(),
+                        },
+                    },
                 )
             elif bundle.metadata.request_queue:
                 matched_workers = self._get_matched_workers(

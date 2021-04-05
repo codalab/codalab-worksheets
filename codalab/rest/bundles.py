@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 import sys
+import traceback
 import time
 from io import BytesIO
 from http.client import HTTPResponse
@@ -796,7 +797,11 @@ def _update_bundle_contents_blob(uuid):
             local.upload_manager.cleanup_existing_contents(bundle)
         msg = "Upload failed: %s" % err
         local.model.update_bundle(
-            bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+            bundle,
+            {
+                'state': State.FAILED,
+                'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
+            },
         )
         abort(http.client.BAD_REQUEST, msg)
 
@@ -815,7 +820,11 @@ def _update_bundle_contents_blob(uuid):
         # letting transient errors during upload fail the bundles prematurely.
         if finalize_on_failure:
             local.model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+                bundle,
+                {
+                    'state': State.FAILED,
+                    'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
+                },
             )
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
