@@ -11,6 +11,7 @@ import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import Tooltip from '@material-ui/core/Tooltip';
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd';
+import AddPhotoAlternateIcon from '@material-ui/icons/AddPhotoAlternate';
 
 const StyledMenuItem = withStyles((theme) => ({
     root: {
@@ -32,6 +33,10 @@ class ActionButtons extends React.Component<{
         this.setState({ anchorEl: null });
     };
 
+    uploadNewImage = (e) => {
+        document.querySelector('label[for=codalab-image-upload-input]').click();
+    };
+
     render() {
         const {
             classes,
@@ -47,6 +52,7 @@ class ActionButtons extends React.Component<{
             toggleCmdDialogNoEvent,
             info,
             showPasteButton,
+            showBundleContent,
         } = this.props;
         let editPermission = info && info.edit_permission;
         return (
@@ -154,6 +160,7 @@ class ActionButtons extends React.Component<{
                         handleSelectedBundleCommand={handleSelectedBundleCommand}
                         toggleCmdDialog={toggleCmdDialog}
                         toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
+                        showBundleContent={showBundleContent}
                     />
                 ) : null}
                 <Tooltip title='Paste cut/copied bundles to this worksheet'>
@@ -180,6 +187,20 @@ class ActionButtons extends React.Component<{
                     >
                         <PlaylistAddIcon className={classes.buttonIcon} />
                         Schema
+                    </Button>
+                </Tooltip>
+                <Tooltip title='Add an image'>
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='image'
+                        onClick={this.uploadNewImage}
+                        disabled={!editPermission}
+                        id='add-image-button'
+                    >
+                        <label htmlFor='codalab-image-upload-input'></label>
+                        <AddPhotoAlternateIcon className={classes.buttonIcon} />
+                        Image
                     </Button>
                 </Tooltip>
             </div>
