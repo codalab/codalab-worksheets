@@ -243,7 +243,19 @@ class DockerImageManager:
                 def download():
                     logger.debug('Downloading Docker image %s', image_spec)
                     try:
-                        self._docker.images.pull(image_spec)
+                        for line in self._docker.api.pull(image_spec, stream=True, decode=True):
+                            self._downloading[image_spec]['status'] = ''
+                            # Set the status to the percent completed
+                            if (
+                                line['status'] == 'Downloading'
+                                and 'total' in line['progressDetail']
+                            ):
+                                self._downloading[image_spec]['status'] = '(%d%%)' % (
+                                    line['progressDetail']['current']
+                                    * 100
+                                    / line['progressDetail']['total']
+                                )
+
                         logger.debug('Download for Docker image %s complete', image_spec)
                         self._downloading[image_spec]['success'] = True
                         self._downloading[image_spec]['message'] = "Downloading image"
