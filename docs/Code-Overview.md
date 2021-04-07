@@ -262,6 +262,8 @@ command mentioned previously. The other tests should work, though.
 python3 test_runner.py default
 ```
 
+You can update `default` with a specific test name (`unittest`, `run`, etc.) to only run a specific CLI test.
+
 - End-to-end UI tests for the web interface in [tests/ui](https://github.com/codalab/codalab-worksheets/tree/master/tests/ui)
 
 ```
