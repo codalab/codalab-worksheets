@@ -9,6 +9,8 @@ import { lighten } from '@material-ui/core/es/styles/colorManipulator';
 import { renderSize, renderDuration } from '../../util/worksheet_utils';
 import { BUNDLE_STATES } from '../../constants';
 import { default as AvatarEditorModal } from './EditableAvatar';
+import Tooltip from '@material-ui/core/Tooltip';
+import Button from '@material-ui/core/Button';
 
 const styles = ({ palette }) => {
     return {
@@ -233,6 +235,17 @@ class SideBar extends React.Component {
                     </div>
                 </div>
                 <Divider />
+                {this.props.ownDashboard ? (
+                    <Tooltip title='Dashboard'>
+                        <Button
+                            variant='contained'
+                            color='primary'
+                            onClick={() => (window.location.href = '/worksheets?name=dashboard')}
+                        >
+                            View Dashboard
+                        </Button>
+                    </Tooltip>
+                ) : null}
                 <div className={classes.placeholderBox}></div>
             </Card>
         );
