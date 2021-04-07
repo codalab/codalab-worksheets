@@ -739,6 +739,14 @@ def test_upload1(ctx):
         2 + 1, _run_command([cl, 'cat', uuid])
     )  # Directory listing with 2 headers lines and one file
 
+    # Upload a file that exceeds the disk quota
+    username = _run_command([cl, 'uinfo', '-f', 'user_name'])
+    prev_dq = _run_command([cl, 'uinfo', username, '-f', 'disk']).split(' ')[2]
+    _run_command([cl, 'uedit', username, '--disk-quota', '2'])
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    _run_command([cl, 'uedit', username, '--disk-quota', prev_dq])
+
 
 @TestModule.register('upload2')
 def test_upload2(ctx):
