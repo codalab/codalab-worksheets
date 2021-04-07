@@ -480,13 +480,6 @@ class NavBar extends React.Component<{
                                     >
                                         My Account
                                     </MenuItem>
-                                    <MenuItem
-                                        onClick={() =>
-                                            (window.location.href = '/worksheets?name=dashboard')
-                                        }
-                                    >
-                                        My Dashboard
-                                    </MenuItem>
                                     <MenuItem onClick={this.props.auth.signout}>Logout</MenuItem>
                                 </Menu>
                             </React.Fragment>

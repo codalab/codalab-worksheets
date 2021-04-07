@@ -95,6 +95,7 @@ const styles = ({ palette, spacing, color }) => {
             backgroundColor: green[500],
             color: 'white',
             right: 0,
+            marginBottom: 10,
         },
         snackbarMessage: {
             display: 'flex',
