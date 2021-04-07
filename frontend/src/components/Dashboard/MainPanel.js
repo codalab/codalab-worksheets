@@ -16,12 +16,22 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogActions from '@material-ui/core/DialogActions';
 import { format } from 'timeago.js';
 import { addUTCTimeZone } from '../../util/worksheet_utils';
+import Snackbar from '@material-ui/core/Snackbar';
+import SnackbarContent from '@material-ui/core/SnackbarContent';
+import classNames from 'classnames';
+import IconButton from '@material-ui/core/IconButton';
+import CloseIcon from '@material-ui/icons/Close';
+import ErrorIcon from '@material-ui/icons/Error';
+import SuccessIcon from '@material-ui/icons/CheckCircle';
+import InfoIcon from '@material-ui/icons/Info';
+import WarningIcon from '@material-ui/icons/Warning';
+
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
  */
 const kDefaultWorksheetName = 'unnamed';
 
-const styles = ({ palette }) => {
+const styles = ({ palette, spacing, color }) => {
     return {
         wsBox: {
             marginLeft: 20,
@@ -85,6 +95,25 @@ const styles = ({ palette }) => {
             backgroundColor: green[500],
             color: 'white',
             right: 0,
+        },
+        snackbarMessage: {
+            display: 'flex',
+            alignItems: 'center',
+        },
+        snackbarIcon: {
+            marginRight: spacing.large,
+        },
+        snackbarError: {
+            backgroundColor: color.red.base,
+        },
+        snackbarWarning: {
+            backgroundColor: color.yellow.base,
+        },
+        snackbarInfo: {
+            backgroundColor: color.primary.base,
+        },
+        snackbarSuccess: {
+            backgroundColor: color.green.base,
         },
     };
 };
@@ -197,6 +226,12 @@ class MainPanel extends React.Component<{
     }
     /** Renderer. */
     render() {
+        let SnackbarIcon = {
+            error: ErrorIcon,
+            success: SuccessIcon,
+            info: InfoIcon,
+            warning: WarningIcon,
+        }[this.state.snackbarVariant];
         const { classes } = this.props;
         return (
             <div>
@@ -277,6 +312,43 @@ class MainPanel extends React.Component<{
                         </Button>
                     </DialogActions>
                 </Dialog>
+                <Snackbar
+                    anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'left',
+                    }}
+                    open={this.state.snackbarShow}
+                    autoHideDuration={5000}
+                    onClose={(e, reason) => {
+                        if (reason !== 'clickaway') this.setState({ snackbarShow: false });
+                    }}
+                >
+                    <SnackbarContent
+                        className={classNames({
+                            [classes.snackbarError]: this.state.snackbarVariant === 'error',
+                            [classes.snackbarWarning]: this.state.snackbarVariant === 'warning',
+                            [classes.snackbarInfo]: this.state.snackbarVariant === 'info',
+                            [classes.snackbarSuccess]: this.state.snackbarVariant === 'success',
+                        })}
+                        message={
+                            <span className={classes.snackbarMessage}>
+                                {SnackbarIcon && <SnackbarIcon className={classes.snackbarIcon} />}
+                                {this.state.snackbarMessage}
+                            </span>
+                        }
+                        action={[
+                            <IconButton
+                                key='close'
+                                aria-label='Close'
+                                color='inherit'
+                                className={classes.close}
+                                onClick={() => this.setState({ snackbarShow: false })}
+                            >
+                                <CloseIcon />
+                            </IconButton>,
+                        ]}
+                    />
+                </Snackbar>
             </div>
         );
     }
