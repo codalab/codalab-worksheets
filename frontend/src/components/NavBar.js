@@ -77,12 +77,8 @@ class NavBar extends React.Component<{
             success: (data) => {
                 const userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
-                this.setState(
-                    { userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` },
-                    () => {
-                        this.fetchImg(this.state.userInfo.avatar_id);
-                    },
-                );
+                this.fetchImg(userInfo.avatar_id);
+                this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
             },
             error: (xhr, status, err) => {
                 console.error(xhr.responseText);
