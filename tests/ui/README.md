@@ -15,8 +15,8 @@ repository, by running `pip install -r requirements.txt`.
 tests and their respective browsers.
     1. Run `sudo ./scripts/test-setup.sh` and place the installed GeckoDriver on your path by running 
     `export PATH=$PATH:/usr/bin/geckodriver`. This is not needed for ChromeDriver.
-    2. An alternative is to simply use [Homebrew](https://brew.sh/) and run `brew install geckodriver && brew cask 
-    install chromedriver`. 
+    2. An alternative is to simply use [Homebrew](https://brew.sh/) and run `brew install geckodriver && brew install 
+    --cask chromedriver`. 
 
 #### Running the tests locally
 
