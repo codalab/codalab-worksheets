@@ -147,6 +147,7 @@ class InteractiveSession:
         command = [
             'docker run',
             '-it',
+            '--env PROMPT_COMMAND=history',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
             '-u 1',
