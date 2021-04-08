@@ -148,7 +148,7 @@ class InteractiveSession:
             'docker run',
             '-it',
             f'--env HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
-            '--env PROMPT_COMMAND="history -a"',
+            '--env PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$"\n"}history -a; history -c; history -r"',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
             '-u 1',
