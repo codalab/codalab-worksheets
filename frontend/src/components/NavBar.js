@@ -144,6 +144,7 @@ class NavBar extends React.Component<{
 
     // Fetch the image file represented by the bundle
     fetchImg(bundleUuid) {
+        if (bundleUuid == null) return;
         // Set defaults
         let url = '/rest/bundles/' + bundleUuid + '/contents/blob/';
 
