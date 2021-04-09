@@ -77,6 +77,7 @@ class NavBar extends React.Component<{
             success: (data) => {
                 const userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
+                this.fetchImg(userInfo.avatar_id);
                 this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
             },
             error: (xhr, status, err) => {
@@ -347,9 +348,6 @@ class NavBar extends React.Component<{
 
         if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
             this.fetchName();
-        }
-        if (this.state.userInfo !== undefined) {
-            this.fetchImg(this.state.userInfo.avatar_id);
         }
 
         let SnackbarIcon = {
