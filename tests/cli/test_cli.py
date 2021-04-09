@@ -424,6 +424,9 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
+        # Reset disk quota
+        _run_command([cl, 'uedit', 'codalab', '--disk-quota', '100g'])
+
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
         for worker_id, user_id in self.worker_to_user.items():
