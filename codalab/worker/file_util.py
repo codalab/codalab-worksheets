@@ -145,7 +145,8 @@ def zip_directory(
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
             proc.wait()
-            return open(tmp_zip_name, "rb")
+            with open(tmp_zip_name, "rb") as out:
+                return BytesIO(out.read())
         except subprocess.CalledProcessError as e:
             raise IOError(e.output)
 
