@@ -45,10 +45,10 @@ def tar_gzip_directory(
     exclude_patterns=None,
     exclude_names=None,
     ignore_file=None,
-    output_path=None,
 ):
     """
-    Tars and gzips the given directory.
+    Returns a file-like object containing a tarred and gzipped archive of the
+    given directory.
 
     follow_symlinks: Whether symbolic links should be followed.
     exclude_names: Any top-level directory entries with names in exclude_names
@@ -56,10 +56,8 @@ def tar_gzip_directory(
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     ignore_file: Name of the file where exclusion patterns are read from.
-    output_path: If specified, outputs the .tar.gz file to the given path, and blocks
-    until this is complete. Otherwise, returns a file-like object with the .tar.gz stream.
     """
-    args = ['tar', 'czf', output_path or '-', '-C', directory_path]
+    args = ['tar', 'czf', '-', '-C', directory_path]
 
     # If the BSD tar library is being used, append --disable-copy to prevent creating ._* files
     if 'bsdtar' in get_tar_version_output():
@@ -85,11 +83,7 @@ def tar_gzip_directory(
     args.append('.')
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        if output_path:
-            # If output_path is specified, block until finished.
-            proc.stdout.read()
-        else:
-            return proc.stdout
+        return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
