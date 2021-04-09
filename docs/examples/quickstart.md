@@ -14,14 +14,14 @@ upload some code and data, and run your first experiment.
 This is the page where contains your account information, and an overview of your bundles and worksheets. 
 You can get back to this page at any time by clicking the "MY PROFILE" button in the top-right of the navigation bar or directly going to [http://worksheets.codalab.org/users](http://worksheets.codalab.org/users)
 ![Dashboard](../images/quickstart/profile.png)
-5. You can click the "Edit Avatar" button to upload and edit your profile image.
+5. You can hover over your avatar in the side bar and then click to upload and edit your profile image.
 ![Dashboard](../images/quickstart/edit-avatar.png)
 6. Your account information, including the usage of disk and time (these will only be visible to you), will be shown in the side bar of the dashboard.
 7. Click on the "Add" button, or the "New Worksheet" icon to create a new worksheet and start exploring!
 ![Dashboard](../images/quickstart/add-worksheet.png)
 
 #
-*You can also view the old "My Dashboard" worksheet by clickng on the "Dashboard" button on the profile page or directly going to [http://worksheets.codalab.org/worksheets/?name=dashboard](http://worksheets.codalab.org/worksheets/?name=dashboard).
+*You can also view the old "My Dashboard" worksheet by clicking on the "VIEW DASHBOARD" button on the profile page or directly going to [http://worksheets.codalab.org/worksheets/?name=dashboard](http://worksheets.codalab.org/worksheets/?name=dashboard).
 This is a **special, read-only worksheet** that contains an
 overview of your bundles and worksheets.*
 
