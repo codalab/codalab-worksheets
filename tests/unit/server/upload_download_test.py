@@ -1,6 +1,6 @@
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.download_util import BundleTarget
-from codalab.common import NotFoundError
+from codalab.common import NotFoundError, StorageType
 from tests.unit.server.bundle_manager import TestBase
 from io import BytesIO
 import gzip
@@ -99,6 +99,8 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.save_bundle(bundle)
         self.upload_file(bundle, b"hello world")
         target = BundleTarget(bundle.uuid, "")
+        self.assertEqual(bundle.is_dir, False)
+        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
 
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
@@ -115,6 +117,8 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.upload_folder(
             bundle, [("item.txt", b"hello world"), ("src/item2.txt", b"hello world")]
         )
+        self.assertEqual(bundle.is_dir, True)
+        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
 
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
@@ -198,6 +202,7 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             git=False,
             unpack=True,
             simplify_archives=True,
+            use_azure_blob_beta=False,
         )
 
     def upload_file(self, bundle, contents):
@@ -211,6 +216,7 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             git=False,
             unpack=False,
             simplify_archives=True,
+            use_azure_blob_beta=False,
         )
 
 

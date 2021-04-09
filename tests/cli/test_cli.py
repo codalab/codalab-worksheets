@@ -1077,25 +1077,44 @@ def test(ctx):
     check_contains('non_root_user', _run_command([cl, 'uls']))
 
 
-@TestModule.register('freeze')
-def test_freeze(ctx):
+@TestModule.register('worksheet_freeze_unfreeze')
+def test_worksheet_freeze_unfreeze(ctx):
     _run_command([cl, 'work', '-u'])
     wname = random_name()
     wuuid = _run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
     check_contains(['Switched', wname, wuuid], _run_command([cl, 'work', wuuid]))
-    # Before freezing: can modify everything
+    # Before freezing: can modify everything on the worksheet
     uuid1 = _run_command([cl, 'upload', '-c', 'hello'])
     _run_command([cl, 'add', 'text', 'message'])
     _run_command([cl, 'wedit', '-t', 'new_title'])
     _run_command([cl, 'wperm', wuuid, 'public', 'n'])
+
+    # After freezing: cannot modify anything
     _run_command([cl, 'wedit', '--freeze'])
-    # After freezing: can only modify contents
     _run_command([cl, 'detach', uuid1], 1)  # would remove an item
     _run_command([cl, 'rm', uuid1], 1)  # would remove an item
     _run_command([cl, 'add', 'text', 'message'], 1)  # would add an item
+    _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
+    _run_command([cl, 'wperm', wuuid, 'public', 'a'], 1)  # would edit
+
+    # Can't re-freeze a frozen worksheet
+    _run_command([cl, 'wedit', '--freeze'], 1)
+
+    # After unfreezing: can modify everything
+    _run_command([cl, 'wedit', '--unfreeze'])
+    _run_command([cl, 'detach', uuid1])  # would remove an item
+    _run_command([cl, 'rm', uuid1])  # would remove an item
+    _run_command([cl, 'add', 'text', 'message'])  # would add an item
     _run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
     _run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
+
+    # Verify that we can make an edit to a frozen worksheet,
+    # as long as we unfreeze at the same time
+    _run_command([cl, 'wedit', '--freeze'])
+    _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
+    # can edit if we unfreeze at the same time
+    _run_command([cl, 'wedit', '-t', 'new_title', '--unfreeze'])
 
 
 @TestModule.register('detach')
@@ -1368,18 +1387,9 @@ def test_link(ctx):
     # Upload file
     # /tmp/codalab/link-mounts is the absolute path of the default link mounts folder on the host. By default, it is mounted
     # when no other argument for CODALAB_LINK_MOUNTS is specified.
-    #
-    # We create the temporary file at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts because
-    # this test is running inside a Docker container (so the host directory /tmp/codalab/link-mounts is
-    # mounted at /opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts).
-    link_mounts_dir = "/opt/codalab-worksheets-link-mounts/tmp/codalab/link-mounts"
 
-    os.makedirs(link_mounts_dir, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode='w', dir=link_mounts_dir, suffix=".txt", delete=False,
-    ) as f:
-        f.write("hello world!")
-    _, host_filename = f.name.split("/opt/codalab-worksheets-link-mounts")
+    # Test file is created by tests/test-setup.sh
+    host_filename = "/tmp/codalab/link-mounts/test.txt"
     uuid = _run_command([cl, 'upload', host_filename, '--link'])
     check_equals(State.READY, get_info(uuid, 'state'))
     check_equals(host_filename, get_info(uuid, 'link_url'))
@@ -1390,23 +1400,18 @@ def test_link(ctx):
     wait(run_uuid)
     check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
-    os.remove(f.name)
-
     # Upload directory
-    with tempfile.TemporaryDirectory(dir=link_mounts_dir) as dirname:
-        with open(os.path.join(dirname, "test.txt"), "w+") as f:
-            f.write("hello world!")
+    # Test file and directory are created by tests/test-setup.sh
+    host_dirname = "/tmp/codalab/link-mounts/test"
+    uuid = _run_command([cl, 'upload', host_dirname, '--link'])
+    check_equals(State.READY, get_info(uuid, 'state'))
+    check_equals(host_dirname, get_info(uuid, 'link_url'))
+    check_equals('raw', get_info(uuid, 'link_format'))
+    check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
 
-        _, host_dirname = dirname.split("/opt/codalab-worksheets-link-mounts")
-        uuid = _run_command([cl, 'upload', host_dirname, '--link'])
-        check_equals(State.READY, get_info(uuid, 'state'))
-        check_equals(host_dirname, get_info(uuid, 'link_url'))
-        check_equals('raw', get_info(uuid, 'link_format'))
-        check_equals("hello world!", _run_command([cl, 'cat', uuid + '/test.txt']))
-
-        run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
-        wait(run_uuid)
-        check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
+    run_uuid = _run_command([cl, 'run', 'foo:{}'.format(uuid), 'cat foo/test.txt'])
+    wait(run_uuid)
+    check_equals("hello world!", _run_command([cl, 'cat', run_uuid + '/stdout']))
 
     # Upload with a relative path.
     # This test only ensures that the link_url is properly set from

@@ -5,6 +5,7 @@ from contextlib import closing
 from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
 from codalab.worker import download_util
 from codalab.worker.bundle_state import State
+from codalab.worker.un_gzip_stream import un_gzip_stream
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,7 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 fileobj = self._get_read_response_stream(response_socket_id)
                 if not gzipped:
-                    fileobj = self.file_util.un_gzip_stream(fileobj)
+                    fileobj = un_gzip_stream(fileobj)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)
             except Exception:
                 self._worker_model.deallocate_socket(response_socket_id)

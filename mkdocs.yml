@@ -3,7 +3,7 @@ docs_dir: docs
 theme:
   name: 'material'
   features:
-    - tabs
+    - navigation.expand
   palette:
     primary: white
     accent: blue grey
@@ -15,7 +15,8 @@ extra_css:
 
 markdown_extensions:
   - admonition
-  - codehilite
+  - pymdownx.highlight
+  - pymdownx.superfences
   - toc:
       permalink: true
 
@@ -28,6 +29,9 @@ nav:
     - Examples: https://github.com/codalab/worksheets-examples
   - Examples:
       - Quickstart: examples/quickstart.md
+  - Features:
+    - Bundles:
+      - Uploading and Downloading Bundles: features/bundles/uploading.md
   - Concepts:
     - The CodaLab Workflow: Workflow.md
     - Executable Papers: Executable-Papers.md

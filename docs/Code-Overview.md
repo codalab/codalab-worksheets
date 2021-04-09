@@ -243,12 +243,16 @@ To run all tests in the Docker container, run:
 python3 test_runner.py unittest
 ```
 
-If you would only like to run specific tests, for example the REST API tests,
+If you would only like to run specific tests, for example just the worker tests,
 on your host machine (for faster iteration), you can run:
 
 ```
-nosetests tests.unit.rest
+nosetests tests.unit.worker
 ```
+
+Note that running the actual REST API tests won't work if you're running it locally using
+`nosetests`; they need to be run on the actual Docker container using the `test_runner.py`
+command mentioned previously. The other tests should work, though.
 
 #### End-to-end tests
 
@@ -257,6 +261,8 @@ nosetests tests.unit.rest
 ```
 python3 test_runner.py default
 ```
+
+You can update `default` with a specific test name (`unittest`, `run`, etc.) to only run a specific CLI test.
 
 - End-to-end UI tests for the web interface in [tests/ui](https://github.com/codalab/codalab-worksheets/tree/master/tests/ui)
 

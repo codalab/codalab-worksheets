@@ -3,6 +3,7 @@ import os
 import shutil
 
 from codalab.common import UsageError
+from codalab.common import StorageType
 from codalab.lib import crypt_util, file_util, path_util
 
 
@@ -32,6 +33,7 @@ class UploadManager(object):
         git,
         unpack,
         simplify_archives,
+        use_azure_blob_beta,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -48,6 +50,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
+        |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
@@ -60,10 +63,6 @@ class UploadManager(object):
             if exclude_patterns
             else self._default_exclude_patterns
         )
-        bundle_link_url = getattr(bundle.metadata, "link_url", None)
-        if bundle_link_url:
-            # Don't do anything for linked bundles.
-            return
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
@@ -119,6 +118,11 @@ class UploadManager(object):
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
+            # is_directory is True if the bundle is a directory and False if it is a single file.
+            is_directory = os.path.isdir(bundle_path)
+            self._bundle_model.update_bundle(
+                bundle, {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
+            )
         except UsageError:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)

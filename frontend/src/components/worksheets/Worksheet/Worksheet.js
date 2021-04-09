@@ -100,6 +100,7 @@ class Worksheet extends React.Component {
             },
         };
         this.copyCallbacks = [];
+        this.showContentCallbacks = [];
         this.bundleTableID = new Set();
 
         // Throttle so that if keys are held down, we don't suffer a huge lag.
@@ -391,6 +392,10 @@ class Worksheet extends React.Component {
         this.copyCallbacks[tableID] = callback;
     };
 
+    addShowContentBundleRowsCallback = (tableID, callback) => {
+        this.showContentCallbacks[tableID] = callback;
+    };
+
     // Helper functions to deal with commands
     toggleCmdDialog = (cmd_type) => () => {
         this.handleCommand(cmd_type);
@@ -572,6 +577,7 @@ class Worksheet extends React.Component {
         );
         this.bundleTableID = new Set();
         this.copyCallbacks = {};
+        this.showContentCallbacks = {};
     };
 
     onAsyncItemLoad = (focusIndex, item) => {
@@ -1404,6 +1410,7 @@ class Worksheet extends React.Component {
             textDeleted = false,
             fromDeleteCommand = false,
             uploadFiles = false,
+            addImage = false, // whether the reload is caused by adding an image
         } = {},
     ) => {
         if (partialUpdateItems === undefined) {
@@ -1454,6 +1461,10 @@ class Worksheet extends React.Component {
                             items[focus].mode !== 'table_block'
                         ) {
                             this.setFocus(focus >= 0 ? focus + 1 : 'end', 0);
+                        } else if (this.state.focusIndex === -1) {
+                            // If currently the top of the worksheet is focused and a new bundle has been uploaded to the worksheet,
+                            // the first item on the worksheet should be focused.
+                            this.setFocus(0, 0);
                         } else if (this.state.subFocusIndex !== undefined) {
                             // Focus on the next bundle row
                             this.setFocus(focus >= 0 ? focus : 'end', this.state.subFocusIndex + 1);
@@ -1507,11 +1518,29 @@ class Worksheet extends React.Component {
                             this.setFocus(focus, this.state.subFocusIndex);
                         }
                     }
-                    this.setState({
-                        updating: false,
-                        version: this.state.version + 1,
-                        numOfBundles: numOfBundles,
-                    });
+                    this.setState(
+                        {
+                            updating: false,
+                            version: this.state.version + 1,
+                            numOfBundles: numOfBundles,
+                        },
+                        () => {
+                            if (addImage) {
+                                const subFocusIndex = this.state.subFocusIndex || 0;
+                                let focusIndexPair = this.state.focusIndex + ',' + subFocusIndex;
+                                let index = this.state.ws.info.block_to_raw[focusIndexPair];
+                                if (index === undefined) {
+                                    // the newly uploaded image currently does not create a new separate block (e.g. be added as a bundle row to a table)
+                                    // retry to get the raw index
+                                    focusIndexPair =
+                                        this.state.focusIndex - 1 + ',' + (subFocusIndex + 1);
+                                    index = this.state.ws.info.block_to_raw[focusIndexPair];
+                                }
+                                // index is the raw index of the new uploaded image
+                                this.addImageDisplay(index);
+                            }
+                        },
+                    );
                     this.checkRunBundle(this.state.ws.info);
                 }.bind(this),
                 error: function(xhr, status, err) {
@@ -1624,6 +1653,101 @@ class Worksheet extends React.Component {
         });
 
         this.setState({ uploadAnchor: e.currentTarget });
+    };
+
+    /**
+     * @param index index of new image's source line
+     */
+    addImageDisplay = (index: number) => {
+        // add %display line to the worksheet source right before the newly uploaded image
+        this.setState(
+            (prevState) => {
+                const items = ['% display image / width=250'];
+                return {
+                    ws: {
+                        ...prevState.ws,
+                        info: {
+                            ...prevState.ws.info,
+                            source: [
+                                ...prevState.ws.info.source.slice(0, index),
+                                ...items,
+                                ...prevState.ws.info.source.slice(index),
+                            ],
+                        },
+                    },
+                };
+            },
+            () => {
+                // since one line has been added before the newly uploaded image, now the rawIndex should be added by 1
+                this.saveAndUpdateWorksheet(false, index + 1);
+            },
+        );
+    };
+
+    showBundleContent = () => {
+        this.setState({ openedDialog: DIALOG_TYPES.OPEN_CREATE_CONTENT });
+    };
+    showBundleContentCallback = (path) => () => {
+        // Default path for content block is '/'
+        path = path || '/';
+        let validBundles = [];
+        let showContentCounts = 0;
+        let tableIDs = Object.keys(this.showContentCallbacks).sort();
+        tableIDs.forEach((tableID) => {
+            let showContentBundleCallback = this.showContentCallbacks[tableID];
+            let bundlesChecked = showContentBundleCallback();
+            bundlesChecked.forEach((bundle) => {
+                if (bundle.name === '<invalid>') {
+                    return;
+                }
+                validBundles.push(bundle.rawIndex);
+                showContentCounts += 1;
+            });
+        });
+
+        let newSource = [...this.state.ws.info.source];
+
+        validBundles.forEach((index, i) => {
+            newSource.splice(
+                index + 3 * i + 1,
+                0,
+                '% display contents ' + path,
+                newSource[index],
+                '',
+            );
+        });
+        const toastString =
+            showContentCounts > 0
+                ? `Show contents for ${showContentCounts} bundle...` +
+                  (showContentCounts > 1 ? 's' : '')
+                : 'No bundle(s) selected';
+        this.clearCheckedBundles(() => {
+            toast.info(toastString, {
+                position: 'top-right',
+                autoClose: 1300,
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: false,
+                draggable: true,
+            });
+        });
+        this.setState(
+            (prevState) => {
+                return {
+                    ws: {
+                        ...prevState.ws,
+                        info: {
+                            ...prevState.ws.info,
+                            source: newSource,
+                        },
+                    },
+                    openedDialog: null,
+                };
+            },
+            () => {
+                this.saveAndUpdateWorksheet(false, validBundles ? validBundles[0] + 1 : undefined);
+            },
+        );
     };
 
     render() {
@@ -1784,10 +1908,12 @@ class Worksheet extends React.Component {
                 confirmBundleRowAction={this.confirmBundleRowAction}
                 setDeleteItemCallback={this.setDeleteItemCallback}
                 addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
+                addShowContentBundleRowsCallback={this.addShowContentBundleRowsCallback}
                 onAsyncItemLoad={this.onAsyncItemLoad}
                 updateBundleBlockSchema={this.updateBundleBlockSchema}
                 updateSchemaItem={this.updateSchemaItem}
                 setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
+                addImageDisplay={this.addImageDisplay}
             />
         );
 
@@ -1830,6 +1956,7 @@ class Worksheet extends React.Component {
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
+                    showBundleContent={this.showBundleContent}
                 />
                 {terminalDisplay}
                 <ToastContainer
@@ -1903,6 +2030,7 @@ class Worksheet extends React.Component {
                     forceDelete={this.state.forceDelete}
                     handleForceDelete={this.handleForceDelete}
                     deleteItemCallback={this.state.deleteItemCallback}
+                    showBundleContentCallback={this.showBundleContentCallback}
                 />
                 <InformationModal
                     showInformationModal={this.state.showInformationModal}

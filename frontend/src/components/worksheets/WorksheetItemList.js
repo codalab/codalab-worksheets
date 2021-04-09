@@ -14,6 +14,7 @@ import WorksheetItem from './items/WorksheetItem';
 import ItemWrapper from './items/ItemWrapper';
 import PlaceholderItem from './items/PlaceholderItem';
 import NewUpload from './NewUpload/NewUpload';
+import ImageEditor from './items/ImageEditor';
 import TextEditorItem from './items/TextEditorItem';
 import NewRun from './NewRun';
 import { withStyles } from '@material-ui/core/styles';
@@ -53,10 +54,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
     props.key = props.id = 'codalab-worksheet-item-' + props.focusIndex;
     props.url = url;
     props.prevItem = prevItem;
-    props.after_sort_key = getAfterSortKey(
-        props.item,
-        props.item.mode === 'markup_block' ? undefined : props.subFocusIndex,
-    );
+    props.after_sort_key = getAfterSortKey(item, props.subFocusIndex);
     props.ids = getIds(item);
     // showNewButtonsAfterEachBundleRow is set to true when we have a bundle table, because in this case,
     // we must show the new upload / new run buttons after each row in the table (in the BundleRow component)
@@ -200,7 +198,7 @@ class WorksheetItemList extends React.Component {
                     isDummyItem: true,
                     text: '',
                     mode: 'markup_block',
-                    sort_keys: [-1],
+                    sort_keys: [-1], // the dummy item represents the top of the worksheet, so its sort key is -1
                     ids: [null],
                     is_refined: true,
                 },
@@ -240,11 +238,14 @@ class WorksheetItemList extends React.Component {
                         onHideNewText: this.props.onHideNewText,
                         onHideNewRerun: this.props.onHideNewRerun,
                         onHideNewSchema: this.props.onHideNewSchema,
+                        onHideNewImage: this.props.onHideNewImage,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
                         editPermission: info && info.edit_permission,
                         addCopyBundleRowsCallback: this.props.addCopyBundleRowsCallback,
+                        addShowContentBundleRowsCallback: this.props
+                            .addShowContentBundleRowsCallback,
                         itemID: index,
                         updateBundleBlockSchema: this.props.updateBundleBlockSchema,
                         saveAndUpdateWorksheet: this.props.saveAndUpdateWorksheet,
@@ -304,7 +305,7 @@ class WorksheetItemList extends React.Component {
                                 ],
                                 header: ['field', 'generalized-path', 'post-processor'],
                                 schema_name: '',
-                                sort_keys: [-1],
+                                sort_keys: [0],
                             }}
                             create={true}
                             updateSchemaItem={this.props.updateSchemaItem}
@@ -324,6 +325,16 @@ class WorksheetItemList extends React.Component {
                         // (otherwise, chrome will not call onchange on a file input when
                         // the file hasn't changed)
                         onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
+                    />
+                    <ImageEditor
+                        key={this.state.newUploadKey + 1}
+                        after_sort_key={getAfterSortKey(focusedItem, this.props.subFocusIndex)}
+                        worksheetUUID={info.uuid}
+                        reloadWorksheet={this.props.reloadWorksheet}
+                        onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
+                        ws={this.props.ws}
+                        focusIndex={this.props.focusIndex}
+                        subFocusIndex={this.props.subFocusIndex}
                     />
                 </>
             );
