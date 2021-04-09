@@ -198,7 +198,7 @@ class MarkdownItem extends React.Component {
             if (start === -1) break; // No more math blocks
             if (start > 0 && text[start - 1] === '\\') {
                 // \$ --> \\$
-                // Avoid the $ sign to be escaped
+                // Escape the $ sign to avoid inadvertent latex rendering
                 newText += text.slice(curr, start - 1) + '\\' + text.slice(start - 1, start + 1);
                 curr = start + 1;
                 continue;
