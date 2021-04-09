@@ -22,7 +22,12 @@ class MarkdownItem extends React.Component {
 
     processMathJax = () => {
         window.MathJax &&
-            window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]);
+            window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]) &&
+            window.MathJax.Hub.Config({
+                tex2jax: {
+                    processEscapes: true,
+                },
+            });
     };
 
     componentDidMount() {
@@ -191,6 +196,13 @@ class MarkdownItem extends React.Component {
             //   start = 0, inStart = 2, inEnd = 5, end = 7
             var start = text.indexOf('$', curr);
             if (start === -1) break; // No more math blocks
+            if (start > 0 && text[start - 1] === '\\') {
+                // \$ --> \\$
+                // Avoid the $ sign to be escaped
+                newText += text.slice(curr, start - 1) + '\\' + text.slice(start - 1, start + 1);
+                curr = start + 1;
+                continue;
+            }
             var inStart = text[start + 1] === '$' ? start + 2 : start + 1;
             var inEnd = text.indexOf('$', inStart);
             if (inEnd === -1) {
