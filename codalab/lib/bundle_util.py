@@ -339,23 +339,3 @@ def mimic_bundles(
                 )
 
     return plan
-
-
-def get_path_size(path):
-    """Returns the path size in bytes."""
-    total = 0
-    try:
-        for entry in os.scandir(path):
-            if entry.is_file():
-                # if it's a file, use stat() function
-                total += entry.stat().st_size
-            elif entry.is_dir():
-                # if it's a directory, recursively call this function
-                total += get_path_size(entry.path)
-    except NotADirectoryError:
-        # if directory isn't a directory, get the file size then
-        return os.path.getsize(path)
-    except PermissionError:
-        # if for whatever reason we can't open the folder, return 0
-        return 0
-    return total

@@ -100,6 +100,7 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
+from codalab.worker.file_util import get_path_size
 
 
 # Command groupings
