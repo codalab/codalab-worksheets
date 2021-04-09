@@ -163,7 +163,7 @@ def _compute_target_info_local(path, depth):
     return result
 
 
-def _compute_target_info_beam(path, depth):
+def _compute_target_info_beam(path: str, depth: int):
     """Computes target info for a file that is externalized on a location
     such as Azure, by using the Apache Beam FileSystem APIs."""
 
@@ -172,13 +172,7 @@ def _compute_target_info_beam(path, depth):
         raise PathException(linked_bundle_path.bundle_path)
     if not linked_bundle_path.is_archive:
         # Single file
-        file = FileSystems.match([path])[0].metadata_list[0]
-        return {
-            'name': linked_bundle_path.bundle_uuid,
-            'type': 'file',
-            'size': file.size_in_bytes,
-            'perm': 0o755,
-        }
+        raise PathException("Single files on blob storage are not supported; only a path within a .tar.gz fils is supported.")
 
     with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
