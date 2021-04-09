@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '0.5.43';
+export const CODALAB_VERSION = '0.5.44';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -22,6 +22,7 @@ export const DIALOG_TYPES = {
     OPEN_DELETE_WORKSHEET: 'delete_whole_worksheet',
     OPEN_ERROR_DIALOG: 'error_dialog',
     OPEN_DELETE_SCHEMA: 'delete_schema',
+    OPEN_CREATE_CONTENT: 'create_content_block',
 };
 
 // Bundle fetch status values; corresponds with FetchStatusCodes in backend

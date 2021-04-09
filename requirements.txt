@@ -1,5 +1,5 @@
 apache-beam[azure]==2.27.0
-bottle==0.12.18
+bottle==0.12.19
 dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
 marshmallow-jsonapi==0.15.1
