@@ -147,8 +147,6 @@ class InteractiveSession:
         command = [
             'docker run',
             '-it',
-            f'--env HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
-            '--env PROMPT_COMMAND="history -a"',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
             '-u 1',
@@ -166,6 +164,7 @@ class InteractiveSession:
             )
         )
         command.append(self._docker_image)
+        # TODO: get rid of echo done
         command.append('/bin/bash -c "cleanup() { err=$?;history;echo done;trap '' EXIT INT TERM;exit $err ; }; trap cleanup EXIT && bash"')
         return ' '.join(command)
 
