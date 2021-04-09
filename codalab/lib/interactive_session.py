@@ -165,7 +165,11 @@ class InteractiveSession:
         )
         command.append(self._docker_image)
         # TODO: get rid of echo done
-        command.append('/bin/bash -c "cleanup() { err=$?;history;echo done;trap '' EXIT INT TERM;exit $err ; }; trap cleanup EXIT && bash"')
+        command.append(
+            '/bin/bash -c "cleanup() { err=$? && history && echo done '
+            ' && trap EXIT INT TERM && exit $err ; } '
+            '&& trap cleanup EXIT && bash"'
+        )
         return ' '.join(command)
 
     def cleanup(self):
