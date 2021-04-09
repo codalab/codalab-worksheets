@@ -6,7 +6,7 @@ import traceback
 
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
-from codalab.worker.file_util import open_indexed_tar_gz_file
+from codalab.worker.file_util import OpenIndexedTarGzFile
 
 
 class PathException(Exception):
@@ -180,63 +180,67 @@ def _compute_target_info_beam(path, depth):
             'perm': 0o755,
         }
 
-    tf, _ = open_indexed_tar_gz_file(linked_bundle_path.bundle_path)
-    islink = lambda finfo: stat.S_ISLNK(finfo.mode)
-    readlink = lambda finfo: finfo.linkname
+    with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
+        islink = lambda finfo: stat.S_ISLNK(finfo.mode)
+        readlink = lambda finfo: finfo.linkname
 
-    isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
-    isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
-    listdir = lambda path: tf.getFileInfo(path, listDir=True)
+        isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
+        isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+        listdir = lambda path: tf.getFileInfo(path, listDir=True)
 
-    def _get_info(path, depth):
-        if not path.startswith("/"):
-            path = "/" + path
-        finfo = tf.getFileInfo(path)
-        if finfo is None:
-            # Not found
-            raise PathException
-        result = {}
-        result['name'] = path.split("/")[-1]  # get last part of path
-        result['size'] = finfo.size
-        result['perm'] = finfo.mode & 0o777
-        if islink(finfo):
-            result['type'] = 'link'
-            result['link'] = readlink(finfo)
-        elif isfile(finfo):
-            result['type'] = 'file'
-        elif isdir(finfo):
-            result['type'] = 'directory'
+        def _get_info(path, depth):
+            if not path.startswith("/"):
+                path = "/" + path
+            finfo = tf.getFileInfo(path)
+            if finfo is None:
+                # Not found
+                raise PathException
+            result = {}
+            result['name'] = path.split("/")[-1]  # get last part of path
+            result['size'] = finfo.size
+            result['perm'] = finfo.mode & 0o777
+            if islink(finfo):
+                result['type'] = 'link'
+                result['link'] = readlink(finfo)
+            elif isfile(finfo):
+                result['type'] = 'file'
+            elif isdir(finfo):
+                result['type'] = 'directory'
+                if depth > 0:
+                    result['contents'] = [
+                        _get_info(path + "/" + file_name, depth - 1)
+                        for file_name in listdir(path)
+                        if file_name != "."
+                    ]
+            return result
+
+        if linked_bundle_path.archive_subpath:
+            # Return the contents of a subpath within a directory.
+            return _get_info(linked_bundle_path.archive_subpath, depth)
+        else:
+            # No subpath, return the entire directory.
+            file = FileSystems.match([path])[0].metadata_list[0]
+            result = {
+                'name': linked_bundle_path.bundle_uuid,
+                'type': 'directory',
+                'size': file.size_in_bytes,
+                'perm': 0o755,
+            }
             if depth > 0:
                 result['contents'] = [
-                    _get_info(path + "/" + file_name, depth - 1)
-                    for file_name in listdir(path)
+                    _get_info(file_name, depth - 1)
+                    for file_name in listdir("/")
                     if file_name != "."
                 ]
-        return result
-
-    if linked_bundle_path.archive_subpath:
-        # Return the contents of a subpath within a directory.
-        return _get_info(linked_bundle_path.archive_subpath, depth)
-    else:
-        # No subpath, return the entire directory.
-        file = FileSystems.match([path])[0].metadata_list[0]
-        result = {
-            'name': linked_bundle_path.bundle_uuid,
-            'type': 'directory',
-            'size': file.size_in_bytes,
-            'perm': 0o755,
-        }
-        if depth > 0:
-            result['contents'] = [
-                _get_info(file_name, depth - 1) for file_name in listdir("/") if file_name != "."
-            ]
-        return result
+            return result
 
 
 def compute_target_info_beam_descendants_flat(path):
     """Given a path on Azure Blob Storage,
     returns a flat array of all descendants within that directory in the format
-    [{name, type, size, perm}], where "name" is equal to the full path of each item.
+    [{name, type, size, perm}], where `name` is equal to the full path of each item.
+
+    Also includes an entry for the specified directory with `name` equal to an empty string.
     """
     target_info = _compute_target_info_beam(path, float("inf"))
     results = []
@@ -247,6 +251,7 @@ def compute_target_info_beam_descendants_flat(path):
             for t in tinfo['contents']:
                 append_results(t, prefix + tinfo['name'] + '/')
 
+    results.append(dict(target_info, contents=None, name=""))
     if 'contents' in target_info:
         for t in target_info['contents']:
             append_results(t)
