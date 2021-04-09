@@ -165,8 +165,6 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
 
     def do_unzip(filename):
         # TODO(Ashwin): preserve permissions with -X.
-        # See https://stackoverflow.com/questions/434641/how-do-i-set-permissions-attributes-on-a-file-in-a-zip-file-using-pythons-zip/48435482#48435482
-        # https://unix.stackexchange.com/questions/14705/the-zip-formats-external-file-attribute/14727#14727
 
         exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
         if exitcode != 0:
@@ -224,6 +222,8 @@ class OpenIndexedTarGzFile(object):
 class OpenFile(object):
     """Opens the file indicated by the given file path and returns a handle
     to the associated file object. Can be in a directory.
+
+    The file path can also refer to a .tar.gz file on Azure.
     """
 
     def __init__(self, path, mode='r'):
