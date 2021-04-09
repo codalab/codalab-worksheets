@@ -146,7 +146,7 @@ class InteractiveSession:
         # Start a container as a non-root user by passing in -u 1.
         command = [
             'docker run',
-            '-itd',
+            '-it',
             f'--env HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
             '--env PROMPT_COMMAND="history -a"',
             f'--name {name}',
@@ -166,7 +166,7 @@ class InteractiveSession:
             )
         )
         command.append(self._docker_image)
-        command.append('bash')
+        command.append('/bin/bash -c "cleanup() { err=$?;history;echo done;trap '' EXIT INT TERM;exit $err ; }; trap cleanup EXIT && bash"')
         return ' '.join(command)
 
     def cleanup(self):
@@ -204,9 +204,6 @@ class InteractiveSession:
                 file=self._stderr,
             )
             return ''
-
-        # TODO: -tony
-        # history -w /dev/stdout history without line numbers
 
         # If a user passed in an initial command, prepend it to list of possible commands to choose from
         if self._initial_command:
