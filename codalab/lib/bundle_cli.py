@@ -61,7 +61,6 @@ from codalab.lib import (
     worksheet_util,
     bundle_fuse,
 )
-from codalab.lib.bundle_util import get_path_size
 from codalab.lib.cli_util import (
     nested_dict_get,
     parse_key_target,
