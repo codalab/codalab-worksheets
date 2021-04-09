@@ -8,7 +8,6 @@ from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship  #
 from codalab.common import UsageError
 from codalab.lib import worksheet_util
 from codalab.worker.bundle_state import BundleInfo
-import os
 
 
 def bundle_to_bundle_info(model, bundle):
