@@ -143,12 +143,12 @@ class InteractiveSession:
                 volumes[get_docker_path(key)] = dependency_local_path
 
         name = self._get_container_name()
-        # Start a container as a non-root user.
+        # Start a container as a non-root user by passing in -u 1.
         command = [
             'docker run',
-            '-it',
+            '-itd',
             f'--env HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
-            '--env PROMPT_COMMAND="history -w"',
+            '--env PROMPT_COMMAND="history -a"',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
             '-u 1',
@@ -204,6 +204,9 @@ class InteractiveSession:
                 file=self._stderr,
             )
             return ''
+
+        # TODO: -tony
+        # history -w /dev/stdout history without line numbers
 
         # If a user passed in an initial command, prepend it to list of possible commands to choose from
         if self._initial_command:
