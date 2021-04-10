@@ -81,13 +81,10 @@ class InteractiveSession:
         self._stderr = stderr
 
     def start(self):
-        self._host_bundle_path = os.path.join(
+        self._host_bundle_path: str = os.path.join(
             self._manager.codalab_home, 'local_bundles', self._session_uuid
         )
         os.makedirs(self._host_bundle_path)
-
-        # Create a blank directory to mount as the working directory of the interactive session container
-        os.makedirs(self._session_uuid)
 
         # Create a blank file which will be used as the bash history file that will later be
         # mounted and populated during the interactive session.
@@ -147,15 +144,15 @@ class InteractiveSession:
                 volumes[get_docker_path(key)] = dependency_local_path
 
         name: str = self._get_container_name()
-        working_directory: str = f'{os.path.sep}{self._session_uuid}'
+        container_working_directory: str = f'{os.path.sep}{self._session_uuid}'
 
         # Start a container as a non-root user
         command: List[str] = [
             'docker run',
             '-it',
             f'--name {name}',
-            f'-w {working_directory}',
-            f'-e HOME={working_directory}',
+            f'-w {container_working_directory}',
+            f'-e HOME={container_working_directory}',
             f'-e HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
             '-e PROMPT_COMMAND="history -a"',
             '-u $(id -u):$(id -g)',
@@ -170,7 +167,7 @@ class InteractiveSession:
         command.extend(
             [
                 f'-v {self._host_bash_history_path}:{InteractiveSession._BASH_HISTORY_CONTAINER_PATH}:rw',
-                f'-v {self._session_uuid}:{working_directory}:rw'
+                f'-v {self._host_bundle_path}:{container_working_directory}:rw',
             ]
         )
         command.append(self._docker_image)
@@ -182,8 +179,7 @@ class InteractiveSession:
 
         self._container.stop()
         self._container.remove()
-        shutil.rmtree(self._host_bundle_path)
-        shutil.rmtree(self._session_uuid)
+        shutil.rmtree(self._host_bundle_path, ignore_errors=True)
 
         if self._verbose:
             print('Done.\n', file=self._stdout)
