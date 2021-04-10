@@ -6,7 +6,7 @@ import docker
 import os
 import shutil
 import sys
-from typing import List
+from typing import Dict, List
 
 
 class InteractiveSession:
@@ -86,6 +86,9 @@ class InteractiveSession:
         )
         os.makedirs(self._host_bundle_path)
 
+        # Create a blank directory to mount as the working directory of the interactive session container
+        os.makedirs(self._session_uuid)
+
         # Create a blank file which will be used as the bash history file that will later be
         # mounted and populated during the interactive session.
         self._host_bash_history_path = os.path.join(self._host_bundle_path, ".bash_history")
@@ -124,7 +127,7 @@ class InteractiveSession:
             return os.path.sep + os.path.join(self._session_uuid, sub_path)
 
         # Use a dict to keep track of volumes to mount. The key is the path on Docker and the value is the local path.
-        volumes = {}
+        volumes: Dict[str, str] = {}
         for key, bundle_target in self._dependencies:
             dependency_local_path = os.path.realpath(
                 os.path.join(
@@ -145,6 +148,7 @@ class InteractiveSession:
 
         name: str = self._get_container_name()
         working_directory: str = f'{os.path.sep}{self._session_uuid}'
+        volumes[working_directory] = self._session_uuid
 
         # Start a container as a non-root user
         command: List[str] = [
@@ -178,7 +182,9 @@ class InteractiveSession:
 
         self._container.stop()
         self._container.remove()
-        shutil.rmtree(self._host_bundle_path, ignore_errors=True)
+        shutil.rmtree(self._host_bundle_path)
+        shutil.rmtree(self._session_uuid)
+
         if self._verbose:
             print('Done.\n', file=self._stdout)
 
