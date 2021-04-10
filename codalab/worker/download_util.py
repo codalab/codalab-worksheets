@@ -172,7 +172,9 @@ def _compute_target_info_beam(path: str, depth: int):
         raise PathException(linked_bundle_path.bundle_path)
     if not linked_bundle_path.is_archive:
         # Single file
-        raise PathException("Single files on blob storage are not supported; only a path within a .tar.gz fils is supported.")
+        raise PathException(
+            "Single files on blob storage are not supported; only a path within a .tar.gz fils is supported."
+        )
 
     with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)

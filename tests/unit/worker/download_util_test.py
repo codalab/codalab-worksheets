@@ -3,6 +3,7 @@ from codalab.worker.download_util import (
     get_target_info,
     BundleTarget,
     compute_target_info_beam_descendants_flat,
+    PathException,
 )
 import unittest
 import random
@@ -80,13 +81,11 @@ class AzureBlobTestBase:
 
 class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
     def test_single_file(self):
-        """Test getting target info of a single file on Azure Blob Storage."""
+        """Test getting target info of a single file on Azure Blob Storage. As this isn't supported
+        (paths should be specified within existing .tar.gz files), this should throw an exception."""
         bundle_uuid, bundle_path = self.create_file(b"a")
-        target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
-        target_info.pop("resolved_target")
-        self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 0o755}
-        )
+        with self.assertRaises(PathException):
+            get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
 
     def test_nested_directories(self):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
