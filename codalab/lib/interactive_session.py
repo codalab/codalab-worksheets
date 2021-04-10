@@ -6,6 +6,7 @@ import docker
 import os
 import shutil
 import sys
+from typing import List
 
 
 class InteractiveSession:
@@ -142,13 +143,16 @@ class InteractiveSession:
             else:
                 volumes[get_docker_path(key)] = dependency_local_path
 
-        name = self._get_container_name()
+        name: str = self._get_container_name()
+        working_directory: str = f'{os.path.sep}{self._session_uuid}'
+
         # Start a container as a non-root user
-        command = [
+        command: List[str] = [
             'docker run',
             '-it',
             f'--name {name}',
-            f'-w {os.path.sep}{self._session_uuid}',
+            f'-w {working_directory}',
+            f'-e HOME={working_directory}',
             f'-e HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
             '-e PROMPT_COMMAND="history -a"',
             '-u $(id -u):$(id -g)',
