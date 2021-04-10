@@ -160,7 +160,7 @@ class InteractiveSession:
         command.extend(
             [
                 # Example: -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo:ro
-                '-v {}:{}:ro'.format(local_path, docker_path)
+                f'-v {local_path}:{docker_path}:ro'
                 for docker_path, local_path in volumes.items()
             ]
         )
