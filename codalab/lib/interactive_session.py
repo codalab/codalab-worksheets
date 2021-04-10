@@ -148,7 +148,6 @@ class InteractiveSession:
 
         name: str = self._get_container_name()
         working_directory: str = f'{os.path.sep}{self._session_uuid}'
-        volumes[working_directory] = self._session_uuid
 
         # Start a container as a non-root user
         command: List[str] = [
@@ -168,10 +167,11 @@ class InteractiveSession:
                 for docker_path, local_path in volumes.items()
             ]
         )
-        command.append(
-            '-v {}:{}:rw'.format(
-                self._host_bash_history_path, InteractiveSession._BASH_HISTORY_CONTAINER_PATH
-            )
+        command.extend(
+            [
+                f'-v {self._host_bash_history_path}:{InteractiveSession._BASH_HISTORY_CONTAINER_PATH}:rw',
+                f'-v {self._session_uuid}:{working_directory}:rw'
+            ]
         )
         command.append(self._docker_image)
         return ' '.join(command)
