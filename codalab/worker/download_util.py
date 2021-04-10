@@ -192,7 +192,7 @@ def _compute_target_info_beam(path: str, depth: int):
                 # Not found
                 raise PathException
             result = {}
-            result['name'] = path.split("/")[-1]  # get last part of path
+            result['name'] = os.path.basename(path)  # get last part of path
             result['size'] = finfo.size
             result['perm'] = finfo.mode & 0o777
             if islink(finfo):
