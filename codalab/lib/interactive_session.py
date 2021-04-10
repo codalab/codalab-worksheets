@@ -23,7 +23,7 @@ class InteractiveSession:
         3. Mount the dependencies as read-only.
         4. Set working directory to some arbitrary path: `/<session uuid>`
         5. The user will interact with this container and try out different commands. Once satisfied the user will
-           exit the bash session. All the commands the user tried out will be stored at path `/root/.bash_history`
+           exit the bash session. All the commands the user tried out will be stored at path `/usr/sbin/.bash_history`
            in the container.
         6. Copy `.bash_history` out to the host machine.
         7. Open an editor and allow the user to select and edit commands for the official run.
@@ -143,13 +143,15 @@ class InteractiveSession:
                 volumes[get_docker_path(key)] = dependency_local_path
 
         name = self._get_container_name()
-        # Start a container as a non-root user by passing in -u 1.
+        # Start a container as a non-root user
         command = [
             'docker run',
             '-it',
             f'--name {name}',
             f'-w {os.path.sep}{self._session_uuid}',
-            '-u 1',
+            f'-e HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
+            '-e PROMPT_COMMAND="history -a"',
+            '-u $(id -u):$(id -g)',
         ]
         command.extend(
             [
@@ -164,12 +166,6 @@ class InteractiveSession:
             )
         )
         command.append(self._docker_image)
-        # TODO: get rid of echo done
-        command.append(
-            '/bin/bash -c "cleanup() { err=$? && history && echo done '
-            ' && trap EXIT INT TERM && exit $err ; } '
-            '&& trap cleanup EXIT && bash"'
-        )
         return ' '.join(command)
 
     def cleanup(self):
