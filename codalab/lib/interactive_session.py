@@ -75,15 +75,15 @@ class InteractiveSession:
 
         self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
         self._session_uuid = generate_uuid()
+        self._host_bundle_path: str = os.path.join(
+            self._manager.codalab_home, 'local_bundles', self._session_uuid
+        )
 
         self._verbose = verbose
         self._stdout = stdout
         self._stderr = stderr
 
     def start(self):
-        self._host_bundle_path: str = os.path.join(
-            self._manager.codalab_home, 'local_bundles', self._session_uuid
-        )
         os.makedirs(self._host_bundle_path)
 
         # Create a blank file which will be used as the bash history file that will later be
