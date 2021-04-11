@@ -249,7 +249,7 @@ class DockerImageManager:
                             if (
                                 line['status'] == 'Downloading'
                                 and 'total' in line['progressDetail']
-                                and 'current' in line['progressDetail']
+                                # and 'current' in line['progressDetail']
                             ):
                                 self._downloading[image_spec]['status'] = '(%d%%)' % (
                                     line['progressDetail']['current']
