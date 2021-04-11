@@ -14,6 +14,7 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from ratarmount import SQLiteIndexedTar
+from typing import IO, Optional
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -159,7 +160,6 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
 
     def do_unzip(filename):
         # TODO(Ashwin): preserve permissions with -X.
-
         exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
         if exitcode != 0:
             raise UsageError('Invalid archive upload. ')
@@ -200,7 +200,7 @@ class OpenIndexedTarGzFile(object):
                 index_fileobj,
             )
 
-    def __enter__(self):
+    def __enter__(self) -> SQLiteIndexedTar:
         return SQLiteIndexedTar(
             fileObject=self.f,
             tarFileName=parse_linked_bundle_url(self.path).bundle_uuid,
@@ -220,12 +220,16 @@ class OpenFile(object):
     The file path can also refer to a .tar.gz file on Azure.
     """
 
-    def __init__(self, path, mode='r'):
+    path: str
+    mode: str
+    subfolder_file_name: Optional[str]
+
+    def __init__(self, path: str, mode='r'):
         self.path = path
         self.mode = mode
         self.subfolder_file_name = None
 
-    def __enter__(self):
+    def __enter__(self) -> IO[bytes]:
         linked_bundle_path = parse_linked_bundle_url(self.path)
         if (
             linked_bundle_path.uses_beam
@@ -292,18 +296,18 @@ class OpenFile(object):
             os.remove(self.subfolder_file_name)
 
 
-class GzipStream:
+class GzipStream(BytesIO):
     """A stream that gzips a file in chunks.
     """
 
     BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
 
-    def __init__(self, fileobj):
+    def __init__(self, fileobj: IO[bytes]):
         self.__input = fileobj
         self.__buffer = BytesBuffer()
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
 
-    def read(self, size=-1):
+    def read(self, size=-1) -> bytes:
         while size < 0 or len(self.__buffer) < size:
             s = self.__input.read(GzipStream.BUFFER_SIZE)
             if not s:
@@ -316,7 +320,7 @@ class GzipStream:
         self.__input.close()
 
 
-def gzip_file(file_path):
+def gzip_file(file_path: str) -> IO[bytes]:
     """
     Returns a file-like object containing the gzipped version of the given file.
     Note: For right now, it's important for gzip to run in a separate process,
@@ -338,6 +342,8 @@ def gzip_file(file_path):
     args = ['gzip', '-c', '-n', file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        if proc.stdout is None:
+            raise IOError("Stdout is empty")
         return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)

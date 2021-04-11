@@ -241,7 +241,12 @@ def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo
             # Return the contents of a subpath within a directory.
             return _get_info(linked_bundle_path.archive_subpath, depth)
         else:
-            # No subpath, return the entire directory.
+            # No subpath, return the entire directory with the bundle
+            # contents in it. The permissions of this directory
+            # cannot be set by the user (the user can only set permissions
+            # of files *within* this directory that are part of the bundle
+            # itself), so we just return a placeholder value of 0o755
+            # for this directory's permissions.
             file = FileSystems.match([path])[0].metadata_list[0]
             result: TargetInfo = {
                 'name': linked_bundle_path.bundle_uuid,
