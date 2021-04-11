@@ -4,7 +4,7 @@ import stat
 import tarfile
 import logging
 import traceback
-from typing import Any, List, Optional, Union, cast
+from typing import Any, List, Optional, Union
 from typing_extensions import TypedDict
 
 from apache_beam.io.filesystems import FileSystems
