@@ -48,7 +48,22 @@ class BundleTarget:
         return "{}:{}".format(self.bundle_uuid, self.subpath)
 
 
-def get_target_info(bundle_path, target, depth):
+TargetInfo = TypedDict(
+    'TargetInfo',
+    {
+        "name": str,
+        "size": int,
+        "perm": int,
+        "link": Optional[str],
+        "type": str,
+        "contents": Optional[List[Any]],
+        "resolved_target": Optional[BundleTarget],
+    },
+    total=False,
+)
+
+
+def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> TargetInfo:
     """
     Generates an index of the contents of the given path. The index contains
     the fields:
@@ -95,7 +110,7 @@ def get_target_info(bundle_path, target, depth):
     return info
 
 
-def get_target_path(bundle_path, target):
+def get_target_path(bundle_path: str, target: BundleTarget) -> str:
     """
     Returns the path to the given target, which is assumed to exist.
     If reading the given path is not secure, raises a PathException.
@@ -114,7 +129,7 @@ def get_target_path(bundle_path, target):
 BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
-def _get_normalized_target_path(bundle_path, target):
+def _get_normalized_target_path(bundle_path: str, target: BundleTarget) -> str:
     if parse_linked_bundle_url(bundle_path).uses_beam:
         # On Azure, don't call os.path functions on the paths (which are azfs:// URLs).
         # We can just concatenate them together.
@@ -140,20 +155,6 @@ def _get_target_path(bundle_path, path):
         return bundle_path + os.path.sep + path
     else:
         return bundle_path
-
-
-TargetInfo = TypedDict(
-    'TargetInfo',
-    {
-        "name": str,
-        "size": int,
-        "perm": int,
-        "link": Optional[str],
-        "type": str,
-        "contents": Optional[List[Any]],
-    },
-    total=False,
-)
 
 
 def _compute_target_info_local(path: str, depth: Union[int, float]) -> TargetInfo:
