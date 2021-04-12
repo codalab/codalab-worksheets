@@ -224,7 +224,6 @@ class OpenFile(object):
 
     path: str
     mode: str
-    subfolder_file_name: Optional[str]
 
     def __init__(self, path: str, mode='r'):
         self.path = path
