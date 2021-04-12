@@ -269,6 +269,9 @@ def compute_target_info_beam_descendants_flat(path: str) -> List[TargetInfo]:
     [{name, type, size, perm}], where `name` is equal to the full path of each item.
 
     Also includes an entry for the specified directory with `name` equal to an empty string.
+
+    This function is used by TarSubdirStream in order to determine the list of descendants
+    that exist inside a given subdirectory in a .tar.gz file on Blob Storage.
     """
     target_info = _compute_target_info_beam(
         path, math.inf

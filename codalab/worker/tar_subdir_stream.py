@@ -16,8 +16,8 @@ class CurrentDescendant:
     index: int  # Current index of descendants list
     pos: int  # Position within the current descendant
     read_header: bool  # Whether header has been read yet
-    finfo: FileInfo  # FileInfo corresponding to current descendant
-    tinfo: tarfile.TarInfo  # TarInfo corresponding to current descendant
+    finfo: FileInfo  # FileInfo corresponding to current descendant (ratarmount-specific data structure)
+    tinfo: tarfile.TarInfo  # TarInfo corresponding to current descendant (tarfile-specific data structure)
 
 
 class TarSubdirStream(BytesIO):
@@ -51,14 +51,23 @@ class TarSubdirStream(BytesIO):
         from codalab.worker.download_util import compute_target_info_beam_descendants_flat
 
         self.linked_bundle_path = parse_linked_bundle_url(path)
+
+        # We add OpenIndexedTarGzFile to self._stack so that the context manager remains open and is exited
+        # only in the method self.close().
         with ExitStack() as stack:
             self.tf = stack.enter_context(OpenIndexedTarGzFile(self.linked_bundle_path.bundle_path))
             self._stack = stack.pop_all()
+
+        # Keep track of descendants of the specified subdirectory and the current descendant
         self.descendants = compute_target_info_beam_descendants_flat(path)
         self.current_desc = CurrentDescendant(
             index=0, pos=0, read_header=False, finfo=FileInfo(), tinfo=tarfile.TarInfo()
         )
+
+        # Buffer that stores the underlying bytes of the output tar archive
         self._buffer = BytesBuffer()
+
+        # Output tar archive
         self.output = tarfile.open(fileobj=self._buffer, mode="w:")
 
     def _read_from_tar(self, num_bytes=None) -> None:
@@ -77,6 +86,10 @@ class TarSubdirStream(BytesIO):
             member_tarinfo = tarfile.TarInfo(name="./" + member['name'] if member['name'] else '.')
             for attr in ("size", "mtime", "mode", "type", "linkname", "uid", "gid"):
                 setattr(member_tarinfo, attr, getattr(member_finfo, attr))
+
+            # finfo is a ratarmount-specific data structure, while tinfo is a tarfile-specific data structure.
+            # We need the former in order to read from the file with ratarmount and the latter in order to
+            # construct the output tar archive.
             self.current_desc.finfo = member_finfo
             self.current_desc.tinfo = member_tarinfo
             self.current_desc.read_header = True
@@ -94,7 +107,9 @@ class TarSubdirStream(BytesIO):
             assert self.output.fileobj is not None
             self.output.fileobj.write(chunk)
             self.current_desc.pos += len(chunk)
-            self.output.offset += len(chunk)  # type: ignore
+            # We're ignoring types here because the TarFile.offset type is missing.
+            # TODO: Remove "# type: ignore" annotations once this PR is merged: https://github.com/python/typeshed/pull/5210
+            self.output.offset += len(chunk)  # type: ignore.
         else:
             # We've finished reading the entire current descendant.
             # Write the remainder of the block, if needed, and then move on to the next descendant.
