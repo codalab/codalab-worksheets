@@ -1,6 +1,7 @@
 from contextlib import ExitStack
-import ratarmount
+from ratarmount import FileInfo
 import tarfile
+from io import BytesIO
 from typing import Optional
 from dataclasses import dataclass
 
@@ -16,11 +17,11 @@ class CurrentDescendant:
     index: int  # Current index of descendants list
     pos: int  # Position within the current descendant
     read_header: bool  # Whether header has been read yet
-    finfo: Optional[ratarmount.FileInfo]  # FileInfo corresponding to current descendant
-    tinfo: Optional[tarfile.TarInfo]  # TarInfo corresponding to current descendant
+    finfo: FileInfo  # FileInfo corresponding to current descendant
+    tinfo: tarfile.TarInfo  # TarInfo corresponding to current descendant
 
 
-class TarSubdirStream(object):
+class TarSubdirStream(BytesIO):
     """Streams a subdirectory from a tar file stored on Blob Storage, as its own tar archive.
     Inspired by https://gist.github.com/chipx86/9598b1e4a9a1a7831054.
 
@@ -49,12 +50,12 @@ class TarSubdirStream(object):
             self._stack = stack.pop_all()
         self.descendants = compute_target_info_beam_descendants_flat(path)
         self.current_desc = CurrentDescendant(
-            index=0, pos=0, read_header=False, finfo=None, tinfo=None
+            index=0, pos=0, read_header=False, finfo=FileInfo(), tinfo=tarfile.TarInfo()
         )
         self._buffer = BytesBuffer()
         self.output = tarfile.open(fileobj=self._buffer, mode="w:")
 
-    def _read_from_tar(self, num_bytes=None) -> bytes:
+    def _read_from_tar(self, num_bytes=None) -> None:
         """Read the specified number of bytes from the tar file
         associated with the given subdirectory.
         
@@ -84,9 +85,10 @@ class TarSubdirStream(object):
                 else min(self.current_desc.finfo.size - self.current_desc.pos, num_bytes),
                 offset=self.current_desc.pos,
             )
+            assert self.output.fileobj is not None
             self.output.fileobj.write(chunk)
             self.current_desc.pos += len(chunk)
-            self.output.offset += len(chunk)
+            self.output.offset += len(chunk)  # type: ignore
         else:
             # We've finished reading the entire current descendant.
             # Write the remainder of the block, if needed, and then move on to the next descendant.
@@ -95,11 +97,16 @@ class TarSubdirStream(object):
                 # https://github.com/python/cpython/blob/9d2c2a8e3b8fe18ee1568bfa4a419847b3e78575/Lib/tarfile.py#L2008-L2012.
                 blocks, remainder = divmod(self.current_desc.tinfo.size, tarfile.BLOCKSIZE)
                 if remainder > 0:
+                    assert self.output.fileobj is not None
                     self.output.fileobj.write(tarfile.NUL * (tarfile.BLOCKSIZE - remainder))
                     blocks += 1
-                self.output.offset += blocks * tarfile.BLOCKSIZE
+                self.output.offset += blocks * tarfile.BLOCKSIZE  # type: ignore
             self.current_desc = CurrentDescendant(
-                index=self.current_desc.index + 1, pos=0, read_header=False, finfo=None, tinfo=None,
+                index=self.current_desc.index + 1,
+                pos=0,
+                read_header=False,
+                finfo=FileInfo(),
+                tinfo=tarfile.TarInfo(),
             )
 
     def read(self, num_bytes=None):

@@ -3,14 +3,14 @@ import ratarmount
 import tarfile
 from typing import Optional
 from dataclasses import dataclass
-from io import SEEK_SET, SEEK_CUR, SEEK_END
+from io import SEEK_SET, SEEK_CUR, SEEK_END, BytesIO
 
 from codalab.worker.un_gzip_stream import BytesBuffer
 from codalab.common import parse_linked_bundle_url
 from ratarmount import FileInfo, SQLiteIndexedTar
 
 
-class TarFileStream(object):
+class TarFileStream(BytesIO):
     """Streams a file from a tar archive stored on Blob Storage.
 
     TODO (Ashwin): If we can add tf.open() support upstream to the ratarmount API
