@@ -27,6 +27,8 @@ nav:
   - Home:
     - Introduction: index.md
     - Examples: https://github.com/codalab/worksheets-examples
+  - Examples:
+      - Quickstart: examples/quickstart.md
   - Features:
     - Bundles:
       - Uploading and Downloading Bundles: features/bundles/uploading.md
