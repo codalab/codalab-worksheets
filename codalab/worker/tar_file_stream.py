@@ -1,6 +1,5 @@
 from contextlib import ExitStack
 import ratarmount
-import tarfile
 from typing import Optional
 from dataclasses import dataclass
 from io import SEEK_SET, SEEK_CUR, SEEK_END, BytesIO
@@ -29,7 +28,6 @@ class TarFileStream(BytesIO):
         self.tf = tf
         self.finfo = finfo
         self._buffer = BytesBuffer()
-        self.output = tarfile.open(fileobj=self._buffer, mode="w:")
         self.pos = 0
 
     def _read_from_tar(self, num_bytes):
