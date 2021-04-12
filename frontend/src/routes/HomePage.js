@@ -26,10 +26,9 @@ class HomePage extends React.Component<{
 }> {
     constructor(props) {
         super(props);
-        const { auth, redirectAuthToDashboard } = this.props;
-        if (auth.isAuthenticated && redirectAuthToDashboard) {
-            this.props.history.push('/worksheets?name=dashboard');
-            // this.props.history.push('/dashboard');
+        const { auth, redirectAuthToProfile } = this.props;
+        if (auth.isAuthenticated && redirectAuthToProfile) {
+            this.props.history.push('/users');
         }
     }
 
@@ -95,10 +94,7 @@ class HomePage extends React.Component<{
                                         </React.Fragment>
                                     )}
                                     {auth.isAuthenticated &&
-                                        this.renderButton(
-                                            'Dashboard',
-                                            '/worksheets?name=dashboard',
-                                        )}
+                                        this.renderButton('My Profile', '/users')}
                                 </div>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
