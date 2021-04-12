@@ -12,6 +12,10 @@ from ratarmount import FileInfo, SQLiteIndexedTar
 class TarFileStream(BytesIO):
     """Streams a file from a tar archive stored on Blob Storage.
 
+    The general idea is that whenever .read() is called on this class,
+    it will read the specified number of bytes through ratarmount's tf.open()
+    API on the associated file and return those bytes.
+
     TODO (Ashwin): If we can add tf.open() support upstream to the ratarmount API
     (right now it only supports tf.read()), we may not have a need for this class anymore.
     """

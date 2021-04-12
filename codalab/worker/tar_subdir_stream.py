@@ -23,6 +23,13 @@ class CurrentDescendant:
 
 class TarSubdirStream(BytesIO):
     """Streams a subdirectory from a tar file stored on Blob Storage, as its own tar archive.
+
+    The general idea is that on initialization, this class will construct a list
+    "descendants" that contains all files within the specified subdirectory in the tar file.
+    Whenever .read() is called on this class, it will partially construct a tar file
+    with the headers and contents of each descendant, up to the specified number of bytes,
+    and return those bytes.
+
     Inspired by https://gist.github.com/chipx86/9598b1e4a9a1a7831054.
 
     TODO (Ashwin): Right now, all the descendants of the subdirectory must first be retrieved
