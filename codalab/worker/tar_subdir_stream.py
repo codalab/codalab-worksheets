@@ -20,6 +20,22 @@ class CurrentDescendant:
     tinfo: tarfile.TarInfo  # TarInfo corresponding to current descendant (tarfile-specific data structure)
 
 
+# Used to initialize empty FileInfo objects
+EmptyFileInfo = FileInfo(
+    offsetheader=None,
+    offset=None,
+    size=None,
+    mtime=None,
+    mode=None,
+    type=None,
+    linkname=None,
+    uid=None,
+    gid=None,
+    istar=None,
+    issparse=None,
+)
+
+
 class TarSubdirStream(BytesIO):
     """Streams a subdirectory from a tar file stored on Blob Storage, as its own tar archive.
 
@@ -61,7 +77,7 @@ class TarSubdirStream(BytesIO):
         # Keep track of descendants of the specified subdirectory and the current descendant
         self.descendants = compute_target_info_beam_descendants_flat(path)
         self.current_desc = CurrentDescendant(
-            index=0, pos=0, read_header=False, finfo=FileInfo(), tinfo=tarfile.TarInfo()
+            index=0, pos=0, read_header=False, finfo=EmptyFileInfo, tinfo=tarfile.TarInfo()
         )
 
         # Buffer that stores the underlying bytes of the output tar archive
@@ -126,7 +142,7 @@ class TarSubdirStream(BytesIO):
                 index=self.current_desc.index + 1,
                 pos=0,
                 read_header=False,
-                finfo=FileInfo(),
+                finfo=EmptyFileInfo,
                 tinfo=tarfile.TarInfo(),
             )
 
