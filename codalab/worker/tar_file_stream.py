@@ -1,11 +1,6 @@
-from contextlib import ExitStack
-import ratarmount
-from typing import Optional
-from dataclasses import dataclass
 from io import SEEK_SET, SEEK_CUR, SEEK_END, BytesIO
 
 from codalab.worker.un_gzip_stream import BytesBuffer
-from codalab.common import parse_linked_bundle_url
 from ratarmount import FileInfo, SQLiteIndexedTar
 
 

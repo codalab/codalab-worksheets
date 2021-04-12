@@ -2,7 +2,6 @@ from contextlib import ExitStack
 from ratarmount import FileInfo
 import tarfile
 from io import BytesIO
-from typing import Optional
 from dataclasses import dataclass
 
 from codalab.worker.un_gzip_stream import BytesBuffer
@@ -65,7 +64,7 @@ class TarSubdirStream(BytesIO):
     def _read_from_tar(self, num_bytes=None) -> None:
         """Read the specified number of bytes from the tar file
         associated with the given subdirectory.
-        
+
         Based on where we currently are within the subdirectory's descendants,
         either read the next descendant's header or its contents.
         """
