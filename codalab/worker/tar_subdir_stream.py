@@ -22,6 +22,11 @@ class CurrentDescendant:
 
 class TarSubdirStream(object):
     """Streams a subdirectory from a tar file.
+
+    TODO (Ashwin): Right now, all the descendants of the subdirectory must first be retrieved
+    before the subdirectory can begin to be streamed. We can stream those descendants
+    as well, though it may not be that important of a performance optimization
+    because the descendants are all stored in the index.
     """
 
     current_desc: CurrentDescendant
