@@ -21,7 +21,7 @@ class CurrentDescendant:
 
 
 class TarSubdirStream(object):
-    """Streams a subdirectory from a tar file.
+    """Streams a subdirectory from a tar file stored on Blob Storage.
 
     TODO (Ashwin): Right now, all the descendants of the subdirectory must first be retrieved
     before the subdirectory can begin to be streamed. We can stream those descendants
@@ -34,6 +34,11 @@ class TarSubdirStream(object):
     BUFFER_SIZE = 100 * 1024 * 1024  # Read in chunks of 100MB
 
     def __init__(self, path: str):
+        """Initialize TarSubdirStream.
+
+        Args:
+            path (str): Specified path of the subdirectory on Blob Storage. Must refer to a subdirectory path within a .tar.gz file.
+        """
         from codalab.worker.file_util import OpenIndexedTarGzFile
         from codalab.worker.download_util import compute_target_info_beam_descendants_flat
 
@@ -49,11 +54,15 @@ class TarSubdirStream(object):
         self.output = tarfile.open(fileobj=self._buffer, mode="w:")
 
     def _read_from_tar(self, num_bytes=None) -> bytes:
-        """Read from all descendants."""
-        # Extract other members of the directory.
-        # TODO (Ashwin): Make sure this works with symlinks, too (it should work, but add a test to ensure it).
+        """Read the specified number of bytes from the tar file
+        associated with the given subdirectory.
+        
+        Based on where we currently are within the subdirectory's descendants,
+        either read the next descendant's header or its contents.
+        """
         if not self.current_desc.read_header:
             # Read the header of the current descendant.
+            # TODO (Ashwin): Make sure this works with symlinks, too (it should work, but add a test to ensure it).
             member = self.descendants[self.current_desc.index]
             full_name = f"{self.linked_bundle_path.archive_subpath}/{member['name']}"
             member_finfo = self.tf.getFileInfo("/" + full_name)
@@ -78,10 +87,11 @@ class TarSubdirStream(object):
             self.current_desc.pos += len(chunk)
             self.output.offset += len(chunk)
         else:
-            # Finished reading the entire current descendant. Write the remainder of the block,
-            # if needed, and then move on to the next descendant.
+            # We've finished reading the entire current descendant.
+            # Write the remainder of the block, if needed, and then move on to the next descendant.
             if self.current_desc.pos > 0:
-                # Add the right remainder of the tar block -- from https://github.com/python/cpython/blob/9d2c2a8e3b8fe18ee1568bfa4a419847b3e78575/Lib/tarfile.py#L2008-L2012.
+                # This code for writing the remainder of the block is taken from
+                # https://github.com/python/cpython/blob/9d2c2a8e3b8fe18ee1568bfa4a419847b3e78575/Lib/tarfile.py#L2008-L2012.
                 blocks, remainder = divmod(self.current_desc.tinfo.size, tarfile.BLOCKSIZE)
                 if remainder > 0:
                     self.output.fileobj.write(tarfile.NUL * (tarfile.BLOCKSIZE - remainder))
@@ -92,7 +102,9 @@ class TarSubdirStream(object):
             )
 
     def read(self, num_bytes=None):
-        # Read more data, if we need to.
+        """Read the specified number of bytes from the tar version of the associated subdirectory. For speed,
+        the tar file is read in chunks of BUFFER_SIZE.
+        """
         while num_bytes is None or len(self._buffer) < num_bytes:
             if self.current_desc.index >= len(self.descendants):
                 self.close()
@@ -103,6 +115,7 @@ class TarSubdirStream(object):
         return self._buffer.read(num_bytes)
 
     def close(self):
+        # Close the OpenIndexedTarGzFile context manager that was initialized in __init__.
         self._stack.__exit__(self, None, None)
 
     def __getattr__(self, name):

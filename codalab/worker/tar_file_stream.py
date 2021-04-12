@@ -11,12 +11,21 @@ from ratarmount import FileInfo, SQLiteIndexedTar
 
 
 class TarFileStream(object):
-    """Streams a file from a tar archive.
+    """Streams a file from a tar archive stored on Blob Storage.
+
+    TODO (Ashwin): If we can add tf.open() support upstream to the ratarmount API
+    (right now it only supports tf.read()), we may not have a need for this class anymore.
     """
 
     BUFFER_SIZE = 100 * 1024 * 1024  # Read in chunks of 100MB
 
     def __init__(self, tf: SQLiteIndexedTar, finfo: FileInfo):
+        """Initialize TarFileStream.
+
+        Args:
+            tf (SQLiteIndexedTar): Tar archive indexed by ratarmount.
+            finfo (FileInfo): FileInfo object describing the file that is to be read from the aforementioned tar archive.
+        """
         self.tf = tf
         self.finfo = finfo
         self._buffer = BytesBuffer()
@@ -24,7 +33,9 @@ class TarFileStream(object):
         self.pos = 0
 
     def _read_from_tar(self, num_bytes):
-        # Read the contents of the current descendant.
+        """Read the contents of the specified file from within
+        the tar archive.
+        """
         contents = self.tf.read(
             path="",
             fileInfo=self.finfo,
@@ -37,7 +48,9 @@ class TarFileStream(object):
         self.pos += len(contents)
 
     def read(self, num_bytes=None):
-        # Read more data, if we need to.
+        """Read the specified number of bytes from the associated file. For speed,
+        the file is read in chunks of BUFFER_SIZE.
+        """
         while (self.pos < self.finfo.size) and (num_bytes is None or len(self._buffer) < num_bytes):
             self._read_from_tar(TarFileStream.BUFFER_SIZE)
         if num_bytes is None:
@@ -45,7 +58,6 @@ class TarFileStream(object):
         return self._buffer.read(num_bytes)
 
     def seek(self, pos, whence=SEEK_SET):
-        # TODO: implement whence for file seeking.
         if whence == SEEK_SET:
             self.pos = pos
         elif whence == SEEK_CUR:
