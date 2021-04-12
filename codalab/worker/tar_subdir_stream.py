@@ -21,7 +21,8 @@ class CurrentDescendant:
 
 
 class TarSubdirStream(object):
-    """Streams a subdirectory from a tar file stored on Blob Storage.
+    """Streams a subdirectory from a tar file stored on Blob Storage, as its own tar archive.
+    Inspired by https://gist.github.com/chipx86/9598b1e4a9a1a7831054.
 
     TODO (Ashwin): Right now, all the descendants of the subdirectory must first be retrieved
     before the subdirectory can begin to be streamed. We can stream those descendants
