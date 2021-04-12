@@ -219,6 +219,8 @@ def _create_bundles():
     - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
       as an item immediately after this bundle in its parent worksheet).
     - `detached`: 1 if should not add new bundle to any worksheet,
+      so the bundle does not have a hosted worksheet.
+      This is set to 1, for example, if the user is uploading their avatar as a bundle.
       or 0 otherwise. Default is 0.
     - `wait_for_upload`: 1 if the bundle state should be initialized to
       "uploading" regardless of the bundle type, or 0 otherwise. Used when
@@ -229,7 +231,7 @@ def _create_bundles():
     shadow_parent_uuid = request.query.get('shadow')
     after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
-    if worksheet_uuid is None:
+    if not detached and worksheet_uuid is None:
         abort(
             http.client.BAD_REQUEST,
             "Parent worksheet id must be specified as" "'worksheet' query parameter",
@@ -243,9 +245,10 @@ def _create_bundles():
     )
 
     # Check for all necessary permissions
-    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
-    check_worksheet_has_all_permission(local.model, request.user, worksheet)
-    worksheet_util.check_worksheet_not_frozen(worksheet)
+    if not detached:
+        worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+        check_worksheet_has_all_permission(local.model, request.user, worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
     request.user.check_quota(need_time=True, need_disk=True)
 
     created_uuids = []
@@ -266,7 +269,10 @@ def _create_bundles():
             bundle['state'] = State.UPLOADING
         else:
             bundle['state'] = State.CREATED
-        bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
+        if not detached:
+            bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
+        else:
+            bundle['is_anonymous'] = False
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
@@ -277,20 +283,21 @@ def _create_bundles():
         # Save bundle into model
         local.model.save_bundle(bundle)
 
-        # Inherit worksheet permissions
-        group_permissions = local.model.get_group_worksheet_permissions(
-            request.user.user_id, worksheet_uuid
-        )
-        set_bundle_permissions(
-            [
-                {
-                    'object_uuid': bundle_uuid,
-                    'group_uuid': p['group_uuid'],
-                    'permission': p['permission'],
-                }
-                for p in group_permissions
-            ]
-        )
+        if not detached:
+            # Inherit worksheet permissions; else, only the user will have all permissions on the bundle
+            group_permissions = local.model.get_group_worksheet_permissions(
+                request.user.user_id, worksheet_uuid
+            )
+            set_bundle_permissions(
+                [
+                    {
+                        'object_uuid': bundle_uuid,
+                        'group_uuid': p['group_uuid'],
+                        'permission': p['permission'],
+                    }
+                    for p in group_permissions
+                ]
+            )
 
         # Add as item to worksheet
         if not detached:
@@ -396,7 +403,7 @@ def _fetch_locations():
     bundle_uuids = query_get_list('uuids')
     bundle_link_urls = local.model.get_bundle_metadata(bundle_uuids, "link_url")
     uuids_to_locations = {
-        uuid: bundle_link_urls.get("uuid") or local.bundle_store.get_bundle_location(uuid)
+        uuid: bundle_link_urls.get(uuid) or local.bundle_store.get_bundle_location(uuid)
         for uuid in bundle_uuids
     }
     return dict(data=uuids_to_locations)
@@ -685,8 +692,17 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
-    response.set_header('X-Codalab-Target-Size', target_info['size'])
-
+    if target_info['type'] == 'file':
+        size = target_info['size']
+    elif not path and bundle_name:
+        # return data_size if the user requests the actual bundle
+        size = local.model.get_bundle_metadata([target.bundle_uuid], 'data_size').get(
+            target.bundle_uuid, 0
+        )
+    else:
+        # if request is for a subdir in a bundle then return 0
+        size = 0
+    response.set_header('X-Codalab-Target-Size', size)
     return fileobj
 
 

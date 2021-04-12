@@ -51,9 +51,14 @@ class BundleStore(object):
         raise NotImplementedError
 
 
-class MultiDiskBundleStore(BundleStore):
+class _MultiDiskBundleStoreBase(BundleStore):
     """
-    Responsible for taking a set of locations and load-balancing the placement of
+    A base class that contains logic for only storing bundles in multiple disks.
+    This bundle store shouldn't be directly configured in CodaLab --
+    instead, the MultiDiskBundleStore class is used by default, which inherits
+    from this class and adds more functionality for Blob Storage, etc.
+
+    This class is responsible for taking a set of locations and load-balancing the placement of
     bundle data between the locations.
 
     Use case: we store bundles in multiple disks, and they can be distributed in any arbitrary way.
@@ -387,7 +392,7 @@ class MultiDiskBundleStore(BundleStore):
             )
 
 
-class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
+class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
     """
     A multi-disk bundle store that also supports storing bundles in a CodaLab-managed
     Blob Storage container.
@@ -404,7 +409,7 @@ class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
     """
 
     def __init__(self, bundle_model, codalab_home, azure_blob_account_name):
-        MultiDiskBundleStore.__init__(self, bundle_model, codalab_home)
+        _MultiDiskBundleStoreBase.__init__(self, bundle_model, codalab_home)
 
         self._azure_blob_account_name = azure_blob_account_name
 
@@ -413,4 +418,4 @@ class MultiDiskBundleStoreWithBlobStorage(MultiDiskBundleStore):
         if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/contents.tar.gz"
         else:
-            return MultiDiskBundleStore.get_bundle_location(self, uuid)
+            return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)

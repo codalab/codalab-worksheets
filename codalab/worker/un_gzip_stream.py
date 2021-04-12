@@ -1,5 +1,6 @@
 from collections import deque
 import zlib
+from io import BytesIO
 
 
 def un_gzip_stream(fileobj):
@@ -50,7 +51,7 @@ def un_gzip_stream(fileobj):
     return UnGzipStream(fileobj)
 
 
-class BytesBuffer:
+class BytesBuffer(BytesIO):
     """
     A class for a buffer of bytes. Unlike io.BytesIO(), this class
     keeps track of the buffer's size (in bytes).
@@ -87,3 +88,6 @@ class BytesBuffer:
 
     def close(self):
         pass
+
+    def __bool__(self):
+        return True

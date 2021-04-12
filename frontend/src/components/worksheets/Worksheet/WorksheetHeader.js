@@ -43,6 +43,7 @@ export default ({
     copiedBundleIds,
     showPasteButton,
     toggleWorksheetSize,
+    showBundleContent,
 }) => (
     <Sticky top={6} innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -154,6 +155,7 @@ export default ({
                                 toggleCmdDialogNoEvent={toggleCmdDialogNoEvent}
                                 copiedBundleIds={copiedBundleIds}
                                 showPasteButton={showPasteButton}
+                                showBundleContent={showBundleContent}
                             />
                         </Grid>
                         <Grid item>

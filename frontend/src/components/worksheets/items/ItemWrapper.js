@@ -64,6 +64,7 @@ class ItemWrapper extends React.Component {
                 {showNewSchema && (
                     <SchemaItem
                         ws={this.props.ws}
+                        after_sort_key={after_sort_key}
                         onSubmit={() => this.props.onHideNewSchema()}
                         reloadWorksheet={reloadWorksheet}
                         editPermission={true}

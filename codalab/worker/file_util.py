@@ -9,11 +9,14 @@ import bz2
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
 from codalab.worker.un_gzip_stream import BytesBuffer
+from codalab.worker.tar_subdir_stream import TarSubdirStream
+from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from ratarmount import SQLiteIndexedTar
+from typing import IO, Optional
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -45,10 +48,10 @@ def tar_gzip_directory(
     exclude_patterns=None,
     exclude_names=None,
     ignore_file=None,
-    output_path=None,
 ):
     """
-    Tars and gzips the given directory.
+    Returns a file-like object containing a tarred and gzipped archive of the
+    given directory.
 
     follow_symlinks: Whether symbolic links should be followed.
     exclude_names: Any top-level directory entries with names in exclude_names
@@ -56,10 +59,8 @@ def tar_gzip_directory(
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     ignore_file: Name of the file where exclusion patterns are read from.
-    output_path: If specified, outputs the .tar.gz file to the given path, and blocks
-    until this is complete. Otherwise, returns a file-like object with the .tar.gz stream.
     """
-    args = ['tar', 'czf', output_path or '-', '-C', directory_path]
+    args = ['tar', 'czf', '-', '-C', directory_path]
 
     # If the BSD tar library is being used, append --disable-copy to prevent creating ._* files
     if 'bsdtar' in get_tar_version_output():
@@ -85,11 +86,7 @@ def tar_gzip_directory(
     args.append('.')
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        if output_path:
-            # If output_path is specified, block until finished.
-            proc.stdout.read()
-        else:
-            return proc.stdout
+        return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
@@ -145,7 +142,8 @@ def zip_directory(
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE, cwd=directory_path)
             proc.wait()
-            return open(tmp_zip_name, "rb")
+            with open(tmp_zip_name, "rb") as out:
+                return BytesIO(out.read())
         except subprocess.CalledProcessError as e:
             raise IOError(e.output)
 
@@ -164,9 +162,6 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
 
     def do_unzip(filename):
         # TODO(Ashwin): preserve permissions with -X.
-        # See https://stackoverflow.com/questions/434641/how-do-i-set-permissions-attributes-on-a-file-in-a-zip-file-using-pythons-zip/48435482#48435482
-        # https://unix.stackexchange.com/questions/14705/the-zip-formats-external-file-attribute/14727#14727
-
         exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
         if exitcode != 0:
             raise UsageError('Invalid archive upload. ')
@@ -194,7 +189,7 @@ class OpenIndexedTarGzFile(object):
     Returns the SQLiteIndexedTar object.
     """
 
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
         self.path = path
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as index_fileobj:
@@ -207,7 +202,7 @@ class OpenIndexedTarGzFile(object):
                 index_fileobj,
             )
 
-    def __enter__(self):
+    def __enter__(self) -> SQLiteIndexedTar:
         return SQLiteIndexedTar(
             fileObject=self.f,
             tarFileName=parse_linked_bundle_url(self.path).bundle_uuid,
@@ -223,21 +218,26 @@ class OpenIndexedTarGzFile(object):
 class OpenFile(object):
     """Opens the file indicated by the given file path and returns a handle
     to the associated file object. Can be in a directory.
+
+    The file path can also refer to a .tar.gz file on Azure.
     """
 
-    def __init__(self, path, mode='r'):
+    path: str
+    mode: str
+    subfolder_file_name: Optional[str]
+
+    def __init__(self, path: str, mode='r'):
         self.path = path
         self.mode = mode
-        self.subfolder_file_name = None
 
-    def __enter__(self):
+    def __enter__(self) -> IO[bytes]:
         linked_bundle_path = parse_linked_bundle_url(self.path)
         if (
             linked_bundle_path.uses_beam
             and linked_bundle_path.is_archive
             and linked_bundle_path.archive_subpath
         ):
-            # If file path is a .tar.gz file on Azure, open the specified path within the archive.
+            # If a file path is specified within a .tar.gz file on Azure, open the specified path within the archive.
             with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
                 isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
                 fpath = "/" + linked_bundle_path.archive_subpath
@@ -245,70 +245,32 @@ class OpenFile(object):
                 if finfo is None:
                     raise FileNotFoundError(fpath)
                 if isdir(finfo):
-                    from codalab.worker.download_util import (
-                        compute_target_info_beam_descendants_flat,
-                    )
-
-                    # If streaming a folder within an Azure bundle, we need to extract its contents
-                    # and re-archive them in a new streamed .tar.gz archive.
-                    self.tmp_dir = tempfile.mkdtemp()
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".tar.gz", delete=False
-                    ) as subfolder_fileobj, tarfile.open(
-                        subfolder_fileobj.name, "w|gz"
-                    ) as subfolder_tarfile:
-                        self.subfolder_file_name = subfolder_fileobj.name
-                        extracted_path = os.path.join(
-                            self.tmp_dir, linked_bundle_path.archive_subpath
-                        )
-                        os.mkdir(extracted_path)
-                        for member in compute_target_info_beam_descendants_flat(self.path):
-                            # Extract other members of the directory.
-                            # TODO (Ashwin): Make sure this works with symlinks, too (it should work, but add a test to ensure it).
-                            full_name = f"{linked_bundle_path.archive_subpath}/{member['name']}"
-                            member_finfo = tf.getFileInfo("/" + full_name)
-                            member_tarinfo = tarfile.TarInfo(
-                                name="./" + member['name'] if member['name'] else '.'
-                            )
-                            for attr in ("size", "mtime", "mode", "type", "linkname", "uid", "gid"):
-                                setattr(member_tarinfo, attr, getattr(member_finfo, attr))
-                            subfolder_tarfile.addfile(
-                                member_tarinfo,
-                                BytesIO(
-                                    tf.read(
-                                        path="",
-                                        fileInfo=member_finfo,
-                                        size=member_finfo.size,
-                                        offset=0,
-                                    )
-                                ),
-                            )
-                    return open(subfolder_fileobj.name, "rb")
+                    # Stream a directory from within the archive
+                    return GzipStream(fileobj=TarSubdirStream(self.path))
                 else:
-                    # TODO (Ashwin): Implement a tf.open() function in the ratarmount library
-                    # so that we don't have to read the entire file.
-                    return BytesIO(tf.read(path="", fileInfo=finfo, size=finfo.size, offset=0))
+                    # Stream a single file from within the archive
+                    return TarFileStream(tf, finfo)
+        # Stream a single file that is directly on Blob Storage (such as the entire .tar.gz file)
         return FileSystems.open(
             self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
         )
 
     def __exit__(self, type, value, traceback):
-        if self.subfolder_file_name:
-            os.remove(self.subfolder_file_name)
+        pass
 
 
-class GzipStream:
+class GzipStream(BytesIO):
     """A stream that gzips a file in chunks.
     """
 
     BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
 
-    def __init__(self, fileobj):
+    def __init__(self, fileobj: IO[bytes]):
         self.__input = fileobj
         self.__buffer = BytesBuffer()
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
 
-    def read(self, size=-1):
+    def read(self, size=-1) -> bytes:
         while size < 0 or len(self.__buffer) < size:
             s = self.__input.read(GzipStream.BUFFER_SIZE)
             if not s:
@@ -321,7 +283,7 @@ class GzipStream:
         self.__input.close()
 
 
-def gzip_file(file_path):
+def gzip_file(file_path: str) -> IO[bytes]:
     """
     Returns a file-like object containing the gzipped version of the given file.
     Note: For right now, it's important for gzip to run in a separate process,
@@ -343,6 +305,8 @@ def gzip_file(file_path):
     args = ['gzip', '-c', '-n', file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        if proc.stdout is None:
+            raise IOError("Stdout is empty")
         return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)

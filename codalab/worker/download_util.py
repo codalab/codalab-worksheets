@@ -1,8 +1,11 @@
+import math
 import os
 import stat
 import tarfile
 import logging
 import traceback
+from typing import Any, List, Optional, Union
+from typing_extensions import TypedDict
 
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
@@ -45,7 +48,22 @@ class BundleTarget:
         return "{}:{}".format(self.bundle_uuid, self.subpath)
 
 
-def get_target_info(bundle_path, target, depth):
+TargetInfo = TypedDict(
+    'TargetInfo',
+    {
+        "name": str,
+        "size": int,
+        "perm": int,
+        "link": Optional[str],
+        "type": str,
+        "contents": Optional[List[Any]],
+        "resolved_target": Optional[BundleTarget],
+    },
+    total=False,
+)
+
+
+def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> TargetInfo:
     """
     Generates an index of the contents of the given path. The index contains
     the fields:
@@ -92,7 +110,7 @@ def get_target_info(bundle_path, target, depth):
     return info
 
 
-def get_target_path(bundle_path, target):
+def get_target_path(bundle_path: str, target: BundleTarget) -> str:
     """
     Returns the path to the given target, which is assumed to exist.
     If reading the given path is not secure, raises a PathException.
@@ -111,7 +129,7 @@ def get_target_path(bundle_path, target):
 BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
-def _get_normalized_target_path(bundle_path, target):
+def _get_normalized_target_path(bundle_path: str, target: BundleTarget) -> str:
     if parse_linked_bundle_url(bundle_path).uses_beam:
         # On Azure, don't call os.path functions on the paths (which are azfs:// URLs).
         # We can just concatenate them together.
@@ -139,13 +157,15 @@ def _get_target_path(bundle_path, path):
         return bundle_path
 
 
-def _compute_target_info_local(path, depth):
+def _compute_target_info_local(path: str, depth: Union[int, float]) -> TargetInfo:
     """Computes target info for a local file."""
-    result = {}
-    result['name'] = os.path.basename(path)
     stat = os.lstat(path)
-    result['size'] = stat.st_size
-    result['perm'] = stat.st_mode & 0o777
+    result: TargetInfo = {
+        'name': os.path.basename(path),
+        'size': stat.st_size,
+        'perm': stat.st_mode & 0o777,
+        'type': '',
+    }
     if os.path.islink(path):
         result['type'] = 'link'
         result['link'] = os.readlink(path)
@@ -163,7 +183,7 @@ def _compute_target_info_local(path, depth):
     return result
 
 
-def _compute_target_info_beam(path, depth):
+def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo:
     """Computes target info for a file that is externalized on a location
     such as Azure, by using the Apache Beam FileSystem APIs."""
 
@@ -172,13 +192,9 @@ def _compute_target_info_beam(path, depth):
         raise PathException(linked_bundle_path.bundle_path)
     if not linked_bundle_path.is_archive:
         # Single file
-        file = FileSystems.match([path])[0].metadata_list[0]
-        return {
-            'name': linked_bundle_path.bundle_uuid,
-            'type': 'file',
-            'size': file.size_in_bytes,
-            'perm': 0o755,
-        }
+        raise PathException(
+            "Single files on Blob Storage are not supported; only a path within a .tar.gz fils is supported."
+        )
 
     with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
@@ -188,17 +204,24 @@ def _compute_target_info_beam(path, depth):
         isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
         listdir = lambda path: tf.getFileInfo(path, listDir=True)
 
-        def _get_info(path, depth):
+        def _get_info(path: str, depth: Union[int, float]) -> TargetInfo:
+            """This function is called to get the target info of the specified path.
+            If the specified path is a directory and additional depth is requested, this
+            function is recursively called to retrieve the target info of files within
+            the directory, much like _compute_target_info_local.
+            """
             if not path.startswith("/"):
                 path = "/" + path
             finfo = tf.getFileInfo(path)
             if finfo is None:
                 # Not found
                 raise PathException
-            result = {}
-            result['name'] = path.split("/")[-1]  # get last part of path
-            result['size'] = finfo.size
-            result['perm'] = finfo.mode & 0o777
+            result: TargetInfo = {
+                'name': os.path.basename(path),  # get last part of path
+                'size': finfo.size,
+                'perm': finfo.mode & 0o777,
+                'type': '',
+            }
             if islink(finfo):
                 result['type'] = 'link'
                 result['link'] = readlink(finfo)
@@ -218,9 +241,14 @@ def _compute_target_info_beam(path, depth):
             # Return the contents of a subpath within a directory.
             return _get_info(linked_bundle_path.archive_subpath, depth)
         else:
-            # No subpath, return the entire directory.
+            # No subpath, return the entire directory with the bundle
+            # contents in it. The permissions of this directory
+            # cannot be set by the user (the user can only set permissions
+            # of files *within* this directory that are part of the bundle
+            # itself), so we just return a placeholder value of 0o755
+            # for this directory's permissions.
             file = FileSystems.match([path])[0].metadata_list[0]
-            result = {
+            result: TargetInfo = {
                 'name': linked_bundle_path.bundle_uuid,
                 'type': 'directory',
                 'size': file.size_in_bytes,
@@ -235,14 +263,16 @@ def _compute_target_info_beam(path, depth):
             return result
 
 
-def compute_target_info_beam_descendants_flat(path):
+def compute_target_info_beam_descendants_flat(path: str) -> List[TargetInfo]:
     """Given a path on Azure Blob Storage,
     returns a flat array of all descendants within that directory in the format
     [{name, type, size, perm}], where `name` is equal to the full path of each item.
 
     Also includes an entry for the specified directory with `name` equal to an empty string.
     """
-    target_info = _compute_target_info_beam(path, float("inf"))
+    target_info = _compute_target_info_beam(
+        path, math.inf
+    )  # We want to calculate the target info at infinite depth to expand *all* descendants.
     results = []
 
     def append_results(tinfo, prefix=""):
@@ -252,7 +282,7 @@ def compute_target_info_beam_descendants_flat(path):
                 append_results(t, prefix + tinfo['name'] + '/')
 
     results.append(dict(target_info, contents=None, name=""))
-    if 'contents' in target_info:
+    if 'contents' in target_info and target_info['contents'] is not None:
         for t in target_info['contents']:
             append_results(t)
 

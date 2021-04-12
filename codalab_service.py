@@ -627,7 +627,7 @@ class CodalabServiceManager(object):
             for mount_path in self.args.link_mounts.split(","):
                 mount_path = os.path.abspath(mount_path)
                 compose_options["x-codalab-server"]["volumes"].append(
-                    f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}"
+                    f"{mount_path}:/opt/codalab-worksheets-link-mounts{mount_path}:ro"
                 )
             docker_compose_custom_path = os.path.join(
                 self.args.codalab_home, 'docker-compose-custom.yml'
