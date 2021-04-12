@@ -16,7 +16,7 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from ratarmount import SQLiteIndexedTar
-from typing import IO, Optional
+from typing import IO
 
 NONE_PLACEHOLDER = '<none>'
 
