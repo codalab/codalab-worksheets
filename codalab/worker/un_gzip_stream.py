@@ -88,3 +88,6 @@ class BytesBuffer(BytesIO):
 
     def close(self):
         pass
+
+    def __bool__(self):
+        return True
