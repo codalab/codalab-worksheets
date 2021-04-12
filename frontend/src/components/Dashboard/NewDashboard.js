@@ -88,7 +88,10 @@ class NewDashboard extends React.Component<{
                             ></SideBar>
                         </Grid>
                         <Grid item xs>
-                            <MainPanel userInfo={this.state.userInfo}></MainPanel>
+                            <MainPanel
+                                userInfo={this.state.userInfo}
+                                ownDashboard={this.state.ownDashboard}
+                            ></MainPanel>
                         </Grid>
                     </Grid>
                 </div>
