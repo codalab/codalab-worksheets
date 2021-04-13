@@ -166,14 +166,7 @@ class BundleManager(object):
         for bundle, failure_message in bundles_to_fail:
             logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
             self._model.update_bundle(
-                bundle,
-                {
-                    'state': State.FAILED,
-                    'metadata': {
-                        'failure_message': failure_message,
-                        'error_traceback': traceback.format_exc(),
-                    },
-                },
+                bundle, {'state': State.FAILED, 'metadata': {'failure_message': failure_message}, },
             )
         for bundle in bundles_to_stage:
             logger.info('Staging %s', bundle.uuid)
@@ -776,13 +769,7 @@ class BundleManager(object):
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
                     bundle,
-                    {
-                        'state': State.FAILED,
-                        'metadata': {
-                            'failure_message': failure_message,
-                            'error_traceback': traceback.format_exc(),
-                        },
-                    },
+                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message}, },
                 )
 
     def _schedule_run_bundles(self):
@@ -940,13 +927,7 @@ class BundleManager(object):
 
                 self._model.update_bundle(
                     bundle,
-                    {
-                        'state': State.FAILED,
-                        'metadata': {
-                            'failure_message': failure_message,
-                            'error_traceback': traceback.format_exc(),
-                        },
-                    },
+                    {'state': State.FAILED, 'metadata': {'failure_message': failure_message, }, },
                 )
             elif bundle.metadata.request_queue:
                 matched_workers = self._get_matched_workers(
