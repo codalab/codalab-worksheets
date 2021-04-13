@@ -14,6 +14,7 @@ import { getQueryParams } from '../worksheets/NewUpload/NewUpload.jsx';
 import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../util/worksheet_utils';
 import Avatar from '@material-ui/core/Avatar';
+import ButtonBase from '@material-ui/core/ButtonBase';
 
 const styles = (theme) => ({
     root: {
@@ -33,6 +34,57 @@ const styles = (theme) => ({
         marginRight: 8,
         marginTop: 8,
         marginBottom: 0,
+    },
+    image: {
+        position: 'relative',
+        [theme.breakpoints.down('xs')]: {
+            width: '100% !important', // Overrides inline-style
+            height: 100,
+        },
+        '&:hover': {
+            zIndex: 1,
+            '& $imageBackdrop': {
+                opacity: 0.6,
+            },
+            '& $imageTitle': {
+                opacity: 0.8,
+            },
+        },
+    },
+    imageButton: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: theme.palette.common.white,
+    },
+    imageSrc: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center 40%',
+    },
+    imageBackdrop: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        backgroundColor: theme.palette.common.black,
+        opacity: 0,
+        borderRadius: 30,
+        transition: theme.transitions.create('opacity'),
+    },
+    imageTitle: {
+        position: 'relative',
+        opacity: 0,
     },
 });
 
@@ -258,21 +310,34 @@ class EditableAvatar extends React.Component {
     };
     render() {
         const { classes } = this.props;
+        const avatar = this.state.avatar ? (
+            <Avatar className={classes.Avatar} src={this.state.avatar} />
+        ) : (
+            <Avatar className={classes.Avatar}> {this.props.userInfo.user_name.charAt(0)} </Avatar>
+        );
+
         return (
             <div className={classes.box}>
-                {this.state.avatar ? (
-                    <Avatar className={classes.Avatar} src={this.state.avatar} />
-                ) : (
-                    <Avatar className={classes.Avatar}>
-                        {' '}
-                        {this.props.userInfo.user_name.charAt(0)}{' '}
-                    </Avatar>
-                )}
                 {this.props.ownDashboard ? (
                     <div>
-                        <Button variant='outlined' color='primary' onClick={this.handleClickOpen}>
-                            Edit Avatar
-                        </Button>
+                        <ButtonBase
+                            focusRipple
+                            onClick={this.handleClickOpen}
+                            className={classes.image}
+                        >
+                            {avatar}
+                            <span className={classes.imageBackdrop} />
+                            <span className={classes.imageButton}>
+                                <Typography
+                                    component='span'
+                                    variant='subtitle1'
+                                    color='inherit'
+                                    className={classes.imageTitle}
+                                >
+                                    {'edit'}
+                                </Typography>
+                            </span>
+                        </ButtonBase>
                         <Dialog
                             onClose={this.handleClose}
                             aria-labelledby='customized-dialog-title'
@@ -313,7 +378,9 @@ class EditableAvatar extends React.Component {
                             </DialogActions>
                         </Dialog>
                     </div>
-                ) : null}
+                ) : (
+                    <div> {avatar} </div>
+                )}
             </div>
         );
     }
