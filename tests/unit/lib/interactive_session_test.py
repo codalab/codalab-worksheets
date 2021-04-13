@@ -14,9 +14,10 @@ class InteractiveSessionTest(unittest.TestCase):
         )
         session._host_bash_history_path = ".bash_history"
         expected_regex = (
-            'docker run -it --name interactive-session-0x[a-z0-9]{32} -w \/0x[a-z0-9]{32} -v '
-            '[\s\S]{0,100}local\/path1:\/0x[a-z0-9]{32}\/key:ro -v [\s\S]{0,100}local\/path2:\/0x[a-z0-9]{32}\/key2:ro '
-            '-v \.bash_history:\/root\/.bash_history:rw some-docker-image bash'
+            'docker run -it --name interactive-session-0x[a-z0-9]{32} -w \/0x[a-z0-9]{32} '
+            '-e HOME=\/0x[a-z0-9]{32} -e HISTFILE=\/usr\/sbin\/\.bash_history -e PROMPT_COMMAND="history -a" -u \$\(id -u\):\$\(id -g\) '
+            '-v [\s\S]{0,100}local\/path1:\/0x[a-z0-9]{32}\/key:ro -v [\s\S]{0,100}local\/path2:\/0x[a-z0-9]{32}\/key2:ro '
+            '-v \.bash_history:\/usr\/sbin\/\.bash_history:rw -v [\s\S]{0,100}\/0x[a-z0-9]{32}:\/0x[a-z0-9]{32}:rw some-docker-image'
         )
         self.assertTrue(re.match(expected_regex, session.get_docker_run_command()))
 
@@ -31,9 +32,10 @@ class InteractiveSessionTest(unittest.TestCase):
         )
         session._host_bash_history_path = ".bash_history"
         expected_regex = (
-            'docker run -it --name interactive-session-0x[a-z0-9]{32} -w \/0x[a-z0-9]{32} -v '
-            '[\s\S]{0,100}local\/path1/sub/path1:\/0x[a-z0-9]{32}\/key:ro -v [\s\S]{0,100}local\/path2/sub/path2'
-            ':\/0x[a-z0-9]{32}\/key2:ro -v \.bash_history:\/root\/.bash_history:rw some-docker-image bash'
+            'docker run -it --name interactive-session-0x[a-z0-9]{32} -w \/0x[a-z0-9]{32} '
+            '-e HOME=\/0x[a-z0-9]{32} -e HISTFILE=\/usr\/sbin\/\.bash_history -e PROMPT_COMMAND="history -a" -u \$\(id -u\):\$\(id -g\) '
+            '-v [\s\S]{0,100}local\/path1/sub/path1:\/0x[a-z0-9]{32}\/key:ro -v [\s\S]{0,100}local\/path2/sub/path2:\/0x[a-z0-9]{32}\/key2:ro '
+            '-v \.bash_history:\/usr\/sbin\/\.bash_history:rw -v [\s\S]{0,100}\/0x[a-z0-9]{32}:\/0x[a-z0-9]{32}:rw some-docker-image'
         )
         self.assertTrue(re.match(expected_regex, session.get_docker_run_command()))
 
