@@ -24,7 +24,7 @@ class NamedBundle(Bundle):
         MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
         MetadataSpec('data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'),
         MetadataSpec('failure_message', str, 'Error message if this run bundle failed.', generated=True,),
-        MetadataSpec('error_traceback', str, 'Error traceback if this run bundle failed.', generated=True,),
+        MetadataSpec('error_traceback', str, 'Error traceback if this run bundle failed.', generated=True, hidden=True),
     ]  # type: List
     # fmt: on
 
