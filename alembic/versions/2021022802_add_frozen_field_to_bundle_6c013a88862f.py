@@ -1,7 +1,7 @@
 """Add frozen field to bundle.
 
 Revision ID: 6c013a88862f
-Revises: db12798a7cf6
+Revises: e24a53ae9241
 Create Date: 2021-02-28 02:31:07.648416
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '6c013a88862f'
-down_revision = 'db12798a7cf6'
+down_revision = 'e24a53ae9241'
 
 
 def upgrade():
