@@ -36,6 +36,7 @@ import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
 import DOMPurify from 'dompurify';
 import { NAME_REGEX } from '../constants';
+import { fetchWrapper } from '../util/fetchWrapper';
 
 const kDefaultWorksheetName = 'unnamed';
 
@@ -69,21 +70,15 @@ class NavBar extends React.Component<{
     }
 
     fetchName() {
-        $.ajax({
-            url: '/rest/user',
-            dataType: 'json',
-            cache: false,
-            type: 'GET',
-            success: (data) => {
+        fetchWrapper
+            .get('/rest/user')
+            .then((data) => {
                 const userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
                 this.fetchImg(userInfo.avatar_id);
                 this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
+            })
+            .catch((error) => console.error(error));
     }
 
     resetDialog() {
@@ -122,25 +117,6 @@ class NavBar extends React.Component<{
                 snackbarVariant: 'error',
             });
         }
-    }
-
-    search(keyword) {
-        const url = '/rest/interpret/wsearch';
-
-        $.ajax({
-            url: url,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({ keywords: [keyword] }),
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => {
-                console.log(data);
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
     }
 
     // Fetch the image file represented by the bundle
@@ -225,15 +201,9 @@ class NavBar extends React.Component<{
             const re = new RegExp(regexKeywords, 'gi');
 
             const url = '/rest/interpret/wsearch';
-
-            $.ajax({
-                url: url,
-                dataType: 'json',
-                type: 'POST',
-                cache: false,
-                data: JSON.stringify({ keywords: keywords }),
-                contentType: 'application/json; charset=utf-8',
-                success: (data) => {
+            fetchWrapper
+                .post(url, { keywords: keywords })
+                .then((data) => {
                     /*
                     Response body:
                     ```
@@ -333,12 +303,11 @@ class NavBar extends React.Component<{
                             results: preRanking,
                         });
                     }
-                },
-                error: (xhr, status, err) => {
-                    console.error(xhr.responseText);
-                },
-            });
-        }, 300);
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        });
     };
 
     /** Renderer. */
