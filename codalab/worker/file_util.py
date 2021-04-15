@@ -16,7 +16,7 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from ratarmount import SQLiteIndexedTar
-from typing import IO, Optional
+from typing import IO
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -224,7 +224,6 @@ class OpenFile(object):
 
     path: str
     mode: str
-    subfolder_file_name: Optional[str]
 
     def __init__(self, path: str, mode='r'):
         self.path = path
