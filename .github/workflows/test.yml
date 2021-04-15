@@ -81,7 +81,7 @@ jobs:
       matrix:
         test:
           - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
-          - refs binary rm make worksheet_search worksheet_tags worksheet_freeze_unfreeze detach perm search_time groups
+          - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - worker_manager service
           - run
           - run2
@@ -115,6 +115,7 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
+          sh ./tests/test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
@@ -213,6 +214,7 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run shared filesystem tests
         run: |
+          sh ./tests/test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION} --shared-file-system
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
@@ -239,7 +241,7 @@ jobs:
       matrix:
         test:
           - basic status batch anonymous competition unicode rest1 upload1 download
-          - refs binary rm make worksheet_search worksheet_tags worksheet_freeze_unfreeze detach perm search_time groups
+          - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - run
           - search read kill write mimic workers
           - copy netcat

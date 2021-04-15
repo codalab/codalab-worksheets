@@ -24,6 +24,7 @@ class PrivateBundle(Bundle):
                 'command': None,
                 'data_hash': None,
                 'state': None,
+                'frozen': None,
                 'is_anonymous': None,
                 'dependencies': [],
                 'metadata': {'name': '<private>'},

@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.43_
+_version 0.5.44_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -219,6 +219,7 @@ Name | Type
 `data_hash` | String
 `state` | String
 `owner` | Relationship([users](#users))
+`frozen` | DateTime
 `is_anonymous` | Boolean
 `storage_type` | String
 `is_dir` | Boolean

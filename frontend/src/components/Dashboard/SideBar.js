@@ -9,6 +9,8 @@ import { lighten } from '@material-ui/core/es/styles/colorManipulator';
 import { renderSize, renderDuration } from '../../util/worksheet_utils';
 import { BUNDLE_STATES } from '../../constants';
 import { default as AvatarEditorModal } from './EditableAvatar';
+import Tooltip from '@material-ui/core/Tooltip';
+import Button from '@material-ui/core/Button';
 
 const styles = ({ palette }) => {
     return {
@@ -58,11 +60,18 @@ const styles = ({ palette }) => {
             fontSize: 14,
             color: palette.grey[500],
         },
-        name: {
+        fullname: {
             fontFamily: 'Roboto',
             fontStyle: 'normal',
             fontWeight: 500,
             fontSize: 20,
+            letterSpacing: 0.15,
+        },
+        username: {
+            fontFamily: 'Roboto',
+            fontStyle: 'normal',
+            fontWeight: 400,
+            fontSize: 18,
             letterSpacing: 0.15,
         },
         progress: {
@@ -164,7 +173,10 @@ class SideBar extends React.Component {
                 ></AvatarEditorModal>
                 {/*<Avatar className={classes.avatar}>{userInfo.user_name.charAt(0)}</Avatar>*/}
                 <div className={classes.box}>
-                    <h3 className={classes.name}>{userInfo.user_name}</h3>
+                    <h3 className={classes.fullname}>
+                        {userInfo.first_name + ' ' + userInfo.last_name}
+                    </h3>
+                    <h4 className={classes.username}>{userInfo.user_name}</h4>
                     {userInfo.affiliation ? (
                         <p className={classes.affiliation}>Affiliation: {userInfo.affiliation}</p>
                     ) : null}
@@ -223,6 +235,17 @@ class SideBar extends React.Component {
                     </div>
                 </div>
                 <Divider />
+                {this.props.ownDashboard ? (
+                    <Tooltip title='Dashboard'>
+                        <Button
+                            variant='contained'
+                            color='primary'
+                            onClick={() => (window.location.href = '/worksheets?name=dashboard')}
+                        >
+                            View Dashboard
+                        </Button>
+                    </Tooltip>
+                ) : null}
                 <div className={classes.placeholderBox}></div>
             </Card>
         );
