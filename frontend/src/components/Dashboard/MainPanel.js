@@ -1,5 +1,4 @@
 import * as React from 'react';
-import $ from 'jquery';
 import Card from '@material-ui/core/Card';
 import { withStyles } from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
@@ -25,6 +24,7 @@ import ErrorIcon from '@material-ui/icons/Error';
 import SuccessIcon from '@material-ui/icons/CheckCircle';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
+import { fetchWrapper } from '../../util/fetchWrapper';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -139,15 +139,11 @@ class MainPanel extends React.Component<{
     componentDidMount() {
         const { classes } = this.props;
         // Fetch worksheets owned by the current user
-        const worksheetUrl: URL = '/rest/interpret/wsearch';
-        $.ajax({
-            url: worksheetUrl,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({ keywords: ['owner=' + this.props.userInfo.user_name] }),
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => {
+        const worksheetUrl = '/rest/interpret/wsearch';
+
+        fetchWrapper
+            .post(worksheetUrl, { keywords: ['owner=' + this.props.userInfo.user_name] })
+            .then((data) => {
                 const worksheets = data.response.map((ws, i) => (
                     <Card className={classes.wsCard}>
                         <div className={classes.wsBox}>
@@ -172,11 +168,10 @@ class MainPanel extends React.Component<{
                     </Card>
                 ));
                 this.setState({ worksheets });
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
+            })
+            .catch((error) => {
+                console.error(error);
+            });
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {

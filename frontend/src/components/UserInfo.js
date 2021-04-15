@@ -45,7 +45,6 @@ class UserInfo extends React.Component {
         fetchWrapper
             .get('/rest/user')
             .then((response) => {
-                console.log(response);
                 this.setState({
                     user: this.processData(response),
                 });

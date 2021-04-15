@@ -4,13 +4,13 @@ import { withStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
 import Divider from '@material-ui/core/Divider';
 import LinearProgress from '@material-ui/core/LinearProgress';
-import $ from 'jquery';
 import { lighten } from '@material-ui/core/es/styles/colorManipulator';
 import { renderSize, renderDuration } from '../../util/worksheet_utils';
 import { BUNDLE_STATES } from '../../constants';
 import { default as AvatarEditorModal } from './EditableAvatar';
 import Tooltip from '@material-ui/core/Tooltip';
 import Button from '@material-ui/core/Button';
+import { fetchWrapper } from '../../util/fetchWrapper';
 
 const styles = ({ palette }) => {
     return {
@@ -107,30 +107,25 @@ class SideBar extends React.Component {
         // Fetch bundles' count in different states owned by the current user one by one
         const bundleUrl: URL = '/rest/interpret/search';
         const fetchBundles = (stateIndex, bundlesDict) => {
-            $.ajax({
-                url: bundleUrl,
-                dataType: 'json',
-                type: 'POST',
-                cache: false,
-                data: JSON.stringify(
-                    stateIndex < BUNDLE_STATES.length
-                        ? {
-                              keywords: [
-                                  'owner=' + this.props.userInfo.user_name,
-                                  '.count',
-                                  'state=' + BUNDLE_STATES[stateIndex],
-                              ],
-                          }
-                        : {
-                              keywords: [
-                                  'owner=' + this.props.userInfo.user_name,
-                                  '.count',
-                                  '.floating',
-                              ],
-                          },
-                ),
-                contentType: 'application/json; charset=utf-8',
-                success: (data) => {
+            const data =
+                stateIndex < BUNDLE_STATES.length
+                    ? {
+                          keywords: [
+                              'owner=' + this.props.userInfo.user_name,
+                              '.count',
+                              'state=' + BUNDLE_STATES[stateIndex],
+                          ],
+                      }
+                    : {
+                          keywords: [
+                              'owner=' + this.props.userInfo.user_name,
+                              '.count',
+                              '.floating',
+                          ],
+                      };
+            fetchWrapper
+                .post(bundleUrl, data)
+                .then((data) => {
                     if (stateIndex < BUNDLE_STATES.length) {
                         bundlesDict[BUNDLE_STATES[stateIndex]] = data.response.result;
                         fetchBundles(stateIndex + 1, bundlesDict);
@@ -150,11 +145,10 @@ class SideBar extends React.Component {
                         }
                         this.setState({ bundles: bundles });
                     }
-                },
-                error: (xhr, status, err) => {
-                    console.error(xhr.responseText);
-                },
-            });
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         };
         // Start to fetch the bundles' count
         fetchBundles(0, {});
