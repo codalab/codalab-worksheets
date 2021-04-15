@@ -59,6 +59,7 @@ class NavBar extends React.Component<{
             value: '',
             isLoading: false,
             results: [],
+            avatar: '',
         };
     }
 
@@ -76,6 +77,7 @@ class NavBar extends React.Component<{
             success: (data) => {
                 const userInfo = data.data.attributes;
                 userInfo.user_id = data.data.id;
+                this.fetchImg(userInfo.avatar_id);
                 this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
             },
             error: (xhr, status, err) => {
@@ -141,6 +143,41 @@ class NavBar extends React.Component<{
         });
     }
 
+    // Fetch the image file represented by the bundle
+    fetchImg(bundleUuid) {
+        if (bundleUuid == null) return;
+        // Set defaults
+        let url = '/rest/bundles/' + bundleUuid + '/contents/blob/';
+
+        fetch(url)
+            .then(function(response) {
+                if (response.ok) {
+                    return response.arrayBuffer();
+                }
+                throw new Error('Network response was not ok.');
+            })
+            .then(function(data) {
+                let dataUrl =
+                    'data:image/png;base64,' +
+                    btoa(
+                        new Uint8Array(data).reduce(
+                            (data, byte) => data + String.fromCharCode(byte),
+                            '',
+                        ),
+                    );
+                return dataUrl;
+            })
+            .then((dataUrl) => {
+                // Update avatar shown on the page
+                this.setState({
+                    avatar: dataUrl,
+                });
+            })
+            .catch(function(error) {
+                console.log(url, error.responseText);
+            });
+    }
+
     handleResultSelect = (e, { result }) => {
         this.setState({ value: result.plaintextTitle || result.plaintextDescription });
         window.open('/worksheets/' + result.uuid, '_self');
@@ -156,6 +193,14 @@ class NavBar extends React.Component<{
             )}
         </div>
     );
+
+    categoryRenderer = ({ name }) => {
+        return (
+            <Link target='_blank' to={`/users/${name}`}>
+                <div>{name}</div>
+            </Link>
+        );
+    };
 
     handleSearchFocus = () => {
         // Disable the terminal to avoid the search bar text being mirrored in the terminal
@@ -339,6 +384,7 @@ class NavBar extends React.Component<{
                                     onFocus={this.handleSearchFocus}
                                     placeholder='search worksheets...'
                                     resultRenderer={this.resultRenderer}
+                                    categoryRenderer={this.categoryRenderer}
                                     results={results}
                                     value={value}
                                     showNoResults={true}
@@ -359,8 +405,8 @@ class NavBar extends React.Component<{
                         )}
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
-                                <Link to='/worksheets?name=dashboard'>
-                                    <Button color='primary'>Dashboard</Button>
+                                <Link to='/users'>
+                                    <Button color='primary'>My Profile</Button>
                                 </Link>
                                 <Tooltip title='New Worksheet'>
                                     <IconButton
@@ -404,7 +450,17 @@ class NavBar extends React.Component<{
                                             this.setState({ accountEl: e.currentTarget })
                                         }
                                     >
-                                        <AccountIcon />
+                                        {this.state.avatar ? (
+                                            <div>
+                                                <img
+                                                    src={this.state.avatar}
+                                                    className={classes.avatar}
+                                                    alt='CodaLab'
+                                                />
+                                            </div>
+                                        ) : (
+                                            <AccountIcon />
+                                        )}
                                     </IconButton>
                                 </Tooltip>
                                 <Menu
@@ -545,6 +601,11 @@ const styles = (theme) => ({
     },
     logo: {
         maxHeight: 40,
+    },
+    avatar: {
+        maxHeight: 30,
+        maxWidth: 30,
+        borderRadius: 15,
     },
     snackbarMessage: {
         display: 'flex',

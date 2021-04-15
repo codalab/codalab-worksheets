@@ -304,15 +304,16 @@ export function getAfterSortKey(item, subFocusIndex) {
     // The default after_sort_key is -1 when inserting an item on top of the worksheet,
     // so the item's sort_key should always be >= 0 (sort_key > after_sort_key)
     if (!item) return -1;
-    if (item.mode === 'image_block') {
-        // image_block stores the sort_key in a different property than do other blocks
+    if (item.mode === 'image_block' || item.mode === 'contents_block') {
+        // image_block and content_block store the sort_key in a different property than do other blocks
         return item['bundles_spec']['bundle_infos'][0]['sort_key'];
     }
     const sort_keys = item.sort_keys || [];
     if (sort_keys[subFocusIndex] || sort_keys[subFocusIndex] === 0) {
         return sort_keys[subFocusIndex];
     }
-    return Math.max(...sort_keys);
+    const afterSortKey: number = Math.max(...sort_keys);
+    return isFinite(afterSortKey) ? afterSortKey : -1;
 }
 
 export function getIds(item) {

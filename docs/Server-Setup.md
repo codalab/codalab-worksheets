@@ -137,7 +137,11 @@ hour because lots of packages have to be installed):
 
 ## Testing
 
-Since tests run against an existing instance, make sure you update your instance first.
+Run test-setup.sh first to set up required files and directories.
+
+    sh ./tests/test-setup.sh 
+
+Since tests run against an existing instance, make sure you update your instance.
 
     ./codalab_service.py start -bd -s rest-server
 
@@ -151,6 +155,7 @@ Or to run a specific test (e.g., basic):
 
 In sum, to start an instance and run tests on it:
 
+    sh ./tests/test-setup.sh
     ./codalab_service.py start -bd
     python test_runner.py default
 
@@ -211,6 +216,10 @@ If you want to modify the database schema, use `alembic` to create a migration. 
 
         docker exec -ti codalab_mysql_1 bash
         mysql -u codalab -p codalab_bundles   # Type in `codalab` as the password
+
+If you want to undo the previously done migration, you can run:
+
+        docker exec codalab_rest-server_1 alembic downgrade -1
 
 # Production
 

@@ -6,6 +6,7 @@ import docker
 import os
 import shutil
 import sys
+from typing import Dict, List
 
 
 class InteractiveSession:
@@ -23,7 +24,7 @@ class InteractiveSession:
         3. Mount the dependencies as read-only.
         4. Set working directory to some arbitrary path: `/<session uuid>`
         5. The user will interact with this container and try out different commands. Once satisfied the user will
-           exit the bash session. All the commands the user tried out will be stored at path `/root/.bash_history`
+           exit the bash session. All the commands the user tried out will be stored at path `/usr/sbin/.bash_history`
            in the container.
         6. Copy `.bash_history` out to the host machine.
         7. Open an editor and allow the user to select and edit commands for the official run.
@@ -74,15 +75,15 @@ class InteractiveSession:
 
         self._docker_client = docker.from_env(timeout=InteractiveSession._MAX_SESSION_TIMEOUT)
         self._session_uuid = generate_uuid()
+        self._host_bundle_path: str = os.path.join(
+            self._manager.codalab_home, 'local_bundles', self._session_uuid
+        )
 
         self._verbose = verbose
         self._stdout = stdout
         self._stderr = stderr
 
     def start(self):
-        self._host_bundle_path = os.path.join(
-            self._manager.codalab_home, 'local_bundles', self._session_uuid
-        )
         os.makedirs(self._host_bundle_path)
 
         # Create a blank file which will be used as the bash history file that will later be
@@ -123,7 +124,7 @@ class InteractiveSession:
             return os.path.sep + os.path.join(self._session_uuid, sub_path)
 
         # Use a dict to keep track of volumes to mount. The key is the path on Docker and the value is the local path.
-        volumes = {}
+        volumes: Dict[str, str] = {}
         for key, bundle_target in self._dependencies:
             dependency_local_path = os.path.realpath(
                 os.path.join(
@@ -142,30 +143,34 @@ class InteractiveSession:
             else:
                 volumes[get_docker_path(key)] = dependency_local_path
 
-        name = self._get_container_name()
-        # Start a container as a non-root user. Root (id = 0) is the default user within a container.
-        # When passing a numeric ID, the user does not have to exist in the container.
-        command = [
+        name: str = self._get_container_name()
+        container_working_directory: str = f'{os.path.sep}{self._session_uuid}'
+
+        # Start a container as a non-root user
+        command: List[str] = [
             'docker run',
             '-it',
             f'--name {name}',
-            f'-w {os.path.sep}{self._session_uuid}',
-            '-u 1',
+            f'-w {container_working_directory}',
+            f'-e HOME={container_working_directory}',
+            f'-e HISTFILE={InteractiveSession._BASH_HISTORY_CONTAINER_PATH}',
+            '-e PROMPT_COMMAND="history -a"',
+            '-u $(id -u):$(id -g)',
         ]
         command.extend(
             [
                 # Example: -v local_path/some_folder:/0x707e903500e54bcf9b072ac7e3f5ed36_dependencies/foo:ro
-                '-v {}:{}:ro'.format(local_path, docker_path)
+                f'-v {local_path}:{docker_path}:ro'
                 for docker_path, local_path in volumes.items()
             ]
         )
-        command.append(
-            '-v {}:{}:rw'.format(
-                self._host_bash_history_path, InteractiveSession._BASH_HISTORY_CONTAINER_PATH
-            )
+        command.extend(
+            [
+                f'-v {self._host_bash_history_path}:{InteractiveSession._BASH_HISTORY_CONTAINER_PATH}:rw',
+                f'-v {self._host_bundle_path}:{container_working_directory}:rw',
+            ]
         )
         command.append(self._docker_image)
-        command.append('bash')
         return ' '.join(command)
 
     def cleanup(self):
@@ -175,6 +180,7 @@ class InteractiveSession:
         self._container.stop()
         self._container.remove()
         shutil.rmtree(self._host_bundle_path, ignore_errors=True)
+
         if self._verbose:
             print('Done.\n', file=self._stdout)
 

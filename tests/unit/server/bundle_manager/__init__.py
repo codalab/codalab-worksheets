@@ -162,6 +162,7 @@ class TestBase:
             (bundle, parent)
         """
         parent = self.create_run_bundle(parent_state)
+        self.save_bundle(parent)
         self.write_bundle(parent, FILE_CONTENTS_1)
         bundle = (
             self.create_run_bundle(bundle_state)
@@ -178,6 +179,7 @@ class TestBase:
                 }
             )
         ]
+        self.save_bundle(bundle)
         return bundle, parent
 
     def create_bundle_two_deps(self):
@@ -188,8 +190,10 @@ class TestBase:
             (bundle, parent1, parent2)
         """
         parent1 = self.create_run_bundle(state=State.READY)
+        self.save_bundle(parent1)
         self.write_bundle(parent1, FILE_CONTENTS_1)
         parent2 = self.create_run_bundle(state=State.READY)
+        self.save_bundle(parent2)
         self.write_bundle(parent2, FILE_CONTENTS_2)
         bundle = MakeBundle.construct(
             targets=[],
@@ -217,6 +221,7 @@ class TestBase:
                 }
             ),
         ]
+        self.save_bundle(bundle)
         return bundle, parent1, parent2
 
     def mock_worker_checkin(
