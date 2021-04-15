@@ -1,8 +1,8 @@
 // @flow
 import * as React from 'react';
-import * as $ from 'jquery';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
+import { fetchWrapper } from '../util/fetchWrapper';
 
 const KEYCODE_ESC = 27;
 
@@ -52,29 +52,16 @@ class EditableFieldBase extends React.Component<{
 
         this.setState({ editing: false });
         event.preventDefault();
-
-        $.ajax({
-            type: this.props.method,
-            url: this.props.url,
-            data: JSON.stringify(this.props.buildPayload(this.state.value)),
-            contentType: 'application/json; charset=UTF-8',
-            dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-            xhr: function() {
-                // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest === null ||
-                    new window.XMLHttpRequest().addEventListener === null
-                    ? new window.ActiveXObject('Microsoft.XMLHTTP')
-                    : $.ajaxSettings.xhr();
-            },
-        })
-            .done(function(response) {
+        console.log(this.props.method);
+        fetchWrapper[this.props.method.toLowerCase()](
+            this.props.url,
+            this.props.buildPayload(this.state.value),
+        )
+            .then(() => {
                 if (this.props.onChange) this.props.onChange(this.state.value);
             })
-            .fail(function(response, status, err) {
-                // TODO: this doesn't stop the value from updating in the frontend
-                console.log('Invalid value entered: ', response.responseText);
+            .catch((error) => {
+                console.error(error);
             });
     };
 

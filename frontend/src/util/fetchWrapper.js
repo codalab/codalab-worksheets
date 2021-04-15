@@ -23,6 +23,15 @@ const put = (url, body, ajaxOptions) => {
     return fetch(url, requestOptions).then(handleResponse);
 };
 
+const patch = (url, body, ajaxOptions) => {
+    const requestOptions = {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    };
+    return fetch(url, requestOptions).then(handleResponse);
+};
+
 // prefixed with underscored because delete is a reserved word in javascript
 const _delete = (url) => {
     const requestOptions = {
@@ -50,4 +59,5 @@ export const fetchWrapper = {
     post,
     put,
     delete: _delete,
+    patch,
 };

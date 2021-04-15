@@ -5,7 +5,7 @@ import _ from 'underscore';
 import { renderSize, renderDuration } from '../util/worksheet_utils';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-
+import { fetchWrapper } from '../util/fetchWrapper';
 /**
  * This stateful component ___.
  */
@@ -42,19 +42,17 @@ class UserInfo extends React.Component {
     }
 
     componentDidMount() {
-        $.ajax({
-            method: 'GET',
-            url: '/rest/user',
-            dataType: 'json',
-        })
-            .done((response) => {
+        fetchWrapper
+            .get('/rest/user')
+            .then((response) => {
+                console.log(response);
                 this.setState({
                     user: this.processData(response),
                 });
             })
-            .fail((xhr, status, err) => {
+            .catch((error) => {
                 this.setState({
-                    errors: xhr.responseText,
+                    error,
                 });
             });
     }
@@ -66,36 +64,17 @@ class UserInfo extends React.Component {
         newUser.attributes[key] = value;
 
         // Push changes to server
-        $.ajax({
-            method: 'PATCH',
-            url: '/rest/user',
-            data: JSON.stringify({ data: newUser }),
-            dataType: 'json',
-            contentType: 'application/json',
-            context: this,
-            xhr: function() {
-                // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest === null ||
-                    new window.XMLHttpRequest().addEventListener === null
-                    ? new window.ActiveXObject('Microsoft.XMLHTTP')
-                    : $.ajaxSettings.xhr();
-            },
-        })
-            .done(function(response) {
-                // Update state to reflect changed profile
-                var errors = $.extend({}, this.state.errors);
-                delete errors[key];
+        fetchWrapper
+            .patch('/rest/user', { data: newUser })
+            .then((response) => {
+                console.log(response);
                 this.setState({
                     user: this.processData(response),
-                    errors: errors,
                 });
             })
-            .fail(function(xhr, status, err) {
-                // Update errors for the specified field to pick up
-                var errors = $.extend({}, this.state.errors);
-                errors[key] = xhr.responseText;
+            .catch((error) => {
                 this.setState({
-                    errors: errors,
+                    error,
                 });
             });
     };
