@@ -51,7 +51,7 @@ class UITester(ABC):
         self.browser.close()
 
     def login(self, username='codalab', password='codalab'):
-        self.browser.get(self.get_url('/home'))
+        self.browser.get(self.get_url('home'))
         self.click(By.LINK_TEXT, 'LOGIN')
         self.fill_field(By.ID, 'id_login', username)
         self.fill_field(By.ID, 'id_password', password, press_enter=True)
@@ -315,6 +315,8 @@ class WorksheetTest(UITester):
 
     def test(self):
         self.login()
+        self.longer_pause()
+        self.browser.get(self.get_url('worksheets?name=dashboard'))
         self.wait_until_worksheet_content_loads()
         # wait for small worksheet to be resolved from place holder item
         by = By.XPATH

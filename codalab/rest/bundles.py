@@ -701,8 +701,17 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
-    response.set_header('X-Codalab-Target-Size', target_info['size'])
-
+    if target_info['type'] == 'file':
+        size = target_info['size']
+    elif not path and bundle_name:
+        # return data_size if the user requests the actual bundle
+        size = local.model.get_bundle_metadata([target.bundle_uuid], 'data_size').get(
+            target.bundle_uuid, 0
+        )
+    else:
+        # if request is for a subdir in a bundle then return 0
+        size = 0
+    response.set_header('X-Codalab-Target-Size', size)
     return fileobj
 
 

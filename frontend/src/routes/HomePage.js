@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined'; // insert_chart, cloud upload
 import ExperimentIcon from '@material-ui/icons/InsertChartOutlined'; // extension, barchart, score
 import PublishIcon from '@material-ui/icons/PublicOutlined'; // share, public
+import { Helmet } from 'react-helmet';
 
 const kSidePadding = 32;
 const kSpacerPadding = 24;
@@ -25,10 +26,9 @@ class HomePage extends React.Component<{
 }> {
     constructor(props) {
         super(props);
-        const { auth, redirectAuthToDashboard } = this.props;
-        if (auth.isAuthenticated && redirectAuthToDashboard) {
-            this.props.history.push('/worksheets?name=dashboard');
-            // this.props.history.push('/dashboard');
+        const { auth, redirectAuthToProfile } = this.props;
+        if (auth.isAuthenticated && redirectAuthToProfile) {
+            this.props.history.push('/users');
         }
     }
 
@@ -64,7 +64,14 @@ class HomePage extends React.Component<{
         const { classes, auth } = this.props;
         return (
             <Grid container style={{ marginTop: -6 }}>
-                {/** Splash w/ tagline, primary buttons, and video.*/}
+                <Helmet>
+                    <meta
+                        id='meta-description'
+                        name='description'
+                        content='A collaborative platform for reproducible research.'
+                    />
+                </Helmet>
+                 {/** Splash w/ tagline, primary buttons, and video.*/}
                 <Grid item xs={12} container className={classes.splash}>
                     <Grid item xs={12} container className={classes.outer}>
                         <Grid item xs={12} container className={classes.inner}>
@@ -87,10 +94,7 @@ class HomePage extends React.Component<{
                                         </React.Fragment>
                                     )}
                                     {auth.isAuthenticated &&
-                                        this.renderButton(
-                                            'Dashboard',
-                                            '/worksheets?name=dashboard',
-                                        )}
+                                        this.renderButton('My Profile', '/users')}
                                 </div>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
@@ -104,7 +108,6 @@ class HomePage extends React.Component<{
                         </Grid>
                     </Grid>
                 </Grid>
-
                 <Grid item xs={12} className={classes.outer} container>
                     <Grid item xs={12} className={classes.inner} container>
                         {/** Summary. */}

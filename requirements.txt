@@ -1,18 +1,18 @@
 apache-beam[azure]==2.27.0
-bottle==0.12.18
+bottle==0.12.19
 dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
 setuptools>=40.0.0
 argcomplete==1.12.1
-PyYAML==5.3.1
+PyYAML==5.4
 psutil==5.7.2
 
 # Use a forked version of ratarmount that works with file objects.
 # TODO (Ashwin): integrate these changes upstream so we can use the standard ratarmount package.
 # For a full diff, see https://github.com/epicfaace/ratarmount/pull/1.
-git+https://github.com/epicfaace/ratarmount.git@71f6dd3b545b255e21a290f3d50c74019989c4ad#egg=ratarmount
+git+https://github.com/epicfaace/ratarmount.git@83d310d8efdf34351650ee98e7f44cf1c00dbf6e#egg=ratarmount
 
 six==1.15.0
 SQLAlchemy==1.3.19
