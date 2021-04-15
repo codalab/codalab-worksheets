@@ -1364,7 +1364,7 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
-            # if sources is an array check the cumulative size with the users disk quota
+            # Calculate size of sources
             total_bundle_size = sum([get_path_size(source) for source in sources])
             user = client.fetch('users', client.fetch('user')['user_name'])
             disk_left = user['disk_quota'] - user['disk_used']
