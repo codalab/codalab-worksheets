@@ -71,6 +71,7 @@ class BundlesTest(BaseTestCase):
                             "request_priority": 0,
                         },
                         "permission_spec": "all",
+                        "frozen": None,
                         "is_anonymous": False,
                         "bundle_type": "run",
                         "command": "echo TEST",

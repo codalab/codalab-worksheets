@@ -1814,6 +1814,16 @@ class BundleCLI(object):
             ),
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument(
+                '--freeze',
+                help='Freeze bundle to prevent future metadata modification.',
+                action='store_true',
+            ),
+            Commands.Argument(
+                '--unfreeze',
+                help='Unfreeze bundle to allow future metadata modification.',
+                action='store_true',
+            ),
+            Commands.Argument(
                 '--anonymous',
                 help='Set bundle to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the bundle).',
                 dest='anonymous',
@@ -1860,6 +1870,10 @@ class BundleCLI(object):
             metadata_update['tags'] = args.tags
         if args.anonymous is not None:
             bundle_update['is_anonymous'] = args.anonymous
+        if args.freeze:
+            bundle_update['frozen'] = datetime.datetime.utcnow().isoformat()
+        if args.unfreeze:
+            bundle_update['frozen'] = None
         if args.field:
             metadata_update[args.field[0]] = args.field[1]
 
@@ -2325,7 +2339,15 @@ class BundleCLI(object):
         lines = []  # The output that we're accumulating
 
         # Bundle fields
-        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'is_anonymous'):
+        for key in (
+            'bundle_type',
+            'uuid',
+            'data_hash',
+            'state',
+            'command',
+            'frozen',
+            'is_anonymous',
+        ):
             if not raw:
                 if key not in info:
                     continue
