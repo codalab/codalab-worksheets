@@ -1,7 +1,7 @@
 """Rename worker tag column to tags
 
 Revision ID: 6cee23f1e02f
-Revises: db12798a7cf6
+Revises: 6c013a88862f
 Create Date: 2021-03-13 01:29:29.309976
 
 """
@@ -11,14 +11,12 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '6cee23f1e02f'
-down_revision = 'db12798a7cf6'
+down_revision = '6c013a88862f'
 
 
 def upgrade():
-    op.add_column('worker', sa.Column('tags', sa.Text(), nullable=True))
-    op.drop_column('worker', 'tag')
+    op.alter_column('worker', 'tag', 'tags')
 
 
 def downgrade():
-    op.add_column('worker', sa.Column('tag', sa.Text(), nullable=True))
-    op.drop_column('worker', 'tags')
+    op.alter_column('worker', 'tags', 'tag')
