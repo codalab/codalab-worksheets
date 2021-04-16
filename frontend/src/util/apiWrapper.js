@@ -58,38 +58,46 @@ const defaultErrorHandler = (error) => {
     console.error(error);
 };
 
-const updateEditableField = (url, data, callback) => {
+const updateEditableField = (url, data, callback, errorHandler = defaultErrorHandler) => {
     patch(url, data)
         .then(callback)
-        .catch(defaultErrorHandler);
+        .catch(errorHandler);
 };
 
-const getUser = (callback) => {
+const getUser = (callback, errorHandler = defaultErrorHandler) => {
     const url = '/rest/user';
     get(url)
         .then(callback)
-        .catch(defaultErrorHandler);
+        .catch(errorHandler);
 };
 
-const getUsers = (username, callback) => {
+const getUsers = (username, callback, errorHandler = defaultErrorHandler) => {
     const url = '/rest/users/' + username;
     get(url)
         .then(callback)
-        .catch(defaultErrorHandler);
+        .catch(errorHandler);
 };
 
-const updateUser = (newUser, callback) => {
+const updateUser = (newUser, callback, errorHandler = defaultErrorHandler) => {
     const url = '/rest/user';
     patch(url, { data: newUser })
         .then(callback)
-        .catch(defaultErrorHandler);
+        .catch(errorHandler);
 };
 
-const navBarSearch = (keywords, callback) => {
+const navBarSearch = (keywords, callback, errorHandler = defaultErrorHandler) => {
     const url = '/rest/interpret/wsearch';
     post(url, { keywords })
         .then(callback)
-        .catch(defaultErrorHandler);
+        .catch(errorHandler);
+};
+
+const addItems = (worksheetUUID, data, callback, errorHandler = defaultErrorHandler) => {
+    console.log(errorHandler);
+    const url = `/rest/worksheets/${worksheetUUID}/add-items`;
+    post(url, data)
+        .then(callback)
+        .catch(errorHandler);
 };
 
 export const apiWrapper = {
@@ -103,4 +111,5 @@ export const apiWrapper = {
     updateUser,
     getUsers,
     navBarSearch,
+    addItems,
 };

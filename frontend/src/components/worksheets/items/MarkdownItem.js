@@ -1,5 +1,4 @@
 import * as React from 'react';
-import $ from 'jquery';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged, getAfterSortKey } from '../../../util/worksheet_utils';
 import marked from 'marked';
@@ -12,6 +11,7 @@ import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 import Tooltip from '@material-ui/core/Tooltip';
+import { apiWrapper } from '../../../util/apiWrapper';
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
@@ -108,23 +108,18 @@ class MarkdownItem extends React.Component {
     deleteItem = () => {
         const { reloadWorksheet, item, worksheetUUID } = this.props;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-        $.ajax({
-            url,
-            data: JSON.stringify({ ids: item.ids }),
-            contentType: 'application/json',
-            type: 'POST',
-            success: (data, status, jqXHR) => {
-                const textDeleted = true;
-                const param = { textDeleted };
-                this.setState({ deleting: false });
-                reloadWorksheet(undefined, undefined, param);
-                Mousetrap.unbind(['backspace', 'del']);
-            },
-            error: (jqHXR, status, error) => {
-                this.setState({ deleting: false });
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            const textDeleted = true;
+            const param = { textDeleted };
+            this.setState({ deleting: false });
+            reloadWorksheet(undefined, undefined, param);
+            Mousetrap.unbind(['backspace', 'del']);
+        };
+        const errorHandler = (error) => {
+            this.setState({ deleting: false });
+            alert(createAlertText(url, error));
+        };
+        apiWrapper.addItems(worksheetUUID, { ids: item.ids }, callback, errorHandler);
     };
 
     render() {

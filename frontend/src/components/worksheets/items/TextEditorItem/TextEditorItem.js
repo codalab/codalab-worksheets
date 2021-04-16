@@ -1,11 +1,11 @@
 // @flow
 import * as React from 'react';
-import $ from 'jquery';
 import Button from '@material-ui/core/Button';
 import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
+import { apiWrapper } from '../../../../util/apiWrapper';
 
 /*
 This component has 2 modes:
@@ -85,22 +85,16 @@ class TextEditorItem extends React.Component<{
             // Updating an existing item.
             data['ids'] = ids;
         }
-
-        $.ajax({
-            url,
-            data: JSON.stringify(data),
-            contentType: 'application/json',
-            type: 'POST',
-            success: (data, status, jqXHR) => {
-                const moveIndex = true ? mode === 'create' : false;
-                const param = { moveIndex };
-                closeEditor();
-                reloadWorksheet(undefined, undefined, param);
-            },
-            error: (jqHXR, status, error) => {
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            const moveIndex = true ? mode === 'create' : false;
+            const param = { moveIndex };
+            closeEditor();
+            reloadWorksheet(undefined, undefined, param);
+        };
+        const errorHandler = (error) => {
+            alert(createAlertText(url, error));
+        };
+        apiWrapper.addItems(worksheetUUID, data, callback, errorHandler);
     };
 
     render() {

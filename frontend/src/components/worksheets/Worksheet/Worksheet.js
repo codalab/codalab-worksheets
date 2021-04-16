@@ -466,22 +466,17 @@ class Worksheet extends React.Component {
     removeItemsFromSource = (itemIds) => {
         let worksheetUUID = this.state.ws.uuid;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-        $.ajax({
-            url,
-            data: JSON.stringify({ ids: itemIds }),
-            contentType: 'application/json',
-            type: 'POST',
-            success: () => {
-                const textDeleted = true;
-                const param = { textDeleted };
-                this.setState({ deleting: false });
-                this.reloadWorksheet(undefined, undefined, param);
-            },
-            error: (jqHXR, status, error) => {
-                this.setState({ deleting: false });
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            const textDeleted = true;
+            const param = { textDeleted };
+            this.setState({ deleting: false });
+            this.reloadWorksheet(undefined, undefined, param);
+        };
+        const errorHandler = (error) => {
+            this.setState({ deleting: false });
+            alert(createAlertText(url, error));
+        };
+        apiWrapper.addItems(worksheetUUID, { ids: itemIds }, callback, errorHandler);
     };
 
     moveFocusToBottom = () => {
@@ -535,20 +530,16 @@ class Worksheet extends React.Component {
             actualData['after_sort_key'] = -1;
         }
         actualData['item_type'] = 'bundle';
-        $.ajax({
-            url,
-            data: JSON.stringify(actualData),
-            contentType: 'application/json',
-            type: 'POST',
-            success: () => {
-                const moveIndex = true;
-                const param = { moveIndex };
-                this.reloadWorksheet(undefined, undefined, param);
-            },
-            error: (jqHXR) => {
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            const moveIndex = true;
+            const param = { moveIndex };
+            this.reloadWorksheet(undefined, undefined, param);
+        };
+        const errorHandler = (error) => {
+            alert(createAlertText(url, error));
+        };
+        console.log('worksheets');
+        apiWrapper.addItems(worksheetUUID, actualData, callback, errorHandler);
     };
 
     clearCheckedBundles = (clear_callback) => {
@@ -643,26 +634,21 @@ class Worksheet extends React.Component {
         actualData['item_type'] = 'directive';
         if (!create) actualData['ids'] = ids;
         actualData['after_sort_key'] = after_sort_key;
-        $.ajax({
-            url,
-            data: JSON.stringify(actualData),
-            contentType: 'application/json',
-            type: 'POST',
-            success: () => {
-                if (deletion) {
-                    const textDeleted = true;
-                    const param = { textDeleted };
-                    this.reloadWorksheet(undefined, undefined, param);
-                } else {
-                    const moveIndex = true;
-                    const param = { moveIndex };
-                    this.reloadWorksheet(undefined, undefined, param);
-                }
-            },
-            error: (jqHXR) => {
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            if (deletion) {
+                const textDeleted = true;
+                const param = { textDeleted };
+                this.reloadWorksheet(undefined, undefined, param);
+            } else {
+                const moveIndex = true;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            }
+        };
+        const errorHandler = (error) => {
+            alert(createAlertText(url, error));
+        };
+        apiWrapper.addItems(worksheetUUID, actualData, callback, errorHandler);
         this.setState({
             messagePopover: {
                 showMessage: true,
