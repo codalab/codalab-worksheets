@@ -63,7 +63,7 @@ class UserInfo extends React.Component {
                 user: this.processData(response),
             });
         };
-        apiWrapper.updateUser({ data: newUser }, callback);
+        apiWrapper.updateUser(newUser, callback);
     };
 
     /** Renderer. */

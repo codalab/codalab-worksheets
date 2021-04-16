@@ -240,7 +240,7 @@ class EditableAvatar extends React.Component {
         newUser.id = this.props.userInfo.user_id;
 
         // Push changes to server
-        apiWrapper.updateUser({ data: newUser }, () => {});
+        apiWrapper.updateUser(newUser, () => {});
     }
 
     // Callback function for avatar editor to upload the adjusted avatar

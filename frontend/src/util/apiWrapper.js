@@ -92,12 +92,12 @@ const getUsers = (username, callback) => {
         .catch(defaultErrorHandler);
 };
 
-const updateUser = (data, callback) => {
+const updateUser = (newUser, callback) => {
     const url = '/rest/user';
     const requestOptions = {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ data: newUser }),
     };
     fetch(url, requestOptions)
         .then(handleResponse)

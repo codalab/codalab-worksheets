@@ -139,39 +139,34 @@ class MainPanel extends React.Component<{
     componentDidMount() {
         const { classes } = this.props;
         // Fetch worksheets owned by the current user
-        const worksheetUrl = '/rest/interpret/wsearch';
-
-        apiWrapper
-            .post(worksheetUrl, { keywords: ['owner=' + this.props.userInfo.user_name] })
-            .then((data) => {
-                const worksheets = data.response.map((ws, i) => (
-                    <Card className={classes.wsCard}>
-                        <div className={classes.wsBox}>
-                            <div className={classes.wsInlineBox}>
-                                <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
-                                    {ws.title ? ws.title : 'Untitled'}
-                                </a>
-                                <div className={classes.value} style={{ whiteSpace: 'pre' }}>
-                                    {'  by ' + ws.owner_name}
-                                </div>
-                            </div>
-                            <div className={classes.wsInlineBox}>
-                                <p className={classes.value}>{ws.name} </p>
-                                <p className={classes.value}>
-                                    {' '}
-                                    {ws.date_last_modified
-                                        ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
-                                        : ''}
-                                </p>
+        const callback = (data) => {
+            const worksheets = data.response.map((ws, i) => (
+                <Card className={classes.wsCard}>
+                    <div className={classes.wsBox}>
+                        <div className={classes.wsInlineBox}>
+                            <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
+                                {ws.title ? ws.title : 'Untitled'}
+                            </a>
+                            <div className={classes.value} style={{ whiteSpace: 'pre' }}>
+                                {'  by ' + ws.owner_name}
                             </div>
                         </div>
-                    </Card>
-                ));
-                this.setState({ worksheets });
-            })
-            .catch((error) => {
-                console.error(error);
-            });
+                        <div className={classes.wsInlineBox}>
+                            <p className={classes.value}>{ws.name} </p>
+                            <p className={classes.value}>
+                                {' '}
+                                {ws.date_last_modified
+                                    ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
+                                    : ''}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            ));
+            this.setState({ worksheets });
+        };
+        console.log('mainPanel');
+        apiWrapper.navBarSearch(['owner=' + this.props.userInfo.user_name], callback);
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {

@@ -198,12 +198,8 @@ class NavBar extends React.Component<{
             const keywords = this.state.value.split(' ');
             const regexKeywords = keywords.join('|');
             const re = new RegExp(regexKeywords, 'gi');
-
-            const url = '/rest/interpret/wsearch';
-            apiWrapper
-                .post(url, { keywords: keywords })
-                .then((data) => {
-                    /*
+            const callback = (data) => {
+                /*
                     Response body:
                     ```
                     {
@@ -239,28 +235,28 @@ class NavBar extends React.Component<{
                     }
                     ```
                     */
-                    let filteredResults = {};
-                    for (let item of data.response) {
-                        // use DOMPurify to get rid of the XSS security risk
-                        item.plaintextDescription = item.name;
-                        item.description = DOMPurify.sanitize(
-                            item.name.replace(re, "<span id='highlight'>$&</span>"),
-                        );
-                        item.plaintextTitle = item.title;
-                        item.title = DOMPurify.sanitize(
-                            (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
-                        );
+                let filteredResults = {};
+                for (let item of data.response) {
+                    // use DOMPurify to get rid of the XSS security risk
+                    item.plaintextDescription = item.name;
+                    item.description = DOMPurify.sanitize(
+                        item.name.replace(re, "<span id='highlight'>$&</span>"),
+                    );
+                    item.plaintextTitle = item.title;
+                    item.title = DOMPurify.sanitize(
+                        (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
+                    );
 
-                        if (!(item.owner_name in filteredResults)) {
-                            filteredResults[item.owner_name] = {
-                                name: item.owner_name,
-                                results: [],
-                            };
-                        }
-                        filteredResults[item.owner_name].results.push(item);
+                    if (!(item.owner_name in filteredResults)) {
+                        filteredResults[item.owner_name] = {
+                            name: item.owner_name,
+                            results: [],
+                        };
                     }
+                    filteredResults[item.owner_name].results.push(item);
+                }
 
-                    /*
+                /*
                     turn the above dict into a a dict with a key of category name,
                     e.g., codalab
                     {
@@ -275,37 +271,35 @@ class NavBar extends React.Component<{
                         },
                     */
 
-                    const preRanking = _.reduce(
-                        filteredResults,
-                        (memo, data, name) => {
-                            memo[name] = { name, results: data.results };
-                            return memo;
-                        },
-                        {},
-                    );
+                const preRanking = _.reduce(
+                    filteredResults,
+                    (memo, data, name) => {
+                        memo[name] = { name, results: data.results };
+                        return memo;
+                    },
+                    {},
+                );
 
-                    // the results are displayed using the map function, which remembers
-                    // order of insertion. We therefore put the owner's worksheets on top
-                    const currName = this.state.userInfo.user_name;
-                    if (currName in preRanking) {
-                        let ownerResults = {};
-                        ownerResults[currName] = preRanking[currName];
-                        delete preRanking[currName];
-                        let finalResults = { ...ownerResults, ...preRanking };
-                        this.setState({
-                            isLoading: false,
-                            results: finalResults,
-                        });
-                    } else {
-                        this.setState({
-                            isLoading: false,
-                            results: preRanking,
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+                // the results are displayed using the map function, which remembers
+                // order of insertion. We therefore put the owner's worksheets on top
+                const currName = this.state.userInfo.user_name;
+                if (currName in preRanking) {
+                    let ownerResults = {};
+                    ownerResults[currName] = preRanking[currName];
+                    delete preRanking[currName];
+                    let finalResults = { ...ownerResults, ...preRanking };
+                    this.setState({
+                        isLoading: false,
+                        results: finalResults,
+                    });
+                } else {
+                    this.setState({
+                        isLoading: false,
+                        results: preRanking,
+                    });
+                }
+            };
+            apiWrapper.navBarSearch(keywords, callback);
         });
     };
 
