@@ -105,6 +105,13 @@ const updateUser = (data, callback) => {
         .catch(defaultErrorHandler);
 };
 
+const navBarSearch = (keywords, callback) => {
+    const url = '/rest/interpret/wsearch';
+    post(url, { keywords })
+        .then(callback)
+        .catch(defaultErrorHandler);
+};
+
 export const apiWrapper = {
     get,
     post,
@@ -115,4 +122,5 @@ export const apiWrapper = {
     getUser,
     updateUser,
     getUsers,
+    navBarSearch,
 };
