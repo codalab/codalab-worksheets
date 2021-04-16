@@ -39,7 +39,7 @@ class MetadataSpec(object):
         completer=None,
         hide_when_anonymous=False,
         optional=False,
-        hidden=False,
+        hidden=False,  # if hidden=True, field is hidden by default and can be displayed with -f
     ):
         self.key = key
         self.type = type
