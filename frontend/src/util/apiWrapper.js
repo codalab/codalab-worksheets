@@ -59,48 +59,28 @@ const defaultErrorHandler = (error) => {
 };
 
 const updateEditableField = (url, data, callback) => {
-    const requestOptions = {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    };
-    fetch(url, requestOptions)
-        .then(handleResponse)
+    patch(url, data)
         .then(callback)
         .catch(defaultErrorHandler);
 };
 
 const getUser = (callback) => {
     const url = '/rest/user';
-    const requestOptions = {
-        method: 'GET',
-    };
-    fetch(url, requestOptions)
-        .then(handleResponse)
+    get(url)
         .then(callback)
         .catch(defaultErrorHandler);
 };
 
 const getUsers = (username, callback) => {
     const url = '/rest/users/' + username;
-    const requestOptions = {
-        method: 'GET',
-    };
-    fetch(url, requestOptions)
-        .then(handleResponse)
+    get(url)
         .then(callback)
         .catch(defaultErrorHandler);
 };
 
 const updateUser = (newUser, callback) => {
     const url = '/rest/user';
-    const requestOptions = {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: newUser }),
-    };
-    fetch(url, requestOptions)
-        .then(handleResponse)
+    patch(url, { data: newUser })
         .then(callback)
         .catch(defaultErrorHandler);
 };
