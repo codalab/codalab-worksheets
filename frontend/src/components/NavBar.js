@@ -300,7 +300,7 @@ class NavBar extends React.Component<{
                 }
             };
             apiWrapper.navBarSearch(keywords, callback);
-        });
+        }, 300);
     };
 
     /** Renderer. */
