@@ -442,7 +442,7 @@ worker = Table(
     ),  # Whether the worker and the server have a shared filesystem.
     Column(
         'tag_exclusive', Boolean, nullable=False
-    ),  # Whether worker runs bundles that are untagged.
+    ),  # Whether worker runs bundles if and only if they match tags.
     Column(
         'exit_after_num_runs', Integer, nullable=False
     ),  # Number of jobs allowed to run on worker.
