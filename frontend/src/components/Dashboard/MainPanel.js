@@ -24,7 +24,7 @@ import ErrorIcon from '@material-ui/icons/Error';
 import SuccessIcon from '@material-ui/icons/CheckCircle';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
-import { fetchWrapper } from '../../util/fetchWrapper';
+import { apiWrapper } from '../../util/apiWrapper';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -141,7 +141,7 @@ class MainPanel extends React.Component<{
         // Fetch worksheets owned by the current user
         const worksheetUrl = '/rest/interpret/wsearch';
 
-        fetchWrapper
+        apiWrapper
             .post(worksheetUrl, { keywords: ['owner=' + this.props.userInfo.user_name] })
             .then((data) => {
                 const worksheets = data.response.map((ws, i) => (

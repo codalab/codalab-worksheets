@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
-import { fetchWrapper } from '../util/fetchWrapper';
+import { apiWrapper } from '../util/apiWrapper';
 
 const KEYCODE_ESC = 27;
 
@@ -52,17 +52,13 @@ class EditableFieldBase extends React.Component<{
 
         this.setState({ editing: false });
         event.preventDefault();
-        console.log(this.props.method);
-        fetchWrapper[this.props.method.toLowerCase()](
-            this.props.url,
-            this.props.buildPayload(this.state.value),
-        )
-            .then(() => {
-                if (this.props.onChange) this.props.onChange(this.state.value);
-            })
-            .catch((error) => {
-                console.error(error);
-            });
+        const { url, onChange, buildPayload } = this.props;
+        const { value } = this.state;
+        apiWrapper.updateEditableField(url, buildPayload(value), () => {
+            if (onChange) {
+                onChange(this.state.value);
+            }
+        });
     };
 
     handleKeyPress = (event) => {

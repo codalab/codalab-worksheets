@@ -41,6 +41,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import queryString from 'query-string';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import { Popover } from '@material-ui/core';
+import { apiWrapper } from '../../../util/apiWrapper';
 
 /*
 Information about the current worksheet and its items.
@@ -824,22 +825,14 @@ class Worksheet extends React.Component {
         // Initialize history stack
         window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');
-        $.ajax({
-            url: '/rest/user',
-            dataType: 'json',
-            cache: false,
-            type: 'GET',
-            success: function(data) {
-                var userInfo = data.data.attributes;
-                userInfo.user_id = data.data.id;
-                this.setState({
-                    userInfo: userInfo,
-                });
-            }.bind(this),
-            error: function(xhr, status, err) {
-                console.error(xhr.responseText);
-            },
-        });
+        const callback = (data) => {
+            var userInfo = data.data.attributes;
+            userInfo.user_id = data.data.id;
+            this.setState({
+                userInfo: userInfo,
+            });
+        };
+        apiWrapper.getUser(callback);
     }
 
     hasEditPermission() {

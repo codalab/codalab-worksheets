@@ -5,7 +5,7 @@ import _ from 'underscore';
 import { renderSize, renderDuration } from '../util/worksheet_utils';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import { fetchWrapper } from '../util/fetchWrapper';
+import { apiWrapper } from '../util/apiWrapper';
 /**
  * This stateful component ___.
  */
@@ -42,18 +42,12 @@ class UserInfo extends React.Component {
     }
 
     componentDidMount() {
-        fetchWrapper
-            .get('/rest/user')
-            .then((response) => {
-                this.setState({
-                    user: this.processData(response),
-                });
-            })
-            .catch((error) => {
-                this.setState({
-                    error,
-                });
+        const callback = (response) => {
+            this.setState({
+                user: this.processData(response),
             });
+        };
+        apiWrapper.getUser(callback);
     }
 
     handleChange = (key, value) => {
@@ -63,19 +57,13 @@ class UserInfo extends React.Component {
         newUser.attributes[key] = value;
 
         // Push changes to server
-        fetchWrapper
-            .patch('/rest/user', { data: newUser })
-            .then((response) => {
-                console.log(response);
-                this.setState({
-                    user: this.processData(response),
-                });
-            })
-            .catch((error) => {
-                this.setState({
-                    error,
-                });
+        const callback = (response) => {
+            console.log(response);
+            this.setState({
+                user: this.processData(response),
             });
+        };
+        apiWrapper.updateUser({ data: newUser }, callback);
     };
 
     /** Renderer. */

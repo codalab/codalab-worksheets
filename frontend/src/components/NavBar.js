@@ -36,7 +36,7 @@ import _ from 'lodash';
 import { executeCommand } from '../util/cli_utils';
 import DOMPurify from 'dompurify';
 import { NAME_REGEX } from '../constants';
-import { fetchWrapper } from '../util/fetchWrapper';
+import { apiWrapper } from '../util/apiWrapper';
 
 const kDefaultWorksheetName = 'unnamed';
 
@@ -70,15 +70,14 @@ class NavBar extends React.Component<{
     }
 
     fetchName() {
-        fetchWrapper
-            .get('/rest/user')
-            .then((data) => {
-                const userInfo = data.data.attributes;
-                userInfo.user_id = data.data.id;
-                this.fetchImg(userInfo.avatar_id);
-                this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
-            })
-            .catch((error) => console.error(error));
+        const callback = (data) => {
+            console.log(data);
+            const userInfo = data.data.attributes;
+            userInfo.user_id = data.data.id;
+            this.fetchImg(userInfo.avatar_id);
+            this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
+        };
+        apiWrapper.getUser(callback);
     }
 
     resetDialog() {
@@ -201,7 +200,7 @@ class NavBar extends React.Component<{
             const re = new RegExp(regexKeywords, 'gi');
 
             const url = '/rest/interpret/wsearch';
-            fetchWrapper
+            apiWrapper
                 .post(url, { keywords: keywords })
                 .then((data) => {
                     /*

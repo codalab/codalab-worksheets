@@ -54,10 +54,65 @@ const handleResponse = (response) => {
     });
 };
 
-export const fetchWrapper = {
+const defaultErrorHandler = (error) => {
+    console.error(error);
+};
+
+const updateEditableField = (url, data, callback) => {
+    const requestOptions = {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    };
+    fetch(url, requestOptions)
+        .then(handleResponse)
+        .then(callback)
+        .catch(defaultErrorHandler);
+};
+
+const getUser = (callback) => {
+    const url = '/rest/user';
+    const requestOptions = {
+        method: 'GET',
+    };
+    fetch(url, requestOptions)
+        .then(handleResponse)
+        .then(callback)
+        .catch(defaultErrorHandler);
+};
+
+const getUsers = (username, callback) => {
+    const url = '/rest/users/' + username;
+    const requestOptions = {
+        method: 'GET',
+    };
+    fetch(url, requestOptions)
+        .then(handleResponse)
+        .then(callback)
+        .catch(defaultErrorHandler);
+};
+
+const updateUser = (data, callback) => {
+    const url = '/rest/user';
+    const requestOptions = {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    };
+    fetch(url, requestOptions)
+        .then(handleResponse)
+        .then(callback)
+        .catch(defaultErrorHandler);
+};
+
+export const apiWrapper = {
     get,
     post,
     put,
     delete: _delete,
     patch,
+    updateEditableField,
+    getUser,
+    updateUser,
+    getUsers,
 };

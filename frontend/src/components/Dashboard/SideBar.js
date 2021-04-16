@@ -10,7 +10,7 @@ import { BUNDLE_STATES } from '../../constants';
 import { default as AvatarEditorModal } from './EditableAvatar';
 import Tooltip from '@material-ui/core/Tooltip';
 import Button from '@material-ui/core/Button';
-import { fetchWrapper } from '../../util/fetchWrapper';
+import { apiWrapper } from '../../util/apiWrapper';
 
 const styles = ({ palette }) => {
     return {
@@ -123,7 +123,7 @@ class SideBar extends React.Component {
                               '.floating',
                           ],
                       };
-            fetchWrapper
+            apiWrapper
                 .post(bundleUrl, data)
                 .then((data) => {
                     if (stateIndex < BUNDLE_STATES.length) {

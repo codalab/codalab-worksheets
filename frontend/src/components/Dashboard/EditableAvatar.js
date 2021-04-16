@@ -15,6 +15,7 @@ import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../util/worksheet_utils';
 import Avatar from '@material-ui/core/Avatar';
 import ButtonBase from '@material-ui/core/ButtonBase';
+import { apiWrapper } from '../../util/apiWrapper.js';
 
 const styles = (theme) => ({
     root: {
@@ -239,23 +240,7 @@ class EditableAvatar extends React.Component {
         newUser.id = this.props.userInfo.user_id;
 
         // Push changes to server
-        $.ajax({
-            method: 'PATCH',
-            url: '/rest/user',
-            data: JSON.stringify({ data: newUser }),
-            dataType: 'json',
-            contentType: 'application/json',
-            context: this,
-            xhr: function() {
-                // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest === null ||
-                    new window.XMLHttpRequest().addEventListener === null
-                    ? new window.ActiveXObject('Microsoft.XMLHTTP')
-                    : $.ajaxSettings.xhr();
-            },
-        }).fail(function(xhr, status, err) {
-            console.log(err);
-        });
+        apiWrapper.updateUser({ data: newUser }, () => {});
     }
 
     // Callback function for avatar editor to upload the adjusted avatar
