@@ -774,7 +774,7 @@ class Worker:
         else:
             self.bundle_service.reply(self.id, socket_id, message)
 
-    def save_time_stats(self, uuid, from_stage):
+    def save_time_stats(self, uuid, from_state):
         """
         Saves the time taken running in a stage after a transition
         from that stage.
