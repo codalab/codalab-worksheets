@@ -49,6 +49,7 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
+    DiskQuotaExceededError,
 )
 from codalab.lib import (
     file_util,
@@ -98,6 +99,7 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
+from codalab.worker.file_util import get_path_size
 
 
 # Command groupings
@@ -1362,6 +1364,15 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
+            # Calculate size of sources
+            total_bundle_size = sum([get_path_size(source) for source in sources])
+            user = client.fetch('users', client.fetch('user')['user_name'])
+            disk_left = user['disk_quota'] - user['disk_used']
+            if disk_left - total_bundle_size <= 0:
+                raise DiskQuotaExceededError(
+                    'Attempted to upload bundle of size %d with only %d remaining.'
+                    % (total_bundle_size, disk_left)
+                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -1813,6 +1824,16 @@ class BundleCLI(object):
             ),
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument(
+                '--freeze',
+                help='Freeze bundle to prevent future metadata modification.',
+                action='store_true',
+            ),
+            Commands.Argument(
+                '--unfreeze',
+                help='Unfreeze bundle to allow future metadata modification.',
+                action='store_true',
+            ),
+            Commands.Argument(
                 '--anonymous',
                 help='Set bundle to be anonymous (identity of the owner will NOT be visible to users without \'all\' permission on the bundle).',
                 dest='anonymous',
@@ -1859,6 +1880,10 @@ class BundleCLI(object):
             metadata_update['tags'] = args.tags
         if args.anonymous is not None:
             bundle_update['is_anonymous'] = args.anonymous
+        if args.freeze:
+            bundle_update['frozen'] = datetime.datetime.utcnow().isoformat()
+        if args.unfreeze:
+            bundle_update['frozen'] = None
         if args.field:
             metadata_update[args.field[0]] = args.field[1]
 
@@ -2324,7 +2349,15 @@ class BundleCLI(object):
         lines = []  # The output that we're accumulating
 
         # Bundle fields
-        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'is_anonymous'):
+        for key in (
+            'bundle_type',
+            'uuid',
+            'data_hash',
+            'state',
+            'command',
+            'frozen',
+            'is_anonymous',
+        ):
             if not raw:
                 if key not in info:
                     continue

@@ -359,6 +359,7 @@ class ModuleContext(object):
         self.users = []
         self.worker_to_user = {}
         self.error = None
+        self.disk_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -376,6 +377,7 @@ class ModuleContext(object):
         temp_worksheet = _run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
+        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
 
         print("[*][*] BEGIN TEST")
 
@@ -423,6 +425,10 @@ class ModuleContext(object):
                     print('CAUGHT')
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
+
+        # Reset disk quota
+        if self.disk_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -738,6 +744,13 @@ def test_upload1(ctx):
     check_num_lines(
         2 + 1, _run_command([cl, 'cat', uuid])
     )  # Directory listing with 2 headers lines and one file
+
+    # Upload a file that exceeds the disk quota
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    # we reset disk quota so tests added later don't fail on upload
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
 
 @TestModule.register('upload2')
@@ -1115,6 +1128,35 @@ def test_worksheet_freeze_unfreeze(ctx):
     _run_command([cl, 'wedit', '-t', 'new_title'], 1)  # would edit
     # can edit if we unfreeze at the same time
     _run_command([cl, 'wedit', '-t', 'new_title', '--unfreeze'])
+
+
+@TestModule.register('bundle_freeze_unfreeze')
+def test_bundle_freeze_unfreeze(ctx):
+    name = random_name()
+    uuid = _run_command([cl, 'run', 'date', '-n', name])
+    # Check that we can't freeze a run bundle if it's not in a final state
+    wait_until_state(uuid, State.RUNNING)
+    _run_command([cl, 'edit', uuid, '--freeze'], 1)
+    wait(uuid)
+    # Check that we can freeze and unfreeze a run bundle (since now it should be in a final state)
+    _run_command([cl, 'edit', uuid, '--freeze'])
+    # After freezing: cannot modify anything
+    _run_command([cl, 'rm', uuid], 1)  # would remove the bundle
+    _run_command([cl, 'edit', '--freeze', uuid], 1)  # would freeze the bundle
+    _run_command([cl, 'edit', '-n', 'new_name', uuid], 1)  # would edit
+    _run_command([cl, 'edit', '--freeze', '-n', 'new_name', uuid], 1)  # would edit
+    _run_command([cl, 'perm', uuid, 'public', 'n'], 1)  # would edit
+
+    # Verify that we can make edits to a frozen bundle,
+    # as long as we unfreeze at the same time.
+    _run_command([cl, 'edit', '--unfreeze', '-n', 'new_name', uuid])  # would edit
+
+    # After unfreezing: can modify everything
+    _run_command([cl, 'edit', '--freeze', uuid])  # would freeze the bundle
+    _run_command([cl, 'edit', '--unfreeze', uuid])  # would unfreeze the bundle
+    _run_command([cl, 'edit', '-n', 'new_name', uuid])  # would edit
+    _run_command([cl, 'perm', uuid, 'public', 'n'])  # would edit
+    _run_command([cl, 'rm', uuid])  # can remove the bundle
 
 
 @TestModule.register('detach')

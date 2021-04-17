@@ -5,9 +5,9 @@ from codalab.bundles import get_bundle_subclass
 
 # JsonApiClient is used to explain the first argument of mimic_bundles, so keep it
 from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship  # NOQA: F401
-from codalab.common import UsageError
+from codalab.common import PermissionError, UsageError
 from codalab.lib import worksheet_util
-from codalab.worker.bundle_state import BundleInfo
+from codalab.worker.bundle_state import BundleInfo, State
 
 
 def bundle_to_bundle_info(model, bundle):
@@ -28,6 +28,7 @@ def bundle_to_bundle_info(model, bundle):
         bundle.command,
         bundle.data_hash,
         bundle.state,
+        bundle.frozen,
         bundle.is_anonymous,
         bundle.metadata.to_dict(),
         dependencies,
@@ -338,3 +339,18 @@ def mimic_bundles(
                 )
 
     return plan
+
+
+def check_bundle_not_frozen(bundle):
+    if bundle.frozen:
+        raise PermissionError(
+            'Cannot mutate frozen bundle %s(%s).' % (bundle.uuid, bundle.metadata.to_dict()["name"])
+        )
+
+
+def check_bundle_freezable(bundle):
+    if bundle.state not in State.FINAL_STATES:
+        raise PermissionError(
+            'Cannot freeze bundle %s(%s), bundle is not in a final state.'
+            % (bundle.uuid, bundle.metadata.to_dict()["name"])
+        )
