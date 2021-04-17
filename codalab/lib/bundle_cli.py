@@ -1370,7 +1370,7 @@ class BundleCLI(object):
             disk_left = user['disk_quota'] - user['disk_used']
             if disk_left - total_bundle_size <= 0:
                 raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %d with only %d remaining.'
+                    'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
                     % (total_bundle_size, disk_left)
                 )
 
