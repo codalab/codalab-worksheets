@@ -49,6 +49,7 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
+    DiskQuotaExceededError,
 )
 from codalab.lib import (
     file_util,
@@ -98,6 +99,7 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
+from codalab.worker.file_util import get_path_size
 
 
 # Command groupings
@@ -1362,6 +1364,15 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
+            # Calculate size of sources
+            total_bundle_size = sum([get_path_size(source) for source in sources])
+            user = client.fetch('users', client.fetch('user')['user_name'])
+            disk_left = user['disk_quota'] - user['disk_used']
+            if disk_left - total_bundle_size <= 0:
+                raise DiskQuotaExceededError(
+                    'Attempted to upload bundle of size %d with only %d remaining.'
+                    % (total_bundle_size, disk_left)
+                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:

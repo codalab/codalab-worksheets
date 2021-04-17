@@ -359,6 +359,7 @@ class ModuleContext(object):
         self.users = []
         self.worker_to_user = {}
         self.error = None
+        self.disk_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -376,6 +377,7 @@ class ModuleContext(object):
         temp_worksheet = _run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
+        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
 
         print("[*][*] BEGIN TEST")
 
@@ -423,6 +425,10 @@ class ModuleContext(object):
                     print('CAUGHT')
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
+
+        # Reset disk quota
+        if self.disk_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -738,6 +744,13 @@ def test_upload1(ctx):
     check_num_lines(
         2 + 1, _run_command([cl, 'cat', uuid])
     )  # Directory listing with 2 headers lines and one file
+
+    # Upload a file that exceeds the disk quota
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    # we reset disk quota so tests added later don't fail on upload
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
 
 @TestModule.register('upload2')
