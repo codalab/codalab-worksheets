@@ -39,6 +39,7 @@ class MetadataSpec(object):
         completer=None,
         hide_when_anonymous=False,
         optional=False,
+        hidden=False,  # if hidden=True, field is hidden by default and can be displayed with -f
     ):
         self.key = key
         self.type = type
@@ -51,6 +52,7 @@ class MetadataSpec(object):
         self.completer = completer
         self.hide_when_anonymous = hide_when_anonymous
         self.optional = optional
+        self.hidden = hidden
 
     def get_constructor(self):
         # Convert from string to type

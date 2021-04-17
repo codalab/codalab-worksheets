@@ -487,4 +487,6 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         else:
             with self._paths_lock:
                 self._paths.remove(dependency_state.path)
+
+            logger.error(failure_message)
             return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)

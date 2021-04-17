@@ -47,6 +47,7 @@ class BundleTest(unittest.TestCase):
             metadata=metadata,
             dependencies=[],
             owner_id=0,
+            frozen=None,
             is_anonymous=False,
             storage_type=None,
             is_dir=None,
