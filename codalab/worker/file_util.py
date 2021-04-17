@@ -262,21 +262,19 @@ class GzipStream(BytesIO):
     """A stream that gzips a file in chunks.
     """
 
-    BUFFER_SIZE = 100 * 1024 * 1024  # Zip in chunks of 100MB
-
     def __init__(self, fileobj: IO[bytes]):
         self.__input = fileobj
         self.__buffer = BytesBuffer()
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
 
-    def read(self, size=-1) -> bytes:
-        while size < 0 or len(self.__buffer) < size:
-            s = self.__input.read(GzipStream.BUFFER_SIZE)
+    def read(self, num_bytes=None) -> bytes:
+        while num_bytes is None or len(self.__buffer) < num_bytes:
+            s = self.__input.read(num_bytes)
             if not s:
                 self.__gzip.close()
                 break
             self.__gzip.write(s)
-        return self.__buffer.read(size)
+        return self.__buffer.read(num_bytes)
 
     def close(self):
         self.__input.close()

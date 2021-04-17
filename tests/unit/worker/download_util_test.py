@@ -2,7 +2,7 @@ import tests.unit.azure_blob_mock  # noqa: F401
 from codalab.worker.download_util import (
     get_target_info,
     BundleTarget,
-    compute_target_info_beam_descendants_flat,
+    compute_target_info_blob_descendants_flat,
     PathException,
 )
 import unittest
@@ -171,13 +171,13 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
         )
 
     def test_nested_directories_get_descendants_flat(self):
-        """Test the compute_target_info_beam_descendants_flat function with nested directories."""
+        """Test the compute_target_info_blob_descendants_flat function with nested directories."""
         bundle_uuid, bundle_path = self.create_directory()
 
         # Entire directory
-        results = compute_target_info_beam_descendants_flat(bundle_path)
+        results = compute_target_info_blob_descendants_flat(bundle_path)
         self.assertEqual(
-            results,
+            list(results),
             [
                 {'name': '', 'type': 'directory', 'size': 249, 'perm': 0o755, 'contents': None},
                 {'name': 'README.md', 'size': 11, 'perm': 0o644, 'type': 'file', 'contents': None,},
@@ -203,9 +203,9 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
         )
 
         # Subdirectory
-        results = compute_target_info_beam_descendants_flat(bundle_path + "/" + "dist")
+        results = compute_target_info_blob_descendants_flat(bundle_path + "/" + "dist")
         self.assertEqual(
-            results,
+            list(results),
             [
                 {'name': '', 'type': 'directory', 'size': 0, 'perm': 0o644, 'contents': None},
                 {'name': 'a', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None},

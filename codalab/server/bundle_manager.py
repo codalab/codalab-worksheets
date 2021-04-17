@@ -288,7 +288,14 @@ class BundleManager(object):
         except Exception as e:
             logger.info('Failing bundle %s: %s. %s', bundle.uuid, str(e), traceback.format_exc())
             self._model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': str(e)}}
+                bundle,
+                {
+                    'state': State.FAILED,
+                    'metadata': {
+                        'failure_message': str(e),
+                        'error_traceback': traceback.format_exc(),
+                    },
+                },
             )
         finally:
             with self._make_uuids_lock:
