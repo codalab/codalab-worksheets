@@ -55,8 +55,6 @@ class TarSubdirStream(BytesIO):
 
     current_desc: CurrentDescendant
 
-    BUFFER_SIZE = 100 * 1024 * 1024  # Read in chunks of 100MB
-
     def __init__(self, path: str):
         """Initialize TarSubdirStream.
 
@@ -147,14 +145,13 @@ class TarSubdirStream(BytesIO):
             )
 
     def read(self, num_bytes=None):
-        """Read the specified number of bytes from the tar version of the associated subdirectory. For speed,
-        the tar file is read in chunks of BUFFER_SIZE.
+        """Read the specified number of bytes from the tar version of the associated subdirectory.
         """
         while num_bytes is None or len(self._buffer) < num_bytes:
             if self.current_desc.index >= len(self.descendants):
                 self.close()
                 break
-            self._read_from_tar(TarSubdirStream.BUFFER_SIZE)
+            self._read_from_tar(num_bytes)
         if num_bytes is None:
             num_bytes = len(self._buffer)
         return self._buffer.read(num_bytes)
