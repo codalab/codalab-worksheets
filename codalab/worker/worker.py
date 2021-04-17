@@ -474,9 +474,11 @@ class Worker:
 
         # 1. transition all runs
         for uuid in self.runs:
-            run_state = self.runs[uuid]
-            self.runs[uuid] = self.run_state_manager.transition(run_state)
-            self.save_time_stats(uuid, run_state)
+            prev_state = self.runs[uuid]
+            self.runs[uuid] = self.run_state_manager.transition(prev_state)
+            if prev_state.stage != self.runs[uuid].stage:
+                self.end_stage(uuid, prev_state.stage)
+                self.start_stage_stats(uuid, self.runs[uuid].stage)
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
@@ -655,8 +657,7 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
-            # Start measuring bundle stats for the initial bundle state. Subsequent states
-            # are measured by the call to save_time_stats in process_runs.
+            # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
@@ -773,14 +774,6 @@ class Worker:
             self.bundle_service.reply_data(self.id, socket_id, message, data)
         else:
             self.bundle_service.reply(self.id, socket_id, message)
-
-    def save_time_stats(self, uuid, from_state):
-        """
-        Saves the time taken running in a stage after a transition
-        from that stage.
-        """
-        self.end_stage(uuid, from_stage.stage)
-        self.start_stage_stats(uuid, self.runs[uuid].stage)
 
     def start_stage_stats(self, uuid, stage):
         self.runs[uuid].bundle_profile_stats[stage]['start'] = time.time()
