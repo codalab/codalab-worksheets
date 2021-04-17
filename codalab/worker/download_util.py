@@ -4,7 +4,7 @@ import stat
 import tarfile
 import logging
 import traceback
-from typing import Any, List, Optional, Union
+from typing import Any, Iterable, Generator, Optional, Union, cast
 from typing_extensions import TypedDict
 
 from apache_beam.io.filesystems import FileSystems
@@ -56,7 +56,7 @@ TargetInfo = TypedDict(
         "perm": int,
         "link": Optional[str],
         "type": str,
-        "contents": Optional[List[Any]],
+        "contents": Optional[Iterable[Any]],
         "resolved_target": Optional[BundleTarget],
     },
     total=False,
@@ -86,10 +86,10 @@ def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> Targe
     """
     final_path = _get_normalized_target_path(bundle_path, target)
     if parse_linked_bundle_url(final_path).uses_beam:
-        # If the target is on Azure, use a special method using Apache Beam
+        # If the target is on Blob Storage, use a Blob-specific method
         # to get the target info.
         try:
-            info = _compute_target_info_beam(final_path, depth)
+            info = _compute_target_info_blob(final_path, depth)
         except Exception:
             logging.error(
                 "Path '{}' in bundle {} not found: {}".format(
@@ -183,9 +183,23 @@ def _compute_target_info_local(path: str, depth: Union[int, float]) -> TargetInf
     return result
 
 
-def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo:
-    """Computes target info for a file that is externalized on a location
-    such as Azure, by using the Apache Beam FileSystem APIs."""
+def _compute_target_info_blob(
+    path: str, depth: Union[int, float], return_generators=False
+) -> TargetInfo:
+    """Computes target info for a file that is externalized on Blob Storage, meaning
+    that it's contained within an indexed .tar.gz file.
+
+    Args:
+        path (str): The path that refers to the specified target.
+        depth (Union[int, float]): Depth until which directory contents are resolved.
+        return_generators (bool, optional): If set to True, the 'contents' key of directories is equal to a generator instead of a list. Defaults to False.
+
+    Raises:
+        PathException: Path not found or invalid.
+
+    Returns:
+        TargetInfo: Target info of specified path.
+    """
 
     linked_bundle_path = parse_linked_bundle_url(path)
     if not FileSystems.exists(linked_bundle_path.bundle_path):
@@ -195,6 +209,10 @@ def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo
         raise PathException(
             "Single files on Blob Storage are not supported; only a path within a .tar.gz file is supported."
         )
+
+    # process_contents resolves generators into a list if return_generators is False.
+    # It processes the value of the 'contents' key before it is returned.
+    process_contents = list if return_generators is False else lambda x: x
 
     with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
@@ -215,7 +233,7 @@ def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo
             finfo = tf.getFileInfo(path)
             if finfo is None:
                 # Not found
-                raise PathException
+                raise PathException("File not found.")
             result: TargetInfo = {
                 'name': os.path.basename(path),  # get last part of path
                 'size': finfo.size,
@@ -230,11 +248,13 @@ def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo
             elif isdir(finfo):
                 result['type'] = 'directory'
                 if depth > 0:
-                    result['contents'] = [
-                        _get_info(path + "/" + file_name, depth - 1)
-                        for file_name in listdir(path)
-                        if file_name != "."
-                    ]
+                    result['contents'] = process_contents(
+                        (
+                            _get_info(path + "/" + file_name, depth - 1)
+                            for file_name in listdir(path)
+                            if file_name != "."
+                        )
+                    )
             return result
 
         if linked_bundle_path.archive_subpath:
@@ -255,38 +275,36 @@ def _compute_target_info_beam(path: str, depth: Union[int, float]) -> TargetInfo
                 'perm': 0o755,
             }
             if depth > 0:
-                result['contents'] = [
-                    _get_info(file_name, depth - 1)
-                    for file_name in listdir("/")
-                    if file_name != "."
-                ]
+                result['contents'] = process_contents(
+                    (
+                        _get_info(file_name, depth - 1)
+                        for file_name in listdir("/")
+                        if file_name != "."
+                    )
+                )
             return result
 
 
-def compute_target_info_beam_descendants_flat(path: str) -> List[TargetInfo]:
-    """Given a path on Azure Blob Storage,
-    returns a flat array of all descendants within that directory in the format
-    [{name, type, size, perm}], where `name` is equal to the full path of each item.
+def compute_target_info_blob_descendants_flat(path: str) -> Generator[TargetInfo, None, None]:
+    """Given a path on Blob Storage,
+    returns a generator that generates a flat list of all descendants within that directory
+    in the format [{name, type, size, perm}], where `name` is equal to the full path of each item.
 
     Also includes an entry for the specified directory with `name` equal to an empty string.
 
     This function is used by TarSubdirStream in order to determine the list of descendants
     that exist inside a given subdirectory in a .tar.gz file on Blob Storage.
     """
-    target_info = _compute_target_info_beam(
-        path, math.inf
-    )  # We want to calculate the target info at infinite depth to expand *all* descendants.
-    results = []
+    target_info = _compute_target_info_blob(
+        path=path, depth=math.inf, return_generators=True
+    )  # We want to return a generator so that we can expand *all* descendants without adding additional overhead.
 
-    def append_results(tinfo, prefix=""):
-        results.append(dict(tinfo, contents=None, name=prefix + tinfo["name"]))
-        if 'contents' in tinfo:
-            for t in tinfo['contents']:
-                append_results(t, prefix + tinfo['name'] + '/')
+    def get_results(tinfo: TargetInfo, prefix="") -> Generator[TargetInfo, None, None]:
+        yield cast(TargetInfo, dict(tinfo, contents=None, name=prefix + tinfo["name"]))
+        for t in tinfo.get('contents') or []:
+            yield from get_results(t, prefix + tinfo['name'] + '/')
 
-    results.append(dict(target_info, contents=None, name=""))
-    if 'contents' in target_info and target_info['contents'] is not None:
-        for t in target_info['contents']:
-            append_results(t)
-
-    return results
+    yield cast(TargetInfo, dict(target_info, contents=None, name=""))
+    for t in target_info.get('contents') or []:
+        print("CONTENTT", t)
+        yield from get_results(t)
