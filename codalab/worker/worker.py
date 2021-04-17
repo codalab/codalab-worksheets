@@ -655,6 +655,8 @@ class Worker:
                 finalized=False,
                 is_restaged=False,
             )
+            # Start measuring bundle stats for the initial bundle state. Subsequent states
+            # are measured by the call to save_time_stats in process_runs.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
