@@ -210,8 +210,9 @@ def _compute_target_info_blob(
             "Single files on Blob Storage are not supported; only a path within a .tar.gz file is supported."
         )
 
-    # process_contents resolves generators into a list if return_generators is False.
-    # It processes the value of the 'contents' key before it is returned.
+    # process_contents is used to process the value of the 'contents' key (which is a generator) before it is returned.
+    # If return_generators is False, it resolves the given generator into a list; otherwise, it just returns
+    # the generator unchanged.
     process_contents = list if return_generators is False else lambda x: x
 
     with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
@@ -249,11 +250,9 @@ def _compute_target_info_blob(
                 result['type'] = 'directory'
                 if depth > 0:
                     result['contents'] = process_contents(
-                        (
-                            _get_info(path + "/" + file_name, depth - 1)
-                            for file_name in listdir(path)
-                            if file_name != "."
-                        )
+                        _get_info(path + "/" + file_name, depth - 1)
+                        for file_name in listdir(path)
+                        if file_name != "."
                     )
             return result
 
@@ -276,11 +275,9 @@ def _compute_target_info_blob(
             }
             if depth > 0:
                 result['contents'] = process_contents(
-                    (
-                        _get_info(file_name, depth - 1)
-                        for file_name in listdir("/")
-                        if file_name != "."
-                    )
+                    _get_info(file_name, depth - 1)
+                    for file_name in listdir("/")
+                    if file_name != "."
                 )
             return result
 
