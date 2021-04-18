@@ -1,11 +1,13 @@
 import os
 import shutil
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union, Tuple, IO, cast
 
 from codalab.common import UsageError
 from codalab.common import StorageType
 from codalab.lib import crypt_util, file_util, path_util
 from codalab.objects.bundle import Bundle
+
+Source = Union[str, Tuple[str, IO[bytes]]]
 
 
 class UploadManager(object):
@@ -25,7 +27,7 @@ class UploadManager(object):
     def upload_to_bundle_store(
         self,
         bundle: Bundle,
-        sources: List[Any],
+        sources: List[Source],
         git: bool,
         unpack: bool,
         simplify_archives: bool,
@@ -35,7 +37,7 @@ class UploadManager(object):
         Uploads contents for the given bundle to the bundle store.
 
         |sources|: specifies the locations of the contents to upload. Each element is
-                   either a URL, a local path or a tuple (filename, binary file-like object).
+                   either a URL or a tuple (filename, binary file-like object).
         |git|: for URLs, whether |source| is a git repo to clone.
         |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
         |simplify_archives|: whether to simplify unpacked archives so that if they
@@ -80,7 +82,7 @@ class UploadManager(object):
                         )
                     else:
                         with open(source_output_path, 'wb') as out:
-                            shutil.copyfileobj(source[1], out)
+                            shutil.copyfileobj(cast(IO, source[1]), out)
 
             if len(sources) == 1:
                 self._simplify_directory(bundle_path)
