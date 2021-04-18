@@ -56,7 +56,7 @@ def strip_git_ext(path):
 
 
 def git_clone(source_url, target_path):
-    return subprocess.call(['git', 'clone', '--depth=1', source_url, target_path])
+    return subprocess.call(['git', 'clone', '--depth', '1', source_url, target_path])
 
 
 def download_url(source_url, target_path, print_status=False):
