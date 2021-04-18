@@ -22,13 +22,7 @@ class UploadManager(object):
         self.zip_util = zip_util
 
     def upload_to_bundle_store(
-        self,
-        bundle,
-        sources,
-        git,
-        unpack,
-        simplify_archives,
-        use_azure_blob_beta,
+        self, bundle, sources, git, unpack, simplify_archives, use_azure_blob_beta,
     ):
         """
         Uploads contents for the given bundle to the bundle store.

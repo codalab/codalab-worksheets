@@ -12,6 +12,7 @@ import urllib
 
 urlopen_real = urllib.request.urlopen
 
+
 class UploadManagerTest(unittest.TestCase):
     def setUp(self):
         class MockBundleStore(object):
@@ -34,12 +35,7 @@ class UploadManagerTest(unittest.TestCase):
         remove_path(self.temp_dir)
 
     def do_upload(
-        self,
-        sources,
-        git=False,
-        unpack=True,
-        simplify_archives=True,
-        use_azure_blob_beta=False,
+        self, sources, git=False, unpack=True, simplify_archives=True, use_azure_blob_beta=False,
     ):
         class FakeBundle(object):
             def __init__(self):
@@ -47,12 +43,7 @@ class UploadManagerTest(unittest.TestCase):
                 self.metadata = object()
 
         self.manager.upload_to_bundle_store(
-            FakeBundle(),
-            sources,
-            git,
-            unpack,
-            simplify_archives,
-            use_azure_blob_beta,
+            FakeBundle(), sources, git, unpack, simplify_archives, use_azure_blob_beta,
         )
 
     def test_fileobj_single(self):
@@ -98,16 +89,26 @@ class UploadManagerTest(unittest.TestCase):
         os.mkdir(source)
         self.write_string_to_file('testing', os.path.join(source, 'file1'))
         self.write_string_to_file('testing', os.path.join(source, 'file2'))
-        self.do_upload(self.mock_url_sources(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz"))
+        self.do_upload(
+            self.mock_url_sources(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz")
+        )
         self.assertIn('file2', os.listdir(self.bundle_location))
 
     def test_multiple_sources(self):
-        self.do_upload([('source1', BytesIO(b'testing1')), ('source2', BytesIO(b'testing2')), 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2'])
-        self.assertEqual(['bc-1.06.95', 'source1', 'source2'], sorted(os.listdir(self.bundle_location)))
+        self.do_upload(
+            [
+                ('source1', BytesIO(b'testing1')),
+                ('source2', BytesIO(b'testing2')),
+                'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2',
+            ]
+        )
+        self.assertEqual(
+            ['bc-1.06.95', 'source1', 'source2'], sorted(os.listdir(self.bundle_location))
+        )
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source1'), 'testing1')
         self.check_file_contains_string(os.path.join(self.bundle_location, 'source2'), 'testing2')
         self.assertIn('README', os.listdir(os.path.join(self.bundle_location, 'bc-1.06.95')))
-    
+
     def test_url_git(self):
         self.do_upload(['https://github.com/codalab/test'], git=True)
 
