@@ -7,7 +7,6 @@ import logging
 import docker
 from docker import DockerClient
 
-from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT
@@ -191,8 +190,7 @@ class DockerImageManager:
                     digest=digest, stage=DependencyStage.READY, message=success_message
                 )
             except Exception as ex:
-                if using_sentry():
-                    capture_exception()
+                logger.error(ex)
                 return ImageAvailabilityState(
                     digest=None, stage=DependencyStage.FAILED, message=failure_message % ex
                 )
@@ -274,6 +272,7 @@ class DockerImageManager:
                                     size_str(image_size_bytes), size_str(self._max_image_size)
                                 )
                             )
+                            logger.error(failure_msg)
                             return ImageAvailabilityState(
                                 digest=None, stage=DependencyStage.FAILED, message=failure_msg
                             )
@@ -293,6 +292,7 @@ class DockerImageManager:
                     message=self._downloading[image_spec]['status'],
                 )
         except Exception as ex:
+            logger.error(ex)
             return ImageAvailabilityState(
                 digest=None, stage=DependencyStage.FAILED, message=str(ex)
             )

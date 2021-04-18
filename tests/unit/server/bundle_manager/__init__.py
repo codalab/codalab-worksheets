@@ -144,6 +144,7 @@ class TestBase:
             uuid=generate_uuid(),
             state=state,
         )
+        bundle.is_frozen = None
         bundle.is_anonymous = False
         return bundle
 

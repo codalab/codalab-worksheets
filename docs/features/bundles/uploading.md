@@ -30,6 +30,7 @@ uuid                      : 0xdc74e4ef29b64ab19e1e26e94ea22811
 data_hash                 : 0x28bf5b81a526b5c049d9a3e5e8cdce5541182506
 state                     : ready
 command                   : <none>
+frozen                    : <none>
 is_anonymous              : False
 owner                     : codalab(0)
 name                      : myfolder
@@ -95,6 +96,7 @@ uuid                      : 0x3013b2c4519c4c99a622b07af078a5ff
 data_hash                 : <none>
 state                     : ready
 command                   : <none>
+frozen                    : <none>
 is_anonymous              : False
 owner                     : codalab(0)
 name                      : mkdocs.yml

@@ -26,6 +26,7 @@ class Bundle(ORMObject):
         'data_hash',
         'state',
         'owner_id',
+        'frozen',
         'is_anonymous',
         'storage_type',
         'is_dir',
