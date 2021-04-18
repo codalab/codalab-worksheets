@@ -120,8 +120,7 @@ class UploadManager(object):
     def _simplify_archive(self, path):
         """
         Modifies |path| in place: If |path| is a directory containing exactly
-        one file / directory that is not ignored, then replace |path| with that
-        file / directory.
+        one file / directory, then replace |path| with that file / directory.
         """
         if not os.path.isdir(path):
             return
