@@ -69,6 +69,14 @@ class UploadManagerTest(unittest.TestCase):
         self.assertEqual(['filename'], os.listdir(self.bundle_location))
         self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
 
+    def test_fileobj_single_tar_gz_with_dsstore_should_not_simplify_archive(self):
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_string_to_file('testing', os.path.join(source, 'filename'))
+        self.write_string_to_file('testing', os.path.join(source, '.DS_Store'))
+        self.do_upload([('source.tar.gz', tar_gzip_directory(source))])
+        self.assertEqual(['.DS_Store', 'filename'], os.listdir(self.bundle_location))
+
     def mock_url_sources(self, fileobj, ext=""):
         """Returns a URL that is mocked to return the contents of fileobj.
         The URL will end in the extension "ext", if given.
