@@ -125,7 +125,7 @@ class UploadManager(object):
         if not os.path.isdir(path):
             return
 
-        files = [f for f in os.listdir(path)]
+        files = os.listdir(path)
         if len(files) == 1:
             self._simplify_directory(path, files[0])
 
