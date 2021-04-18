@@ -17,19 +17,14 @@ class UploadManager(object):
         from codalab.lib import zip_util
 
         # exclude these patterns by default
-        DEFAULT_EXCLUDE_PATTERNS = ['.DS_Store', '__MACOSX', '^\._.*']
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
-        self._default_exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
         self.zip_util = zip_util
 
     def upload_to_bundle_store(
         self,
         bundle,
         sources,
-        follow_symlinks,
-        exclude_patterns,
-        remove_sources,
         git,
         unpack,
         simplify_archives,
@@ -40,11 +35,6 @@ class UploadManager(object):
 
         |sources|: specifies the locations of the contents to upload. Each element is
                    either a URL, a local path or a tuple (filename, binary file-like object).
-        |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks,
-                           but only if remove_sources is False.
-        |exclude_patterns|: for local path(s), don't upload these patterns (e.g., *.o),
-                            but only if remove_sources is False.
-        |remove_sources|: for local path(s), whether |sources| should be removed
         |git|: for URLs, whether |source| is a git repo to clone.
         |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
         |simplify_archives|: whether to simplify unpacked archives so that if they
@@ -58,18 +48,13 @@ class UploadManager(object):
         - If |git|, then each source is replaced with the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
-        exclude_patterns = (
-            self._default_exclude_patterns + exclude_patterns
-            if exclude_patterns
-            else self._default_exclude_patterns
-        )
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
-                is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
+                is_url, is_fileobj, filename = self._interpret_source(source)
                 source_output_path = os.path.join(bundle_path, filename)
                 if is_url:
                     if git:
@@ -84,26 +69,6 @@ class UploadManager(object):
                                 remove_source=True,
                                 simplify_archive=simplify_archives,
                             )
-                elif is_local_path:
-                    source_path = path_util.normalize(source)
-                    path_util.check_isvalid(source_path, 'upload')
-
-                    if unpack and self._can_unpack_file(source_path):
-                        self._unpack_file(
-                            source_path,
-                            self.zip_util.strip_archive_ext(source_output_path),
-                            remove_source=remove_sources,
-                            simplify_archive=simplify_archives,
-                        )
-                    elif remove_sources:
-                        path_util.rename(source_path, source_output_path)
-                    else:
-                        path_util.copy(
-                            source_path,
-                            source_output_path,
-                            follow_symlinks=follow_symlinks,
-                            exclude_patterns=exclude_patterns,
-                        )
                 elif is_fileobj:
                     if unpack and self.zip_util.path_is_archive(filename):
                         self._unpack_fileobj(
@@ -129,18 +94,18 @@ class UploadManager(object):
             raise
 
     def _interpret_source(self, source):
-        is_url, is_local_path, is_fileobj = False, False, False
+        is_url, is_fileobj = False, False
         if isinstance(source, str):
             if path_util.path_is_url(source):
                 is_url = True
                 source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
             else:
-                is_local_path = True
+                raise UsageError("Paths must be URLs.")
             filename = os.path.basename(os.path.normpath(source))
         else:
             is_fileobj = True
             filename = source[0]
-        return is_url, is_local_path, is_fileobj, filename
+        return is_url, is_fileobj, filename
 
     def _can_unpack_file(self, path):
         return os.path.isfile(path) and self.zip_util.path_is_archive(path)
@@ -168,13 +133,9 @@ class UploadManager(object):
         if not os.path.isdir(path):
             return
 
-        files = [f for f in os.listdir(path) if not self._ignore_file_in_archive(f)]
+        files = [f for f in os.listdir(path)]
         if len(files) == 1:
             self._simplify_directory(path, files[0])
-
-    def _ignore_file_in_archive(self, filename):
-        matchers = [re.compile(s) for s in self._default_exclude_patterns]
-        return any([matcher.match(filename) for matcher in matchers])
 
     def _simplify_directory(self, path, child_path=None):
         """
