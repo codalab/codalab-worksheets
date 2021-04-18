@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Optional, List, Any, Union, Tuple, IO, cast
+from typing import Optional, List, Union, Tuple, IO, cast
 
 from codalab.common import UsageError
 from codalab.common import StorageType
