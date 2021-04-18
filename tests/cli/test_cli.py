@@ -837,8 +837,7 @@ def test_upload3(ctx):
         ]
     )
     check_contains(
-        ['codalab-worksheets', 'codalab.github.io'],
-        _run_command([cl, 'cat', uuid + '/codalab.github.io']),
+        ['codalab-worksheets', 'codalab.github.io'], _run_command([cl, 'cat', uuid]),
     )
     check_contains(
         ['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid + '/codalab-worksheets'])
