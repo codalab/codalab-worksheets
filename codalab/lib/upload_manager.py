@@ -60,6 +60,7 @@ class UploadManager(object):
                 is_url, is_fileobj, filename = self._interpret_source(source)
                 source_output_path = os.path.join(bundle_path, filename)
                 if is_url:
+                    assert isinstance(source, str)
                     if git:
                         source_output_path = file_util.strip_git_ext(source_output_path)
                         file_util.git_clone(source, source_output_path)
