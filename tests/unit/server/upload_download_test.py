@@ -244,9 +244,6 @@ class DiskBundleStoreBase(TestBase):
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
             git=False,
             unpack=True,
             simplify_archives=True,
@@ -263,9 +260,6 @@ class BlobBundleStoreBase(TestBase):
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
             git=False,
             unpack=True,
             simplify_archives=True,

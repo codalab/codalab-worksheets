@@ -21,6 +21,7 @@ import os
 import shutil
 import subprocess
 import sys
+from typing import Optional
 
 from codalab.common import precondition, UsageError, parse_linked_bundle_url
 from codalab.lib import file_util
@@ -240,12 +241,11 @@ def hash_file_contents(path):
 ################################################################################
 
 
-def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
+def copy(source_path: str, dest_path: str, follow_symlinks: Optional[bool] = False):
     """
     Copy |source_path| to |dest_path|.
     Assume dest_path doesn't exist.
     |follow_symlinks|: whether to follow symlinks
-    |exclude_patterns|: patterns to not copy
     Note: this only works in Linux.
     """
     if os.path.exists(dest_path):
@@ -271,9 +271,6 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
             + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
             dest_path,
         ]
-        if exclude_patterns is not None:
-            for pattern in exclude_patterns:
-                command.extend(['--exclude', pattern])
         if subprocess.call(command) != 0:
             raise path_error('Unable to copy %s to' % source_path, dest_path)
 

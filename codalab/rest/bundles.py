@@ -790,9 +790,6 @@ def _update_bundle_contents_blob(uuid):
             local.upload_manager.upload_to_bundle_store(
                 bundle,
                 sources=sources,
-                follow_symlinks=False,
-                exclude_patterns=None,
-                remove_sources=False,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
