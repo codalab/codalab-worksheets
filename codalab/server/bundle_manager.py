@@ -15,15 +15,12 @@ from codalab.objects.permission import (
     check_bundles_have_read_permission,
     check_bundle_have_run_permission,
 )
-from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url, normpath
+from codalab.common import NotFoundError, PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
-from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.bundle_state import State, RunResources
-from codalab.worker.download_util import BundleTarget
-import tempfile
-import shutil
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +52,6 @@ class BundleManager(object):
         self._worker_model = codalab_manager.worker_model()
         self._bundle_store = codalab_manager.bundle_store()
         self._upload_manager = codalab_manager.upload_manager()
-        self._download_manager = codalab_manager.download_manager()
 
         self._exiting_lock = threading.Lock()
         self._exiting = False
@@ -207,86 +203,52 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            with tempfile.TemporaryDirectory() as tempdir:
-                bundle_link_url = getattr(bundle.metadata, "link_url", None)
-                bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(
-                    bundle.uuid
+            bundle_link_url = getattr(bundle.metadata, "link_url", None)
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+            path = os.path.normpath(bundle_location)
+
+            deps = []
+            parent_bundle_link_urls = self._model.get_bundle_metadata(
+                [dep.parent_uuid for dep in bundle.dependencies], "link_url"
+            )
+            for dep in bundle.dependencies:
+                parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
+                parent_bundle_path = parent_bundle_link_url or os.path.normpath(
+                    self._bundle_store.get_bundle_location(dep.parent_uuid)
                 )
-
-                path = normpath(bundle_location)
-
-                deps = []
-                print([dep.parent_uuid for dep in bundle.dependencies])
-                parent_bundle_link_urls = self._model.get_bundle_metadata(
-                    [dep.parent_uuid for dep in bundle.dependencies], "link_url"
+                # TODO(Ashwin): make this logic non-fs specific.
+                dependency_path = os.path.normpath(
+                    os.path.join(parent_bundle_path, dep.parent_path)
                 )
-                print(parent_bundle_link_urls)
-                for dep in bundle.dependencies:
-                    parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
-                    try:
-                        parent_bundle_path = parent_bundle_link_url or normpath(
-                            self._bundle_store.get_bundle_location(dep.parent_uuid)
-                        )
-                    except NotFoundError:
-                        raise Exception(
-                            'Invalid dependency %s'
-                            % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
-                        )
-                    dependency_path = normpath(os.path.join(parent_bundle_path, dep.parent_path))
-                    if not dependency_path.startswith(parent_bundle_path) or (
-                        not os.path.islink(dependency_path)
-                        and not os.path.exists(dependency_path)
-                        and not parse_linked_bundle_url(dependency_path).uses_beam
-                    ):
-                        raise Exception(
-                            'Invalid dependency %s'
-                            % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
-                        )
+                if not dependency_path.startswith(parent_bundle_path) or (
+                    not os.path.islink(dependency_path) and not os.path.exists(dependency_path)
+                ):
+                    raise Exception(
+                        'Invalid dependency %s'
+                        % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
+                    )
 
-                    child_path = normpath(os.path.join(path, dep.child_path))
-                    if not child_path.startswith(path):
-                        raise Exception('Invalid key for dependency: %s' % (dep.child_path))
+                child_path = os.path.normpath(os.path.join(path, dep.child_path))
+                if not child_path.startswith(path):
+                    raise Exception('Invalid key for dependency: %s' % (dep.child_path))
 
-                    # If source path is on Azure, we should download it to a temporary local directory first.
-                    parsed_dependency_path = parse_linked_bundle_url(dependency_path)
-                    if parsed_dependency_path.uses_beam:
-                        dependency_path = os.path.join(tempdir, dep.parent_uuid)
+                deps.append((dependency_path, child_path))
 
-                        target_info = self._download_manager.get_target_info(
-                            BundleTarget(dep.parent_uuid, dep.parent_path), 0
-                        )
-                        target = target_info['resolved_target']
+            remove_path(path)
 
-                        # Download the dependency to dependency_path (which is now in the temporary directory).
-                        # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
-                        # into common utility functions.
-                        if target_info['type'] == 'directory':
-                            with self._download_manager.stream_tarred_gzipped_directory(
-                                target
-                            ) as fileobj:
-                                un_tar_directory(fileobj, dependency_path, 'gz')
-                        else:
-                            fileobj = self._download_manager.stream_file(target, gzipped=False)
-                            with open(dependency_path, 'wb') as f:
-                                logger.debug('copying file to %s', dependency_path)
-                                shutil.copyfileobj(fileobj, f)
+            if len(deps) == 1 and deps[0][1] == path:
+                path_util.copy(deps[0][0], path, follow_symlinks=False)
+            else:
+                os.mkdir(path)
+                for dependency_path, child_path in deps:
+                    path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-                    deps.append((dependency_path, child_path))
-
-                remove_path(path)
-
-                if len(deps) == 1 and deps[0][1] == path:
-                    path_util.copy(deps[0][0], path, follow_symlinks=False)
-                else:
-                    os.mkdir(path)
-                    for dependency_path, child_path in deps:
-                        path_util.copy(dependency_path, child_path, follow_symlinks=False)
-
-                self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
-                logger.info('Finished making bundle %s', bundle.uuid)
-                self._model.update_bundle(bundle, {'state': State.READY})
+            # TODO(Ashwin): fix
+            self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+            logger.info('Finished making bundle %s', bundle.uuid)
+            self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
-            logger.info('Failing bundle %s: %s. %s', bundle.uuid, str(e), traceback.format_exc())
+            logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
             self._model.update_bundle(
                 bundle,
                 {
