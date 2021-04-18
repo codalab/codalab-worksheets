@@ -1562,21 +1562,22 @@ class Worksheet extends React.Component {
                         'bundles_spec' in partialUpdateItems[i] &&
                         'bundle_infos' in partialUpdateItems[i]['bundles_spec']
                     )
-                )
+                ) {
                     // Partial Update mechanism only designs for the blocks consisting of bundles
                     // Check whether the block contains the field of 'bundle_infos' to determine whether it is a non-None block containing a list of bundle_infos, which represent a list of bundles
                     continue;
-                // Update rows
-                ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
+                }
                 // update interpreted items
                 for (
                     let j = 0;
                     j < partialUpdateItems[i]['bundles_spec']['bundle_infos'].length;
                     j++
                 ) {
-                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j])
+                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j]) {
                         ws.info.blocks[i]['bundles_spec']['bundle_infos'][j] =
                             partialUpdateItems[i]['bundles_spec']['bundle_infos'][j];
+                        ws.info.blocks[i]['rows'][j] = partialUpdateItems[i]['rows'][j];
+                    }
                 }
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
