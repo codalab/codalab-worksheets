@@ -70,6 +70,9 @@ class UploadManagerTest(unittest.TestCase):
         self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
 
     def test_fileobj_single_tar_gz_with_dsstore_should_not_simplify_archive(self):
+        """If the user included two files, filename and .DS_Store, in the archive,
+        the archive should not be simplified because we have more than one file in the archive.
+        """
         source = os.path.join(self.temp_dir, 'source_dir')
         os.mkdir(source)
         self.write_string_to_file('testing', os.path.join(source, 'filename'))
