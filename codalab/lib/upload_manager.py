@@ -103,7 +103,7 @@ class UploadManager(object):
                 is_url = True
                 source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
             else:
-                raise UsageError("Paths must be URLs.")
+                raise UsageError("Path must be a URL.")
             filename = os.path.basename(os.path.normpath(source))
         else:
             is_fileobj = True
