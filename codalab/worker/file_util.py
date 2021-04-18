@@ -16,7 +16,7 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from ratarmount import SQLiteIndexedTar
-from typing import IO
+from typing import IO, Optional, List
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -43,11 +43,12 @@ def get_path_exists(path):
 
 
 def tar_gzip_directory(
-    directory_path,
-    follow_symlinks=False,
-    exclude_patterns=None,
-    exclude_names=None,
-    ignore_file=None,
+    directory_path: str,
+    follow_symlinks: bool = False,
+    exclude_patterns: Optional[List[str]] = None,
+    exclude_names: Optional[List[str]] = None,
+    ignore_file: Optional[str] = None,
+    stdout: Optional[IO] = None,
 ):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
@@ -59,6 +60,7 @@ def tar_gzip_directory(
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     ignore_file: Name of the file where exclusion patterns are read from.
+    stdout (optional): If specified, stdout gets sent to this file-like object. Defaults to None.
     """
     args = ['tar', 'czf', '-', '-C', directory_path]
 
@@ -85,7 +87,7 @@ def tar_gzip_directory(
     # Add everything in the current directory
     args.append('.')
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        proc = subprocess.Popen(args, stdout=stdout or subprocess.PIPE)
         return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)

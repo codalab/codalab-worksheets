@@ -3,9 +3,12 @@ file_util provides helpers for dealing with file handles in robust,
 memory-efficent ways.
 """
 
-import sys
-from . import formatting
 import subprocess
+import sys
+
+from typing import Optional, IO
+
+from . import formatting
 from codalab.common import urlopen_with_retry
 
 BUFFER_SIZE = 2 * 1024 * 1024
@@ -59,17 +62,33 @@ def git_clone(source_url: str, target_path: str) -> int:
     return subprocess.call(['git', 'clone', '--depth', '1', source_url, target_path])
 
 
-def download_url(source_url, target_path, print_status=False):
+def download_url(
+    source_url: str,
+    target_path: str = None,
+    print_status=False,
+    out_file: Optional[IO[bytes]] = None,
+):
+    """Download the file at |source_url| and write it to either |target_path|, if specified, or else |out_file|.
+
+    Args:
+        source_url (str): Source URL to download
+        target_path (str, optional): Output path to save. Defaults to None.
+        print_status (bool, optional): Whether to print download status. Defaults to False.
+        out_file (Optional[IO], optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: [description]
     """
-    Download the file at |source_url| and write it to |target_path|.
-    """
+
     in_file = urlopen_with_retry(source_url)
     total_bytes = in_file.info().get('Content-Length')
     if total_bytes:
         total_bytes = int(total_bytes)
 
     num_bytes = 0
-    out_file = open(target_path, 'wb')
+    if target_path:
+        out_file = open(target_path, 'wb')
+    assert out_file is not None
 
     def status_str():
         if total_bytes:
