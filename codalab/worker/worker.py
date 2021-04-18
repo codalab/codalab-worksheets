@@ -775,13 +775,13 @@ class Worker:
         else:
             self.bundle_service.reply(self.id, socket_id, message)
 
-    def start_stage_stats(self, uuid, stage):
+    def start_stage_stats(self, uuid: str, stage: str) -> None:
         """
         Set the start time for a bundle in a certain stage.
         """
         self.runs[uuid].bundle_profile_stats[stage]['start'] = time.time()
 
-    def end_stage_stats(self, uuid, stage):
+    def end_stage_stats(self, uuid: str, stage: str) -> None:
         """
         Set the end time for a bundle finishing a stage.
         Set the elapsed time to the end time minus the start time.
@@ -792,7 +792,7 @@ class Worker:
             - self.runs[uuid].bundle_profile_stats[stage]['start']
         )
 
-    def init_stage_stats(self):
+    def init_stage_stats(self) -> Dict:
         """
         Returns a stage stats dict with default empty values for start, end, and elapsed.
         """
