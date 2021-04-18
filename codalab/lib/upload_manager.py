@@ -1,9 +1,11 @@
 import os
 import shutil
+from typing import Optional, List, Any
 
 from codalab.common import UsageError
 from codalab.common import StorageType
 from codalab.lib import crypt_util, file_util, path_util
+from codalab.objects.bundle import Bundle
 
 
 class UploadManager(object):
@@ -21,7 +23,13 @@ class UploadManager(object):
         self.zip_util = zip_util
 
     def upload_to_bundle_store(
-        self, bundle, sources, git, unpack, simplify_archives, use_azure_blob_beta,
+        self,
+        bundle: Any,
+        sources: List[Any],
+        git: bool,
+        unpack: bool,
+        simplify_archives: bool,
+        use_azure_blob_beta: bool,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -117,7 +125,7 @@ class UploadManager(object):
         if simplify_archive:
             self._simplify_archive(dest_path)
 
-    def _simplify_archive(self, path):
+    def _simplify_archive(self, path: str) -> None:
         """
         Modifies |path| in place: If |path| is a directory containing exactly
         one file / directory, then replace |path| with that file / directory.
@@ -129,10 +137,11 @@ class UploadManager(object):
         if len(files) == 1:
             self._simplify_directory(path, files[0])
 
-    def _simplify_directory(self, path, child_path=None):
+    def _simplify_directory(self, path: str, child_path: Optional[str] = None) -> None:
         """
-        Modifies |path| in place: If the |path| directory contains exactly
-        one file / directory, then replace |path| with that file / directory.
+        Modifies |path| in place by replacing |path| with its first child file / directory.
+        This method should only be called after checking to see if the |path| directory
+        contains exactly one file / directory.
         """
         if child_path is None:
             child_path = os.listdir(path)[0]

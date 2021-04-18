@@ -21,6 +21,7 @@ import os
 import shutil
 import subprocess
 import sys
+from typing import Optional
 
 from codalab.common import precondition, UsageError
 from codalab.lib import file_util
@@ -235,7 +236,7 @@ def hash_file_contents(path):
 ################################################################################
 
 
-def copy(source_path, dest_path, follow_symlinks=False):
+def copy(source_path: str, dest_path: str, follow_symlinks: Optional[bool] = False):
     """
     Copy |source_path| to |dest_path|.
     Assume dest_path doesn't exist.
