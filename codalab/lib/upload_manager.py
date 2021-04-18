@@ -24,7 +24,7 @@ class UploadManager(object):
 
     def upload_to_bundle_store(
         self,
-        bundle: Any,
+        bundle: Bundle,
         sources: List[Any],
         git: bool,
         unpack: bool,
