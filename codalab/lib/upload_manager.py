@@ -96,7 +96,7 @@ class UploadManager(object):
                 path_util.remove(bundle_path)
             raise
 
-    def _interpret_source(self, source):
+    def _interpret_source(self, source: Source):
         is_url, is_fileobj = False, False
         if isinstance(source, str):
             if path_util.path_is_url(source):
