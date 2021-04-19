@@ -196,7 +196,8 @@ class MainPanel extends React.Component<{
             return;
         }
 
-        apiWrapper.executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
+        apiWrapper
+            .executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
             .then((data) => {
                 if (data.structured_result && data.structured_result.ui_actions) {
                     data.structured_result.ui_actions.forEach(([action, param]) => {

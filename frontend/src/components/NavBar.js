@@ -124,13 +124,13 @@ class NavBar extends React.Component<{
         let url = '/rest/bundles/' + bundleUuid + '/contents/blob/';
 
         fetch(url)
-            .then(function (response) {
+            .then(function(response) {
                 if (response.ok) {
                     return response.arrayBuffer();
                 }
                 throw new Error('Network response was not ok.');
             })
-            .then(function (data) {
+            .then(function(data) {
                 let dataUrl =
                     'data:image/png;base64,' +
                     btoa(
@@ -147,7 +147,7 @@ class NavBar extends React.Component<{
                     avatar: dataUrl,
                 });
             })
-            .catch(function (error) {
+            .catch(function(error) {
                 console.log(url, error.responseText);
             });
     }

@@ -50,11 +50,11 @@ class PermissionDialog extends React.Component<{
     handlePermissionValueChange = (name, value) => {
         const { uuid, wperm } = this.props;
 
-        apiWrapper.executeCommand(buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, name, value])).then(
-            () => {
+        apiWrapper
+            .executeCommand(buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, name, value]))
+            .then(() => {
                 this.props.onChange();
-            },
-        );
+            });
     };
 
     handleAddPermission = (value) => {
@@ -64,9 +64,15 @@ class PermissionDialog extends React.Component<{
         }
         const { uuid, wperm } = this.props;
 
-        apiWrapper.executeCommand(
-            buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, this.state.nGroupName, value]),
-        )
+        apiWrapper
+            .executeCommand(
+                buildTerminalCommand([
+                    wperm ? 'wperm' : 'perm',
+                    uuid,
+                    this.state.nGroupName,
+                    value,
+                ]),
+            )
             .then((resp) => {
                 this.setState({ showAddSection: false });
                 this.props.onChange();
