@@ -123,7 +123,7 @@ class BundleInfo(object):
             command=dct["command"],
             data_hash=dct["data_hash"],
             state=dct["state"],
-            frozen=dct["frozen"],
+            frozen=dct.get("frozen"),
             is_anonymous=dct["is_anonymous"],
             metadata=dct["metadata"],
             dependencies=dct["dependencies"],
