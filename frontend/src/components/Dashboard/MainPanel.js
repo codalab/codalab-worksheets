@@ -164,7 +164,6 @@ class MainPanel extends React.Component<{
             ));
             this.setState({ worksheets });
         };
-        console.log('mainPanel');
         apiWrapper.navBarSearch(['owner=' + this.props.userInfo.user_name], callback);
     }
 

@@ -160,7 +160,7 @@ class WorksheetTerminal extends React.Component {
     executeCommand(command) {
         var self = this;
         return apiWrapper
-            .executeCommand(this.props.ws.info.uuid, command)
+            .executeCommand(command, this.props.ws.info.uuid)
             .then(function(data) {
                 // data := {
                 //     structured_result: { ... },

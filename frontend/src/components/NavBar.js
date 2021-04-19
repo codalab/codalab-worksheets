@@ -70,7 +70,6 @@ class NavBar extends React.Component<{
 
     fetchName() {
         const callback = (data) => {
-            console.log(data);
             const userInfo = data.data.attributes;
             userInfo.user_id = data.data.id;
             this.fetchImg(userInfo.avatar_id);
