@@ -58,7 +58,9 @@ class MockBlobStorageFileSystem(LocalFileSystem):
         return super().create(self._azfs_to_local(path), *args, **kwargs)
 
     def open(self, path, *args, **kwargs):
-        return BytesIO(super().open(self._azfs_to_local(path), *args, **kwargs).read())
+        return BytesIO(
+            super().open(self._azfs_to_local(path), *args, **kwargs).read(self.size(path))
+        )
 
     def copy(self, source_file_names, destination_file_names):
         return super().copy(
