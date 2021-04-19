@@ -23,7 +23,7 @@ import {
     buildTerminalCommand,
 } from '../../../util/worksheet_utils';
 
-import { executeCommand } from '../../../util/cli_utils';
+import { apiWrapper } from '../../../util/apiWrapper';
 
 
 type Bundle = { name: string, uuid: string, path?: string };
@@ -300,7 +300,7 @@ class NewRun extends React.Component<{
     runCommand() {
         const cmd = this.getCommand();
         if (cmd) {
-            const response = executeCommand(cmd, this.props.ws.info.uuid).done(() => {
+            const response = apiWrapper.executeCommand(cmd, this.props.ws.info.uuid).then(() => {
                 const moveIndex = true;
                 const param = { moveIndex };
                 this.props.reloadWorksheet(undefined, undefined, param);

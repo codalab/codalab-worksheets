@@ -33,10 +33,9 @@ import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
 import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
 import _ from 'lodash';
-import { executeCommand } from '../util/cli_utils';
+import { apiWrapper } from '../util/apiWrapper';
 import DOMPurify from 'dompurify';
 import { NAME_REGEX } from '../constants';
-import { apiWrapper } from '../util/apiWrapper';
 
 const kDefaultWorksheetName = 'unnamed';
 
@@ -99,7 +98,7 @@ class NavBar extends React.Component<{
         }
 
         try {
-            const data = await executeCommand(
+            const data = await apiWrapper.executeCommand(
                 `new ${this.state.newWorksheetName || kDefaultWorksheetName}`,
             );
             if (data.structured_result && data.structured_result.ui_actions) {
@@ -125,13 +124,13 @@ class NavBar extends React.Component<{
         let url = '/rest/bundles/' + bundleUuid + '/contents/blob/';
 
         fetch(url)
-            .then(function(response) {
+            .then(function (response) {
                 if (response.ok) {
                     return response.arrayBuffer();
                 }
                 throw new Error('Network response was not ok.');
             })
-            .then(function(data) {
+            .then(function (data) {
                 let dataUrl =
                     'data:image/png;base64,' +
                     btoa(
@@ -148,7 +147,7 @@ class NavBar extends React.Component<{
                     avatar: dataUrl,
                 });
             })
-            .catch(function(error) {
+            .catch(function (error) {
                 console.log(url, error.responseText);
             });
     }

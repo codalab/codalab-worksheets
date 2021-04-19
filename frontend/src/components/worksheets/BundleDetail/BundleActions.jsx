@@ -2,7 +2,7 @@
 import * as React from 'react';
 import Button from '@material-ui/core/Button';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
-import { executeCommand } from '../../../util/cli_utils';
+import { apiWrapper } from '../../../util/apiWrapper';
 
 class BundleActions extends React.Component<
 	{
@@ -43,7 +43,7 @@ class BundleActions extends React.Component<
 
 	kill = () => {
 		const { bundleInfo } = this.props;
-		executeCommand(buildTerminalCommand(['kill', bundleInfo.uuid])).done(() => {
+		apiWrapper.executeCommand(buildTerminalCommand(['kill', bundleInfo.uuid])).then(() => {
 			this.props.onComplete();
 		});
 	}

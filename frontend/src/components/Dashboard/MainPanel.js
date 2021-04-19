@@ -6,7 +6,6 @@ import { green } from '@material-ui/core/colors';
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import Tooltip from '@material-ui/core/Tooltip';
 import { NAME_REGEX } from '../../constants';
-import { executeCommand } from '../../util/cli_utils';
 import Dialog from '@material-ui/core/Dialog';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContent from '@material-ui/core/DialogContent';
@@ -197,7 +196,7 @@ class MainPanel extends React.Component<{
             return;
         }
 
-        executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
+        apiWrapper.executeCommand(`new ${this.state.newWorksheetName || kDefaultWorksheetName}`)
             .then((data) => {
                 if (data.structured_result && data.structured_result.ui_actions) {
                     data.structured_result.ui_actions.forEach(([action, param]) => {
