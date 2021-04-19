@@ -112,6 +112,17 @@ const executeCommand = (command, worksheet_uuid) => {
     });
 };
 
+const completeCommand = (command, worksheet_uuid) => {
+    // returns a Promise
+    const url = '/rest/cli/command';
+    console.log('executeCommand');
+    return post(url, {
+        worksheet_uuid: worksheet_uuid || null,
+        command: command,
+        autocomplete: true,
+    });
+};
+
 // Limit concurrent requests for async resolving items
 const MAX_CONCURRENT_REQUESTS = 3;
 const semaphore = new Semaphore(MAX_CONCURRENT_REQUESTS);
@@ -137,5 +148,6 @@ export const apiWrapper = {
     navBarSearch,
     addItems,
     executeCommand,
+    completeCommand,
     fetchAsyncBundleContents,
 };

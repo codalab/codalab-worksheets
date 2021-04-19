@@ -262,15 +262,8 @@ class EditableAvatar extends React.Component {
             });
 
             async function createImageBundle(url, data) {
-                let result;
                 try {
-                    result = await $.ajax({
-                        url: url,
-                        data: data,
-                        contentType: 'application/json',
-                        type: 'POST',
-                    });
-                    return result;
+                    return await apiWrapper.post(url, data);
                 } catch (error) {
                     alert(createAlertText(url, error.responseText));
                 }
@@ -282,7 +275,7 @@ class EditableAvatar extends React.Component {
             // Create a detached bundle, so that no parent worksheet ID is needed for the avatar
             const bundle = await createImageBundle(
                 `/rest/bundles?detached=1`,
-                JSON.stringify(getDefaultBundleMetadata(fileName)),
+                getDefaultBundleMetadata(fileName),
             );
             const bundleUuid = bundle.data[0].id;
             // Upload the avatar as a bundle
