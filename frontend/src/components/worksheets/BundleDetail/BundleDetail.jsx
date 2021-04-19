@@ -8,7 +8,8 @@ import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
-import {findDOMNode} from "react-dom";
+import { findDOMNode } from 'react-dom';
+import { apiWrapper } from '../../../util/apiWrapper';
 
 class BundleDetail extends React.Component<
     {
@@ -24,9 +25,8 @@ class BundleDetail extends React.Component<
         fileContents: string,
         stdout: string,
         stderr: string,
-    }
+    },
 > {
-
     static getDerivedStateFromProps(props, state) {
         // Any time the current bundle uuid changes,
         // clear the error messages and not the actual contents, so that in
@@ -57,24 +57,28 @@ class BundleDetail extends React.Component<
     componentDidMount() {
         this.fetchBundleMetaData();
         this.fetchBundleContents();
-        this.timer = setInterval(()=>{ 
-            if (!this.state.bundleInfo){
+        this.timer = setInterval(() => {
+            if (!this.state.bundleInfo) {
                 // If info is not available yet, fetch
                 this.fetchBundleMetaData();
                 this.fetchBundleContents();
                 return;
             }
-            if (this.state.bundleInfo.state.match("uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline")){
+            if (
+                this.state.bundleInfo.state.match(
+                    'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
+                )
+            ) {
                 // If bundle is in a state that is possible to transition to a different state, fetch data
                 // we have ignored ready|failed|killed states here
                 this.fetchBundleMetaData();
                 this.fetchBundleContents();
-            } else{
+            } else {
                 // otherwise just clear the timer
                 clearInterval(this.timer);
             }
         }, 4000);
-        if(this.props.onOpen){
+        if (this.props.onOpen) {
             this.props.onOpen();
         }
     }
@@ -91,68 +95,52 @@ class BundleDetail extends React.Component<
      * @return  jQuery Deferred object
      */
     fetchFileSummary(uuid, path) {
-        return $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid + '/contents/blob' + path,
-            data: {
-                head: 50,
-                tail: 50,
-                truncation_text: '\n... [truncated] ...\n\n',
-            },
-            dataType: 'text',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        });
+        return apiWrapper.fetchFileSummary(uuid, path);
     }
+    // fetchFileSummary(uuid, path) {
+    //     return $.ajax({
+    //         type: 'GET',
+    //         url: '/rest/bundles/' + uuid + '/contents/blob' + path,
+    //         data: {
+    //             head: 50,
+    //             tail: 50,
+    //             truncation_text: '\n... [truncated] ...\n\n',
+    //         },
+    //         dataType: 'text',
+    //         cache: false,
+    //         context: this, // automatically bind `this` in all callbacks
+    //     });
+    // }
 
     fetchBundleMetaData = () => {
         const { uuid } = this.props;
-
-        $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid,
-            data: {
-                include_display_metadata: 1,
-                include: 'owner,group_permissions,host_worksheets',
-            },
-            dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        }).then(function(response) {
+        const callback = (response) => {
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
             bundleInfo.metadataType = response.data.meta.metadata_type;
             this.setState({ bundleInfo });
-        }).fail(function(xhr, status, err) {
+        };
+        const errorHandler = (error) => {
             this.setState({
                 bundleInfo: null,
                 fileContents: null,
                 stdout: null,
                 stderr: null,
-                errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+                errorMessages: this.state.errorMessages.concat([error]),
             });
-        });
-    }
+        };
+        apiWrapper.fetchBundleMetadata(uuid, callback, errorHandler);
+    };
 
     // Fetch bundle contents
     fetchBundleContents = () => {
         const { uuid } = this.props;
-
-        $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid + '/contents/info/',
-            data: {
-                depth: 1,
-            },
-            dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        }).then(async function(response) {
+        const callback = async (response) => {
             const info = response.data;
             if (!info) return;
             if (info.type === 'file' || info.type === 'link') {
-                return this.fetchFileSummary(uuid, '/').then(function(blob) {
+                return this.fetchFileSummary(uuid, '/').then((blob) => {
                     this.setState({ fileContents: blob, stdout: null, stderr: null });
                 });
             } else if (info.type === 'directory') {
@@ -165,11 +153,9 @@ class BundleDetail extends React.Component<
                     function(name) {
                         if (info.contents.some((entry) => entry.name === name)) {
                             fetchRequests.push(
-                                this.fetchFileSummary(uuid, '/' + name).then(
-                                    function(blob) {
-                                        stateUpdate[name] = blob;
-                                    },
-                                ),
+                                this.fetchFileSummary(uuid, '/' + name).then((blob) => {
+                                    stateUpdate[name] = blob;
+                                }),
                             );
                         } else {
                             stateUpdate[name] = null;
@@ -179,70 +165,77 @@ class BundleDetail extends React.Component<
                 await Promise.all(fetchRequests);
                 this.setState(stateUpdate);
             }
-        }).fail(function(xhr, status, err) {
-            // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-            if (xhr.status !== 404) {
-                this.setState({
-                    bundleInfo: null,
-                    fileContents: null,
-                    stdout: null,
-                    stderr: null,
-                    errorMessages: this.state.errorMessages.concat([xhr.responseText]),
-                });
-            } else {
-                // If contents aren't available yet, then also clear stdout and stderr.
-                this.setState({ fileContents: null, stdout: null, stderr: null });
-            }
-        });
-    }
-  
+        };
+
+        const errorHandler = (error) => {
+            this.setState({
+                bundleInfo: null,
+                fileContents: null,
+                stdout: null,
+                stderr: null,
+                errorMessages: this.state.errorMessages.concat(error),
+            });
+        };
+
+        apiWrapper.fetchBundleContents(this.props.uuid, callback, errorHandler);
+    };
+
     render(): React.Node {
-        const { bundleMetadataChanged,
-            onUpdate,
-            rerunItem, showNewRerun,
-            showDetail, handleDetailClick,
-            editPermission } = this.props;
         const {
-            bundleInfo,
-            stdout,
-            stderr,
-            fileContents } = this.state;
-        if (!bundleInfo){
-            return <div></div>
+            bundleMetadataChanged,
+            onUpdate,
+            rerunItem,
+            showNewRerun,
+            showDetail,
+            handleDetailClick,
+            editPermission,
+        } = this.props;
+        const { bundleInfo, stdout, stderr, fileContents } = this.state;
+        if (!bundleInfo) {
+            return <div></div>;
         }
         if (bundleInfo.bundle_type === 'private') {
-            return <div>Detail not available for this bundle</div>
+            return <div>Detail not available for this bundle</div>;
         }
 
         return (
             <ConfigurationPanel
                 //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
                 ref={(node) => this.scrollToNewlyOpenedDetail(node)}
-                buttons={ <BundleActions
-                    showNewRerun={showNewRerun}
-                    showDetail={showDetail}
-                    handleDetailClick={handleDetailClick}
-                    bundleInfo={ bundleInfo }
-                    rerunItem={ rerunItem }
-                    onComplete={ bundleMetadataChanged }
-                    editPermission={editPermission} /> }
-                sidebar={ <BundleDetailSideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
+                buttons={
+                    <BundleActions
+                        showNewRerun={showNewRerun}
+                        showDetail={showDetail}
+                        handleDetailClick={handleDetailClick}
+                        bundleInfo={bundleInfo}
+                        rerunItem={rerunItem}
+                        onComplete={bundleMetadataChanged}
+                        editPermission={editPermission}
+                    />
+                }
+                sidebar={
+                    <BundleDetailSideBar
+                        bundleInfo={bundleInfo}
+                        onUpdate={onUpdate}
+                        onMetaDataChange={this.fetchBundleMetaData}
+                    />
+                }
             >
                 <MainContent
-                    bundleInfo={ bundleInfo }
-                    stdout={ stdout }
-                    stderr={ stderr }
-                    fileContents={ fileContents }
+                    bundleInfo={bundleInfo}
+                    stdout={stdout}
+                    stderr={stderr}
+                    fileContents={fileContents}
                 />
             </ConfigurationPanel>
         );
-  }
+    }
     scrollToNewlyOpenedDetail(node) {
         // Only scroll to the bundle detail when it is opened
         if (node && this.state.open) {
-            findDOMNode(node).scrollIntoView({block:'center'});
+            findDOMNode(node).scrollIntoView({ block: 'center' });
             // Avoid undesirable scroll
-            this.setState({open:false})
+            this.setState({ open: false });
         }
     }
 }

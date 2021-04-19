@@ -1,9 +1,12 @@
 import { Semaphore } from 'await-semaphore';
 
-const get = (url, ajaxOptions) => {
+const get = (url, params, ajaxOptions) => {
     const requestOptions = {
         method: 'GET',
     };
+    if (params !== undefined) {
+        url = url + '?' + new URLSearchParams(params);
+    }
     return fetch(url, requestOptions).then(handleResponse);
 };
 
@@ -131,6 +134,46 @@ const fetchAsyncBundleContents = async ({ contents }) => {
     });
 };
 
+const updateFileBrowser = (uuid, folder_path, callback, errorHandler = defaultErrorHandler) => {
+    const url = '/rest/bundles/' + uuid + '/contents/info/' + folder_path;
+    get(url, { depth: 1 })
+        .then(callback)
+        .catch(errorHandler);
+};
+
+const fetchBundleContents = (uuid, callback, errorHandler = defaultErrorHandler) => {
+    const url = '/rest/bundles/' + uuid + '/contents/info/';
+    get(url, { depth: 1 })
+        .then(callback)
+        .catch(errorHandler);
+};
+
+const fetchBundleMetadata = (uuid, callback, errorHandler = defaultErrorHandler) => {
+    const url = '/rest/bundles/' + uuid;
+    get(url, {
+        include_display_metadata: 1,
+        include: 'owner,group_permissions,host_worksheets',
+    })
+        .then(callback)
+        .catch(errorHandler);
+};
+
+const fetchFileSummary = (uuid, path) => {
+    const params = {
+        head: 50,
+        tail: 50,
+        truncation_text: '\n... [truncated] ...\n\n',
+    };
+    const url =
+        '/rest/bundles/' + uuid + '/contents/blob' + path + '?' + new URLSearchParams(params);
+    return fetch(url, {
+        method: 'GET',
+        headers: {
+            Accept: 'text/plain',
+        },
+    }).then((res) => res.text());
+};
+
 export const apiWrapper = {
     get,
     post,
@@ -146,4 +189,8 @@ export const apiWrapper = {
     executeCommand,
     completeCommand,
     fetchAsyncBundleContents,
+    updateFileBrowser,
+    fetchBundleContents,
+    fetchBundleMetadata,
+    fetchFileSummary,
 };

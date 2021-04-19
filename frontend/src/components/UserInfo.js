@@ -58,7 +58,6 @@ class UserInfo extends React.Component {
 
         // Push changes to server
         const callback = (response) => {
-            console.log(response);
             this.setState({
                 user: this.processData(response),
             });

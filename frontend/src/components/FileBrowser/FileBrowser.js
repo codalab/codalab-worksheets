@@ -11,6 +11,7 @@ import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
 import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
 import './FileBrowser.scss';
+import { apiWrapper } from '../../util/apiWrapper';
 
 export class FileBrowser extends React.Component<
     {
@@ -80,26 +81,19 @@ export class FileBrowser extends React.Component<
         // folder_path is an absolute path
         if (folder_path === undefined) folder_path = this.state.currentWorkingDirectory;
         this.setState({ currentWorkingDirectory: folder_path });
-        let url = '/rest/bundles/' + this.props.uuid + '/contents/info/' + folder_path;
-        $.ajax({
-            type: 'GET',
-            url: url,
-            data: { depth: 1 },
-            dataType: 'json',
-            cache: false,
-            success: (data) => {
-                if (data.data.type === 'directory') {
-                    this.setState({ fileBrowserData: data.data });
-                    $('.file-browser').show();
-                } else {
-                    $('.file-browser').hide();
-                }
-            },
-            error: (xhr, status, err) => {
-                this.setState({ fileBrowserData: {} });
+        const callback = (data) => {
+            if (data.data.type === 'directory') {
+                this.setState({ fileBrowserData: data.data });
+                $('.file-browser').show();
+            } else {
                 $('.file-browser').hide();
-            },
-        });
+            }
+        };
+        const errorHandler = () => {
+            this.setState({ fileBrowserData: {} });
+            $('.file-browser').hide();
+        };
+        apiWrapper.updateFileBrowser(this.props.uuid, folder_path, callback, errorHandler);
     };
 
     render() {
@@ -516,26 +510,19 @@ export class FileBrowserLite extends React.Component<
         // folder_path is an absolute path
         if (folder_path === undefined) folder_path = this.state.currentWorkingDirectory;
         this.setState({ currentWorkingDirectory: folder_path });
-        let url = '/rest/bundles/' + this.props.uuid + '/contents/info/' + folder_path;
-        $.ajax({
-            type: 'GET',
-            url: url,
-            data: { depth: 1 },
-            dataType: 'json',
-            cache: false,
-            success: (data) => {
-                if (data.data.type === 'directory') {
-                    this.setState({ fileBrowserData: data.data });
-                    $('.file-browser').show();
-                } else {
-                    $('.file-browser').hide();
-                }
-            },
-            error: (xhr, status, err) => {
-                this.setState({ fileBrowserData: {} });
+        const callback = (data) => {
+            if (data.data.type === 'directory') {
+                this.setState({ fileBrowserData: data.data });
+                $('.file-browser').show();
+            } else {
                 $('.file-browser').hide();
-            },
-        });
+            }
+        };
+        const errorHandler = () => {
+            this.setState({ fileBrowserData: {} });
+            $('.file-browser').hide();
+        };
+        apiWrapper.updateFileBrowser(this.props.uuid, folder_path, callback, errorHandler);
     };
 
     render() {

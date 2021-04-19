@@ -2,13 +2,13 @@
 import * as React from 'react';
 import SubHeader from '../SubHeader';
 import ContentWrapper from '../ContentWrapper';
-import $ from 'jquery';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { BundleEditableField } from '../EditableField';
 import { FileBrowser } from '../FileBrowser/FileBrowser';
 import './Bundle.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
+import { apiWrapper } from '../../util/apiWrapper';
 
 class Bundle extends React.Component<
     {
@@ -62,18 +62,7 @@ class Bundle extends React.Component<
      * @return  jQuery Deferred object
      */
     fetchFileSummary(uuid, path) {
-        return $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid + '/contents/blob' + path,
-            data: {
-                head: 50,
-                tail: 50,
-                truncation_text: '\n... [truncated] ...\n\n',
-            },
-            dataType: 'text',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        });
+        return apiWrapper.fetchFileSummary(uuid, path);
     }
 
     /**
@@ -81,95 +70,67 @@ class Bundle extends React.Component<
      */
     refreshBundle = () => {
         // Fetch bundle metadata
-        $.ajax({
-            type: 'GET',
-
-            url: '/rest/bundles/' + this.props.uuid,
-            data: {
-                include_display_metadata: 1,
-                include: 'owner,group_permissions,host_worksheets',
-            },
-            dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        })
-            .then(function(response) {
-                // Normalize JSON API doc into simpler object
-                const bundleInfo = new JsonApiDataStore().sync(response);
-                bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
-                bundleInfo.metadataType = response.data.meta.metadata_type;
-                this.setState({ bundleInfo: bundleInfo });
-            })
-            .fail(function(xhr, status, err) {
-                this.setState({
-                    bundleInfo: null,
-                    fileContents: null,
-                    stdout: null,
-                    stderr: null,
-                    errorMessages: this.state.errorMessages.concat([xhr.responseText]),
-                });
+        let callback = (response) => {
+            // Normalize JSON API doc into simpler object
+            const bundleInfo = new JsonApiDataStore().sync(response);
+            bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
+            bundleInfo.metadataType = response.data.meta.metadata_type;
+            this.setState({ bundleInfo: bundleInfo });
+        };
+        let errorHandler = (error) => {
+            this.setState({
+                bundleInfo: null,
+                fileContents: null,
+                stdout: null,
+                stderr: null,
+                errorMessages: this.state.errorMessages.concat([error]),
             });
+        };
+        apiWrapper.fetchBundleMetadata(this.props.uuid, callback, errorHandler);
 
         // Fetch bundle contents
-        $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + this.props.uuid + '/contents/info/',
-            data: {
-                depth: 1,
-            },
-            dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        })
-            .then(async function(response) {
-                const info = response.data;
-                if (!info) return;
-                if (info.type === 'file' || info.type === 'link') {
-                    return this.fetchFileSummary(this.props.uuid, '/').then(function(blob) {
-                        this.setState({ fileContents: blob, stdout: null, stderr: null });
-                    });
-                } else if (info.type === 'directory') {
-                    // Get stdout/stderr (important to set things to null).
-                    let fetchRequests = [];
-                    let stateUpdate = {
-                        fileContents: null,
-                    };
-                    ['stdout', 'stderr'].forEach(
-                        function(name) {
-                            if (info.contents.some((entry) => entry.name === name)) {
-                                fetchRequests.push(
-                                    this.fetchFileSummary(this.props.uuid, '/' + name).then(
-                                        function(blob) {
-                                            stateUpdate[name] = blob;
-                                        },
-                                    ),
-                                );
-                            } else {
-                                stateUpdate[name] = null;
-                            }
-                        }.bind(this),
-                    );
-                    await Promise.all(fetchRequests);
-                    this.setState(stateUpdate);
-                }
-            })
-            .fail(
-                function(xhr, status, err) {
-                    // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-                    if (xhr.status !== 404) {
-                        this.setState({
-                            bundleInfo: null,
-                            fileContents: null,
-                            stdout: null,
-                            stderr: null,
-                            errorMessages: this.state.errorMessages.concat([xhr.responseText]),
-                        });
-                    } else {
-                        // If contents aren't available yet, then also clear stdout and stderr.
-                        this.setState({ fileContents: null, stdout: null, stderr: null });
-                    }
-                }.bind(this),
-            );
+        callback = async (response) => {
+            const info = response.data;
+            if (!info) return;
+            if (info.type === 'file' || info.type === 'link') {
+                return this.fetchFileSummary(this.props.uuid, '/').then((blob) => {
+                    this.setState({ fileContents: blob, stdout: null, stderr: null });
+                });
+            } else if (info.type === 'directory') {
+                // Get stdout/stderr (important to set things to null).
+                let fetchRequests = [];
+                let stateUpdate = {
+                    fileContents: null,
+                };
+                ['stdout', 'stderr'].forEach(
+                    function(name) {
+                        if (info.contents.some((entry) => entry.name === name)) {
+                            fetchRequests.push(
+                                this.fetchFileSummary(this.props.uuid, '/' + name).then((blob) => {
+                                    stateUpdate[name] = blob;
+                                }),
+                            );
+                        } else {
+                            stateUpdate[name] = null;
+                        }
+                    }.bind(this),
+                );
+                await Promise.all(fetchRequests);
+                this.setState(stateUpdate);
+            }
+        };
+
+        errorHandler = (error) => {
+            this.setState({
+                bundleInfo: null,
+                fileContents: null,
+                stdout: null,
+                stderr: null,
+                errorMessages: this.state.errorMessages.concat(error),
+            });
+        };
+
+        apiWrapper.fetchBundleContents(this.props.uuid, callback, errorHandler);
     };
 
     componentDidMount() {

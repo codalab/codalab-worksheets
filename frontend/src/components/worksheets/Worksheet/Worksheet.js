@@ -538,7 +538,6 @@ class Worksheet extends React.Component {
         const errorHandler = (error) => {
             alert(createAlertText(url, error));
         };
-        console.log('worksheets');
         apiWrapper.addItems(worksheetUUID, actualData, callback, errorHandler);
     };
 
