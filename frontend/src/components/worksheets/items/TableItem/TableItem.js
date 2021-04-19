@@ -7,7 +7,6 @@ import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import BundleRow from './BundleRow';
 import { getIds } from '../../../../util/worksheet_utils';
-import { fetchAsyncBundleContents } from '../../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import IconButton from '@material-ui/core/IconButton';
@@ -16,6 +15,7 @@ import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
 import classNames from 'classnames';
+import { apiWrapper } from '../../../../util/apiWrapper';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -373,7 +373,7 @@ const TableWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await fetchAsyncBundleContents({
+                    const { contents } = await apiWrapper.fetchAsyncBundleContents({
                         contents: item.rows,
                     });
                     onAsyncItemLoad({

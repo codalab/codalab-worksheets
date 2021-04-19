@@ -1,3 +1,5 @@
+import { Semaphore } from 'await-semaphore';
+
 const get = (url, ajaxOptions) => {
     const requestOptions = {
         method: 'GET',
@@ -110,6 +112,18 @@ const executeCommand = (command, worksheet_uuid) => {
     });
 };
 
+// Limit concurrent requests for async resolving items
+const MAX_CONCURRENT_REQUESTS = 3;
+const semaphore = new Semaphore(MAX_CONCURRENT_REQUESTS);
+
+const fetchAsyncBundleContents = async ({ contents }) => {
+    // used in table and record items
+    return semaphore.use(async () => {
+        const url = '/rest/interpret/genpath-table-contents';
+        return await post(url, { contents });
+    });
+};
+
 export const apiWrapper = {
     get,
     post,
@@ -123,4 +137,5 @@ export const apiWrapper = {
     navBarSearch,
     addItems,
     executeCommand,
+    fetchAsyncBundleContents,
 };
