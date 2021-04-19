@@ -92,6 +92,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.READY)
+        print(self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_preparing")[bundle.uuid])
         self.assertNotEqual(
             self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_preparing")[
                 bundle.uuid

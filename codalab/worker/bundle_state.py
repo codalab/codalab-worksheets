@@ -220,7 +220,7 @@ class BundleCheckinState(object):
             remote=dct['remote'],
             exitcode=dct['exitcode'],
             failure_message=dct['failure_message'],
-            bundle_profile_stats=dct['bundle_profile_stats'],
+            bundle_profile_stats=dct.get('bundle_profile_stats'),
         )
 
     @property
