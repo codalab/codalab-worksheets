@@ -11,6 +11,7 @@ import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
 import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
 import './FileBrowser.scss';
+import {useState, useEffect} from "react";
 
 export class FileBrowser extends React.Component<
     {
@@ -464,59 +465,15 @@ class FileBrowserItemLite extends React.Component<{
     }
 }
 
-export class FileBrowserLite extends React.Component<
-    {
-        uuid: string,
-    },
-    {
-        currentDirectory: string,
-        fileBrowserData: {},
-    },
-> {
-    constructor(props) {
-        super(props);
-        this.state = {
-            currentWorkingDirectory: '',
-            fileBrowserData: {},
-        };
-    }
+export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_name }) => {
+    const [currentWorkingDirectory, setCurrentWorkingDirectory] = useState('');
+    const [fileBrowserData, setFileBrowserData] = useState({});
 
-    componentDidUpdate(prevProps, prevState) {
-        if (prevProps.uuid !== this.props.uuid) {
-            // Reset and fire off an asynchronous fetch for new data
-            this.setState({ fileBrowserData: {} });
-            this.updateFileBrowser('');
-        }
-    }
-
-    componentDidMount() {
-        if (!this.props.startCollapsed) {
-            this.updateFileBrowser('');
-        }
-
-        if (this.props.isRunningBundle) {
-            this.timer = setInterval(() => {
-                if (!this.props.isRunningBundle) {
-                    // clear timer when the bundle is no longer in running phase
-                    clearInterval(this.timer);
-                    return;
-                }
-                this.updateFileBrowser('');
-            }, 4000);
-        }
-    }
-
-    componentWillUnmount() {
-        if (this.props.isRunningBundle) {
-            clearInterval(this.timer);
-        }
-    }
-
-    updateFileBrowser = (folder_path) => {
+    const updateFileBrowser = (folder_path) => {
         // folder_path is an absolute path
-        if (folder_path === undefined) folder_path = this.state.currentWorkingDirectory;
-        this.setState({ currentWorkingDirectory: folder_path });
-        let url = '/rest/bundles/' + this.props.uuid + '/contents/info/' + folder_path;
+        if (folder_path === undefined) folder_path = currentWorkingDirectory;
+        setCurrentWorkingDirectory(folder_path);
+        let url = '/rest/bundles/' + uuid + '/contents/info/' + folder_path;
         $.ajax({
             type: 'GET',
             url: url,
@@ -525,84 +482,103 @@ export class FileBrowserLite extends React.Component<
             cache: false,
             success: (data) => {
                 if (data.data.type === 'directory') {
-                    this.setState({ fileBrowserData: data.data });
+                    setFileBrowserData(data.data);
                     $('.file-browser').show();
                 } else {
                     $('.file-browser').hide();
                 }
             },
             error: (xhr, status, err) => {
-                this.setState({ fileBrowserData: {} });
+                setFileBrowserData({});
                 $('.file-browser').hide();
             },
         });
     };
 
-    render() {
-        const { uuid, bundle_name } = this.props;
-        const entities = (this.state.fileBrowserData || {}).contents;
-        if (!entities) {
-            return null;
+    useEffect(() => {
+        setFileBrowserData({});
+        updateFileBrowser('');
+    }, [uuid]);
+
+    useEffect(() => {
+        if (!startCollapsed) {
+            updateFileBrowser('');
         }
-        entities.sort(function(a, b) {
-            if (a.name < b.name) return -1;
-            if (a.name > b.name) return +1;
-            return 0;
-        });
-        const items = [];
-        // Show parent directory.
-        if (this.state.currentWorkingDirectory) {
-            items.push(
-                <FileBrowserItemLite
-                    key='..'
-                    index='..'
-                    type='..'
-                    updateFileBrowser={(path) => this.updateFileBrowser(path)}
-                    currentWorkingDirectory={this.state.currentWorkingDirectory}
-                />,
-            );
+        if (isRunningBundle) {
+            const timer = setInterval(() => {
+                if (!isRunningBundle) {
+                    // clear timer when the bundle is no longer in running phase
+                    clearInterval(timer);
+                    return;
+                }
+                updateFileBrowser('');
+            }, 4000);
+            return () => clearInterval(timer);
         }
+    }, []);
 
-        // Show directories
-        entities.forEach((item) => {
-            if (item.type === 'directory')
-                items.push(
-                    <FileBrowserItemLite
-                        bundle_uuid={uuid}
-                        bundle_name={bundle_name}
-                        key={item.name}
-                        index={item.name}
-                        type={item.type}
-                        updateFileBrowser={this.updateFileBrowser}
-                        currentWorkingDirectory={this.state.currentWorkingDirectory}
-                    />,
-                );
-        });
-
-        // Show files
-        entities.forEach((item) => {
-            if (item.type !== 'directory')
-                items.push(
-                    <FileBrowserItemLite
-                        bundle_uuid={uuid}
-                        bundle_name={bundle_name}
-                        key={item.name}
-                        index={item.name}
-                        type={item.type}
-                        size={item.size}
-                        link={item.link}
-                        updateFileBrowser={this.updateFileBrowser}
-                        currentWorkingDirectory={this.state.currentWorkingDirectory}
-                    />,
-                );
-        });
-
-        return (
-            <Paper>
-                <Table style={{ backgroundColor: 'white' }}>
-                    <TableBody>{items}</TableBody>
-                </Table>
-            </Paper>
+    const entities = (fileBrowserData || {}).contents;
+    if (!entities) {
+        return null;
+    }
+    entities.sort(function(a, b) {
+        if (a.name < b.name) return -1;
+        if (a.name > b.name) return +1;
+        return 0;
+    });
+    const items = [];
+    // Show parent directory.
+    if (currentWorkingDirectory) {
+        items.push(
+            <FileBrowserItemLite
+                key='..'
+                index='..'
+                type='..'
+                updateFileBrowser={(path) => updateFileBrowser(path)}
+                currentWorkingDirectory={currentWorkingDirectory}
+            />,
         );
     }
-}
+
+    // Show directories
+    entities.forEach((item) => {
+        if (item.type === 'directory')
+            items.push(
+                <FileBrowserItemLite
+                    bundle_uuid={uuid}
+                    bundle_name={bundle_name}
+                    key={item.name}
+                    index={item.name}
+                    type={item.type}
+                    updateFileBrowser={updateFileBrowser}
+                    currentWorkingDirectory={currentWorkingDirectory}
+                />,
+            );
+    });
+
+    // Show files
+    entities.forEach((item) => {
+        if (item.type !== 'directory')
+            items.push(
+                <FileBrowserItemLite
+                    bundle_uuid={uuid}
+                    bundle_name={bundle_name}
+                    key={item.name}
+                    index={item.name}
+                    type={item.type}
+                    size={item.size}
+                    link={item.link}
+                    updateFileBrowser={updateFileBrowser}
+                    currentWorkingDirectory={currentWorkingDirectory}
+                />,
+            );
+    });
+
+    return (
+        <Paper>
+            <Table style={{ backgroundColor: 'white' }}>
+                <TableBody>{items}</TableBody>
+            </Table>
+        </Paper>
+    );
+};
