@@ -196,6 +196,8 @@ def get_formatted_metadata(cls, metadata, raw=False):
     """
     result = []
     for spec in cls.METADATA_SPECS:
+        if spec.hidden:
+            continue
         key = spec.key
         if not raw:
             if key not in metadata:

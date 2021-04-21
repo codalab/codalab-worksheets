@@ -219,6 +219,7 @@ Name | Type
 `data_hash` | String
 `state` | String
 `owner` | Relationship([users](#users))
+`frozen` | DateTime
 `is_anonymous` | Boolean
 `storage_type` | String
 `is_dir` | Boolean
