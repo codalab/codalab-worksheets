@@ -11,7 +11,8 @@ import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
 import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
 import './FileBrowser.scss';
-import {useState, useEffect} from "react";
+import { useState, useEffect, useCallback } from 'react';
+import useSWR, { cache } from 'swr';
 
 export class FileBrowser extends React.Component<
     {
@@ -469,53 +470,71 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
     const [currentWorkingDirectory, setCurrentWorkingDirectory] = useState('');
     const [fileBrowserData, setFileBrowserData] = useState({});
 
-    const updateFileBrowser = (folder_path) => {
-        // folder_path is an absolute path
-        if (folder_path === undefined) folder_path = currentWorkingDirectory;
-        setCurrentWorkingDirectory(folder_path);
-        let url = '/rest/bundles/' + uuid + '/contents/info/' + folder_path;
-        $.ajax({
-            type: 'GET',
-            url: url,
-            data: { depth: 1 },
-            dataType: 'json',
-            cache: false,
-            success: (data) => {
-                if (data.data.type === 'directory') {
-                    setFileBrowserData(data.data);
-                    $('.file-browser').show();
-                } else {
-                    $('.file-browser').hide();
-                }
-            },
-            error: (xhr, status, err) => {
-                setFileBrowserData({});
-                $('.file-browser').hide();
-            },
-        });
+    const displayFileBrowser = (data) => {
+        if (data.data.type === 'directory') {
+            setFileBrowserData(data.data);
+            $('.file-browser').show();
+        } else {
+            $('.file-browser').hide();
+        }
     };
 
-    useEffect(() => {
-        setFileBrowserData({});
-        updateFileBrowser('');
-    }, [uuid]);
+    const updateFileBrowser = useCallback(
+        (folder_path) => {
+            // folder_path is an absolute path
+            if (folder_path === undefined) folder_path = currentWorkingDirectory;
+            setCurrentWorkingDirectory(folder_path);
+        },
+        [currentWorkingDirectory],
+    );
 
     useEffect(() => {
         if (!startCollapsed) {
             updateFileBrowser('');
         }
-        if (isRunningBundle) {
-            const timer = setInterval(() => {
-                if (!isRunningBundle) {
-                    // clear timer when the bundle is no longer in running phase
-                    clearInterval(timer);
-                    return;
-                }
-                updateFileBrowser('');
-            }, 4000);
-            return () => clearInterval(timer);
+    }, [startCollapsed, updateFileBrowser]);
+
+    useEffect(() => {
+        setFileBrowserData({});
+        updateFileBrowser('');
+    }, [updateFileBrowser, uuid]);
+
+    useEffect(() => {
+        if (cache.has(url)) {
+            const data = cache.get(url);
+            displayFileBrowser(data);
         }
-    }, []);
+    });
+
+    const fetcher = (url) =>
+        fetch(url, {
+            type: 'GET',
+            url: url,
+            dataType: 'json',
+        })
+            .then((r) => {
+                return r.json();
+            })
+            .catch(() => {
+                setFileBrowserData({});
+                $('.file-browser').hide();
+            });
+
+    const url =
+        '/rest/bundles/' +
+        uuid +
+        '/contents/info/' +
+        currentWorkingDirectory +
+        '?' +
+        new URLSearchParams({ depth: 1 });
+
+    useSWR(url, fetcher, {
+        revalidateOnMount: true,
+        refreshInterval: isRunningBundle ? 4000 : 0,
+        onSuccess: (data, key, config) => {
+            displayFileBrowser(data);
+        },
+    });
 
     const entities = (fileBrowserData || {}).contents;
     if (!entities) {
@@ -573,7 +592,6 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
                 />,
             );
     });
-
     return (
         <Paper>
             <Table style={{ backgroundColor: 'white' }}>
