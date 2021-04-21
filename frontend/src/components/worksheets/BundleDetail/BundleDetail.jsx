@@ -85,7 +85,7 @@ const BundleDetail = ({ uuid,
                 setFileContents(null);
                 setStderr(null);
                 setStdout(null);
-                setErrorMessages(errorMessages=>errorMessages.concat([xhr.responseText]))
+                setErrorMessages(errorMessages=>errorMessages.concat([error]))
             });
 
     const urlMetadata =
