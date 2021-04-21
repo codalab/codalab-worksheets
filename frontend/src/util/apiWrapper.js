@@ -1,4 +1,5 @@
 import { Semaphore } from 'await-semaphore';
+import { createDefaultBundleName, pathIsArchive, getArchiveExt } from './worksheet_utils';
 
 const get = (url, params, ajaxOptions) => {
     const requestOptions = {
@@ -174,6 +175,51 @@ const fetchFileSummary = (uuid, path) => {
     }).then((res) => res.text());
 };
 
+async function createFileBundle(url, data, errorHandler) {
+    try {
+        return post(url, data);
+    } catch (error) {
+        errorHandler(error);
+    }
+}
+
+export function getQueryParams(filename) {
+    const formattedFilename = createDefaultBundleName(filename);
+    const queryParams = {
+        finalize: 1,
+        filename: pathIsArchive(filename)
+            ? formattedFilename + getArchiveExt(filename)
+            : formattedFilename,
+        unpack: pathIsArchive(filename) ? 1 : 0,
+    };
+    return new URLSearchParams(queryParams);
+}
+
+// Upload the avatar image as a bundle to the bundle store
+const uploadImgAsync = (bundleUuid, file, fileName, errorHandler) => {
+    return new Promise((resolve, reject) => {
+        let reader = new FileReader();
+        reader.onload = () => {
+            let arrayBuffer = reader.result,
+                bytesArray = new Uint8Array(arrayBuffer);
+            let url = '/rest/bundles/' + bundleUuid + '/contents/blob/?' + getQueryParams(fileName);
+            fetch(url, {
+                method: 'PUT',
+                body: new Blob([bytesArray]),
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                },
+            })
+                .then((response) => response.blob())
+                .then((data) => resolve(data))
+                .catch((error) => {
+                    errorHandler(error);
+                });
+        };
+        reader.readAsArrayBuffer(file);
+    });
+};
+
 export const apiWrapper = {
     get,
     post,
@@ -193,4 +239,7 @@ export const apiWrapper = {
     fetchBundleContents,
     fetchBundleMetadata,
     fetchFileSummary,
+    createFileBundle,
+    uploadImgAsync,
+    getQueryParams,
 };

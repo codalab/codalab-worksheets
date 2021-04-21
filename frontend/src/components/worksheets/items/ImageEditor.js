@@ -1,10 +1,9 @@
 import React from 'react';
 import 'rc-slider/assets/index.css';
 import { withStyles } from '@material-ui/core/styles';
-import { getQueryParams } from '../NewUpload/NewUpload.jsx';
-import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../../util/worksheet_utils';
 import { FILE_SIZE_LIMIT_B, FILE_SIZE_LIMIT_GB } from '../../../constants';
+import { apiWrapper } from '../../../util/apiWrapper.js';
 
 const styles = (theme) => ({});
 
@@ -34,35 +33,6 @@ class ImageEditor extends React.Component<{
         this.uploadFiles(files);
     };
 
-    readFileAsync(bundleUuid, file) {
-        return new Promise((resolve, reject) => {
-            let reader = new FileReader();
-            reader.onload = () => {
-                let arrayBuffer = reader.result,
-                    bytesArray = new Uint8Array(arrayBuffer);
-                let url =
-                    '/rest/bundles/' + bundleUuid + '/contents/blob/?' + getQueryParams(file.name);
-                $.ajax({
-                    url: url,
-                    type: 'PUT',
-                    contentType: 'application/octet-stream',
-                    data: new Blob([bytesArray]),
-                    processData: false,
-                    success: function(data) {
-                        resolve(data);
-                    },
-                    error: function(error) {
-                        this.clearProgress();
-                        alert(createAlertText(error.responseText, 'refresh and try again.'));
-                        this.props.onUploadFinish();
-                        reject(error);
-                    }.bind(this),
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
     asyncUploadFiles = async (files) => {
         const { worksheetUUID, after_sort_key } = this.props;
         const { name, description } = this.state;
@@ -77,25 +47,23 @@ class ImageEditor extends React.Component<{
                 url += `&after_sort_key=${after_sort_key}`;
             }
 
-            async function createFileBundle(url, data) {
-                let result;
-                try {
-                    result = await $.ajax({
-                        url: url,
-                        data: data,
-                        contentType: 'application/json',
-                        type: 'POST',
-                    });
-                    return result;
-                } catch (error) {
-                    this.clearProgress();
-                    alert(createAlertText(url, error.responseText));
-                }
-            }
-
-            const bundle = await createFileBundle(url, JSON.stringify(createBundleData));
+            let errorHandler = (error) => {
+                this.clearProgress();
+                alert(createAlertText(url, error.responseText));
+            };
+            const bundle = await apiWrapper.createFileBundle(url, createBundleData, errorHandler);
             const bundleUuid = bundle.data[0].id;
-            const promise = await this.readFileAsync(bundleUuid, file);
+            errorHandler = (error) => {
+                this.clearProgress();
+                alert(createAlertText(error, 'refresh and try again.'));
+                this.props.onUploadFinish();
+            };
+            const promise = await apiWrapper.uploadImgAsync(
+                bundleUuid,
+                file,
+                file.name,
+                errorHandler,
+            );
             return promise;
         });
         const moveIndex = true;
