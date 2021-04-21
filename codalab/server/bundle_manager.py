@@ -212,9 +212,15 @@ class BundleManager(object):
             )
             for dep in bundle.dependencies:
                 parent_bundle_link_url = parent_bundle_link_urls.get(dep.parent_uuid)
-                parent_bundle_path = parent_bundle_link_url or os.path.normpath(
-                    self._bundle_store.get_bundle_location(dep.parent_uuid)
-                )
+                try:
+                    parent_bundle_path = parent_bundle_link_url or os.path.normpath(
+                        self._bundle_store.get_bundle_location(dep.parent_uuid)
+                    )
+                except NotFoundError:
+                    raise Exception(
+                        'Invalid dependency %s'
+                        % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
+                    )
                 # TODO(Ashwin): make this logic non-fs specific.
                 dependency_path = os.path.normpath(
                     os.path.join(parent_bundle_path, dep.parent_path)
@@ -249,7 +255,14 @@ class BundleManager(object):
         except Exception as e:
             logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
             self._model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': str(e)}}
+                bundle,
+                {
+                    'state': State.FAILED,
+                    'metadata': {
+                        'failure_message': str(e),
+                        'error_traceback': traceback.format_exc(),
+                    },
+                },
             )
         finally:
             with self._make_uuids_lock:
