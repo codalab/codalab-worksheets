@@ -129,43 +129,46 @@ const BundleDetail = ({ uuid,
     const urlContents =
         '/rest/bundles/' + uuid + '/contents/info/' +  "?" + new URLSearchParams({depth: 1});
 
+    const updateBundleDetail = (response)=>{
+        const info = response.data;
+        if (!info) return;
+        if (info.type === 'file' || info.type === 'link') {
+            return fetchFileSummary(uuid, '/').then(function(blob) {
+                setFileContents(blob);
+                setStderr(null);
+                setStdout(null);
+            });
+        } else if (info.type === 'directory') {
+            // Get stdout/stderr (important to set things to null).
+            let fetchRequests = [];
+            let stateUpdate = {
+                fileContents: null,
+            };
+            ['stdout', 'stderr'].forEach(
+                function(name) {
+                    if (info.contents.some((entry) => entry.name === name)) {
+                        fetchRequests.push(
+                            fetchFileSummary(uuid, '/' + name).then(
+                                function(blob) {
+                                    stateUpdate[name] = blob;
+                                },
+                            ),
+                        );
+                    } else {
+                        stateUpdate[name] = null;
+                    }
+                },
+            );
+            Promise.all(fetchRequests).then(r => {setFileContents(stateUpdate['fileContents'])
+                if('stdout' in stateUpdate){setStdout(stateUpdate['stdout'])}
+                if('stderr' in stateUpdate){setStderr(stateUpdate['stderr'])}} )
+        }
+    }
     useSWR(urlContents, fetcherContents, {
         revalidateOnMount: true,
         refreshInterval:refreshInterval,
         onSuccess: (response, key, config) => {
-            const info = response.data;
-            if (!info) return;
-            if (info.type === 'file' || info.type === 'link') {
-                return fetchFileSummary(uuid, '/').then(function(blob) {
-                    setFileContents(blob);
-                    setStderr(null);
-                    setStdout(null);
-                });
-            } else if (info.type === 'directory') {
-                // Get stdout/stderr (important to set things to null).
-                let fetchRequests = [];
-                let stateUpdate = {
-                    fileContents: null,
-                };
-                ['stdout', 'stderr'].forEach(
-                    function(name) {
-                        if (info.contents.some((entry) => entry.name === name)) {
-                            fetchRequests.push(
-                                fetchFileSummary(uuid, '/' + name).then(
-                                    function(blob) {
-                                        stateUpdate[name] = blob;
-                                    },
-                                ),
-                            );
-                        } else {
-                            stateUpdate[name] = null;
-                        }
-                    },
-                );
-               Promise.all(fetchRequests).then(r => {setFileContents(stateUpdate['fileContents'])
-                if('stdout' in stateUpdate){setStdout(stateUpdate['stdout'])}
-                if('stderr' in stateUpdate){setStderr(stateUpdate['stderr'])}} )
-            }
+          updateBundleDetail(response);
         },
     });
 
