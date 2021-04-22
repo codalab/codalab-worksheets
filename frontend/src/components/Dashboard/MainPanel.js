@@ -25,6 +25,8 @@ import ErrorIcon from '@material-ui/icons/Error';
 import SuccessIcon from '@material-ui/icons/CheckCircle';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
+import Tabs from '@material-ui/core/Tabs';
+import Tab from '@material-ui/core/Tab';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -96,6 +98,7 @@ const styles = ({ palette, spacing, color }) => {
             color: 'white',
             right: 0,
             marginBottom: 10,
+            marginLeft: 'auto',
         },
         snackbarMessage: {
             display: 'flex',
@@ -133,11 +136,47 @@ class MainPanel extends React.Component<{
             snackbarMessage: '',
             snackbarVariant: '',
             worksheets: [],
+            tabIndex: 0, // which tab the main panel is currently on, could be 0 or 1
+            sharedWorksheets: [], // worksheets shared with the user
         };
     }
 
-    componentDidMount() {
+    /**
+     * Fetch worksheets data and update the component state
+     */
+    setWorksheets(data, isSharedWorksheets = false) {
         const { classes } = this.props;
+        const worksheets = data.response.map((ws, i) => (
+            <Card className={classes.wsCard}>
+                <div className={classes.wsBox}>
+                    <div className={classes.wsInlineBox}>
+                        <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
+                            {ws.title ? ws.title : 'Untitled'}
+                        </a>
+                        <div className={classes.value} style={{ whiteSpace: 'pre' }}>
+                            {'  by ' + ws.owner_name}
+                        </div>
+                    </div>
+                    <div className={classes.wsInlineBox}>
+                        <p className={classes.value}>{ws.name} </p>
+                        <p className={classes.value}>
+                            {' '}
+                            {ws.date_last_modified
+                                ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
+                                : ''}
+                        </p>
+                    </div>
+                </div>
+            </Card>
+        ));
+        if (isSharedWorksheets) {
+            this.setState({ sharedWorksheets: worksheets });
+        } else {
+            this.setState({ worksheets });
+        }
+    }
+
+    componentDidMount() {
         // Fetch worksheets owned by the current user
         const worksheetUrl: URL = '/rest/interpret/wsearch';
         $.ajax({
@@ -145,34 +184,24 @@ class MainPanel extends React.Component<{
             dataType: 'json',
             type: 'POST',
             cache: false,
-            data: JSON.stringify({ keywords: ['owner=' + this.props.userInfo.user_name] }),
+            data: JSON.stringify({
+                keywords: ['owner=' + this.props.userInfo.user_name, '.limit=' + 100],
+            }), // only fetch the first 100 worksheets to avoid overload
             contentType: 'application/json; charset=utf-8',
-            success: (data) => {
-                const worksheets = data.response.map((ws, i) => (
-                    <Card className={classes.wsCard}>
-                        <div className={classes.wsBox}>
-                            <div className={classes.wsInlineBox}>
-                                <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
-                                    {ws.title ? ws.title : 'Untitled'}
-                                </a>
-                                <div className={classes.value} style={{ whiteSpace: 'pre' }}>
-                                    {'  by ' + ws.owner_name}
-                                </div>
-                            </div>
-                            <div className={classes.wsInlineBox}>
-                                <p className={classes.value}>{ws.name} </p>
-                                <p className={classes.value}>
-                                    {' '}
-                                    {ws.date_last_modified
-                                        ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
-                                        : ''}
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-                ));
-                this.setState({ worksheets });
+            success: (data) => this.setWorksheets(data),
+            error: (xhr, status, err) => {
+                console.error(xhr.responseText);
             },
+        });
+
+        $.ajax({
+            url: worksheetUrl,
+            dataType: 'json',
+            type: 'POST',
+            cache: false,
+            data: JSON.stringify({ keywords: ['.shared', '.limit=' + 100] }), // only fetch the first 100 worksheets to avoid overload
+            contentType: 'application/json; charset=utf-8',
+            success: (data) => this.setWorksheets(data, true),
             error: (xhr, status, err) => {
                 console.error(xhr.responseText);
             },
@@ -225,6 +254,17 @@ class MainPanel extends React.Component<{
                 });
             });
     }
+
+    handleTabChange = (event, newIndex) => {
+        this.setState({ tabIndex: newIndex });
+    };
+    a11yProps(index) {
+        return {
+            id: `mainpanel-tab-${index}`,
+            'aria-controls': `mainpanel-tabpanel-${index}`,
+        };
+    }
+
     /** Renderer. */
     render() {
         let SnackbarIcon = {
@@ -238,23 +278,49 @@ class MainPanel extends React.Component<{
             <div>
                 <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
                     <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
-                        <h3 className={classes.heading}>Worksheets &nbsp;&nbsp;</h3>
-                        &nbsp;&nbsp;&nbsp;&nbsp;
-                        {this.props.ownDashboard ? (
-                            <Tooltip title='New Worksheet'>
-                                <Button
-                                    variant='contained'
-                                    className={classes.button}
-                                    startIcon={<NewWorksheetIcon />}
-                                    onClick={() => this.setState({ newWorksheetShowDialog: true })}
-                                >
-                                    ADD
-                                </Button>
+                        <Tabs
+                            value={this.state.tabIndex}
+                            onChange={this.handleTabChange}
+                            aria-label='mainpanel tabs'
+                        >
+                            <Tooltip
+                                title='display only the first 100 worksheets'
+                                placement='top-end'
+                            >
+                                <Tab label='Owned Worksheets' {...this.a11yProps(0)}></Tab>
                             </Tooltip>
-                        ) : null}
+                            <Tooltip
+                                title='display only the first 100 worksheets'
+                                placement='top-end'
+                            >
+                                <Tab
+                                    label='Shared Worksheets'
+                                    {...this.a11yProps(1)}
+                                    disabled={!this.props.ownDashboard}
+                                ></Tab>
+                            </Tooltip>
+                            {this.props.ownDashboard ? (
+                                <Tooltip title='New Worksheet'>
+                                    <Button
+                                        variant='contained'
+                                        className={classes.button}
+                                        startIcon={<NewWorksheetIcon />}
+                                        onClick={() =>
+                                            this.setState({ newWorksheetShowDialog: true })
+                                        }
+                                    >
+                                        ADD
+                                    </Button>
+                                </Tooltip>
+                            ) : null}
+                        </Tabs>
                     </div>
-
-                    {this.state.worksheets}
+                    <TabPanel tabIndex={this.state.tabIndex} index={0}>
+                        {this.state.worksheets}
+                    </TabPanel>
+                    <TabPanel tabIndex={this.state.tabIndex} index={1}>
+                        {this.state.sharedWorksheets}
+                    </TabPanel>
                 </Card>
                 <Dialog
                     open={this.state.newWorksheetShowDialog}
@@ -338,6 +404,21 @@ class MainPanel extends React.Component<{
             </div>
         );
     }
+}
+
+function TabPanel(props) {
+    const { children, tabIndex, index, ...other } = props;
+    return (
+        <div
+            role='tabpanel'
+            hidden={tabIndex !== index}
+            id={`mainpanel-tabpanel-${index}`}
+            aria-labelledby={`mainpanel-tab-${index}`}
+            {...other}
+        >
+            {tabIndex === index && <div>{children}</div>}
+        </div>
+    );
 }
 
 export default withStyles(styles)(MainPanel);
