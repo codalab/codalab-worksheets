@@ -33,7 +33,7 @@ import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
-import { apiWrapper } from '../../../util/apiWrapper';
+import { addItems, executeCommand, getUser } from '../../../util/apiWrapper';
 import Tooltip from '@material-ui/core/Tooltip';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
@@ -329,15 +329,14 @@ class Worksheet extends React.Component {
             pauseOnHover: false,
             draggable: true,
         });
-        apiWrapper
-            .executeCommand(
-                buildTerminalCommand([
-                    cmd,
-                    force_delete,
-                    ...Object.keys(this.state.uuidBundlesCheckedCount),
-                ]),
-                worksheet_uuid,
-            )
+        executeCommand(
+            buildTerminalCommand([
+                cmd,
+                force_delete,
+                ...Object.keys(this.state.uuidBundlesCheckedCount),
+            ]),
+            worksheet_uuid,
+        )
             .done(() => {
                 this.clearCheckedBundles(() => {
                     // This toast info is used for showing a message when a command has finished executing
@@ -476,7 +475,9 @@ class Worksheet extends React.Component {
             this.setState({ deleting: false });
             alert(createAlertText(url, error));
         };
-        apiWrapper.addItems(worksheetUUID, { ids: itemIds }, callback, errorHandler);
+        addItems(worksheetUUID, { ids: itemIds })
+            .then(callback)
+            .catch(errorHandler);
     };
 
     moveFocusToBottom = () => {
@@ -538,7 +539,9 @@ class Worksheet extends React.Component {
         const errorHandler = (error) => {
             alert(createAlertText(url, error));
         };
-        apiWrapper.addItems(worksheetUUID, actualData, callback, errorHandler);
+        addItems(worksheetUUID, actualData)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     clearCheckedBundles = (clear_callback) => {
@@ -647,7 +650,9 @@ class Worksheet extends React.Component {
         const errorHandler = (error) => {
             alert(createAlertText(url, error));
         };
-        apiWrapper.addItems(worksheetUUID, actualData, callback, errorHandler);
+        addItems(worksheetUUID, actualData)
+            .then(callback)
+            .catch(errorHandler);
         this.setState({
             messagePopover: {
                 showMessage: true,
@@ -817,7 +822,7 @@ class Worksheet extends React.Component {
                 userInfo: userInfo,
             });
         };
-        apiWrapper.getUser(callback);
+        getUser().then(callback);
     }
 
     hasEditPermission() {

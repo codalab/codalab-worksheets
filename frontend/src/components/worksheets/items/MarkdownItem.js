@@ -11,7 +11,7 @@ import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 import Tooltip from '@material-ui/core/Tooltip';
-import { apiWrapper } from '../../../util/apiWrapper';
+import { addItems } from '../../../util/apiWrapper';
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
@@ -119,7 +119,9 @@ class MarkdownItem extends React.Component {
             this.setState({ deleting: false });
             alert(createAlertText(url, error));
         };
-        apiWrapper.addItems(worksheetUUID, { ids: item.ids }, callback, errorHandler);
+        addItems(worksheetUUID, { ids: item.ids })
+            .then(callback)
+            .catch(errorHandler);
     };
 
     render() {

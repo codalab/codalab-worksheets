@@ -3,7 +3,7 @@ import 'rc-slider/assets/index.css';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText, getDefaultBundleMetadata } from '../../../util/worksheet_utils';
 import { FILE_SIZE_LIMIT_B, FILE_SIZE_LIMIT_GB } from '../../../constants';
-import { apiWrapper } from '../../../util/apiWrapper.js';
+import { createFileBundle, uploadImgAsync } from '../../../util/apiWrapper';
 
 const styles = (theme) => ({});
 
@@ -51,19 +51,14 @@ class ImageEditor extends React.Component<{
                 this.clearProgress();
                 alert(createAlertText(url, error.responseText));
             };
-            const bundle = await apiWrapper.createFileBundle(url, createBundleData, errorHandler);
+            const bundle = await createFileBundle(url, createBundleData, errorHandler);
             const bundleUuid = bundle.data[0].id;
             errorHandler = (error) => {
                 this.clearProgress();
                 alert(createAlertText(error, 'refresh and try again.'));
                 this.props.onUploadFinish();
             };
-            const promise = await apiWrapper.uploadImgAsync(
-                bundleUuid,
-                file,
-                file.name,
-                errorHandler,
-            );
+            const promise = await uploadImgAsync(bundleUuid, file, file.name, errorHandler);
             return promise;
         });
         const moveIndex = true;

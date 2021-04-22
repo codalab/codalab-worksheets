@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
-import { apiWrapper } from '../util/apiWrapper';
+import { updateEditableField } from '../util/apiWrapper';
 
 const KEYCODE_ESC = 27;
 
@@ -54,7 +54,7 @@ class EditableFieldBase extends React.Component<{
         event.preventDefault();
         const { url, onChange, buildPayload } = this.props;
         const { value } = this.state;
-        apiWrapper.updateEditableField(url, buildPayload(value), () => {
+        updateEditableField(url, buildPayload(value)).then(() => {
             if (onChange) {
                 onChange(this.state.value);
             }

@@ -8,7 +8,7 @@ import { BundleEditableField } from '../EditableField';
 import { FileBrowser } from '../FileBrowser/FileBrowser';
 import './Bundle.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
-import { apiWrapper } from '../../util/apiWrapper';
+import { fetchBundleContents, fetchBundleMetadata, fetchFileSummary } from '../../util/apiWrapper';
 
 class Bundle extends React.Component<
     {
@@ -62,7 +62,7 @@ class Bundle extends React.Component<
      * @return  jQuery Deferred object
      */
     fetchFileSummary(uuid, path) {
-        return apiWrapper.fetchFileSummary(uuid, path);
+        return fetchFileSummary(uuid, path);
     }
 
     /**
@@ -86,7 +86,10 @@ class Bundle extends React.Component<
                 errorMessages: this.state.errorMessages.concat([error]),
             });
         };
-        apiWrapper.fetchBundleMetadata(this.props.uuid, callback, errorHandler);
+
+        fetchBundleMetadata(this.props.uuid)
+            .then(callback)
+            .catch(errorHandler);
 
         // Fetch bundle contents
         callback = async (response) => {
@@ -130,7 +133,9 @@ class Bundle extends React.Component<
             });
         };
 
-        apiWrapper.fetchBundleContents(this.props.uuid, callback, errorHandler);
+        fetchBundleContents(this.props.uuid)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     componentDidMount() {

@@ -11,7 +11,7 @@ import FileIcon from '@material-ui/icons/InsertDriveFile';
 import LinkIcon from '@material-ui/icons/Link';
 import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
 import './FileBrowser.scss';
-import { apiWrapper } from '../../util/apiWrapper';
+import { updateFileBrowser } from '../../util/apiWrapper';
 
 export class FileBrowser extends React.Component<
     {
@@ -89,11 +89,14 @@ export class FileBrowser extends React.Component<
                 $('.file-browser').hide();
             }
         };
-        const errorHandler = () => {
+        const errorHandler = (error) => {
+            console.error(error);
             this.setState({ fileBrowserData: {} });
             $('.file-browser').hide();
         };
-        apiWrapper.updateFileBrowser(this.props.uuid, folder_path, callback, errorHandler);
+        updateFileBrowser(this.props.uuid, folder_path)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     render() {
@@ -522,7 +525,9 @@ export class FileBrowserLite extends React.Component<
             this.setState({ fileBrowserData: {} });
             $('.file-browser').hide();
         };
-        apiWrapper.updateFileBrowser(this.props.uuid, folder_path, callback, errorHandler);
+        updateFileBrowser(this.props.uuid, folder_path)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     render() {

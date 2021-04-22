@@ -9,7 +9,7 @@ import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
-import { apiWrapper } from '../../../util/apiWrapper';
+import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
 
 class BundleDetail extends React.Component<
     {
@@ -88,30 +88,6 @@ class BundleDetail extends React.Component<
         clearInterval(this.timer);
     }
 
-    /**
-     * Return a Promise to fetch the summary of the given file.
-     * @param uuid  uuid of bundle
-     * @param path  path within the bundle
-     * @return  jQuery Deferred object
-     */
-    fetchFileSummary(uuid, path) {
-        return apiWrapper.fetchFileSummary(uuid, path);
-    }
-    // fetchFileSummary(uuid, path) {
-    //     return $.ajax({
-    //         type: 'GET',
-    //         url: '/rest/bundles/' + uuid + '/contents/blob' + path,
-    //         data: {
-    //             head: 50,
-    //             tail: 50,
-    //             truncation_text: '\n... [truncated] ...\n\n',
-    //         },
-    //         dataType: 'text',
-    //         cache: false,
-    //         context: this, // automatically bind `this` in all callbacks
-    //     });
-    // }
-
     fetchBundleMetaData = () => {
         const { uuid } = this.props;
         const callback = (response) => {
@@ -130,7 +106,10 @@ class BundleDetail extends React.Component<
                 errorMessages: this.state.errorMessages.concat([error]),
             });
         };
-        apiWrapper.fetchBundleMetadata(uuid, callback, errorHandler);
+        apiWrapper
+            .fetchBundleMetadata(uuid)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     // Fetch bundle contents
@@ -140,7 +119,7 @@ class BundleDetail extends React.Component<
             const info = response.data;
             if (!info) return;
             if (info.type === 'file' || info.type === 'link') {
-                return this.fetchFileSummary(uuid, '/').then((blob) => {
+                return fetchFileSummary(uuid, '/').then((blob) => {
                     this.setState({ fileContents: blob, stdout: null, stderr: null });
                 });
             } else if (info.type === 'directory') {
@@ -153,7 +132,7 @@ class BundleDetail extends React.Component<
                     function(name) {
                         if (info.contents.some((entry) => entry.name === name)) {
                             fetchRequests.push(
-                                this.fetchFileSummary(uuid, '/' + name).then((blob) => {
+                                fetchFileSummary(uuid, '/' + name).then((blob) => {
                                     stateUpdate[name] = blob;
                                 }),
                             );
@@ -177,7 +156,10 @@ class BundleDetail extends React.Component<
             });
         };
 
-        apiWrapper.fetchBundleContents(this.props.uuid, callback, errorHandler);
+        apiWrapper
+            .fetchBundleContents(this.props.uuid)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     render(): React.Node {

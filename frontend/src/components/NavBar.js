@@ -33,7 +33,7 @@ import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
 import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
 import _ from 'lodash';
-import { apiWrapper } from '../util/apiWrapper';
+import { getUser, executeCommand, navBarSearch } from '../util/apiWrapper';
 import DOMPurify from 'dompurify';
 import { NAME_REGEX } from '../constants';
 
@@ -75,7 +75,7 @@ class NavBar extends React.Component<{
             this.fetchImg(userInfo.avatar_id);
             this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
         };
-        apiWrapper.getUser(callback);
+        getUser().then(callback);
     }
 
     resetDialog() {
@@ -97,7 +97,7 @@ class NavBar extends React.Component<{
         }
 
         try {
-            const data = await apiWrapper.executeCommand(
+            const data = await executeCommand(
                 `new ${this.state.newWorksheetName || kDefaultWorksheetName}`,
             );
             if (data.structured_result && data.structured_result.ui_actions) {
@@ -297,7 +297,7 @@ class NavBar extends React.Component<{
                     });
                 }
             };
-            apiWrapper.navBarSearch(keywords, callback);
+            navBarSearch(keywords).then(callback);
         }, 300);
     };
 

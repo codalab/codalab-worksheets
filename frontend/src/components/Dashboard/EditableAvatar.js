@@ -14,7 +14,7 @@ import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../util/worksheet_utils';
 import Avatar from '@material-ui/core/Avatar';
 import ButtonBase from '@material-ui/core/ButtonBase';
-import { apiWrapper } from '../../util/apiWrapper.js';
+import { post, updateUser, uploadImgAsync } from '../../util/apiWrapper';
 
 const styles = (theme) => ({
     root: {
@@ -210,7 +210,7 @@ class EditableAvatar extends React.Component {
         newUser.id = this.props.userInfo.user_id;
 
         // Push changes to server
-        apiWrapper.updateUser(newUser, () => {});
+        updateUser(newUser);
     }
 
     // Callback function for avatar editor to upload the adjusted avatar
@@ -233,7 +233,7 @@ class EditableAvatar extends React.Component {
 
             async function createImageBundle(url, data) {
                 try {
-                    return await apiWrapper.post(url, data);
+                    return await post(url, data);
                 } catch (error) {
                     alert(createAlertText(url, error.responseText));
                 }
@@ -253,7 +253,7 @@ class EditableAvatar extends React.Component {
                 alert(createAlertText(error, 'refresh and try again.'));
                 this.props.onUploadFinish();
             };
-            await apiWrapper.uploadImgAsync(bundleUuid, file, fileName, errorHandler);
+            await uploadImgAsync(bundleUuid, file, fileName, errorHandler);
             // Store the bundle id to database
             await this.saveAvatarToDB(bundleUuid);
             // Fetch the new avatar from the bundle store by specifying the bundle id

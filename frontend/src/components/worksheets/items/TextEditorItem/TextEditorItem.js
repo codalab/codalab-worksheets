@@ -5,7 +5,7 @@ import InputBase from '@material-ui/core/InputBase';
 import { withStyles } from '@material-ui/core/styles';
 import { createAlertText } from '../../../../util/worksheet_utils';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
-import { apiWrapper } from '../../../../util/apiWrapper';
+import { addItems } from '../../../../util/apiWrapper';
 
 /*
 This component has 2 modes:
@@ -94,7 +94,9 @@ class TextEditorItem extends React.Component<{
         const errorHandler = (error) => {
             alert(createAlertText(url, error));
         };
-        apiWrapper.addItems(worksheetUUID, data, callback, errorHandler);
+        addItems(worksheetUUID, data)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     render() {

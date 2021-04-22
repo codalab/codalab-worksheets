@@ -4,7 +4,7 @@ import { default as SideBar } from './SideBar';
 import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 import { withRouter } from 'react-router';
-import { apiWrapper } from '../../util/apiWrapper';
+import { getUser, getUsers } from '../../util/apiWrapper';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -55,12 +55,12 @@ class NewDashboard extends React.Component<{
                 });
             };
             if (ownDashboard) {
-                apiWrapper.getUser(callback);
+                getUser().then(callback);
             } else {
-                apiWrapper.getUsers(this.props.username, callback);
+                getUsers(this.props.username).then(callback);
             }
         };
-        apiWrapper.getUser(callback);
+        getUser().then(callback);
     }
 
     /** Renderer. */

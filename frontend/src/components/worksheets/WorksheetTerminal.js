@@ -51,6 +51,7 @@ class WorksheetTerminal extends React.Component {
                         self.renderHyperlinks(data.structured_result.refs);
                     }
                 } catch (error) {
+                    console.error(error);
                     terminal.error(error.responseText);
                 } finally {
                     terminal.resume();
@@ -180,7 +181,8 @@ class WorksheetTerminal extends React.Component {
             })
             .catch(function(error) {
                 // Some exception occurred outside of the CLI
-                console.error(error);
+                console.log('ererere', error.response);
+                console.log('ererere', error.message);
             });
     }
     completeCommand(command) {

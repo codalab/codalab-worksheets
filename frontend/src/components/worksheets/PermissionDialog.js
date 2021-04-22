@@ -12,7 +12,7 @@ import Snackbar from '@material-ui/core/Snackbar';
 import SnackbarContent from '@material-ui/core/SnackbarContent';
 import { withStyles } from '@material-ui/core/styles';
 import { buildTerminalCommand } from '../../util/worksheet_utils';
-import { apiWrapper } from '../../util/apiWrapper';
+import { executeCommand } from '../../util/apiWrapper';
 
 function parseGlsOutput(output) {
     const lines = output.split(/[\n]+/);
@@ -41,7 +41,7 @@ class PermissionDialog extends React.Component<{
     }
 
     getGroups = () => {
-        apiWrapper.executeCommand('gls').then((resp) => {
+        executeCommand('gls').then((resp) => {
             const groupNames = parseGlsOutput(resp.output);
             this.setState({ groupNames });
         });
@@ -50,11 +50,11 @@ class PermissionDialog extends React.Component<{
     handlePermissionValueChange = (name, value) => {
         const { uuid, wperm } = this.props;
 
-        apiWrapper
-            .executeCommand(buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, name, value]))
-            .then(() => {
+        executeCommand(buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, name, value])).then(
+            () => {
                 this.props.onChange();
-            });
+            },
+        );
     };
 
     handleAddPermission = (value) => {
@@ -64,15 +64,9 @@ class PermissionDialog extends React.Component<{
         }
         const { uuid, wperm } = this.props;
 
-        apiWrapper
-            .executeCommand(
-                buildTerminalCommand([
-                    wperm ? 'wperm' : 'perm',
-                    uuid,
-                    this.state.nGroupName,
-                    value,
-                ]),
-            )
+        executeCommand(
+            buildTerminalCommand([wperm ? 'wperm' : 'perm', uuid, this.state.nGroupName, value]),
+        )
             .then((resp) => {
                 this.setState({ showAddSection: false });
                 this.props.onChange();

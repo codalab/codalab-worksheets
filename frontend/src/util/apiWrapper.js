@@ -1,110 +1,60 @@
 import { Semaphore } from 'await-semaphore';
+import axios from 'axios';
 import { createDefaultBundleName, pathIsArchive, getArchiveExt } from './worksheet_utils';
 
-const get = (url, params, ajaxOptions) => {
+export const get = (url, params) => {
     const requestOptions = {
-        method: 'GET',
+        params,
     };
-    if (params !== undefined) {
-        url = url + '?' + new URLSearchParams(params);
-    }
-    return fetch(url, requestOptions).then(handleResponse);
+    return axios.get(url, requestOptions).then((res) => res.data);
 };
 
-const post = (url, body, ajaxOptions) => {
-    const requestOptions = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    };
-    return fetch(url, requestOptions).then(handleResponse);
+export const post = (url, data) => {
+    return axios.post(url, data).then((res) => res.data);
 };
 
-const put = (url, body, ajaxOptions) => {
-    const requestOptions = {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    };
-    return fetch(url, requestOptions).then(handleResponse);
+export const put = (url, data) => {
+    return axios.put(url, data).then((res) => res.data);
 };
 
-const patch = (url, body, ajaxOptions) => {
-    const requestOptions = {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    };
-    return fetch(url, requestOptions).then(handleResponse);
+export const patch = (url, data) => {
+    return axios.patch(url, data).then((res) => res.data);
 };
 
 // prefixed with underscored because delete is a reserved word in javascript
-const _delete = (url) => {
-    const requestOptions = {
-        method: 'DELETE',
-    };
-    return fetch(url, requestOptions).then(handleResponse);
+export const _delete = (url) => {
+    return axios.delete(url).then((res) => res.data);
 };
 
-// helper functions
-const handleResponse = (response) => {
-    return response.text().then((text) => {
-        const data = text && JSON.parse(text);
-
-        if (!response.ok) {
-            const error = (data && data.message) || response.statusText;
-            return Promise.reject(error);
-        }
-        return data;
-    });
+export const updateEditableField = (url, data) => {
+    return patch(url, data);
 };
 
-const defaultErrorHandler = (error) => {
-    console.error(error);
+export const getUser = () => {
+    return get('/rest/user');
 };
 
-const updateEditableField = (url, data, callback, errorHandler = defaultErrorHandler) => {
-    patch(url, data)
-        .then(callback)
-        .catch(errorHandler);
-};
-
-const getUser = (callback, errorHandler = defaultErrorHandler) => {
-    const url = '/rest/user';
-    get(url)
-        .then(callback)
-        .catch(errorHandler);
-};
-
-const getUsers = (username, callback, errorHandler = defaultErrorHandler) => {
+export const getUsers = (username) => {
     const url = '/rest/users/' + username;
-    get(url)
-        .then(callback)
-        .catch(errorHandler);
+    return get(url);
 };
 
-const updateUser = (newUser, callback, errorHandler = defaultErrorHandler) => {
+export const updateUser = (data) => {
     const url = '/rest/user';
-    patch(url, { data: newUser })
-        .then(callback)
-        .catch(errorHandler);
+    return patch(url, { data });
 };
 
-const navBarSearch = (keywords, callback, errorHandler = defaultErrorHandler) => {
+export const navBarSearch = (keywords) => {
     const url = '/rest/interpret/wsearch';
-    post(url, { keywords })
-        .then(callback)
-        .catch(errorHandler);
+    return post(url, { keywords });
 };
 
-const addItems = (worksheetUUID, data, callback, errorHandler = defaultErrorHandler) => {
+export const addItems = (worksheetUUID, data) => {
     const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-    post(url, data)
-        .then(callback)
-        .catch(errorHandler);
+    return post(url, data);
 };
 
-const executeCommand = (command, worksheet_uuid) => {
+export const executeCommand = (command, worksheet_uuid) => {
     // returns a Promise
     const url = '/rest/cli/command';
     return post(url, {
@@ -113,7 +63,7 @@ const executeCommand = (command, worksheet_uuid) => {
     });
 };
 
-const completeCommand = (command, worksheet_uuid) => {
+export const completeCommand = (command, worksheet_uuid) => {
     // returns a Promise
     const url = '/rest/cli/command';
     return post(url, {
@@ -127,7 +77,7 @@ const completeCommand = (command, worksheet_uuid) => {
 const MAX_CONCURRENT_REQUESTS = 3;
 const semaphore = new Semaphore(MAX_CONCURRENT_REQUESTS);
 
-const fetchAsyncBundleContents = async ({ contents }) => {
+export const fetchAsyncBundleContents = async ({ contents }) => {
     // used in table and record items
     return semaphore.use(async () => {
         const url = '/rest/interpret/genpath-table-contents';
@@ -135,31 +85,25 @@ const fetchAsyncBundleContents = async ({ contents }) => {
     });
 };
 
-const updateFileBrowser = (uuid, folder_path, callback, errorHandler = defaultErrorHandler) => {
+export const updateFileBrowser = (uuid, folder_path) => {
     const url = '/rest/bundles/' + uuid + '/contents/info/' + folder_path;
-    get(url, { depth: 1 })
-        .then(callback)
-        .catch(errorHandler);
+    return get(url, { depth: 1 });
 };
 
-const fetchBundleContents = (uuid, callback, errorHandler = defaultErrorHandler) => {
+export const fetchBundleContents = (uuid) => {
     const url = '/rest/bundles/' + uuid + '/contents/info/';
-    get(url, { depth: 1 })
-        .then(callback)
-        .catch(errorHandler);
+    return get(url, { depth: 1 });
 };
 
-const fetchBundleMetadata = (uuid, callback, errorHandler = defaultErrorHandler) => {
+export const fetchBundleMetadata = (uuid) => {
     const url = '/rest/bundles/' + uuid;
-    get(url, {
+    return get(url, {
         include_display_metadata: 1,
         include: 'owner,group_permissions,host_worksheets',
-    })
-        .then(callback)
-        .catch(errorHandler);
+    });
 };
 
-const fetchFileSummary = (uuid, path) => {
+export const fetchFileSummary = (uuid, path) => {
     const params = {
         head: 50,
         tail: 50,
@@ -167,15 +111,10 @@ const fetchFileSummary = (uuid, path) => {
     };
     const url =
         '/rest/bundles/' + uuid + '/contents/blob' + path + '?' + new URLSearchParams(params);
-    return fetch(url, {
-        method: 'GET',
-        headers: {
-            Accept: 'text/plain',
-        },
-    }).then((res) => res.text());
+    return get(url, { headers: { Accept: 'text/plain' } });
 };
 
-async function createFileBundle(url, data, errorHandler) {
+export async function createFileBundle(url, data, errorHandler) {
     try {
         return post(url, data);
     } catch (error) {
@@ -196,24 +135,18 @@ export function getQueryParams(filename) {
 }
 
 // Upload the avatar image as a bundle to the bundle store
-const uploadImgAsync = (bundleUuid, file, fileName, errorHandler) => {
+export const uploadImgAsync = (bundleUuid, file, fileName, errorHandler) => {
     return new Promise((resolve, reject) => {
         let reader = new FileReader();
         reader.onload = () => {
             let arrayBuffer = reader.result,
                 bytesArray = new Uint8Array(arrayBuffer);
             let url = '/rest/bundles/' + bundleUuid + '/contents/blob/?' + getQueryParams(fileName);
-            fetch(url, {
-                method: 'PUT',
-                body: new Blob([bytesArray]),
-                headers: {
-                    'Content-Type': 'application/octet-stream',
-                },
-            })
-                .then((response) => response.blob())
+            put(url, new Blob([bytesArray]))
                 .then((data) => resolve(data))
                 .catch((error) => {
                     errorHandler(error);
+                    reject(error);
                 });
         };
         reader.readAsArrayBuffer(file);

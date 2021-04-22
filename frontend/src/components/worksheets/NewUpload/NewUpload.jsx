@@ -5,12 +5,9 @@ import { withStyles } from '@material-ui/core/styles';
 import JSZip from 'jszip';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import {
-    getDefaultBundleMetadata,
-    createAlertText,
-} from '../../../util/worksheet_utils';
+import { getDefaultBundleMetadata, createAlertText } from '../../../util/worksheet_utils';
 import { FILE_SIZE_LIMIT_B, FILE_SIZE_LIMIT_GB } from '../../../constants';
-import { apiWrapper, getQueryParams } from '../../../util/apiWrapper';
+import { createFileBundle, getQueryParams } from '../../../util/apiWrapper';
 
 class NewUpload extends React.Component<{
     /** JSS styling object. */
@@ -117,7 +114,7 @@ class NewUpload extends React.Component<{
                 this.clearProgress();
                 alert(createAlertText(url, error.responseText));
             };
-            const bundle = await apiWrapper.createFileBundle(url, createBundleData, errorHandler);
+            const bundle = await createFileBundle(url, createBundleData, errorHandler);
             const bundleUuid = bundle.data[0].id;
 
             const promise = await this.readFileAsync(bundleUuid, file);
@@ -192,7 +189,7 @@ class NewUpload extends React.Component<{
             this.clearProgress();
             alert(createAlertText(url, error.responseText));
         };
-        const data = await apiWrapper.createFileBundle(url, createBundleData, errorHandler);
+        const data = await createFileBundle(url, createBundleData, errorHandler);
 
         const bundleUuid = data.data[0].id;
         url =

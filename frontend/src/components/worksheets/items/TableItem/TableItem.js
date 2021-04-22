@@ -15,7 +15,7 @@ import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
 import classNames from 'classnames';
-import { apiWrapper } from '../../../../util/apiWrapper';
+import { fetchAsyncBundleContents } from '../../../../util/apiWrapper';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -373,7 +373,7 @@ const TableWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await apiWrapper.fetchAsyncBundleContents({
+                    const { contents } = await fetchAsyncBundleContents({
                         contents: item.rows,
                     });
                     onAsyncItemLoad({

@@ -4,7 +4,7 @@ import BundleDetail from '../BundleDetail';
 import NewRun from '../NewRun';
 import { useEffect } from 'react';
 import { FETCH_STATUS_SCHEMA } from '../../../constants';
-import { apiWrapper } from '../../../util/apiWrapper';
+import { fetchAsyncBundleContents } from '../../../util/apiWrapper';
 
 class RecordItem extends React.Component {
     /** Constructor. */
@@ -132,7 +132,7 @@ const RecordWrapper = (props) => {
         (async function() {
             if (item.status.code === FETCH_STATUS_SCHEMA.BRIEFLY_LOADED) {
                 try {
-                    const { contents } = await apiWrapper.fetchAsyncBundleContents({
+                    const { contents } = await fetchAsyncBundleContents({
                         contents: item.rows,
                     });
                     onAsyncItemLoad({

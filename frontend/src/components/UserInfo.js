@@ -5,7 +5,7 @@ import _ from 'underscore';
 import { renderSize, renderDuration } from '../util/worksheet_utils';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import { apiWrapper } from '../util/apiWrapper';
+import { getUser, updateUser } from '../util/apiWrapper';
 /**
  * This stateful component ___.
  */
@@ -42,12 +42,12 @@ class UserInfo extends React.Component {
     }
 
     componentDidMount() {
-        const callback = (response) => {
+        const callback = (data) => {
             this.setState({
-                user: this.processData(response),
+                user: this.processData(data),
             });
         };
-        apiWrapper.getUser(callback);
+        getUser().then(callback);
     }
 
     handleChange = (key, value) => {
@@ -57,12 +57,12 @@ class UserInfo extends React.Component {
         newUser.attributes[key] = value;
 
         // Push changes to server
-        const callback = (response) => {
+        const callback = (data) => {
             this.setState({
-                user: this.processData(response),
+                user: this.processData(data),
             });
         };
-        apiWrapper.updateUser(newUser, callback);
+        updateUser(newUser).then(callback);
     };
 
     /** Renderer. */
