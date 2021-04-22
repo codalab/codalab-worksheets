@@ -13,17 +13,17 @@ export const post = (url, data, config) => {
     return axios.post(url, data, config).then((res) => res.data);
 };
 
-export const put = (url, data) => {
-    return axios.put(url, data).then((res) => res.data);
+export const put = (url, data, config) => {
+    return axios.put(url, data, config).then((res) => res.data);
 };
 
-export const patch = (url, data) => {
-    return axios.patch(url, data).then((res) => res.data);
+export const patch = (url, data, config) => {
+    return axios.patch(url, data, config).then((res) => res.data);
 };
 
 // prefixed with underscored because delete is a reserved word in javascript
-export const _delete = (url) => {
-    return axios.delete(url).then((res) => res.data);
+export const _delete = (url, config) => {
+    return axios.delete(url, config).then((res) => res.data);
 };
 
 export const updateEditableField = (url, data) => {
