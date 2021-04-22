@@ -9,8 +9,8 @@ export const get = (url, params) => {
     return axios.get(url, requestOptions).then((res) => res.data);
 };
 
-export const post = (url, data) => {
-    return axios.post(url, data).then((res) => res.data);
+export const post = (url, data, config) => {
+    return axios.post(url, data, config).then((res) => res.data);
 };
 
 export const put = (url, data) => {
