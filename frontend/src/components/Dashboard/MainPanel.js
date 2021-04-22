@@ -43,7 +43,12 @@ const styles = ({ palette, spacing, color }) => {
             backgroundColor: 'white',
             alignItems: 'center',
         },
-        titleBox: { margin: 'auto', marginTop: 8, marginBottom: 16, width: '90%' },
+        titleBox: {
+            margin: 'auto',
+            marginTop: 8,
+            marginBottom: 16,
+            width: '90%',
+        },
         wsInlineBox: {
             display: 'flex',
             alignItems: 'center',
@@ -97,7 +102,6 @@ const styles = ({ palette, spacing, color }) => {
             backgroundColor: green[500],
             color: 'white',
             right: 0,
-            marginBottom: 10,
             marginLeft: 'auto',
         },
         snackbarMessage: {
