@@ -55,7 +55,7 @@ def get_requirements(*requirements_file_paths):
     for requirements_file_path in requirements_file_paths:
         with open(requirements_file_path) as requirements_file:
             for line in requirements_file:
-                if line[0:2] != '-r' and line.find('git') == -1:
+                if line[0:2] != '-r':
                     requirements.append(line.strip())
     return requirements
 
