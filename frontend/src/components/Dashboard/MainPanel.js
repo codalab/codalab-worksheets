@@ -54,6 +54,14 @@ const styles = ({ palette, spacing, color }) => {
             alignItems: 'center',
             justifyContent: 'space-between',
         },
+        infoBox: {
+            marginLeft: 64,
+            marginRight: 20,
+            marginTop: 20,
+            marginBottom: 40,
+            backgroundColor: '#f1f1f1',
+            alignItems: 'center',
+        },
         wsCard: {
             display: 'flex',
             flexDirection: 'column',
@@ -278,6 +286,11 @@ class MainPanel extends React.Component<{
             warning: WarningIcon,
         }[this.state.snackbarVariant];
         const { classes } = this.props;
+        const infoMessage = (
+            <div className={classes.infoBox}>
+                <div style={{ marginLeft: 16 }}>Display only the first 100 worksheets</div>
+            </div>
+        );
         return (
             <div>
                 <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
@@ -287,22 +300,12 @@ class MainPanel extends React.Component<{
                             onChange={this.handleTabChange}
                             aria-label='mainpanel tabs'
                         >
-                            <Tooltip
-                                title='display only the first 100 worksheets'
-                                placement='top-end'
-                            >
-                                <Tab label='Owned Worksheets' {...this.a11yProps(0)}></Tab>
-                            </Tooltip>
-                            <Tooltip
-                                title='display only the first 100 worksheets'
-                                placement='top-end'
-                            >
-                                <Tab
-                                    label='Shared Worksheets'
-                                    {...this.a11yProps(1)}
-                                    disabled={!this.props.ownDashboard}
-                                ></Tab>
-                            </Tooltip>
+                            <Tab label='Owned Worksheets' {...this.a11yProps(0)}></Tab>
+                            <Tab
+                                label='Shared Worksheets'
+                                {...this.a11yProps(1)}
+                                disabled={!this.props.ownDashboard}
+                            ></Tab>
                             {this.props.ownDashboard ? (
                                 <Tooltip title='New Worksheet'>
                                     <Button
@@ -321,9 +324,11 @@ class MainPanel extends React.Component<{
                     </div>
                     <TabPanel tabIndex={this.state.tabIndex} index={0}>
                         {this.state.worksheets}
+                        {infoMessage}
                     </TabPanel>
                     <TabPanel tabIndex={this.state.tabIndex} index={1}>
                         {this.state.sharedWorksheets}
+                        {infoMessage}
                     </TabPanel>
                 </Card>
                 <Dialog
