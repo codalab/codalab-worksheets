@@ -40,7 +40,6 @@ import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import { Popover } from '@material-ui/core';
-import axios from 'axios';
 
 /*
 Information about the current worksheet and its items.
@@ -108,7 +107,6 @@ class Worksheet extends React.Component {
     }
 
     fetch(props) {
-        console.log('fetch');
         // Set defaults
         props = props || {};
         props.success = props.success || function(data) {};
@@ -119,9 +117,9 @@ class Worksheet extends React.Component {
         const queryParams = {
             brief: props.brief ? 1 : 0,
         };
-        const url = '/rest/interpret/worksheet/' + this.state.ws.uuid;
+
         apiWrapper
-            .get(url, queryParams)
+            .fetchWorksheet(this.state.ws.uuid, queryParams)
             .then((info) => {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
                 info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
@@ -143,10 +141,9 @@ class Worksheet extends React.Component {
         props.success = props.success || function(data) {};
         props.error = props.error || function(xhr, status, err) {};
         $('#save_error').hide();
-        const url = '/rest/worksheets/' + this.state.ws.uuid + '/raw';
-        axios
-            .post(url, this.state.ws.info.source.join('\n'))
-            .then(({ data }) => {
+        apiWrapper
+            .saveWorksheet(this.state.ws.uuid, this.state.ws.info.source.join('\n'))
+            .then((data) => {
                 console.log('Saved worksheet ' + this.state.ws.uuid);
                 props.success(data);
             })
@@ -159,10 +156,8 @@ class Worksheet extends React.Component {
         if (this.state.ws.info === undefined) return;
         $('#update_progress').show();
         $('#save_error').hide();
-        const url = '/rest/worksheets?force=1';
-        const data = { data: [{ id: this.state.ws.info.uuid, type: 'worksheets' }] };
         apiWrapper
-            .delete(url, { data })
+            .deleteWorksheet(this.state.ws.info.uuid)
             .then((data) => {
                 console.log('Deleted worksheet ' + this.state.ws.info.uuid);
                 props.success && props.success(data);
@@ -1166,7 +1161,6 @@ class Worksheet extends React.Component {
 
     // updateRunBundles fetch all the "unfinished" bundles in the worksheet, and recursively call itself until all the bundles in the worksheet are finished.
     updateRunBundles = (worksheetUuid, numTrials, updatingBundleUuids) => {
-        console.log('update');
         var bundleUuids = updatingBundleUuids
             ? updatingBundleUuids
             : this.state.updatingBundleUuids;
@@ -1181,7 +1175,6 @@ class Worksheet extends React.Component {
         apiWrapper
             .get(url)
             .then((worksheet_content) => {
-                console.log(worksheet_content);
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.blocks) {
                         self.reloadWorksheet(worksheet_content.blocks);

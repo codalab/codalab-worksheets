@@ -153,6 +153,22 @@ export const uploadImgAsync = (bundleUuid, file, fileName, errorHandler) => {
     });
 };
 
+export const fetchWorksheet = (uuid, queryParams) => {
+    const url = '/rest/interpret/worksheet/' + uuid;
+    return apiWrapper.get(url, queryParams);
+};
+
+export const saveWorksheet = (uuid, data) => {
+    const url = '/rest/worksheets/' + uuid + '/raw';
+    return axios.post(url, data);
+};
+
+export const deleteWorksheet = (uuid) => {
+    const url = '/rest/worksheets?force=1';
+    const data = { data: [{ id: uuid, type: 'worksheets' }] };
+    return apiWrapper.delete(url, { data });
+};
+
 export const apiWrapper = {
     get,
     post,
@@ -175,4 +191,7 @@ export const apiWrapper = {
     createFileBundle,
     uploadImgAsync,
     getQueryParams,
+    saveWorksheet,
+    fetchWorksheet,
+    deleteWorksheet,
 };
