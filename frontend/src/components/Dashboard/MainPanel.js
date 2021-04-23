@@ -86,7 +86,7 @@ const styles = ({ palette, spacing, color }) => {
             letterSpacing: 0.15,
             lineHeight: '150%',
             marginBottom: 0,
-            marginLeft: 8,
+            marginLeft: 16,
             float: 'left',
         },
         value: {
@@ -288,24 +288,55 @@ class MainPanel extends React.Component<{
         const { classes } = this.props;
         const infoMessage = (
             <div className={classes.infoBox}>
-                <div style={{ marginLeft: 16 }}>Display only the first 100 worksheets</div>
+                <div>Display only the first 100 worksheets</div>
             </div>
         );
         return (
             <div>
-                <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
-                    <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
-                        <Tabs
-                            value={this.state.tabIndex}
-                            onChange={this.handleTabChange}
-                            aria-label='mainpanel tabs'
-                        >
-                            <Tab label='Owned Worksheets' {...this.a11yProps(0)}></Tab>
-                            <Tab
-                                label='Shared Worksheets'
-                                {...this.a11yProps(1)}
-                                disabled={!this.props.ownDashboard}
-                            ></Tab>
+                {this.props.ownDashboard ? (
+                    <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
+                        <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
+                            <Tabs
+                                value={this.state.tabIndex}
+                                onChange={this.handleTabChange}
+                                aria-label='mainpanel tabs'
+                            >
+                                <Tab label='My Worksheets' {...this.a11yProps(0)}></Tab>
+                                <Tab
+                                    label='Shared Worksheets with Me'
+                                    {...this.a11yProps(1)}
+                                    disabled={!this.props.ownDashboard}
+                                ></Tab>
+                                {this.props.ownDashboard ? (
+                                    <Tooltip title='New Worksheet'>
+                                        <Button
+                                            variant='contained'
+                                            className={classes.button}
+                                            startIcon={<NewWorksheetIcon />}
+                                            onClick={() =>
+                                                this.setState({ newWorksheetShowDialog: true })
+                                            }
+                                        >
+                                            ADD
+                                        </Button>
+                                    </Tooltip>
+                                ) : null}
+                            </Tabs>
+                        </div>
+                        <TabPanel tabIndex={this.state.tabIndex} index={0}>
+                            {this.state.worksheets}
+                            {infoMessage}
+                        </TabPanel>
+                        <TabPanel tabIndex={this.state.tabIndex} index={1}>
+                            {this.state.sharedWorksheets}
+                            {infoMessage}
+                        </TabPanel>
+                    </Card>
+                ) : (
+                    <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
+                        <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
+                            <h3 className={classes.heading}>Worksheets &nbsp;&nbsp;</h3>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
                             {this.props.ownDashboard ? (
                                 <Tooltip title='New Worksheet'>
                                     <Button
@@ -320,17 +351,12 @@ class MainPanel extends React.Component<{
                                     </Button>
                                 </Tooltip>
                             ) : null}
-                        </Tabs>
-                    </div>
-                    <TabPanel tabIndex={this.state.tabIndex} index={0}>
+                        </div>
+
                         {this.state.worksheets}
                         {infoMessage}
-                    </TabPanel>
-                    <TabPanel tabIndex={this.state.tabIndex} index={1}>
-                        {this.state.sharedWorksheets}
-                        {infoMessage}
-                    </TabPanel>
-                </Card>
+                    </Card>
+                )}
                 <Dialog
                     open={this.state.newWorksheetShowDialog}
                     onClose={() => this.resetDialog()}
