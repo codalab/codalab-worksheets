@@ -4,7 +4,7 @@ import { default as SideBar } from './SideBar';
 import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 import { withRouter } from 'react-router';
-import { getUser, getUsers } from '../../util/apiWrapper';
+import { defaultErrorHandler, getUser, getUsers } from '../../util/apiWrapper';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -60,7 +60,9 @@ class NewDashboard extends React.Component<{
                 getUsers(this.props.username).then(callback);
             }
         };
-        getUser().then(callback);
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     /** Renderer. */

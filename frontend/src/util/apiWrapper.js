@@ -26,6 +26,10 @@ export const _delete = (url, config) => {
     return axios.delete(url, config).then((res) => res.data);
 };
 
+export const defaultErrorHandler = (error) => {
+    console.error(error);
+};
+
 export const updateEditableField = (url, data) => {
     return patch(url, data);
 };
@@ -174,6 +178,7 @@ export const apiWrapper = {
     post,
     put,
     delete: _delete,
+    defaultErrorHandler,
     patch,
     updateEditableField,
     getUser,

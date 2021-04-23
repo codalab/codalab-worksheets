@@ -5,7 +5,7 @@ import _ from 'underscore';
 import { renderSize, renderDuration } from '../util/worksheet_utils';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import { getUser, updateUser } from '../util/apiWrapper';
+import { defaultErrorHandler, getUser, updateUser } from '../util/apiWrapper';
 /**
  * This stateful component ___.
  */
@@ -47,7 +47,9 @@ class UserInfo extends React.Component {
                 user: this.processData(data),
             });
         };
-        getUser().then(callback);
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     handleChange = (key, value) => {
@@ -62,7 +64,9 @@ class UserInfo extends React.Component {
                 user: this.processData(data),
             });
         };
-        updateUser(newUser).then(callback);
+        updateUser(newUser)
+            .then(callback)
+            .catch(defaultErrorHandler);
     };
 
     /** Renderer. */

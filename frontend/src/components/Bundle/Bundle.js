@@ -56,16 +56,6 @@ class Bundle extends React.Component<
     }
 
     /**
-     * Return a Promise to fetch the summary of the given file.
-     * @param uuid  uuid of bundle
-     * @param path  path within the bundle
-     * @return  jQuery Deferred object
-     */
-    fetchFileSummary(uuid, path) {
-        return fetchFileSummary(uuid, path);
-    }
-
-    /**
      * Fetch bundle data and update the state of this component.
      */
     refreshBundle = () => {
@@ -96,7 +86,7 @@ class Bundle extends React.Component<
             const info = response.data;
             if (!info) return;
             if (info.type === 'file' || info.type === 'link') {
-                return this.fetchFileSummary(this.props.uuid, '/').then((blob) => {
+                return fetchFileSummary(this.props.uuid, '/').then((blob) => {
                     this.setState({ fileContents: blob, stdout: null, stderr: null });
                 });
             } else if (info.type === 'directory') {
@@ -109,7 +99,7 @@ class Bundle extends React.Component<
                     function(name) {
                         if (info.contents.some((entry) => entry.name === name)) {
                             fetchRequests.push(
-                                this.fetchFileSummary(this.props.uuid, '/' + name).then((blob) => {
+                                fetchFileSummary(this.props.uuid, '/' + name).then((blob) => {
                                     stateUpdate[name] = blob;
                                 }),
                             );

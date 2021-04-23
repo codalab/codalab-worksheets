@@ -33,7 +33,13 @@ import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
-import { addItems, apiWrapper, executeCommand, getUser } from '../../../util/apiWrapper';
+import {
+    addItems,
+    apiWrapper,
+    defaultErrorHandler,
+    executeCommand,
+    getUser,
+} from '../../../util/apiWrapper';
 import Tooltip from '@material-ui/core/Tooltip';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
@@ -796,7 +802,9 @@ class Worksheet extends React.Component {
                 userInfo: userInfo,
             });
         };
-        getUser().then(callback);
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     hasEditPermission() {
