@@ -67,14 +67,23 @@ class Bundle extends React.Component<
             bundleInfo.metadataType = response.data.meta.metadata_type;
             this.setState({ bundleInfo: bundleInfo });
         };
+
         let errorHandler = (error) => {
-            this.setState({
-                bundleInfo: null,
-                fileContents: null,
-                stdout: null,
-                stderr: null,
-                errorMessages: this.state.errorMessages.concat([error]),
-            });
+            if (error.response.state === 404) {
+                this.setState({
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                });
+            } else {
+                this.setState({
+                    bundleInfo: null,
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                    errorMessages: this.state.errorMessages.concat([error]),
+                });
+            }
         };
 
         fetchBundleMetadata(this.props.uuid)
@@ -111,16 +120,6 @@ class Bundle extends React.Component<
                 await Promise.all(fetchRequests);
                 this.setState(stateUpdate);
             }
-        };
-
-        errorHandler = (error) => {
-            this.setState({
-                bundleInfo: null,
-                fileContents: null,
-                stdout: null,
-                stderr: null,
-                errorMessages: this.state.errorMessages.concat(error),
-            });
         };
 
         fetchBundleContents(this.props.uuid)
