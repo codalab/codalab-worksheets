@@ -204,15 +204,10 @@ class NavBar extends React.Component<{
 
     handleSearchFocus = () => {
         // Disable the terminal to avoid the search bar text being mirrored in the terminal
-        if ($('#command_line').length > 0) {
-            if (
-                $('#command_line')
-                    .terminal()
-                    .enabled()
-            ) {
-                $('#command_line')
-                    .terminal()
-                    .focus(false);
+        const $cmd = $('#command_line');
+        if ($cmd.length > 0) {
+            if ($cmd.terminal().enabled()) {
+                $cmd.terminal().focus(false);
             }
         }
     };
