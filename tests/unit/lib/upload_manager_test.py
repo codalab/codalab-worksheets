@@ -90,7 +90,9 @@ class UploadManagerTest(unittest.TestCase):
         self.write_string_to_file('testing', os.path.join(source, 'README2'))
         self.write_string_to_file('testing', os.path.join(source, '.DS_Store'))
         self.do_upload([('source.tar.gz', tar_gzip_directory(source))])
-        self.assertEqual(['.DS_Store', 'README', 'README2'], sorted(os.listdir(self.bundle_location)))
+        self.assertEqual(
+            ['.DS_Store', 'README', 'README2'], sorted(os.listdir(self.bundle_location))
+        )
 
     def mock_url_source(self, fileobj, ext=""):
         """Returns a URL that is mocked to return the contents of fileobj.
