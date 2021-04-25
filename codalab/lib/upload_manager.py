@@ -39,21 +39,20 @@ class UploadManager(object):
         |source|: specifies the location of the contents to upload. Each element is
                    either a URL or a tuple (filename, binary file-like object).
         |git|: for URLs, whether |source| is a git repo to clone.
-        |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
+        |unpack|: whether to unpack |source| if it's an archive.
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
         |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         Exceptions:
-        - If |git|, then each source is replaced with the result of running 'git clone |source|'
+        - If |git|, then the bundle contains the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
-            # Note that for uploads with a single source, the directory
-            # structure is simplified at the end.
+            # Note that the directory structure is simplified at the end.
             is_url, is_fileobj, filename = self._interpret_source(source)
             source_output_path = os.path.join(bundle_path, filename)
             if is_url:
