@@ -826,23 +826,6 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid]))
 
-    # Upload multiple URLs from Git
-    uuid = _run_command(
-        [
-            cl,
-            'upload',
-            'https://github.com/codalab/codalab-worksheets',
-            'https://github.com/codalab/codalab.github.io',
-            '--git',
-        ]
-    )
-    check_contains(
-        ['codalab-worksheets', 'codalab.github.io'], _run_command([cl, 'cat', uuid]),
-    )
-    check_contains(
-        ['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid + '/codalab-worksheets'])
-    )
-
 
 @TestModule.register('upload4')
 def test_upload4(ctx):

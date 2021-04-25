@@ -726,8 +726,8 @@ def _update_bundle_contents_blob(uuid):
     Update the contents of the given running or uploading bundle.
 
     Query parameters:
-    - `urls`: (optional) comma-separated list of URLs from which to fetch data
-      to fill the bundle, using this option will ignore any uploaded file data
+    - `urls`: (optional) URL from which to fetch data to fill the bundle;
+      using this option will ignore any uploaded file data. Only supports one URL.
     - `git`: (optional) 1 if URL should be interpreted as git repos to clone
       or 0 otherwise, default is 0.
     - `filename`: (optional) filename of the uploaded file, used to indicate
@@ -773,22 +773,25 @@ def _update_bundle_contents_blob(uuid):
 
     # Store the data.
     try:
-        sources = None
+        source = None
         if request.query.urls:
             sources = query_get_list('urls')
+            if len(sources) != 1:
+                abort(http.client.BAD_REQUEST, "Exactly one url must be provided.")
+            source = sources[0]
         # request without "filename" doesn't need to upload to bundle store
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
-            sources = [(filename, request['wsgi.input'])]
+            source = (filename, request['wsgi.input'])
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         if bundle_link_url:
             # Don't upload to bundle store if using --link, as the path
             # already exists.
             pass
-        elif sources:
+        elif source:
             local.upload_manager.upload_to_bundle_store(
                 bundle,
-                sources=sources,
+                source=source,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
