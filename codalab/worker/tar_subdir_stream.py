@@ -3,7 +3,7 @@ from codalab.lib.beam.ratarmount import FileInfo
 import tarfile
 from io import BytesIO
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, cast
 
 from codalab.worker.un_gzip_stream import BytesBuffer
 from codalab.common import parse_linked_bundle_url
@@ -92,7 +92,7 @@ class TarSubdirStream(BytesIO):
 
             # TODO (Ashwin): Make sure this works with symlinks, too (it should work, but add a test to ensure it).
             full_name = f"{self.linked_bundle_path.archive_subpath}/{member['name']}"
-            member_finfo = self.tf.getFileInfo("/" + full_name)
+            member_finfo = cast(FileInfo, self.tf.getFileInfo("/" + full_name))
             member_tarinfo = tarfile.TarInfo(name="./" + member['name'] if member['name'] else '.')
             for attr in ("size", "mtime", "mode", "type", "linkname", "uid", "gid"):
                 setattr(member_tarinfo, attr, getattr(member_finfo, attr))
