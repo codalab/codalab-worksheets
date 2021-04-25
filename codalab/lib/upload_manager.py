@@ -2,8 +2,7 @@ import os
 import shutil
 from typing import Optional, Union, Tuple, IO, cast
 
-from codalab.common import UsageError
-from codalab.common import StorageType
+from codalab.common import UsageError, StorageType, urlopen_with_retry
 from codalab.lib import crypt_util, file_util, path_util
 from codalab.objects.bundle import Bundle
 
@@ -51,37 +50,24 @@ class UploadManager(object):
         """
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
-            path_util.make_directory(bundle_path)
-            # Note that the directory structure is simplified at the end.
             is_url, is_fileobj, filename = self._interpret_source(source)
-            source_output_path = os.path.join(bundle_path, filename)
             if is_url:
                 assert isinstance(source, str)
                 if git:
-                    source_output_path = file_util.strip_git_ext(source_output_path)
-                    file_util.git_clone(source, source_output_path)
+                    file_util.git_clone(source, bundle_path)
                 else:
-                    file_util.download_url(source, source_output_path)
-                    if unpack and self._can_unpack_file(source_output_path):
-                        self._unpack_file(
-                            source_output_path,
-                            self.zip_util.strip_archive_ext(source_output_path),
-                            remove_source=True,
-                            simplify_archive=simplify_archives,
-                        )
-            elif is_fileobj:
+                    # If downloading from a URL, convert the source to a file object.
+                    is_fileobj = True
+                    source = (filename, urlopen_with_retry(source))
+            if is_fileobj:
                 if unpack and self.zip_util.path_is_archive(filename):
                     self._unpack_fileobj(
-                        source[0],
-                        source[1],
-                        self.zip_util.strip_archive_ext(source_output_path),
-                        simplify_archive=simplify_archives,
+                        source[0], source[1], bundle_path, simplify_archive=simplify_archives,
                     )
                 else:
-                    with open(source_output_path, 'wb') as out:
+                    with open(bundle_path, 'wb') as out:
                         shutil.copyfileobj(cast(IO, source[1]), out)
 
-            self._simplify_directory(bundle_path)
             # is_directory is True if the bundle is a directory and False if it is a single file.
             is_directory = os.path.isdir(bundle_path)
             self._bundle_model.update_bundle(
@@ -105,16 +91,6 @@ class UploadManager(object):
             is_fileobj = True
             filename = source[0]
         return is_url, is_fileobj, filename
-
-    def _can_unpack_file(self, path):
-        return os.path.isfile(path) and self.zip_util.path_is_archive(path)
-
-    def _unpack_file(self, source_path, dest_path, remove_source, simplify_archive):
-        self.zip_util.unpack(self.zip_util.get_archive_ext(source_path), source_path, dest_path)
-        if remove_source:
-            path_util.remove(source_path)
-        if simplify_archive:
-            self._simplify_archive(dest_path)
 
     def _unpack_fileobj(self, source_filename, source_fileobj, dest_path, simplify_archive):
         self.zip_util.unpack(
