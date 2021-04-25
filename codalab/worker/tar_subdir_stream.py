@@ -1,5 +1,5 @@
 from contextlib import ExitStack
-from ratarmount import FileInfo
+from codalab.lib.beam.ratarmount import FileInfo
 import tarfile
 from io import BytesIO
 from dataclasses import dataclass

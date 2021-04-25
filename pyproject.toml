@@ -15,5 +15,6 @@ exclude = '''
    | build
    | frontend
    | var
+   | lib/beam/ratarmount.py
 )/
 '''
