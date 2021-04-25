@@ -37,7 +37,7 @@ jobs:
           restore-keys: |
             pip-
       - name: Ensure the "cl" command can be properly installed.
-      - run: pip install -e . && cl --help
+        run: pip install -e . && cl
 
   test_frontend:
     name: Test Frontend
