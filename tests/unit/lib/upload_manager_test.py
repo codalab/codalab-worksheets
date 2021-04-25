@@ -77,8 +77,8 @@ class UploadManagerTest(unittest.TestCase):
         os.mkdir(source)
         self.write_string_to_file('testing', os.path.join(source, 'README'))
         self.write_string_to_file('testing', os.path.join(source, '.DS_Store'))
-        self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
-        self.assertEqual(['.DS_Store', 'README'], os.listdir(self.bundle_location))
+        self.do_upload([('source.tar.gz', tar_gzip_directory(source))])
+        self.assertEqual(['.DS_Store', 'README'], sorted(os.listdir(self.bundle_location)))
 
     def test_fileobj_tar_gz_with_dsstore_should_not_simplify_archive_2(self):
         """If the user included three files, README, README2, and .DS_Store, in the archive,
@@ -89,10 +89,8 @@ class UploadManagerTest(unittest.TestCase):
         self.write_string_to_file('testing', os.path.join(source, 'README'))
         self.write_string_to_file('testing', os.path.join(source, 'README2'))
         self.write_string_to_file('testing', os.path.join(source, '.DS_Store'))
-        self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
-        self.assertEqual(
-            ['.DS_Store', 'README', 'README2'], sorted(os.listdir(self.bundle_location))
-        )
+        self.do_upload([('source.tar.gz', tar_gzip_directory(source))])
+        self.assertEqual(['.DS_Store', 'README', 'README2'], sorted(os.listdir(self.bundle_location)))
 
     def mock_url_source(self, fileobj, ext=""):
         """Returns a URL that is mocked to return the contents of fileobj.
