@@ -92,7 +92,7 @@ class UploadManagerTest(unittest.TestCase):
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
         self.assertEqual(['.DS_Store', 'README2', 'README'], os.listdir(self.bundle_location))
 
-    def mock_url_sources(self, fileobj, ext=""):
+    def mock_url_source(self, fileobj, ext=""):
         """Returns a URL that is mocked to return the contents of fileobj.
         The URL will end in the extension "ext", if given.
         """
@@ -101,10 +101,10 @@ class UploadManagerTest(unittest.TestCase):
         fileobj.seek(0)
         urllib.request.urlopen = MagicMock()
         urllib.request.urlopen.return_value = addinfourl(fileobj, {"content-length": size}, url)
-        return [url]
+        return url
 
     def test_url(self):
-        self.do_upload(self.mock_url_sources(BytesIO(b'hello world')))
+        self.do_upload(self.mock_url_source(BytesIO(b'hello world')))
         self.check_file_contains_string(self.bundle_location, 'hello world')
 
     def test_url_tar_gz(self):
@@ -113,7 +113,7 @@ class UploadManagerTest(unittest.TestCase):
         self.write_string_to_file('testing', os.path.join(source, 'file1'))
         self.write_string_to_file('testing', os.path.join(source, 'file2'))
         self.do_upload(
-            self.mock_url_sources(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz")
+            self.mock_url_source(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz")
         )
         self.assertIn('file2', os.listdir(self.bundle_location))
 
