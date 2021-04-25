@@ -52,8 +52,7 @@ class UploadManager(object):
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
-            # Note that for uploads with a single source, the directory
-            # structure is simplified at the end.
+            # Note that the directory structure is simplified at the end.
             is_url, is_fileobj, filename = self._interpret_source(source)
             source_output_path = os.path.join(bundle_path, filename)
             if is_url:
