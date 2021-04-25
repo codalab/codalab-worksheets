@@ -224,9 +224,9 @@ class BundleCheckinState(object):
             remote=dct['remote'],
             exitcode=dct['exitcode'],
             failure_message=dct['failure_message'],
+            cpu_usage=dct.get('cpu_usage'),
+            memory_limit=dct.get('memory_limit'),
             bundle_profile_stats=dct.get('bundle_profile_stats'),
-            cpu_usage=dct['cpu_usage'],
-            memory_limit=dct['memory_limit'],
         )
 
     @property
