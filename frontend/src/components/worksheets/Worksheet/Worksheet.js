@@ -1627,7 +1627,7 @@ class Worksheet extends React.Component {
         this.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
-                window.location = '/users';
+                window.location = '/rest/worksheets/?name=dashboard';
             }.bind(this),
             error: function(xhr, status, err) {
                 this.setState({ updating: false });

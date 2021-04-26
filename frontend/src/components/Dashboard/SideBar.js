@@ -160,24 +160,6 @@ class SideBar extends React.Component {
         fetchBundles(0, {});
     }
 
-    viewDashboard() {
-        const url = '/rest/interpret/wsearch';
-        $.ajax({
-            url: url,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({ keywords: ['name=dashboard'] }),
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => {
-                const uuid = data.response[0].uuid;
-                window.location.href = '/worksheets/' + uuid;
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
-    }
     render() {
         const { classes, userInfo } = this.props;
         if (!userInfo) {
@@ -258,9 +240,7 @@ class SideBar extends React.Component {
                         <Button
                             variant='contained'
                             color='primary'
-                            onClick={() => {
-                                this.viewDashboard();
-                            }}
+                            onClick={() => (window.location.href = '/worksheets?name=dashboard')}
                         >
                             View Dashboard
                         </Button>
