@@ -1,4 +1,6 @@
+import tests.unit.azure_blob_mock  # noqa: F401
 import os
+import tarfile
 import tempfile
 import unittest
 import bz2
@@ -14,9 +16,11 @@ from codalab.worker.file_util import (
     read_file_section,
     zip_directory,
     unzip_directory,
+    OpenFile,
 )
 from codalab.worker.un_gzip_stream import un_gzip_stream
 from codalab.worker.un_tar_directory import un_tar_directory
+from tests.unit.worker.download_util_test import AzureBlobTestBase
 
 FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
 IGNORE_TEST_DIR = os.path.join(FILES_DIR, 'ignore_test')
@@ -57,6 +61,71 @@ class FileUtilTest(unittest.TestCase):
 
     def test_gzip_bytestring(self):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
+
+
+class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
+    """Test file util methods that specifically have different code paths
+    for files stored in Azure Blob Storage."""
+
+    def test_get_file_size(self):
+        _, fname = self.create_file()
+        self.assertEqual(get_file_size(fname), 11)
+
+        _, dirname = self.create_directory()
+        self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
+
+    def test_read_file_section(self):
+        _, fname = self.create_file()
+        self.assertEqual(read_file_section(fname, 2, 4), b"llo ")
+
+        _, dirname = self.create_directory()
+        self.assertEqual(read_file_section(f"{dirname}/README.md", 2, 4), b"llo ")
+
+    def test_gzip_stream(self):
+        _, fname = self.create_file()
+        self.assertEqual(un_gzip_stream(gzip_file(fname)).read(), b'hello world')
+
+        _, dirname = self.create_directory()
+        self.assertEqual(un_gzip_stream(gzip_file(f"{dirname}/README.md")).read(), b'hello world')
+
+    def test_open_file(self):
+        _, fname = self.create_file()
+        with OpenFile(fname) as f:
+            self.assertEqual(f.read(), b"hello world")
+
+        _, dirname = self.create_directory()
+
+        # Read single file from directory
+        with OpenFile(f"{dirname}/README.md") as f:
+            self.assertEqual(f.read(), b"hello world")
+
+        # Read entire directory
+        with OpenFile(dirname) as f:
+            self.assertEqual(
+                tarfile.open(fileobj=f, mode='r:gz').getnames(),
+                [
+                    './README.md',
+                    './src',
+                    './src/test.sh',
+                    './dist',
+                    './dist/a',
+                    './dist/a/b',
+                    './dist/a/b/test2.sh',
+                ],
+            )
+
+        # Read a subdirectory
+        with OpenFile(f"{dirname}/src") as f:
+            self.assertEqual(
+                tarfile.open(fileobj=f, mode='r:gz').getnames(), ['.', './test.sh'],
+            )
+
+        # Read a subdirectory with nested children
+        with OpenFile(f"{dirname}/dist") as f:
+            self.assertEqual(
+                tarfile.open(fileobj=f, mode='r:gz').getnames(),
+                ['.', './a', './a/b', './a/b/test2.sh'],
+            )
 
 
 class ArchiveTestBase:
