@@ -171,7 +171,7 @@ class SideBar extends React.Component {
             contentType: 'application/json; charset=utf-8',
             success: (data) => {
                 const uuid = data.response[0].uuid;
-                window.location = '/worksheets/' + uuid;
+                window.location.href = '/worksheets/' + uuid;
             },
             error: (xhr, status, err) => {
                 console.error(xhr.responseText);
