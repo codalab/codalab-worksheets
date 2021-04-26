@@ -56,16 +56,6 @@ class Bundle extends React.Component<
     }
 
     /**
-     * Return a Promise to fetch the summary of the given file.
-     * @param uuid  uuid of bundle
-     * @param path  path within the bundle
-     * @return  jQuery Deferred object
-     */
-    fetchFileSummary(uuid, path) {
-        return fetchFileSummary(uuid, path);
-    }
-
-    /**
      * Fetch bundle data and update the state of this component.
      */
     refreshBundle = () => {
@@ -77,14 +67,23 @@ class Bundle extends React.Component<
             bundleInfo.metadataType = response.data.meta.metadata_type;
             this.setState({ bundleInfo: bundleInfo });
         };
+
         let errorHandler = (error) => {
-            this.setState({
-                bundleInfo: null,
-                fileContents: null,
-                stdout: null,
-                stderr: null,
-                errorMessages: this.state.errorMessages.concat([error]),
-            });
+            if (error.response.status === 404) {
+                this.setState({
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                });
+            } else {
+                this.setState({
+                    bundleInfo: null,
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                    errorMessages: this.state.errorMessages.concat([error]),
+                });
+            }
         };
 
         fetchBundleMetadata(this.props.uuid)
@@ -96,7 +95,7 @@ class Bundle extends React.Component<
             const info = response.data;
             if (!info) return;
             if (info.type === 'file' || info.type === 'link') {
-                return this.fetchFileSummary(this.props.uuid, '/').then((blob) => {
+                return fetchFileSummary(this.props.uuid, '/').then((blob) => {
                     this.setState({ fileContents: blob, stdout: null, stderr: null });
                 });
             } else if (info.type === 'directory') {
@@ -109,7 +108,7 @@ class Bundle extends React.Component<
                     function(name) {
                         if (info.contents.some((entry) => entry.name === name)) {
                             fetchRequests.push(
-                                this.fetchFileSummary(this.props.uuid, '/' + name).then((blob) => {
+                                fetchFileSummary(this.props.uuid, '/' + name).then((blob) => {
                                     stateUpdate[name] = blob;
                                 }),
                             );
@@ -121,16 +120,6 @@ class Bundle extends React.Component<
                 await Promise.all(fetchRequests);
                 this.setState(stateUpdate);
             }
-        };
-
-        errorHandler = (error) => {
-            this.setState({
-                bundleInfo: null,
-                fileContents: null,
-                stdout: null,
-                stderr: null,
-                errorMessages: this.state.errorMessages.concat(error),
-            });
         };
 
         fetchBundleContents(this.props.uuid)

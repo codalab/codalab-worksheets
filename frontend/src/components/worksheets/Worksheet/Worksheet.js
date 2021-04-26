@@ -33,12 +33,17 @@ import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
-import { addItems, executeCommand, getUser } from '../../../util/apiWrapper';
+import {
+    addItems,
+    apiWrapper,
+    defaultErrorHandler,
+    executeCommand,
+    getUser,
+} from '../../../util/apiWrapper';
 import Tooltip from '@material-ui/core/Tooltip';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import queryString from 'query-string';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import { Popover } from '@material-ui/core';
 
@@ -119,19 +124,9 @@ class Worksheet extends React.Component {
             brief: props.brief ? 1 : 0,
         };
 
-        $.ajax({
-            type: 'GET',
-            url:
-                '/rest/interpret/worksheet/' +
-                this.state.ws.uuid +
-                '?' +
-                queryString.stringify(queryParams),
-            // TODO: migrate to using main API
-            // url: '/rest/worksheets/' + ws.uuid,
-            async: props.async,
-            dataType: 'json',
-            cache: false,
-            success: function(info) {
+        apiWrapper
+            .fetchWorksheet(this.state.ws.uuid, queryParams)
+            .then((info) => {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
                 info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
                 this.setState({
@@ -141,11 +136,8 @@ class Worksheet extends React.Component {
                     },
                 });
                 props.success(info);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
+            })
+            .catch((error) => props.error(error));
     }
 
     saveWorksheet(props) {
@@ -155,40 +147,28 @@ class Worksheet extends React.Component {
         props.success = props.success || function(data) {};
         props.error = props.error || function(xhr, status, err) {};
         $('#save_error').hide();
-        $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/rest/worksheets/' + this.state.ws.uuid + '/raw',
-            dataType: 'json',
-            data: this.state.ws.info.source.join('\n'),
-            success: function(data) {
+        apiWrapper
+            .saveWorksheet(this.state.ws.uuid, this.state.ws.info.source.join('\n'))
+            .then((data) => {
                 console.log('Saved worksheet ' + this.state.ws.uuid);
                 props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
+            })
+            .catch((error) => {
+                props.error(error);
+            });
     }
 
     deleteWorksheet(props) {
         if (this.state.ws.info === undefined) return;
         $('#update_progress').show();
         $('#save_error').hide();
-        $.ajax({
-            type: 'DELETE',
-            cache: false,
-            url: '/rest/worksheets?force=1',
-            contentType: 'application/json',
-            data: JSON.stringify({ data: [{ id: this.state.ws.info.uuid, type: 'worksheets' }] }),
-            success: function(data) {
+        apiWrapper
+            .deleteWorksheet(this.state.ws.info.uuid)
+            .then((data) => {
                 console.log('Deleted worksheet ' + this.state.ws.info.uuid);
                 props.success && props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error && props.error(xhr, status, err);
-            },
-        });
+            })
+            .catch((error) => props.error && props.error(error));
     }
 
     _setfocusIndex(index) {
@@ -822,7 +802,9 @@ class Worksheet extends React.Component {
                 userInfo: userInfo,
             });
         };
-        getUser().then(callback);
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     hasEditPermission() {
@@ -1197,12 +1179,10 @@ class Worksheet extends React.Component {
                 return 'bundle_uuid=' + bundle_uuid;
             })
             .join('&');
-        $.ajax({
-            type: 'GET',
-            url: '/rest/interpret/worksheet/' + worksheetUuid + '?' + queryParams,
-            dataType: 'json',
-            cache: false,
-            success: function(worksheet_content) {
+        const url = '/rest/interpret/worksheet/' + worksheetUuid + '?' + queryParams;
+        apiWrapper
+            .get(url)
+            .then((worksheet_content) => {
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.blocks) {
                         self.reloadWorksheet(worksheet_content.blocks);
@@ -1218,15 +1198,14 @@ class Worksheet extends React.Component {
                     }, delayTime);
                     startTime = endTime;
                 }
-            }.bind(this),
-            error: (xhr, status, err) => {
+            })
+            .catch((error) => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: xhr.responseText,
+                    errorDialogMessage: error,
                 });
                 $('#worksheet_container').hide();
-            },
-        });
+            });
     };
 
     // Everytime the worksheet is updated, checkRunBundle will loop through all the bundles and find the "unfinished" ones (not ready or failed).
@@ -1591,13 +1570,13 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 this.reloadWorksheet(undefined, rawIndex);
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function(error) {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: xhr.responseText,
+                    errorDialogMessage: error,
                 });
                 if (fromRaw) {
                     this.toggleSourceEditMode(true);

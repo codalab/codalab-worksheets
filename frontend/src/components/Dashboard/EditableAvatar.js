@@ -14,7 +14,7 @@ import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../util/worksheet_utils';
 import Avatar from '@material-ui/core/Avatar';
 import ButtonBase from '@material-ui/core/ButtonBase';
-import { post, updateUser, uploadImgAsync } from '../../util/apiWrapper';
+import { defaultErrorHandler, post, updateUser, uploadImgAsync } from '../../util/apiWrapper';
 
 const styles = (theme) => ({
     root: {
@@ -210,7 +210,7 @@ class EditableAvatar extends React.Component {
         newUser.id = this.props.userInfo.user_id;
 
         // Push changes to server
-        updateUser(newUser);
+        updateUser(newUser).catch(defaultErrorHandler);
     }
 
     // Callback function for avatar editor to upload the adjusted avatar

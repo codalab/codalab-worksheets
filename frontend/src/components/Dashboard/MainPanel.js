@@ -23,7 +23,7 @@ import ErrorIcon from '@material-ui/icons/Error';
 import SuccessIcon from '@material-ui/icons/CheckCircle';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
-import { executeCommand, navBarSearch } from '../../util/apiWrapper';
+import { defaultErrorHandler, executeCommand, navBarSearch } from '../../util/apiWrapper';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -164,7 +164,9 @@ class MainPanel extends React.Component<{
             ));
             this.setState({ worksheets });
         };
-        navBarSearch(['owner=' + this.props.userInfo.user_name]).then(callback);
+        navBarSearch(['owner=' + this.props.userInfo.user_name])
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {

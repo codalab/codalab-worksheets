@@ -8,6 +8,7 @@ import 'react-circular-progressbar/dist/styles.css';
 import { getDefaultBundleMetadata, createAlertText } from '../../../util/worksheet_utils';
 import { FILE_SIZE_LIMIT_B, FILE_SIZE_LIMIT_GB } from '../../../constants';
 import { createFileBundle, getQueryParams } from '../../../util/apiWrapper';
+import axios from 'axios';
 
 class NewUpload extends React.Component<{
     /** JSS styling object. */
@@ -54,42 +55,25 @@ class NewUpload extends React.Component<{
                     bytesArray = new Uint8Array(arrayBuffer);
                 let url =
                     '/rest/bundles/' + bundleUuid + '/contents/blob/?' + getQueryParams(file.name);
-                $.ajax({
-                    url: url,
-                    type: 'PUT',
+                const config = {
+                    onUploadProgress: (evt) => {
+                        console.log(evt);
+                        if (evt.lengthComputable) {
+                            const percentComplete = parseInt((evt.loaded / evt.total) * 100);
+                            this.setState({ percentComplete });
+                        }
+                    },
                     contentType: 'application/octet-stream',
-                    data: new Blob([bytesArray]),
-                    processData: false,
-                    xhr: () => {
-                        let xhr = new window.XMLHttpRequest();
-                        xhr.upload.addEventListener(
-                            'progress',
-                            (evt) => {
-                                if (evt.lengthComputable) {
-                                    this.setState((prevState) => {
-                                        return {
-                                            numeratorComplete:
-                                                prevState.numeratorComplete + evt.loaded,
-                                            denominatorComplete:
-                                                prevState.denominatorComplete + evt.total,
-                                        };
-                                    });
-                                }
-                            },
-                            false,
-                        );
-                        return xhr;
-                    },
-                    success: function(data) {
-                        resolve(data);
-                    },
-                    error: function(error) {
+                };
+                axios
+                    .put(url, new Blob([bytesArray]), config)
+                    .then(({ data }) => resolve(data))
+                    .catch((error) => {
                         this.clearProgress();
                         alert(createAlertText(error.responseText, 'refresh and try again.'));
                         this.props.onUploadFinish();
                         reject(error);
-                    }.bind(this),
-                });
+                    });
             };
             reader.readAsArrayBuffer(file);
         });
@@ -198,27 +182,17 @@ class NewUpload extends React.Component<{
             '/contents/blob/?' +
             getQueryParams(folderName + '.zip');
         try {
-            await $.ajax({
-                url: url,
-                type: 'PUT',
-                contentType: 'application/octet-stream',
-                data: new Blob([bytesArray]),
-                processData: false,
-                xhr: () => {
-                    let xhr = new window.XMLHttpRequest();
-                    xhr.upload.addEventListener(
-                        'progress',
-                        (evt) => {
-                            if (evt.lengthComputable) {
-                                const percentComplete = parseInt((evt.loaded / evt.total) * 100);
-                                this.setState({ percentComplete });
-                            }
-                        },
-                        false,
-                    );
-                    return xhr;
+            const config = {
+                onUploadProgress: (evt) => {
+                    console.log(evt);
+                    if (evt.lengthComputable) {
+                        const percentComplete = parseInt((evt.loaded / evt.total) * 100);
+                        this.setState({ percentComplete });
+                    }
                 },
-            });
+                contentType: 'application/octet-stream',
+            };
+            await axios.put(url, new Blob([bytesArray]), config);
             this.clearProgress();
             const moveIndex = true;
             const param = { moveIndex };
@@ -226,6 +200,7 @@ class NewUpload extends React.Component<{
             this.props.onUploadFinish();
         } catch (error) {
             this.clearProgress();
+            console.log(error);
             alert(createAlertText(url, error.responseText, 'refresh and try again.'));
             this.props.onUploadFinish();
         }

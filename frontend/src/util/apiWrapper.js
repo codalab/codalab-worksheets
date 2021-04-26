@@ -13,17 +13,21 @@ export const post = (url, data, config) => {
     return axios.post(url, data, config).then((res) => res.data);
 };
 
-export const put = (url, data) => {
-    return axios.put(url, data).then((res) => res.data);
+export const put = (url, data, config) => {
+    return axios.put(url, data, config).then((res) => res.data);
 };
 
-export const patch = (url, data) => {
-    return axios.patch(url, data).then((res) => res.data);
+export const patch = (url, data, config) => {
+    return axios.patch(url, data, config).then((res) => res.data);
 };
 
 // prefixed with underscored because delete is a reserved word in javascript
-export const _delete = (url) => {
-    return axios.delete(url).then((res) => res.data);
+export const _delete = (url, config) => {
+    return axios.delete(url, config).then((res) => res.data);
+};
+
+export const defaultErrorHandler = (error) => {
+    console.error(error);
 };
 
 export const updateEditableField = (url, data) => {
@@ -153,11 +157,28 @@ export const uploadImgAsync = (bundleUuid, file, fileName, errorHandler) => {
     });
 };
 
+export const fetchWorksheet = (uuid, queryParams) => {
+    const url = '/rest/interpret/worksheet/' + uuid;
+    return get(url, queryParams);
+};
+
+export const saveWorksheet = (uuid, data) => {
+    const url = '/rest/worksheets/' + uuid + '/raw';
+    return post(url, data);
+};
+
+export const deleteWorksheet = (uuid) => {
+    const url = '/rest/worksheets?force=1';
+    const data = { data: [{ id: uuid, type: 'worksheets' }] };
+    return _delete(url, { data });
+};
+
 export const apiWrapper = {
     get,
     post,
     put,
     delete: _delete,
+    defaultErrorHandler,
     patch,
     updateEditableField,
     getUser,
@@ -175,4 +196,7 @@ export const apiWrapper = {
     createFileBundle,
     uploadImgAsync,
     getQueryParams,
+    saveWorksheet,
+    fetchWorksheet,
+    deleteWorksheet,
 };
