@@ -30,6 +30,14 @@ jobs:
           restore-keys: |
             pip-
       - run: ./pre-commit.sh && git diff --exit-code
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - name: Ensure the "cl" command can be properly installed.
+        run: pip install -e . && cl
 
   test_frontend:
     name: Test Frontend
