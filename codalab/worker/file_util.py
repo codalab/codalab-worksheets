@@ -15,8 +15,8 @@ from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
-from ratarmount import SQLiteIndexedTar
-from typing import IO
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
+from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -240,7 +240,7 @@ class OpenFile(object):
             with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
                 isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
                 fpath = "/" + linked_bundle_path.archive_subpath
-                finfo = tf.getFileInfo(fpath)
+                finfo = cast(FileInfo, tf.getFileInfo(fpath))
                 if finfo is None:
                     raise FileNotFoundError(fpath)
                 if isdir(finfo):
