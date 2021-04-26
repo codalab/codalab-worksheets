@@ -37,6 +37,18 @@ class Bundle(ORMObject):
     BUNDLE_TYPE: str
     METADATA_SPECS: list
 
+    # Types for columns
+    uuid: str
+    bundle_type: str
+    command: str
+    data_hash: str
+    state: str
+    owner_id: str
+    frozen: bool
+    is_anonymous: bool
+    storage_type: str
+    is_dir: bool
+
     @classmethod
     def construct(cls, *args, **kwargs):
         raise NotImplementedError
