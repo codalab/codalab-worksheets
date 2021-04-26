@@ -188,17 +188,8 @@ def pack_files_for_upload(
         return None if should_exclude(tarinfo.name) else tarinfo
 
     for source in sources:
-        if should_unpack and path_is_archive(source):
-            # Unpack archive into scratch space
-            dest_basename = strip_archive_ext(os.path.basename(source))
-            dest_path = os.path.join(scratch_dir, dest_basename)
-            unpack(get_archive_ext(source), source, dest_path)
-
-            # Add file or directory to archive
-            archive.add(dest_path, arcname=dest_basename, recursive=True)
-        else:
-            # Add file to archive, or add files recursively if directory
-            archive.add(source, arcname=os.path.basename(source), recursive=True, filter=filter)
+        # Add file to archive, or add files recursively if directory
+        archive.add(source, arcname=os.path.basename(source), recursive=True, filter=filter)
 
     # Clean up, rewind archive file, and return it
     archive.close()
