@@ -361,7 +361,8 @@ class DownloadManager(object):
     def _get_read_response_stream(self, response_socket_id):
         with closing(self._worker_model.start_listening(response_socket_id)) as sock:
             header_message = self._worker_model.get_json_message(sock, 60)
-            precondition(header_message is not None, 'Unable to reach worker')
+            if header_message is None:
+                logging.info('Unable to reach worker')
             if 'error_code' in header_message:
                 raise http_error_to_exception(
                     header_message['error_code'], header_message['error_message']
@@ -378,6 +379,7 @@ class DownloadManager(object):
 
 class Deallocating(object):
     """
+    Deallocates the socket when closed.
     Deallocates the socket when closed.
     """
 
