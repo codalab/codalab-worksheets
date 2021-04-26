@@ -14,8 +14,8 @@ const VerifySuccess = (props) => {
                         {props.auth.isAuthenticated && (
                             <p className='user-authenticated'>
                                 Check out your{' '}
-                                <NavLink to='/worksheets?name=dashboard' tabIndex={2}>
-                                    dashboard
+                                <NavLink to='/users' tabIndex={2}>
+                                    profile
                                 </NavLink>{' '}
                                 to get started.
                             </p>
@@ -23,10 +23,7 @@ const VerifySuccess = (props) => {
                         {!props.auth.isAuthenticated && (
                             <p className='user-not-authenticated'>
                                 <a
-                                    href={
-                                        '/account/login?next=' +
-                                        encodeURIComponent('/rest/worksheets/?name=dashboard')
-                                    }
+                                    href={'/account/login?next=' + encodeURIComponent('/users')}
                                     target='_self'
                                 >
                                     Sign In
