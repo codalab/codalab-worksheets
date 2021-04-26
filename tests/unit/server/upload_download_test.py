@@ -196,9 +196,6 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
             git=False,
             unpack=True,
             simplify_archives=True,
@@ -210,9 +207,6 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
         self.upload_manager.upload_to_bundle_store(
             bundle,
             sources,
-            follow_symlinks=False,
-            exclude_patterns=None,
-            remove_sources=False,
             git=False,
             unpack=False,
             simplify_archives=True,
