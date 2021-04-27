@@ -107,7 +107,7 @@ const BundleDetail = ({
                 setFileContents(null);
                 setStderr(null);
                 setStdout(null);
-                setErrorMessages((errorMessages) => errorMessages.concat([xhr.responseText]));
+                setErrorMessages((errorMessages) => errorMessages.concat([error]));
             } else {
                 // If contents aren't available yet, then also clear stdout and stderr.
                 setFileContents(null);
