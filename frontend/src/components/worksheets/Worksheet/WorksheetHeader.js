@@ -40,6 +40,7 @@ export default ({
     toggleCmdDialog,
     toggleCmdDialogNoEvent,
     toggleInformationModal,
+    onError,
     copiedBundleIds,
     showPasteButton,
     toggleWorksheetSize,
@@ -78,6 +79,7 @@ export default ({
                                         value={info && info.name}
                                         uuid={info && info.uuid}
                                         onChange={() => reloadWorksheet()}
+                                        onError={onError}
                                     />
                                     &nbsp;by&nbsp;
                                     {info.owner_name ? info.owner_name : '<anonymous>'}

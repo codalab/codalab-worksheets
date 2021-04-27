@@ -73,8 +73,12 @@ class EditableFieldBase extends React.Component<{
                 if (this.props.onChange) this.props.onChange(this.state.value);
             })
             .fail(function(response, status, err) {
-                // TODO: this doesn't stop the value from updating in the frontend
-                console.log('Invalid value entered: ', response.responseText);
+                if (this.props.onError)
+                    this.props.onError('Invalid value entered: ' + response.responseText);
+                // Restore the original value
+                this.setState({
+                    value: this.props.value,
+                });
             });
     };
 
