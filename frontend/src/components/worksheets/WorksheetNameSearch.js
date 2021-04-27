@@ -21,7 +21,7 @@ export default class extends React.Component {
         try {
             const response = await fetch(`/rest/worksheets?specs=${name}`).then((e) => e.json());
             const uuid = response.data[0].id;
-            this.props.history.push(`/worksheets/${uuid}/`);
+            this.props.history.replace(`/worksheets/${uuid}/`);
         } catch (e) {
             // Error shouldn't happen anymore, keeping just in case
             console.error(e);
