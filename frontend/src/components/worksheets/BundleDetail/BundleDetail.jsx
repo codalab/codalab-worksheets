@@ -11,8 +11,7 @@ import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
-import { fetchFileSummary } from '../../../util/apiWrapper';
-import axios from 'axios';
+import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
 
 const BundleDetail = ({
     uuid,
@@ -101,9 +100,9 @@ const BundleDetail = ({
     });
 
     const fetcherContents = (url) =>
-        axios.get(url).catch((error) => {
+        apiWrapper.get(url).catch((error) => {
             // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-            if (xhr.status !== 404) {
+            if (!error || !error.status || error.response.status !== 404) {
                 setBundleInfo(null);
                 setFileContents(null);
                 setStderr(null);
@@ -160,7 +159,7 @@ const BundleDetail = ({
     useSWR(urlContents, fetcherContents, {
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
-        onSuccess: (response, key, config) => {
+        onSuccess: (response) => {
             updateBundleDetail(response);
         },
     });
