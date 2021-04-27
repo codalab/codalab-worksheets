@@ -378,6 +378,13 @@ class Worksheet extends React.Component {
         this.setState({ openedDialog: null, errorDialogMessage: '' });
     };
 
+    openErrorMessageDialog = (message) => {
+        this.setState({
+            openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+            errorDialogMessage: message,
+        });
+    };
+
     executeBundleCommand = (cmd_type) => () => {
         this.handleSelectedBundleCommand(cmd_type);
         this.toggleCmdDialogNoEvent(cmd_type);
@@ -1954,6 +1961,7 @@ class Worksheet extends React.Component {
                     toggleCmdDialog={this.toggleCmdDialog}
                     toggleInformationModal={this.toggleInformationModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                    openErrorMessageDialog={this.openErrorMessageDialog}
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
