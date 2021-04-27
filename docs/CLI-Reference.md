@@ -13,7 +13,7 @@ Usage: `cl <command> <arguments>`
       upload <url>             : Upload one bundle whose file contents is downloaded from <url>.
     Most of the other arguments specify metadata fields.
     Arguments:
-      path                       Paths (or URLs) of the files/directories to upload.
+      path                       Paths of the files/directories to upload, or a single URL to upload.
       -c, --contents             Specify the string contents of the bundle.
       -L, --follow-symlinks      Always dereference (follow) symlinks.
       -x, --exclude-patterns     Exclude these file patterns.
