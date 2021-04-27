@@ -79,7 +79,7 @@ export default ({
                                         value={info && info.name}
                                         uuid={info && info.uuid}
                                         onChange={() => reloadWorksheet()}
-                                        onError={(message) => openErrorMessageDialog(message)}
+                                        onError={openErrorMessageDialog}
                                     />
                                     &nbsp;by&nbsp;
                                     {info.owner_name ? info.owner_name : '<anonymous>'}
