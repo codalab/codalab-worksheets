@@ -826,7 +826,7 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid]))
 
-    # Upload multiple URLs is not supported
+    # Uploading multiple URLs is not supported
     _run_command(
         [cl, 'upload', 'https://www.wikipedia.org', 'https://www.wikipedia.org'],
         expected_exit_code=1,
