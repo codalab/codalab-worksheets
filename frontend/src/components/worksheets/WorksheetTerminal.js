@@ -187,15 +187,12 @@ class WorksheetTerminal extends React.Component {
             });
     }
     completeCommand(command) {
-        return new Promise((resolve, reject) => {
-            apiWrapper
-                .completeCommand(command, this.props.ws.info.uuid)
-                .then((data) => resolve(data.completions))
-                .catch((error) => {
-                    console.error(error);
-                    reject();
-                });
-        });
+        return apiWrapper
+            .completeCommand(command, this.props.ws.info.uuid)
+            .then((data) => data.completions)
+            .catch((error) => {
+                console.error(error);
+            });
     }
     componentWillUnmount() {}
     componentDidUpdate() {}
