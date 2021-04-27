@@ -288,7 +288,7 @@ class MainPanel extends React.Component<{
         const { classes } = this.props;
         const infoMessage = (
             <div className={classes.infoBox}>
-                <div>Display only the first 100 worksheets</div>
+                <div>Note: this page only displays up to the first 100 worksheets.</div>
             </div>
         );
         return (
