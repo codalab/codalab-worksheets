@@ -1,4 +1,16 @@
+import math
 import os
+import stat
+import tarfile
+import logging
+import traceback
+from typing import Any, Iterable, Generator, Optional, Union, cast, Dict
+from typing_extensions import TypedDict
+
+from apache_beam.io.filesystems import FileSystems
+from codalab.common import parse_linked_bundle_url
+from codalab.worker.file_util import OpenIndexedTarGzFile
+from codalab.lib.beam.ratarmount import FileInfo
 
 
 class PathException(Exception):
@@ -37,7 +49,22 @@ class BundleTarget:
         return "{}:{}".format(self.bundle_uuid, self.subpath)
 
 
-def get_target_info(bundle_path, target, depth):
+TargetInfo = TypedDict(
+    'TargetInfo',
+    {
+        "name": str,
+        "size": int,
+        "perm": int,
+        "link": Optional[str],
+        "type": str,
+        "contents": Optional[Iterable[Any]],
+        "resolved_target": Optional[BundleTarget],
+    },
+    total=False,
+)
+
+
+def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> TargetInfo:
     """
     Generates an index of the contents of the given path. The index contains
     the fields:
@@ -59,19 +86,32 @@ def get_target_info(bundle_path, target, depth):
     If reading the given path is not secure, raises a PathException.
     """
     final_path = _get_normalized_target_path(bundle_path, target)
+    if parse_linked_bundle_url(final_path).uses_beam:
+        # If the target is on Blob Storage, use a Blob-specific method
+        # to get the target info.
+        try:
+            info = _compute_target_info_blob(final_path, depth)
+        except Exception:
+            logging.error(
+                "Path '{}' in bundle {} not found: {}".format(
+                    target.subpath, target.bundle_uuid, traceback.format_exc()
+                )
+            )
+            raise PathException(
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
+            )
+    else:
+        if not os.path.islink(final_path) and not os.path.exists(final_path):
+            raise PathException(
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
+            )
+        info = _compute_target_info_local(final_path, depth)
 
-    if not os.path.islink(final_path) and not os.path.exists(final_path):
-        raise PathException(
-            'Path {} in bundle {} not found'.format(target.bundle_uuid, target.subpath)
-        )
-
-    info = _compute_target_info(final_path, depth)
     info['resolved_target'] = target
-
     return info
 
 
-def get_target_path(bundle_path, target):
+def get_target_path(bundle_path: str, target: BundleTarget) -> str:
     """
     Returns the path to the given target, which is assumed to exist.
     If reading the given path is not secure, raises a PathException.
@@ -90,9 +130,17 @@ def get_target_path(bundle_path, target):
 BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 
-def _get_normalized_target_path(bundle_path, target):
-    real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, target.subpath))
+def _get_normalized_target_path(bundle_path: str, target: BundleTarget) -> str:
+    if parse_linked_bundle_url(bundle_path).uses_beam:
+        # On Azure, don't call os.path functions on the paths (which are azfs:// URLs).
+        # We can just concatenate them together.
+        return f"{bundle_path}/{target.subpath}" if target.subpath else bundle_path
+    else:
+        real_bundle_path = os.path.realpath(bundle_path)
+        normalized_target_path = os.path.normpath(
+            _get_target_path(real_bundle_path, target.subpath)
+        )
+
     error_path = _get_target_path(target.bundle_uuid, target.subpath)
 
     if not normalized_target_path.startswith(real_bundle_path):
@@ -110,12 +158,15 @@ def _get_target_path(bundle_path, path):
         return bundle_path
 
 
-def _compute_target_info(path, depth):
-    result = {}
-    result['name'] = os.path.basename(path)
+def _compute_target_info_local(path: str, depth: Union[int, float]) -> TargetInfo:
+    """Computes target info for a local file."""
     stat = os.lstat(path)
-    result['size'] = stat.st_size
-    result['perm'] = stat.st_mode & 0o777
+    result: TargetInfo = {
+        'name': os.path.basename(path),
+        'size': stat.st_size,
+        'perm': stat.st_mode & 0o777,
+        'type': '',
+    }
     if os.path.islink(path):
         result['type'] = 'link'
         result['link'] = os.readlink(path)
@@ -125,9 +176,133 @@ def _compute_target_info(path, depth):
         result['type'] = 'directory'
         if depth > 0:
             result['contents'] = [
-                _compute_target_info(os.path.join(path, file_name), depth - 1)
+                _compute_target_info_local(os.path.join(path, file_name), depth - 1)
                 for file_name in os.listdir(path)
             ]
     if result is None:
         raise PathException()
     return result
+
+
+def _compute_target_info_blob(
+    path: str, depth: Union[int, float], return_generators=False
+) -> TargetInfo:
+    """Computes target info for a file that is externalized on Blob Storage, meaning
+    that it's contained within an indexed .tar.gz file.
+
+    Args:
+        path (str): The path that refers to the specified target.
+        depth (Union[int, float]): Depth until which directory contents are resolved.
+        return_generators (bool, optional): If set to True, the 'contents' key of directories is equal to a generator instead of a list. Defaults to False.
+
+    Raises:
+        PathException: Path not found or invalid.
+
+    Returns:
+        TargetInfo: Target info of specified path.
+    """
+
+    linked_bundle_path = parse_linked_bundle_url(path)
+    if not FileSystems.exists(linked_bundle_path.bundle_path):
+        raise PathException(linked_bundle_path.bundle_path)
+    if not linked_bundle_path.is_archive:
+        # Single file
+        raise PathException(
+            "Single files on Blob Storage are not supported; only a path within a .tar.gz file is supported."
+        )
+
+    # process_contents is used to process the value of the 'contents' key (which is a generator) before it is returned.
+    # If return_generators is False, it resolves the given generator into a list; otherwise, it just returns
+    # the generator unchanged.
+    process_contents = list if return_generators is False else lambda x: x
+
+    with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
+        islink = lambda finfo: stat.S_ISLNK(finfo.mode)
+        readlink = lambda finfo: finfo.linkname
+
+        isfile = lambda finfo: finfo.type in tarfile.REGULAR_TYPES
+        isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+        listdir = lambda path: cast(Dict[str, FileInfo], tf.getFileInfo(path, listDir=True) or {})
+
+        def _get_info(path: str, depth: Union[int, float]) -> TargetInfo:
+            """This function is called to get the target info of the specified path.
+            If the specified path is a directory and additional depth is requested, this
+            function is recursively called to retrieve the target info of files within
+            the directory, much like _compute_target_info_local.
+            """
+            if not path.startswith("/"):
+                path = "/" + path
+            finfo = cast(FileInfo, tf.getFileInfo(path))
+            if finfo is None:
+                # Not found
+                raise PathException("File not found.")
+            result: TargetInfo = {
+                'name': os.path.basename(path),  # get last part of path
+                'size': finfo.size,
+                'perm': finfo.mode & 0o777,
+                'type': '',
+            }
+            if islink(finfo):
+                result['type'] = 'link'
+                result['link'] = readlink(finfo)
+            elif isfile(finfo):
+                result['type'] = 'file'
+            elif isdir(finfo):
+                result['type'] = 'directory'
+                if depth > 0:
+                    result['contents'] = process_contents(
+                        _get_info(path + "/" + file_name, depth - 1)
+                        for file_name in listdir(path)
+                        if file_name != "."
+                    )
+            return result
+
+        if linked_bundle_path.archive_subpath:
+            # Return the contents of a subpath within a directory.
+            return _get_info(linked_bundle_path.archive_subpath, depth)
+        else:
+            # No subpath, return the entire directory with the bundle
+            # contents in it. The permissions of this directory
+            # cannot be set by the user (the user can only set permissions
+            # of files *within* this directory that are part of the bundle
+            # itself), so we just return a placeholder value of 0o755
+            # for this directory's permissions.
+            file = FileSystems.match([path])[0].metadata_list[0]
+            result: TargetInfo = {
+                'name': linked_bundle_path.bundle_uuid,
+                'type': 'directory',
+                'size': file.size_in_bytes,
+                'perm': 0o755,
+            }
+            if depth > 0:
+                result['contents'] = process_contents(
+                    _get_info(file_name, depth - 1)
+                    for file_name in listdir("/")
+                    if file_name != "."
+                )
+            return result
+
+
+def compute_target_info_blob_descendants_flat(path: str) -> Generator[TargetInfo, None, None]:
+    """Given a path on Blob Storage,
+    returns a generator that generates a flat list of all descendants within that directory
+    in the format [{name, type, size, perm}], where `name` is equal to the full path of each item.
+
+    Also includes an entry for the specified directory with `name` equal to an empty string.
+
+    This function is used by TarSubdirStream in order to determine the list of descendants
+    that exist inside a given subdirectory in a .tar.gz file on Blob Storage.
+    """
+    target_info = _compute_target_info_blob(
+        path=path, depth=math.inf, return_generators=True
+    )  # We want to return a generator so that we can expand *all* descendants without adding additional overhead.
+
+    def get_results(tinfo: TargetInfo, prefix="") -> Generator[TargetInfo, None, None]:
+        yield cast(TargetInfo, dict(tinfo, contents=None, name=prefix + tinfo["name"]))
+        for t in tinfo.get('contents') or []:
+            yield from get_results(t, prefix + tinfo['name'] + '/')
+
+    yield cast(TargetInfo, dict(target_info, contents=None, name=""))
+    for t in target_info.get('contents') or []:
+        print("CONTENTT", t)
+        yield from get_results(t)
