@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Optional, List, Union, Tuple, IO, cast
+from typing import Optional, Union, Tuple, IO, cast
 
 from codalab.common import UsageError
 from codalab.common import StorageType
@@ -27,7 +27,7 @@ class UploadManager(object):
     def upload_to_bundle_store(
         self,
         bundle: Bundle,
-        sources: List[Source],
+        source: Source,
         git: bool,
         unpack: bool,
         simplify_archives: bool,
@@ -36,57 +36,52 @@ class UploadManager(object):
         """
         Uploads contents for the given bundle to the bundle store.
 
-        |sources|: specifies the locations of the contents to upload. Each element is
+        |source|: specifies the location of the contents to upload. Each element is
                    either a URL or a tuple (filename, binary file-like object).
         |git|: for URLs, whether |source| is a git repo to clone.
-        |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
+        |unpack|: whether to unpack |source| if it's an archive.
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
         |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
-        If |sources| contains one source, then the bundle contents will be that source.
-        Otherwise, the bundle contents will be a directory with each of the sources.
         Exceptions:
-        - If |git|, then each source is replaced with the result of running 'git clone |source|'
+        - If |git|, then the bundle contains the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
-            # Note that for uploads with a single source, the directory
-            # structure is simplified at the end.
-            for source in sources:
-                is_url, is_fileobj, filename = self._interpret_source(source)
-                source_output_path = os.path.join(bundle_path, filename)
-                if is_url:
-                    assert isinstance(source, str)
-                    if git:
-                        source_output_path = file_util.strip_git_ext(source_output_path)
-                        file_util.git_clone(source, source_output_path)
-                    else:
-                        file_util.download_url(source, source_output_path)
-                        if unpack and self._can_unpack_file(source_output_path):
-                            self._unpack_file(
-                                source_output_path,
-                                self.zip_util.strip_archive_ext(source_output_path),
-                                remove_source=True,
-                                simplify_archive=simplify_archives,
-                            )
-                elif is_fileobj:
-                    if unpack and self.zip_util.path_is_archive(filename):
-                        self._unpack_fileobj(
-                            source[0],
-                            source[1],
+            # Note that the directory structure is simplified at the end.
+            is_url, is_fileobj, filename = self._interpret_source(source)
+            source_output_path = os.path.join(bundle_path, filename)
+            if is_url:
+                assert isinstance(source, str)
+                if git:
+                    source_output_path = file_util.strip_git_ext(source_output_path)
+                    file_util.git_clone(source, source_output_path)
+                else:
+                    file_util.download_url(source, source_output_path)
+                    if unpack and self._can_unpack_file(source_output_path):
+                        self._unpack_file(
+                            source_output_path,
                             self.zip_util.strip_archive_ext(source_output_path),
+                            remove_source=True,
                             simplify_archive=simplify_archives,
                         )
-                    else:
-                        with open(source_output_path, 'wb') as out:
-                            shutil.copyfileobj(cast(IO, source[1]), out)
+            elif is_fileobj:
+                if unpack and self.zip_util.path_is_archive(filename):
+                    self._unpack_fileobj(
+                        source[0],
+                        source[1],
+                        self.zip_util.strip_archive_ext(source_output_path),
+                        simplify_archive=simplify_archives,
+                    )
+                else:
+                    with open(source_output_path, 'wb') as out:
+                        shutil.copyfileobj(cast(IO, source[1]), out)
 
-            if len(sources) == 1:
-                self._simplify_directory(bundle_path)
+            self._simplify_directory(bundle_path)
             # is_directory is True if the bundle is a directory and False if it is a single file.
             is_directory = os.path.isdir(bundle_path)
             self._bundle_model.update_bundle(
