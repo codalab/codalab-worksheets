@@ -76,10 +76,8 @@ class EditableFieldBase extends React.Component<{
                 if (this.props.onError)
                     this.props.onError('Invalid value entered: ' + response.responseText);
                 // Restore the original value
-                this.setState(() => {
-                    return {
-                        value: this.props.value,
-                    };
+                this.setState({
+                    value: this.props.value,
                 });
             });
     };
