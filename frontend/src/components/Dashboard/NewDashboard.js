@@ -77,7 +77,7 @@ class NewDashboard extends React.Component<{
                                 ownDashboard={this.state.ownDashboard}
                             ></SideBar>
                         </Grid>
-                        <Grid item xs>
+                        <Grid item xs style={{ backgroundColor: '#f1f1f1' }}>
                             <MainPanel
                                 userInfo={this.state.userInfo}
                                 ownDashboard={this.state.ownDashboard}

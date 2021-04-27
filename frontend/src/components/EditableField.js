@@ -54,11 +54,19 @@ class EditableFieldBase extends React.Component<{
         event.preventDefault();
         const { url, onChange, buildPayload } = this.props;
         const { value } = this.state;
-        updateEditableField(url, buildPayload(value)).then(() => {
-            if (onChange) {
-                onChange(this.state.value);
-            }
-        });
+        updateEditableField(url, buildPayload(value))
+            .then(() => {
+                if (onChange) {
+                    onChange(this.state.value);
+                }
+            })
+            .catch((error) => {
+                if (this.props.onError) this.props.onError('Invalid value entered: ' + error);
+                // Restore the original value
+                this.setState({
+                    value: this.props.value,
+                });
+            });
     };
 
     handleKeyPress = (event) => {

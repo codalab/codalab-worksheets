@@ -192,10 +192,9 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
                 tinfo.size = len(item[1])
                 tf.addfile(tinfo, BytesIO(item[1]))
         f.seek(0)
-        sources = [["contents.tar.gz", f]]
         self.upload_manager.upload_to_bundle_store(
             bundle,
-            sources,
+            source=["contents.tar.gz", f],
             git=False,
             unpack=True,
             simplify_archives=True,
@@ -203,10 +202,9 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
         )
 
     def upload_file(self, bundle, contents):
-        sources = [["contents", BytesIO(contents)]]
         self.upload_manager.upload_to_bundle_store(
             bundle,
-            sources,
+            source=["contents", BytesIO(contents)],
             git=False,
             unpack=False,
             simplify_archives=True,
