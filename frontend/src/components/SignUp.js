@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 export const SignUpSuccess = (props) => {
     const { email } = queryString.parse(props.location.search);
@@ -28,7 +29,9 @@ export class SignUp extends React.Component {
         super(props);
         this.state = Immutable({
             form: {},
+            captchaPassed: false,
         });
+        this.recaptchaRef = React.createRef();
     }
 
     handleInputChange = (event) => {
@@ -179,7 +182,17 @@ export class SignUp extends React.Component {
                             name='error_uri'
                             value={this.props.location.pathname}
                         />
-                        <button type='submit'>Sign Up &raquo;</button>
+                        <ReCAPTCHA
+                            ref={this.recaptchaRef}
+                            sitekey=''
+                            onChange={() => {
+                                this.setState({ captchaPassed: true });
+                            }}
+                            style={{ marginBottom: 10 }}
+                        />
+                        <button disabled={!this.state.captchaPassed} type='submit'>
+                            Sign Up &raquo;
+                        </button>
                     </form>
                 </ContentWrapper>
             </React.Fragment>
