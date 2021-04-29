@@ -50,7 +50,7 @@ import codalab.rest.worksheets
 
 logger = logging.getLogger(__name__)
 
-sentry_sdk.init(dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'), integrations=[BottleIntegration()])
+sentry_sdk.init(dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'), environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'), integrations=[BottleIntegration()])
 
 
 class SaveEnvironmentPlugin(object):

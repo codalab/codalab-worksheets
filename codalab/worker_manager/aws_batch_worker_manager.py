@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from shlex import quote
 
 from .worker_manager import WorkerManager, WorkerJob
-from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
+from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, CODALAB_SENTRY_ENVIRONMENT, using_sentry
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +160,9 @@ class AWSBatchWorkerManager(WorkerManager):
             job_definition["containerProperties"]["environment"].append(
                 {'name': 'CODALAB_SENTRY_INGEST_URL', 'value': CODALAB_SENTRY_INGEST}
             )
-
+            job_definition["containerProperties"]["environment"].append(
+                {'name': 'CODALAB_SENTRY_ENVIRONMENT', 'value': CODALAB_SENTRY_ENVIRONMENT}
+            )
         # Create a job definition
         response = self.batch_client.register_job_definition(**job_definition)
         logger.info('register_job_definition: %s', response)
