@@ -12,7 +12,7 @@ from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from io import BytesIO
 import tempfile
-from ratarmount import SQLiteIndexedTar
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 import shutil
 
 

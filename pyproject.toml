@@ -15,5 +15,6 @@ exclude = '''
    | build
    | frontend
    | var
+   | codalab/lib/beam/*
 )/
 '''

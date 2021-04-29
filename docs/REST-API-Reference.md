@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.45_
+_version 0.5.47_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -609,8 +609,8 @@ archive, not the compressed archive, if from a directory target.
 Update the contents of the given running or uploading bundle.
 
 Query parameters:
-- `urls`: (optional) comma-separated list of URLs from which to fetch data
-  to fill the bundle, using this option will ignore any uploaded file data
+- `urls`: (optional) URL from which to fetch data to fill the bundle;
+  using this option will ignore any uploaded file data. Only supports one URL.
 - `git`: (optional) 1 if URL should be interpreted as git repos to clone
   or 0 otherwise, default is 0.
 - `filename`: (optional) filename of the uploaded file, used to indicate

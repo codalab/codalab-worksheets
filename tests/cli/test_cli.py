@@ -826,6 +826,12 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid]))
 
+    # Uploading multiple URLs is not supported
+    _run_command(
+        [cl, 'upload', 'https://www.wikipedia.org', 'https://www.wikipedia.org'],
+        expected_exit_code=1,
+    )
+
 
 @TestModule.register('upload4')
 def test_upload4(ctx):
@@ -839,10 +845,10 @@ def test_upload4(ctx):
         )
     uuid = _run_command([cl, 'upload'] + archive_exts)
 
-    # Make sure the names do not end with '.tar.gz' after being unpacked.
+    # Make sure the names do with '.tar.gz', because when we upload multiple archives, they
+    # should not get unpacked.
     check_contains(
-        [os.path.basename(archive_paths[0]) + r'\s', os.path.basename(archive_paths[1]) + r'\s'],
-        _run_command([cl, 'cat', uuid]),
+        [os.path.basename(ext) for ext in archive_exts], _run_command([cl, 'cat', uuid]),
     )
 
     # Cleanup
