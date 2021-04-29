@@ -1,5 +1,7 @@
 from collections import deque
 import zlib
+from io import BytesIO
+from typing import Optional
 
 
 def un_gzip_stream(fileobj):
@@ -50,7 +52,7 @@ def un_gzip_stream(fileobj):
     return UnGzipStream(fileobj)
 
 
-class BytesBuffer:
+class BytesBuffer(BytesIO):
     """
     A class for a buffer of bytes. Unlike io.BytesIO(), this class
     keeps track of the buffer's size (in bytes).
@@ -67,8 +69,8 @@ class BytesBuffer:
         self.__buf.append(data)
         self.__size += len(data)
 
-    def read(self, size=-1):
-        if size < 0:
+    def read(self, size: Optional[int] = None):
+        if size is None:
             size = self.__size
         ret_list = []
         while size > 0 and len(self.__buf):
@@ -87,3 +89,6 @@ class BytesBuffer:
 
     def close(self):
         pass
+
+    def __bool__(self):
+        return True

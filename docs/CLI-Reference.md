@@ -13,7 +13,7 @@ Usage: `cl <command> <arguments>`
       upload <url>             : Upload one bundle whose file contents is downloaded from <url>.
     Most of the other arguments specify metadata fields.
     Arguments:
-      path                       Paths (or URLs) of the files/directories to upload.
+      path                       Paths of the files/directories to upload, or a single URL to upload.
       -c, --contents             Specify the string contents of the bundle.
       -L, --follow-symlinks      Always dereference (follow) symlinks.
       -x, --exclude-patterns     Exclude these file patterns.
@@ -84,6 +84,8 @@ Usage: `cl <command> <arguments>`
       -n, --name            Change the bundle name (format: ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$).
       -T, --tags            Change tags (must appear after worksheet_spec).
       -d, --description     New bundle description.
+      --freeze              Freeze bundle to prevent future metadata modification.
+      --unfreeze            Unfreeze bundle to allow future metadata modification.
       --anonymous           Set bundle to be anonymous (identity of the owner will NOT be visible to users without 'all' permission on the bundle).
       --not-anonymous       Set bundle to be NOT anonymous.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).

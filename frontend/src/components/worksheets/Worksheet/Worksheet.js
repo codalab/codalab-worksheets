@@ -378,6 +378,13 @@ class Worksheet extends React.Component {
         this.setState({ openedDialog: null, errorDialogMessage: '' });
     };
 
+    onError = (message) => {
+        this.setState({
+            openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+            errorDialogMessage: message,
+        });
+    };
+
     executeBundleCommand = (cmd_type) => () => {
         this.handleSelectedBundleCommand(cmd_type);
         this.toggleCmdDialogNoEvent(cmd_type);
@@ -1562,21 +1569,22 @@ class Worksheet extends React.Component {
                         'bundles_spec' in partialUpdateItems[i] &&
                         'bundle_infos' in partialUpdateItems[i]['bundles_spec']
                     )
-                )
+                ) {
                     // Partial Update mechanism only designs for the blocks consisting of bundles
                     // Check whether the block contains the field of 'bundle_infos' to determine whether it is a non-None block containing a list of bundle_infos, which represent a list of bundles
                     continue;
-                // Update rows
-                ws.info.blocks[i]['rows'] = partialUpdateItems[i]['rows'];
+                }
                 // update interpreted items
                 for (
                     let j = 0;
                     j < partialUpdateItems[i]['bundles_spec']['bundle_infos'].length;
                     j++
                 ) {
-                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j])
+                    if (partialUpdateItems[i]['bundles_spec']['bundle_infos'][j]) {
                         ws.info.blocks[i]['bundles_spec']['bundle_infos'][j] =
                             partialUpdateItems[i]['bundles_spec']['bundle_infos'][j];
+                        ws.info.blocks[i]['rows'][j] = partialUpdateItems[i]['rows'][j];
+                    }
                 }
             }
             this.setState({ ws: ws, version: this.state.version + 1 });
@@ -1626,7 +1634,7 @@ class Worksheet extends React.Component {
         this.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
-                window.location = '/rest/worksheets/?name=dashboard';
+                window.location = '/users';
             }.bind(this),
             error: function(xhr, status, err) {
                 this.setState({ updating: false });
@@ -1953,6 +1961,7 @@ class Worksheet extends React.Component {
                     toggleCmdDialog={this.toggleCmdDialog}
                     toggleInformationModal={this.toggleInformationModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                    onError={this.onError}
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}

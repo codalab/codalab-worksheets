@@ -33,6 +33,7 @@ class UtilTest(unittest.TestCase):
             command=None,
             data_hash=None,
             state=None,
+            frozen=None,
             is_anonymous=False,
             metadata=metadata_mock,
             dependencies=[],

@@ -15,7 +15,7 @@ from enum import Enum
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.44'
+CODALAB_VERSION = '0.5.47'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
@@ -71,6 +71,12 @@ class PermissionError(UsageError):
 class LoginPermissionError(ValueError):
     """
     Raised when the login credentials are incorrect.
+    """
+
+
+class DiskQuotaExceededError(ValueError):
+    """
+    Raised when the disk quota left on the server is less than the bundle size.
     """
 
 

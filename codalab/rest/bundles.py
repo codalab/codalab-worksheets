@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 import sys
+import traceback
 import time
 from io import BytesIO
 from http.client import HTTPResponse
@@ -12,7 +13,7 @@ from bottle import abort, get, post, put, delete, local, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import precondition, UsageError, NotFoundError
-from codalab.lib import canonicalize, spec_util, worksheet_util
+from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
@@ -333,6 +334,16 @@ def _update_bundles():
     bundle_uuids = [b.pop('uuid') for b in bundle_updates]
     check_bundles_have_all_permission(local.model, request.user, bundle_uuids)
     bundles = local.model.batch_get_bundles(uuid=bundle_uuids)
+    for bundle, update in zip(bundles, bundle_updates):
+        if "frozen" not in update:
+            bundle_util.check_bundle_not_frozen(bundle)
+        else:
+            # If we're freezing or unfreezing the bundle, check that
+            # the bundle is in a final state.
+            # If we're freezing, additionally check that the bundle is not already frozen.
+            bundle_util.check_bundle_freezable(bundle)
+            if update["frozen"]:
+                bundle_util.check_bundle_not_frozen(bundle)
 
     # Update bundles
     for bundle, update in zip(bundles, bundle_updates):
@@ -715,8 +726,8 @@ def _update_bundle_contents_blob(uuid):
     Update the contents of the given running or uploading bundle.
 
     Query parameters:
-    - `urls`: (optional) comma-separated list of URLs from which to fetch data
-      to fill the bundle, using this option will ignore any uploaded file data
+    - `urls`: (optional) URL from which to fetch data to fill the bundle;
+      using this option will ignore any uploaded file data. Only supports one URL.
     - `git`: (optional) 1 if URL should be interpreted as git repos to clone
       or 0 otherwise, default is 0.
     - `filename`: (optional) filename of the uploaded file, used to indicate
@@ -762,25 +773,25 @@ def _update_bundle_contents_blob(uuid):
 
     # Store the data.
     try:
-        sources = None
+        source = None
         if request.query.urls:
             sources = query_get_list('urls')
+            if len(sources) != 1:
+                abort(http.client.BAD_REQUEST, "Exactly one url must be provided.")
+            source = sources[0]
         # request without "filename" doesn't need to upload to bundle store
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
-            sources = [(filename, request['wsgi.input'])]
+            source = (filename, request['wsgi.input'])
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         if bundle_link_url:
             # Don't upload to bundle store if using --link, as the path
             # already exists.
             pass
-        elif sources:
+        elif source:
             local.upload_manager.upload_to_bundle_store(
                 bundle,
-                sources=sources,
-                follow_symlinks=False,
-                exclude_patterns=None,
-                remove_sources=False,
+                source=source,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 simplify_archives=query_get_bool('simplify', default=True),
@@ -796,7 +807,11 @@ def _update_bundle_contents_blob(uuid):
             local.upload_manager.cleanup_existing_contents(bundle)
         msg = "Upload failed: %s" % err
         local.model.update_bundle(
-            bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+            bundle,
+            {
+                'state': State.FAILED,
+                'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
+            },
         )
         abort(http.client.BAD_REQUEST, msg)
 
@@ -815,7 +830,11 @@ def _update_bundle_contents_blob(uuid):
         # letting transient errors during upload fail the bundles prematurely.
         if finalize_on_failure:
             local.model.update_bundle(
-                bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+                bundle,
+                {
+                    'state': State.FAILED,
+                    'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
+                },
             )
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
@@ -884,9 +903,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     check_bundles_have_all_permission(local.model, request.user, relevant_uuids)
 
     # Make sure we don't delete bundles which are active.
-    states = local.model.get_bundle_states(uuids)
+    bundles = local.model.batch_get_bundles(uuid=uuids)
+    states = [bundle.state for bundle in bundles]
     logger.debug('delete states: %s', states)
-    active_uuids = [uuid for (uuid, state) in states.items() if state in State.ACTIVE_STATES]
+    active_uuids = [uuid for (uuid, state) in zip(uuids, states) if state in State.ACTIVE_STATES]
     logger.debug('delete actives: %s', active_uuids)
     if len(active_uuids) > 0:
         raise UsageError(
@@ -896,6 +916,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             + 'automatically be moved to a state where they '
             + 'can be deleted.'
         )
+
+    # Make sure we don't delete frozen bundles
+    for bundle in bundles:
+        bundle_util.check_bundle_not_frozen(bundle)
 
     # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
     result = local.model.get_all_host_worksheet_uuids(relevant_uuids)
@@ -949,6 +973,8 @@ def set_bundle_permissions(new_permissions):
     )
     # Sequentially set bundle permissions
     for p in new_permissions:
+        bundle = local.model.get_bundle(p['object_uuid'])
+        bundle_util.check_bundle_not_frozen(bundle)
         local.model.set_group_bundle_permission(p['group_uuid'], p['object_uuid'], p['permission'])
 
 
