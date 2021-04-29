@@ -378,6 +378,13 @@ class Worksheet extends React.Component {
         this.setState({ openedDialog: null, errorDialogMessage: '' });
     };
 
+    onError = (message) => {
+        this.setState({
+            openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
+            errorDialogMessage: message,
+        });
+    };
+
     executeBundleCommand = (cmd_type) => () => {
         this.handleSelectedBundleCommand(cmd_type);
         this.toggleCmdDialogNoEvent(cmd_type);
@@ -1627,7 +1634,7 @@ class Worksheet extends React.Component {
         this.deleteWorksheet({
             success: function(data) {
                 this.setState({ updating: false });
-                window.location = '/rest/worksheets/?name=dashboard';
+                window.location = '/users';
             }.bind(this),
             error: function(xhr, status, err) {
                 this.setState({ updating: false });
@@ -1954,6 +1961,7 @@ class Worksheet extends React.Component {
                     toggleCmdDialog={this.toggleCmdDialog}
                     toggleInformationModal={this.toggleInformationModal}
                     toggleCmdDialogNoEvent={this.toggleCmdDialogNoEvent}
+                    onError={this.onError}
                     copiedBundleIds={this.state.copiedBundleIds}
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
