@@ -6,7 +6,11 @@ from argparse import ArgumentParser
 from shlex import quote
 
 from .worker_manager import WorkerManager, WorkerJob
-from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, CODALAB_SENTRY_ENVIRONMENT, using_sentry
+from codalab.lib.telemetry_util import (
+    CODALAB_SENTRY_INGEST,
+    CODALAB_SENTRY_ENVIRONMENT,
+    using_sentry,
+)
 
 logger = logging.getLogger(__name__)
 
