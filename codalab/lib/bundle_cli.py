@@ -1369,12 +1369,14 @@ class BundleCLI(object):
             # Calculate size of sources
             total_bundle_size = sum([get_path_size(source) for source in sources])
             user = client.fetch('users', client.fetch('user')['user_name'])
-            disk_left = user['disk_quota'] - user['disk_used']
-            if disk_left - total_bundle_size <= 0:
-                raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
-                    % (total_bundle_size, disk_left)
-                )
+            # Only attempt to enforce disk quota when disk information is returned.
+            if 'disk_quota' in user and 'disk_used' in user:
+                disk_left = user['disk_quota'] - user['disk_used']
+                if disk_left - total_bundle_size <= 0:
+                    raise DiskQuotaExceededError(
+                        'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
+                        % (total_bundle_size, disk_left)
+                    )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
