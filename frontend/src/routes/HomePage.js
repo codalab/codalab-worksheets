@@ -101,7 +101,7 @@ class HomePage extends React.Component<{
                                 <Typography variant='h4' className={classes.tagline}>
                                     A collaborative platform for reproducible research.
                                 </Typography>
-                                <div className={classes.buttons} style={{ width: 500 }}>
+                                <div className={classes.buttons}>
                                     {!auth.isAuthenticated && (
                                         <React.Fragment>
                                             {this.renderButton('Sign Up', '/account/signup')}
