@@ -39,7 +39,7 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(
         MetadataSpec('cpu_usage', float, 'Proportion of current CPU usage for a running bundle. This field is only relevant for running bundles. (e.g., 0.24)', default=0.0, generated=True))
     METADATA_SPECS.append(
-        MetadataSpec('memory_limit', int, 'How much memory this container can use at any given time.', default=0, generated=True))
+        MetadataSpec('memory_limit', int, 'The maximum amount of memory the container can use.', default=0, generated=True))
 
     METADATA_SPECS.append(MetadataSpec('exclude_patterns', list, 'Exclude these file patterns from being saved into the bundle contents.', default=[]))
 
