@@ -57,7 +57,6 @@ class NewUpload extends React.Component<{
                     '/rest/bundles/' + bundleUuid + '/contents/blob/?' + getQueryParams(file.name);
                 const config = {
                     onUploadProgress: (evt) => {
-                        console.log(evt);
                         if (evt.lengthComputable) {
                             const percentComplete = parseInt((evt.loaded / evt.total) * 100);
                             this.setState({ percentComplete });
@@ -184,7 +183,6 @@ class NewUpload extends React.Component<{
         try {
             const config = {
                 onUploadProgress: (evt) => {
-                    console.log(evt);
                     if (evt.lengthComputable) {
                         const percentComplete = parseInt((evt.loaded / evt.total) * 100);
                         this.setState({ percentComplete });
@@ -200,8 +198,7 @@ class NewUpload extends React.Component<{
             this.props.onUploadFinish();
         } catch (error) {
             this.clearProgress();
-            console.log(error);
-            alert(createAlertText(url, error.responseText, 'refresh and try again.'));
+            alert(createAlertText(url, error, 'refresh and try again.'));
             this.props.onUploadFinish();
         }
     };

@@ -525,12 +525,10 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
         currentWorkingDirectory +
         '?' +
         new URLSearchParams({ depth: 1 });
-    console.log('fileBrower');
     useSWR(url, fetcher, {
         revalidateOnMount: true,
         refreshInterval: isRunningBundle ? 4000 : 0,
         onSuccess: (data, key, config) => {
-            console.log(data);
             displayFileBrowser(data);
         },
     });
