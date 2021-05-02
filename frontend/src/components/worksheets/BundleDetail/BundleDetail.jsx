@@ -1,6 +1,6 @@
 // @flow
 import * as React from 'react';
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import * as $ from 'jquery';
 // import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
@@ -9,18 +9,23 @@ import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
-import {findDOMNode} from "react-dom";
-import useSWR from "swr";
+import { findDOMNode } from 'react-dom';
+import useSWR from 'swr';
+import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
 
-const BundleDetail = ({ uuid,
-                          // Callback on metadata change.
-                          bundleMetadataChanged,
+const BundleDetail = ({
+    uuid,
+    // Callback on metadata change.
+    bundleMetadataChanged,
     onClose,
     onOpen,
-                          onUpdate,
-                          rerunItem, showNewRerun,
-                          showDetail, handleDetailClick,
-                          editPermission}) =>{
+    onUpdate,
+    rerunItem,
+    showNewRerun,
+    showDetail,
+    handleDetailClick,
+    editPermission,
+}) => {
     const [errorMessages, setErrorMessages] = useState([]);
     const [bundleInfo, setBundleInfo] = useState(null);
     const [fileContents, setFileContents] = useState(null);
@@ -31,45 +36,30 @@ const BundleDetail = ({ uuid,
 
     useEffect(() => {
         if (uuid !== prevUuid) {
-           setPrevUuid(uuid);
-           setErrorMessages([]);
+            setPrevUuid(uuid);
+            setErrorMessages([]);
         }
-    }, [ uuid ])
+    }, [uuid]);
 
     // If info is not available yet, fetch
     // If bundle is in a state that is possible to transition to a different state, fetch data
     // we have ignored ready|failed|killed states here
-    const refreshInterval =  !bundleInfo || bundleInfo.state.match("uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline") ? 4000: 0;
+    const refreshInterval =
+        !bundleInfo ||
+        bundleInfo.state.match(
+            'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
+        )
+            ? 4000
+            : 0;
 
     useEffect(() => {
         const timer = setInterval(() => {
-            if(onOpen){
+            if (onOpen) {
                 onOpen();
             }
         }, 4000);
         return () => clearInterval(timer);
     }, []);
-
-    /**
-     * Return a Promise to fetch the summary of the given file.
-     * @param uuid  uuid of bundle
-     * @param path  path within the bundle
-     * @return  jQuery Deferred object
-     */
-    const fetchFileSummary = (uuid, path)=> {
-        return $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid + '/contents/blob' + path,
-            data: {
-                head: 50,
-                tail: 50,
-                truncation_text: '\n... [truncated] ...\n\n',
-            },
-            dataType: 'text',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        });
-    }
 
     const fetcherMetadata = (url) =>
         fetch(url, {
@@ -85,51 +75,51 @@ const BundleDetail = ({ uuid,
                 setFileContents(null);
                 setStderr(null);
                 setStdout(null);
-                setErrorMessages(errorMessages=>errorMessages.concat([error]))
+                setErrorMessages((errorMessages) => errorMessages.concat([error]));
             });
 
     const urlMetadata =
-        '/rest/bundles/' + uuid+  "?" + new URLSearchParams({include_display_metadata: 1,include: 'owner,group_permissions,host_worksheets'}).toString()
+        '/rest/bundles/' +
+        uuid +
+        '?' +
+        new URLSearchParams({
+            include_display_metadata: 1,
+            include: 'owner,group_permissions,host_worksheets',
+        }).toString();
 
-    const{dataMetadata,errorMetadata,mutateMetadata} = useSWR(urlMetadata, fetcherMetadata, {
+    const { dataMetadata, errorMetadata, mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
         revalidateOnMount: true,
-        refreshInterval:refreshInterval,
+        refreshInterval: refreshInterval,
         onSuccess: (response, key, config) => {
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
             bundleInfo.metadataType = response.data.meta.metadata_type;
-            setBundleInfo( bundleInfo );
-        }
+            setBundleInfo(bundleInfo);
+        },
     });
 
     const fetcherContents = (url) =>
-        $.ajax( {
-            type: 'GET',
-            url: url,
-            dataType: 'json',
-        }).fail(
-                function(xhr, status, err) {
-                // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-                if (xhr.status !== 404) {
-                    setBundleInfo(null);
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                    setErrorMessages(errorMessages=>errorMessages.concat([xhr.responseText]));
-                } else {
-                    // If contents aren't available yet, then also clear stdout and stderr.
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                }
+        apiWrapper.get(url).catch((error) => {
+            // 404 Not Found errors are normal if contents aren't available yet, so ignore them
+            if (!error || !error.status || error.response.status !== 404) {
+                setBundleInfo(null);
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
+                setErrorMessages((errorMessages) => errorMessages.concat([error]));
+            } else {
+                // If contents aren't available yet, then also clear stdout and stderr.
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
             }
-            );
+        });
 
     const urlContents =
-        '/rest/bundles/' + uuid + '/contents/info/' +  "?" + new URLSearchParams({depth: 1});
+        '/rest/bundles/' + uuid + '/contents/info/' + '?' + new URLSearchParams({ depth: 1 });
 
-    const updateBundleDetail = (response)=>{
+    const updateBundleDetail = (response) => {
         const info = response.data;
         if (!info) return;
         if (info.type === 'file' || info.type === 'link') {
@@ -144,75 +134,83 @@ const BundleDetail = ({ uuid,
             let stateUpdate = {
                 fileContents: null,
             };
-            ['stdout', 'stderr'].forEach(
-                function(name) {
-                    if (info.contents.some((entry) => entry.name === name)) {
-                        fetchRequests.push(
-                            fetchFileSummary(uuid, '/' + name).then(
-                                function(blob) {
-                                    stateUpdate[name] = blob;
-                                },
-                            ),
-                        );
-                    } else {
-                        stateUpdate[name] = null;
-                    }
-                },
-            );
-            Promise.all(fetchRequests).then(r => {setFileContents(stateUpdate['fileContents'])
-                if('stdout' in stateUpdate){setStdout(stateUpdate['stdout'])}
-                if('stderr' in stateUpdate){setStderr(stateUpdate['stderr'])}} )
+            ['stdout', 'stderr'].forEach(function(name) {
+                if (info.contents.some((entry) => entry.name === name)) {
+                    fetchRequests.push(
+                        fetchFileSummary(uuid, '/' + name).then(function(blob) {
+                            stateUpdate[name] = blob;
+                        }),
+                    );
+                } else {
+                    stateUpdate[name] = null;
+                }
+            });
+            Promise.all(fetchRequests).then((r) => {
+                setFileContents(stateUpdate['fileContents']);
+                if ('stdout' in stateUpdate) {
+                    setStdout(stateUpdate['stdout']);
+                }
+                if ('stderr' in stateUpdate) {
+                    setStderr(stateUpdate['stderr']);
+                }
+            });
         }
-    }
+    };
     useSWR(urlContents, fetcherContents, {
         revalidateOnMount: true,
-        refreshInterval:refreshInterval,
-        onSuccess: (response, key, config) => {
-          updateBundleDetail(response);
+        refreshInterval: refreshInterval,
+        onSuccess: (response) => {
+            updateBundleDetail(response);
         },
     });
 
-   const  scrollToNewlyOpenedDetail=(node)=>{
+    const scrollToNewlyOpenedDetail = (node) => {
         // Only scroll to the bundle detail when it is opened
         if (node && open) {
-            findDOMNode(node).scrollIntoView({block:'center'});
+            findDOMNode(node).scrollIntoView({ block: 'center' });
             // Avoid undesirable scroll
             setOpen(false);
         }
-    }
+    };
 
-    if (!bundleInfo){
-        return <div></div>
+    if (!bundleInfo) {
+        return <div></div>;
     }
     if (bundleInfo.bundle_type === 'private') {
-        return <div>Detail not available for this bundle</div>
+        return <div>Detail not available for this bundle</div>;
     }
 
     return (
         <ConfigurationPanel
             //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
             ref={(node) => scrollToNewlyOpenedDetail(node)}
-            buttons={ <BundleActions
-                showNewRerun={showNewRerun}
-                showDetail={showDetail}
-                handleDetailClick={handleDetailClick}
-                bundleInfo={ bundleInfo }
-                rerunItem={ rerunItem }
-                onComplete={ bundleMetadataChanged }
-                editPermission={editPermission} /> }
-            sidebar={ <BundleDetailSideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ mutateMetadata } /> }
+            buttons={
+                <BundleActions
+                    showNewRerun={showNewRerun}
+                    showDetail={showDetail}
+                    handleDetailClick={handleDetailClick}
+                    bundleInfo={bundleInfo}
+                    rerunItem={rerunItem}
+                    onComplete={bundleMetadataChanged}
+                    editPermission={editPermission}
+                />
+            }
+            sidebar={
+                <BundleDetailSideBar
+                    bundleInfo={bundleInfo}
+                    onUpdate={onUpdate}
+                    onMetaDataChange={mutateMetadata}
+                />
+            }
         >
             <MainContent
-                bundleInfo={ bundleInfo }
-                stdout={ stdout }
-                stderr={ stderr }
-                fileContents={ fileContents }
+                bundleInfo={bundleInfo}
+                stdout={stdout}
+                stderr={stderr}
+                fileContents={fileContents}
             />
         </ConfigurationPanel>
     );
-
-
-}
-
+};
 
 export default BundleDetail;
