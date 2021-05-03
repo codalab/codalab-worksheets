@@ -366,6 +366,13 @@ CODALAB_ARGUMENTS = [
     ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
+    CodalabArg(
+        name='recaptcha_site_key',
+        env_var='REACT_APP_RECAPTCHA_SITE_KEY',
+        type=int,
+        default='6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI',  # test key provided by Google, will always pass
+        help='API site key needed for recaptcha',
+    ),
 ]
 
 for worker_manager_type in ['cpu', 'gpu']:

@@ -67,6 +67,7 @@ x-codalab-env: &codalab-env
   - CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=${CODALAB_ALWAYS_USE_AZURE_BLOB_BETA}
   - CODALAB_SENTRY_INGEST_URL=${CODALAB_SENTRY_INGEST_URL}
   - CODALAB_SENTRY_ENVIRONMENT=${CODALAB_SENTRY_ENVIRONMENT}
+  - REACT_APP_RECAPTCHA_SITE_KEY=${REACT_APP_RECAPTCHA_SITE_KEY}
 
 # Properties that every service inherits.
 x-codalab-base: &codalab-base
@@ -242,6 +243,8 @@ services:
       - rest-server
     networks:
       - rest-server
+    environment:
+      - REACT_APP_RECAPTCHA_SITE_KEY=${REACT_APP_RECAPTCHA_SITE_KEY}
 
   nginx:
     image: nginx:1.12.0

@@ -184,7 +184,7 @@ export class SignUp extends React.Component {
                         />
                         <ReCAPTCHA
                             ref={this.recaptchaRef}
-                            sitekey=''
+                            sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
                             onChange={() => {
                                 this.setState({ captchaPassed: true });
                             }}
