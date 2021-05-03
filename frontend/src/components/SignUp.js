@@ -182,6 +182,9 @@ export class SignUp extends React.Component {
                             name='error_uri'
                             value={this.props.location.pathname}
                         />
+                        <div style={{display: this.state.captchaPassed && 'none'}}>
+                            Please complete the captcha below.
+                        </div>
                         <ReCAPTCHA
                             ref={this.recaptchaRef}
                             sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
