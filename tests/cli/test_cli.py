@@ -788,7 +788,7 @@ def test_upload2(ctx):
         # Upload it and unpack
         uuid = _run_command([cl, 'upload', archive_path])
         check_equals(os.path.basename(archive_path).replace(suffix, ''), get_info(uuid, 'name'))
-        check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/f1']))
+        check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1']))
 
         # Upload it but don't unpack
         uuid = _run_command([cl, 'upload', archive_path, '--pack'])
@@ -816,11 +816,11 @@ def test_upload3(ctx):
 
     # Upload URL that's an archive
     uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2'])
-    check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
+    check_contains(['bc-1.06.95'], _run_command([cl, 'cat', uuid]))
 
     # Upload URL with a query string, that's an archive
     uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2?a=b'])
-    check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
+    check_contains(['bc-1.06.95'], _run_command([cl, 'cat', uuid]))
 
     # Upload URL from Git
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])

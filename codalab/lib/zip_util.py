@@ -112,8 +112,7 @@ def pack_files_for_upload(
         'fileobj': <file object of archive>,
         'filename': <name of archive file>,
         'filesize': <size of archive in bytes, or None if unknown>,
-        'should_unpack': <True iff archive should be unpacked at server>,
-        'should_simplify': <True iff directory should be 'simplified' at server>
+        'should_unpack': <True iff archive should be unpacked at server>
         }
     """
     exclude_patterns = exclude_patterns or []
@@ -147,7 +146,6 @@ def pack_files_for_upload(
                 'filename': filename + '.tar.gz',
                 'filesize': None,
                 'should_unpack': True,
-                'should_simplify': False,
             }
         elif path_is_archive(source):
             return {
@@ -155,7 +153,6 @@ def pack_files_for_upload(
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': should_unpack,
-                'should_simplify': True,
             }
         elif force_compression:
             return {
@@ -163,7 +160,6 @@ def pack_files_for_upload(
                 'filename': filename + '.gz',
                 'filesize': None,
                 'should_unpack': True,
-                'should_simplify': False,
             }
         else:
             return {
@@ -171,7 +167,6 @@ def pack_files_for_upload(
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': False,
-                'should_simplify': False,
             }
 
     # Build archive file incrementally from all sources
@@ -205,5 +200,4 @@ def pack_files_for_upload(
         'filename': 'contents.tar.gz',
         'filesize': filesize,
         'should_unpack': True,
-        'should_simplify': False,
     }
