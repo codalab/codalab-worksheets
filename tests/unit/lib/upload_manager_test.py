@@ -119,6 +119,25 @@ class UploadManagerTest(unittest.TestCase):
         )
         self.assertIn('file2', os.listdir(self.bundle_location))
 
+    def test_url_tar_gz_simplify_archives(self):
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_string_to_file('testing', os.path.join(source, 'filename'))
+        self.do_upload(
+            self.mock_url_source(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz")
+        )
+        self.check_file_contains_string(self.bundle_location, 'testing')
+
+    def test_url_tar_gz_no_simplify_archives(self):
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_string_to_file('testing', os.path.join(source, 'filename'))
+        self.do_upload(
+            self.mock_url_source(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz"),
+            simplify_archives=False,
+        )
+        self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
+
     def test_url_git(self):
         self.do_upload('https://github.com/codalab/test', git=True)
 
