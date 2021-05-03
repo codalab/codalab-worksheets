@@ -75,7 +75,6 @@ class BundleDetailSideBar extends React.Component<
 							bundleInfo.metadata.run_status != 'Running')
 					? bundleInfo.metadata.run_status
 					: bundleInfo.state;
-        const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run';
         const stateSpecClass = bundleInfo.state === 'failed'
             ? 'failedState'
