@@ -8,6 +8,7 @@ import shutil
 import tarfile
 import tempfile
 import logging
+from typing import IO, Union, cast
 
 from codalab.common import UsageError
 from codalab.worker.file_util import (
@@ -47,11 +48,14 @@ def strip_archive_ext(path):
     raise UsageError('Not an archive: %s' % path)
 
 
-def unpack(ext, source, dest_path):
-    """
-    Unpack the archive |source| to |dest_path|.
-    Note: |source| can be a file handle or a path.
-    |ext| contains the extension of the archive.
+def unpack(ext: str, source: Union[str, IO[bytes]], dest_path: str):
+    """Unpack the archive |source| to |dest_path|.
+
+    Args:
+        ext (str): Extension of the archive.
+        source (Union[str, IO[bytes]]): File handle or path to the source.
+        dest_path ([type]): Destination path to unpack to.
+
     """
     close_source = False
     try:
@@ -77,7 +81,7 @@ def unpack(ext, source, dest_path):
         raise UsageError('Invalid archive upload.')
     finally:
         if close_source:
-            source.close()
+            cast(IO[bytes], source).close()
 
 
 def pack_files_for_upload(
