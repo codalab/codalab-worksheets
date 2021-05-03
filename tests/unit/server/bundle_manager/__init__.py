@@ -270,11 +270,11 @@ class TestBase:
             exitcode=0,
             failure_message="",
             bundle_profile_stats={
-                RunStage.PREPARING: {'start': 15, 'end': 20, 'elapsed': 5},
-                RunStage.RUNNING: {'start': 15, 'end': 20, 'elapsed': 5},
-                RunStage.CLEANING_UP: {'start': 15, 'end': 20, 'elapsed': 5},
-                RunStage.UPLOADING_RESULTS: {'start': 15, 'end': 20, 'elapsed': 5},
-                RunStage.FINALIZING: {'start': 15, 'end': 20, 'elapsed': 5},
+                [RunStage.PREPARING]: {'start': 15, 'end': 20, 'elapsed': 5},
+                [RunStage.RUNNING]: {'start': 15, 'end': 20, 'elapsed': 5},
+                [RunStage.CLEANING_UP]: {'start': 15, 'end': 20, 'elapsed': 5},
+                [RunStage.UPLOADING_RESULTS]: {'start': 15, 'end': 20, 'elapsed': 5},
+                [RunStage.FINALIZING]: {'start': 15, 'end': 20, 'elapsed': 5},
             },
         )
         self.bundle_manager._model.bundle_checkin(
