@@ -33,7 +33,7 @@ import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
 import Search from 'semantic-ui-react/dist/commonjs/modules/Search';
 import _ from 'lodash';
-import { executeCommand } from '../util/cli_utils';
+import { getUser, executeCommand, navBarSearch, defaultErrorHandler } from '../util/apiWrapper';
 import DOMPurify from 'dompurify';
 import { NAME_REGEX } from '../constants';
 
@@ -69,21 +69,15 @@ class NavBar extends React.Component<{
     }
 
     fetchName() {
-        $.ajax({
-            url: '/rest/user',
-            dataType: 'json',
-            cache: false,
-            type: 'GET',
-            success: (data) => {
-                const userInfo = data.data.attributes;
-                userInfo.user_id = data.data.id;
-                this.fetchImg(userInfo.avatar_id);
-                this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
+        const callback = (data) => {
+            const userInfo = data.data.attributes;
+            userInfo.user_id = data.data.id;
+            this.fetchImg(userInfo.avatar_id);
+            this.setState({ userInfo: userInfo, newWorksheetName: `${userInfo.user_name}-` });
+        };
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     resetDialog() {
@@ -122,25 +116,6 @@ class NavBar extends React.Component<{
                 snackbarVariant: 'error',
             });
         }
-    }
-
-    search(keyword) {
-        const url = '/rest/interpret/wsearch';
-
-        $.ajax({
-            url: url,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({ keywords: [keyword] }),
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => {
-                console.log(data);
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
     }
 
     // Fetch the image file represented by the bundle
@@ -204,14 +179,11 @@ class NavBar extends React.Component<{
 
     handleSearchFocus = () => {
         // Disable the terminal to avoid the search bar text being mirrored in the terminal
-        if (
-            $('#command_line')
-                .terminal()
-                .enabled()
-        ) {
-            $('#command_line')
-                .terminal()
-                .focus(false);
+        const $cmd = $('#command_line');
+        if ($cmd.length > 0) {
+            if ($cmd.terminal().enabled()) {
+                $cmd.terminal().focus(false);
+            }
         }
     };
 
@@ -223,18 +195,8 @@ class NavBar extends React.Component<{
             const keywords = this.state.value.split(' ');
             const regexKeywords = keywords.join('|');
             const re = new RegExp(regexKeywords, 'gi');
-
-            const url = '/rest/interpret/wsearch';
-
-            $.ajax({
-                url: url,
-                dataType: 'json',
-                type: 'POST',
-                cache: false,
-                data: JSON.stringify({ keywords: keywords }),
-                contentType: 'application/json; charset=utf-8',
-                success: (data) => {
-                    /*
+            const callback = (data) => {
+                /*
                     Response body:
                     ```
                     {
@@ -270,28 +232,28 @@ class NavBar extends React.Component<{
                     }
                     ```
                     */
-                    let filteredResults = {};
-                    for (let item of data.response) {
-                        // use DOMPurify to get rid of the XSS security risk
-                        item.plaintextDescription = item.name;
-                        item.description = DOMPurify.sanitize(
-                            item.name.replace(re, "<span id='highlight'>$&</span>"),
-                        );
-                        item.plaintextTitle = item.title;
-                        item.title = DOMPurify.sanitize(
-                            (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
-                        );
+                let filteredResults = {};
+                for (let item of data.response) {
+                    // use DOMPurify to get rid of the XSS security risk
+                    item.plaintextDescription = item.name;
+                    item.description = DOMPurify.sanitize(
+                        item.name.replace(re, "<span id='highlight'>$&</span>"),
+                    );
+                    item.plaintextTitle = item.title;
+                    item.title = DOMPurify.sanitize(
+                        (item.title || '').replace(re, "<span id='highlight'>$&</span>"),
+                    );
 
-                        if (!(item.owner_name in filteredResults)) {
-                            filteredResults[item.owner_name] = {
-                                name: item.owner_name,
-                                results: [],
-                            };
-                        }
-                        filteredResults[item.owner_name].results.push(item);
+                    if (!(item.owner_name in filteredResults)) {
+                        filteredResults[item.owner_name] = {
+                            name: item.owner_name,
+                            results: [],
+                        };
                     }
+                    filteredResults[item.owner_name].results.push(item);
+                }
 
-                    /*
+                /*
                     turn the above dict into a a dict with a key of category name,
                     e.g., codalab
                     {
@@ -306,38 +268,37 @@ class NavBar extends React.Component<{
                         },
                     */
 
-                    const preRanking = _.reduce(
-                        filteredResults,
-                        (memo, data, name) => {
-                            memo[name] = { name, results: data.results };
-                            return memo;
-                        },
-                        {},
-                    );
+                const preRanking = _.reduce(
+                    filteredResults,
+                    (memo, data, name) => {
+                        memo[name] = { name, results: data.results };
+                        return memo;
+                    },
+                    {},
+                );
 
-                    // the results are displayed using the map function, which remembers
-                    // order of insertion. We therefore put the owner's worksheets on top
-                    const currName = this.state.userInfo.user_name;
-                    if (currName in preRanking) {
-                        let ownerResults = {};
-                        ownerResults[currName] = preRanking[currName];
-                        delete preRanking[currName];
-                        let finalResults = { ...ownerResults, ...preRanking };
-                        this.setState({
-                            isLoading: false,
-                            results: finalResults,
-                        });
-                    } else {
-                        this.setState({
-                            isLoading: false,
-                            results: preRanking,
-                        });
-                    }
-                },
-                error: (xhr, status, err) => {
-                    console.error(xhr.responseText);
-                },
-            });
+                // the results are displayed using the map function, which remembers
+                // order of insertion. We therefore put the owner's worksheets on top
+                const currName = this.state.userInfo.user_name;
+                if (currName in preRanking) {
+                    let ownerResults = {};
+                    ownerResults[currName] = preRanking[currName];
+                    delete preRanking[currName];
+                    let finalResults = { ...ownerResults, ...preRanking };
+                    this.setState({
+                        isLoading: false,
+                        results: finalResults,
+                    });
+                } else {
+                    this.setState({
+                        isLoading: false,
+                        results: preRanking,
+                    });
+                }
+            };
+            navBarSearch(keywords)
+                .then(callback)
+                .catch(defaultErrorHandler);
         }, 300);
     };
 

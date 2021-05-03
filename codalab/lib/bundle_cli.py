@@ -1216,7 +1216,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument(
                 'path',
-                help='Paths (or URLs) of the files/directories to upload.',
+                help='Paths of the files/directories to upload, or a single URL to upload.',
                 nargs='*',
                 completer=require_not_headless(FilesCompleter()),
             ),
@@ -1340,6 +1340,8 @@ class BundleCLI(object):
         elif any(map(path_util.path_is_url, args.path)):
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
+            if len(args.path) > 1:
+                raise UsageError("Only one URL can be specified at a time.")
             bundle_info['metadata']['source_url'] = str(args.path)
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
@@ -1413,7 +1415,6 @@ class BundleCLI(object):
                     params={
                         'filename': packed['filename'],
                         'unpack': packed['should_unpack'],
-                        'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
@@ -1619,7 +1620,6 @@ class BundleCLI(object):
                 params={
                     'filename': filename,
                     'unpack': unpack,
-                    'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },

@@ -10,11 +10,11 @@ import MuiDialogActions from '@material-ui/core/DialogActions';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
 import Typography from '@material-ui/core/Typography';
-import { getQueryParams } from '../worksheets/NewUpload/NewUpload.jsx';
 import $ from 'jquery';
 import { createAlertText, getDefaultBundleMetadata } from '../../util/worksheet_utils';
 import Avatar from '@material-ui/core/Avatar';
 import ButtonBase from '@material-ui/core/ButtonBase';
+import { defaultErrorHandler, post, updateUser, uploadImgAsync } from '../../util/apiWrapper';
 
 const styles = (theme) => ({
     root: {
@@ -199,35 +199,6 @@ class EditableAvatar extends React.Component {
             });
     }
 
-    // Upload the avatar image as a bundle to the bundle store
-    uploadImgAsync(bundleUuid, file, fileName) {
-        return new Promise((resolve, reject) => {
-            let reader = new FileReader();
-            reader.onload = () => {
-                let arrayBuffer = reader.result,
-                    bytesArray = new Uint8Array(arrayBuffer);
-                let url =
-                    '/rest/bundles/' + bundleUuid + '/contents/blob/?' + getQueryParams(fileName);
-                $.ajax({
-                    url: url,
-                    type: 'PUT',
-                    contentType: 'application/octet-stream',
-                    data: new Blob([bytesArray]),
-                    processData: false,
-                    success: function(data) {
-                        resolve(data);
-                    },
-                    error: function(error) {
-                        alert(createAlertText(url, error.responseText, 'refresh and try again.'));
-                        this.props.onUploadFinish();
-                        reject(error);
-                    }.bind(this),
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
     // Store the bundle uuid of the avatar to database
     saveAvatarToDB(bundleUuid) {
         // Construct a user object for updating user information
@@ -239,23 +210,7 @@ class EditableAvatar extends React.Component {
         newUser.id = this.props.userInfo.user_id;
 
         // Push changes to server
-        $.ajax({
-            method: 'PATCH',
-            url: '/rest/user',
-            data: JSON.stringify({ data: newUser }),
-            dataType: 'json',
-            contentType: 'application/json',
-            context: this,
-            xhr: function() {
-                // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest === null ||
-                    new window.XMLHttpRequest().addEventListener === null
-                    ? new window.ActiveXObject('Microsoft.XMLHTTP')
-                    : $.ajaxSettings.xhr();
-            },
-        }).fail(function(xhr, status, err) {
-            console.log(err);
-        });
+        updateUser(newUser).catch(defaultErrorHandler);
     }
 
     // Callback function for avatar editor to upload the adjusted avatar
@@ -277,15 +232,8 @@ class EditableAvatar extends React.Component {
             });
 
             async function createImageBundle(url, data) {
-                let result;
                 try {
-                    result = await $.ajax({
-                        url: url,
-                        data: data,
-                        contentType: 'application/json',
-                        type: 'POST',
-                    });
-                    return result;
+                    return await post(url, data);
                 } catch (error) {
                     alert(createAlertText(url, error.responseText));
                 }
@@ -297,11 +245,15 @@ class EditableAvatar extends React.Component {
             // Create a detached bundle, so that no parent worksheet ID is needed for the avatar
             const bundle = await createImageBundle(
                 `/rest/bundles?detached=1`,
-                JSON.stringify(getDefaultBundleMetadata(fileName)),
+                getDefaultBundleMetadata(fileName),
             );
             const bundleUuid = bundle.data[0].id;
             // Upload the avatar as a bundle
-            await this.uploadImgAsync(bundleUuid, file, fileName);
+            const errorHandler = (error) => {
+                alert(createAlertText(error, 'refresh and try again.'));
+                this.props.onUploadFinish();
+            };
+            await uploadImgAsync(bundleUuid, file, fileName, errorHandler);
             // Store the bundle id to database
             await this.saveAvatarToDB(bundleUuid);
             // Fetch the new avatar from the bundle store by specifying the bundle id

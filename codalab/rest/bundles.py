@@ -726,16 +726,14 @@ def _update_bundle_contents_blob(uuid):
     Update the contents of the given running or uploading bundle.
 
     Query parameters:
-    - `urls`: (optional) comma-separated list of URLs from which to fetch data
-      to fill the bundle, using this option will ignore any uploaded file data
+    - `urls`: (optional) URL from which to fetch data to fill the bundle;
+      using this option will ignore any uploaded file data. Only supports one URL.
     - `git`: (optional) 1 if URL should be interpreted as git repos to clone
       or 0 otherwise, default is 0.
     - `filename`: (optional) filename of the uploaded file, used to indicate
       whether or not it is an archive, default is 'contents'
     - `unpack`: (optional) 1 if the uploaded file should be unpacked if it is
       an archive, or 0 otherwise, default is 1
-    - `simplify`: (optional) 1 if the uploaded file should be 'simplified' if
-      it is an archive, or 0 otherwise, default is 1.
     - `finalize_on_failure`: (optional) 1 if bundle state should be set
       to 'failed' in the case of a failure during upload, or 0 if the bundle
       state should not change on failure. Default is 0.
@@ -773,30 +771,29 @@ def _update_bundle_contents_blob(uuid):
 
     # Store the data.
     try:
-        sources = None
+        source = None
         if request.query.urls:
             sources = query_get_list('urls')
+            if len(sources) != 1:
+                abort(http.client.BAD_REQUEST, "Exactly one url must be provided.")
+            source = sources[0]
         # request without "filename" doesn't need to upload to bundle store
         if request.query.filename:
             filename = request.query.get('filename', default='contents')
-            sources = [(filename, request['wsgi.input'])]
+            source = (filename, request['wsgi.input'])
         bundle_link_url = getattr(bundle.metadata, "link_url", None)
         if bundle_link_url:
             # Don't upload to bundle store if using --link, as the path
             # already exists.
             pass
-        elif sources:
+        elif source:
             local.upload_manager.upload_to_bundle_store(
                 bundle,
-                sources=sources,
-                follow_symlinks=False,
-                exclude_patterns=None,
-                remove_sources=False,
+                source=source,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
-                simplify_archives=query_get_bool('simplify', default=True),
                 use_azure_blob_beta=use_azure_blob_beta,
-            )  # See UploadManager for full explanation of 'simplify'
+            )
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
