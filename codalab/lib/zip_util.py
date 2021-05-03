@@ -48,7 +48,7 @@ def strip_archive_ext(path):
     raise UsageError('Not an archive: %s' % path)
 
 
-def unpack(ext: str, source: Union[str, IO[bytes]], dest_path):
+def unpack(ext: str, source: Union[str, IO[bytes]], dest_path: str):
     """Unpack the archive |source| to |dest_path|.
 
     Args:
