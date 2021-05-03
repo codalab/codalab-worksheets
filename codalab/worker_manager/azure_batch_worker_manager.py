@@ -24,7 +24,11 @@ import uuid
 from argparse import ArgumentParser
 from typing import List
 
-from codalab.lib.telemetry_util import CODALAB_SENTRY_INGEST, using_sentry
+from codalab.lib.telemetry_util import (
+    CODALAB_SENTRY_INGEST,
+    CODALAB_SENTRY_ENVIRONMENT,
+    using_sentry,
+)
 from .worker_manager import WorkerManager, WorkerJob
 
 
@@ -132,6 +136,9 @@ class AzureBatchWorkerManager(WorkerManager):
         if using_sentry():
             task_container_run_options.append(
                 '--env CODALAB_SENTRY_INGEST_URL=%s' % CODALAB_SENTRY_INGEST
+            )
+            task_container_run_options.append(
+                '--env CODALAB_SENTRY_ENVIRONMENT=%s' % CODALAB_SENTRY_ENVIRONMENT
             )
 
         command_line: str = "/bin/bash -c '{}'".format(' '.join(command))
