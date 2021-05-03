@@ -734,8 +734,6 @@ def _update_bundle_contents_blob(uuid):
       whether or not it is an archive, default is 'contents'
     - `unpack`: (optional) 1 if the uploaded file should be unpacked if it is
       an archive, or 0 otherwise, default is 1
-    - `simplify`: (optional) 1 if the uploaded file should be 'simplified' if
-      it is an archive, or 0 otherwise, default is 1.
     - `finalize_on_failure`: (optional) 1 if bundle state should be set
       to 'failed' in the case of a failure during upload, or 0 if the bundle
       state should not change on failure. Default is 0.
@@ -794,9 +792,8 @@ def _update_bundle_contents_blob(uuid):
                 source=source,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
-                simplify_archives=query_get_bool('simplify', default=True),
                 use_azure_blob_beta=use_azure_blob_beta,
-            )  # See UploadManager for full explanation of 'simplify'
+            )
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
             local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
