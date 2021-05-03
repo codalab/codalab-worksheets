@@ -254,6 +254,12 @@ CODALAB_ARGUMENTS = [
             'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
     ),
+    CodalabArg(
+        name='sentry_environment',
+        help=(
+            'Environment for logging exceptions with Sentry. If not provided, Sentry is not used.'
+        ),
+    ),
     # Bundle Manager
     CodalabArg(
         name='bundle_manager_worker_timeout_seconds',
