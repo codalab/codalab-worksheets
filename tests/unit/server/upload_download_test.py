@@ -197,7 +197,6 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             source=["contents.tar.gz", f],
             git=False,
             unpack=True,
-            simplify_archives=True,
             use_azure_blob_beta=False,
         )
 
@@ -207,7 +206,6 @@ class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
             source=["contents", BytesIO(contents)],
             git=False,
             unpack=False,
-            simplify_archives=True,
             use_azure_blob_beta=False,
         )
 

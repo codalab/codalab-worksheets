@@ -1,9 +1,9 @@
 import os
 import shutil
-from typing import Optional, Union, Tuple, IO, cast
+from typing import Union, Tuple, IO, cast
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry
-from codalab.lib import crypt_util, file_util, path_util
+from codalab.lib import file_util, path_util
 from codalab.objects.bundle import Bundle
 
 Source = Union[str, Tuple[str, IO[bytes]]]
@@ -24,24 +24,16 @@ class UploadManager(object):
         self.zip_util = zip_util
 
     def upload_to_bundle_store(
-        self,
-        bundle: Bundle,
-        source: Source,
-        git: bool,
-        unpack: bool,
-        simplify_archives: bool,
-        use_azure_blob_beta: bool,
+        self, bundle: Bundle, source: Source, git: bool, unpack: bool, use_azure_blob_beta: bool,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
 
+        |bundle|: specifies the bundle associated with the contents to upload.
         |source|: specifies the location of the contents to upload. Each element is
                    either a URL or a tuple (filename, binary file-like object).
         |git|: for URLs, whether |source| is a git repo to clone.
         |unpack|: whether to unpack |source| if it's an archive.
-        |simplify_archives|: whether to simplify unpacked archives so that if they
-                             contain a single file, the final path is just that file,
-                             not a directory containing that file.
         |use_azure_blob_beta|: whether to use Azure Blob Storage.
 
         Exceptions:
@@ -61,9 +53,7 @@ class UploadManager(object):
                     source = (filename, urlopen_with_retry(source))
             if is_fileobj:
                 if unpack and self.zip_util.path_is_archive(filename):
-                    self._unpack_fileobj(
-                        source[0], source[1], bundle_path, simplify_archive=simplify_archives,
-                    )
+                    self._unpack_fileobj(source[0], source[1], bundle_path)
                 else:
                     with open(bundle_path, 'wb') as out:
                         shutil.copyfileobj(cast(IO, source[1]), out)
@@ -92,39 +82,10 @@ class UploadManager(object):
             filename = source[0]
         return is_url, is_fileobj, filename
 
-    def _unpack_fileobj(self, source_filename, source_fileobj, dest_path, simplify_archive):
+    def _unpack_fileobj(self, source_filename, source_fileobj, dest_path):
         self.zip_util.unpack(
             self.zip_util.get_archive_ext(source_filename), source_fileobj, dest_path
         )
-        if simplify_archive:
-            self._simplify_archive(dest_path)
-
-    def _simplify_archive(self, path: str) -> None:
-        """
-        Modifies |path| in place: If |path| is a directory containing exactly
-        one file / directory, then replace |path| with that file / directory.
-        """
-        if not os.path.isdir(path):
-            return
-
-        files = os.listdir(path)
-        if len(files) == 1:
-            self._simplify_directory(path, files[0])
-
-    def _simplify_directory(self, path: str, child_path: Optional[str] = None) -> None:
-        """
-        Modifies |path| in place by replacing |path| with its first child file / directory.
-        This method should only be called after checking to see if the |path| directory
-        contains exactly one file / directory.
-        """
-        if child_path is None:
-            child_path = os.listdir(path)[0]
-
-        temp_path = path + crypt_util.get_random_string()
-        path_util.rename(path, temp_path)
-        child_path = os.path.join(temp_path, child_path)
-        path_util.rename(child_path, path)
-        path_util.remove(temp_path)
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.

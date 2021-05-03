@@ -617,8 +617,6 @@ Query parameters:
   whether or not it is an archive, default is 'contents'
 - `unpack`: (optional) 1 if the uploaded file should be unpacked if it is
   an archive, or 0 otherwise, default is 1
-- `simplify`: (optional) 1 if the uploaded file should be 'simplified' if
-  it is an archive, or 0 otherwise, default is 1.
 - `finalize_on_failure`: (optional) 1 if bundle state should be set
   to 'failed' in the case of a failure during upload, or 0 if the bundle
   state should not change on failure. Default is 0.
