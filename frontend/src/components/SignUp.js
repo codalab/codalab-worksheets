@@ -212,9 +212,14 @@ export class SignUp extends React.Component {
                         <ReCAPTCHA
                             ref={this.recaptchaRef}
                             sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
+                            onChange={() => {
+                                this.setState({ captchaPassed: true });
+                            }}
                             style={{ marginBottom: 10 }}
                         />
-                        <button type='submit'>Sign Up &raquo;</button>
+                        <button type='submit' disabled={!this.state.captchaPassed}>
+                            Sign Up &raquo;
+                        </button>
                     </form>
                 </ContentWrapper>
             </React.Fragment>
