@@ -63,7 +63,6 @@ export class SignUp extends React.Component {
         e.preventDefault();
         try {
             const token = this.recaptchaRef.current.getValue();
-            this.recaptchaRef.current.reset();
             const response = await fetch('/rest/account/signup', {
                 method: 'POST',
                 headers: {
@@ -76,6 +75,7 @@ export class SignUp extends React.Component {
                     token,
                 }),
             });
+            this.recaptchaRef.current.reset();
             if (response.redirected) {
                 window.location.href = response.url;
             }
