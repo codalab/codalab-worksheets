@@ -68,15 +68,15 @@ def do_signup():
             default_app().get_url('success', message="You are already logged into your account.")
         )
 
-    success_uri = request.json.get('success_uri')
-    error_uri = request.json.get('error_uri')
-    username = request.json.get('username')
-    email = request.json.get('email')
-    first_name = request.json.get('first_name')
-    last_name = request.json.get('last_name')
-    password = request.json.get('password')
-    affiliation = request.json.get('affiliation')
-    token = request.json.get('token')
+    success_uri = request.forms.get('success_uri')
+    error_uri = request.forms.get('error_uri')
+    username = request.forms.get('username')
+    email = request.forms.get('email')
+    first_name = request.forms.get('first_name')
+    last_name = request.forms.get('last_name')
+    password = request.forms.get('password')
+    affiliation = request.forms.get('affiliation')
+    token = request.forms.get('token')
 
     errors = []
 
@@ -99,7 +99,7 @@ def do_signup():
             "creating a new account." % request.user.user_name
         )
 
-    if request.json.get('confirm_password') != password:
+    if request.forms.get('confirm_password') != password:
         errors.append("Passwords do not match.")
 
     if not spec_util.NAME_REGEX.match(username):

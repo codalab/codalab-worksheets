@@ -65,10 +65,7 @@ export class SignUp extends React.Component {
             const token = this.recaptchaRef.current.getValue();
             const response = await fetch('/rest/account/signup', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+                body: new URLSearchParams({
                     ...this.state.form,
                     success_uri: '/account/signup/success',
                     error_uri: this.props.location.pathname,
