@@ -153,11 +153,6 @@ def do_signup():
     return redirect_with_query(success_uri, {'email': email})
 
 
-@post('/account/recaptcha')
-def do_recaptcha():
-    return {"success": True}
-
-
 @get('/account/verify/<key>', skip=UserVerifiedPlugin)
 def do_verify(key):
     if local.model.verify_user(key):
