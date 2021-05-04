@@ -58,6 +58,8 @@ from codalab.objects.user import User
 from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
+from codalab.worker.worker_run_state import RunStage
+
 
 logger = logging.getLogger(__name__)
 
@@ -946,17 +948,17 @@ class BundleModel(object):
             metadata_update['docker_image'] = worker_run.docker_image
 
         if worker_run.bundle_profile_stats is not None:
-            metadata_update['time_preparing'] = worker_run.bundle_profile_stats[
-                'RUN_STAGE.PREPARING'
-            ]['elapsed']
-            metadata_update['time_running'] = worker_run.bundle_profile_stats['RUN_STAGE.RUNNING'][
+            metadata_update['time_preparing'] = worker_run.bundle_profile_stats[RunStage.PREPARING][
+                'elapsed'
+            ]
+            metadata_update['time_running'] = worker_run.bundle_profile_stats[RunStage.RUNNING][
                 'elapsed'
             ]
             metadata_update['time_cleaning_up'] = worker_run.bundle_profile_stats[
-                'RUN_STAGE.CLEANING_UP'
+                RunStage.CLEANING_UP
             ]['elapsed']
             metadata_update['time_uploading_results'] = worker_run.bundle_profile_stats[
-                'RUN_STAGE.UPLOADING_RESULTS'
+                RunStage.UPLOADING_RESULTS
             ]['elapsed']
 
         self.update_bundle(

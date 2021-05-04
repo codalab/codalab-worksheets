@@ -627,14 +627,14 @@ class Worker:
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
                 bundle_profile_stats={
-                    [RunStage.PREPARING]: self.init_stage_stats(),
-                    [RunStage.RUNNING]: self.init_stage_stats(),
-                    [RunStage.CLEANING_UP]: self.init_stage_stats(),
-                    [RunStage.UPLOADING_RESULTS]: self.init_stage_stats(),
-                    [RunStage.FINALIZING]: self.init_stage_stats(),
+                    RunStage.PREPARING: self.init_stage_stats(),
+                    RunStage.RUNNING: self.init_stage_stats(),
+                    RunStage.CLEANING_UP: self.init_stage_stats(),
+                    RunStage.UPLOADING_RESULTS: self.init_stage_stats(),
+                    RunStage.FINALIZING: self.init_stage_stats(),
                     # note: this is not sent over the api, but
                     # the start time needs to be set
-                    [RunStage.FINISHED]: self.init_stage_stats(),
+                    RunStage.FINISHED: self.init_stage_stats(),
                 },
                 resources=resources,
                 bundle_start_time=time.time(),
