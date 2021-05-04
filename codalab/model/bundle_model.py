@@ -2416,7 +2416,6 @@ class BundleModel(object):
         is_verified=False,
         has_access=False,
         time_used=0,
-        disk_quota=None,
         disk_used=0,
         avatar_id=None,
     ):
@@ -2430,8 +2429,6 @@ class BundleModel(object):
         :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
-        if disk_quota is None:
-            disk_quota = self.default_user_info['disk_quota']
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex

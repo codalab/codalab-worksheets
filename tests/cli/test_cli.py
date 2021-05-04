@@ -106,17 +106,12 @@ def create_user(context, username, password='codalab', disk_quota='100g'):
     manager = CodaLabManager()
     model = manager.model()
 
+    # Set default disk quota
+    model.default_user_info['disk_quota'] = disk_quota
+
     # Creates a user without going through the full sign-up process
     model.add_user(
-        username,
-        random_name(),
-        '',
-        '',
-        password,
-        '',
-        user_id=username,
-        is_verified=True,
-        disk_quota=disk_quota,
+        username, random_name(), '', '', password, '', user_id=username, is_verified=True,
     )
     context.collect_user(username)
 
