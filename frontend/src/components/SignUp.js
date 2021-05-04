@@ -64,20 +64,7 @@ export class SignUp extends React.Component {
         try {
             const token = this.recaptchaRef.current.getValue();
             this.recaptchaRef.current.reset();
-            let response = await fetch('/rest/account/recaptcha', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token,
-                }),
-            });
-            const { success: captchaPassed } = await response.json();
-            if (!captchaPassed) {
-                return;
-            }
-            response = await fetch('/rest/account/signup', {
+            const response = await fetch('/rest/account/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
