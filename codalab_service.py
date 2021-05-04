@@ -369,9 +369,16 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='recaptcha_site_key',
         env_var='REACT_APP_RECAPTCHA_SITE_KEY',
-        type=int,
+        type=str,
         default='6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI',  # test key provided by Google, will always pass
         help='API site key needed for recaptcha',
+    ),
+    CodalabArg(
+        name='recaptcha_secret_key',
+        env_var='CODALAB_RECAPTCHA_SECRET_KEY',
+        type=str,
+        default='6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe',  # test key provided by Google, will always pass
+        help='API secret key needed for recaptcha',
     ),
 ]
 

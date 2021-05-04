@@ -1,5 +1,4 @@
 import * as React from 'react';
-import Immutable from 'seamless-immutable';
 import { NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
@@ -24,26 +23,20 @@ export const SignUpSuccess = (props) => {
 };
 
 export class SignUp extends React.Component {
-    /** Constructor. */
-    constructor(props) {
-        super(props);
-        this.state = Immutable({
-            form: {},
-            captchaPassed: false,
-        });
-        this.recaptchaRef = React.createRef();
-    }
+    state = {
+        form: {},
+        captchaPassed: false,
+    };
+    recaptchaRef = React.createRef();
 
     handleInputChange = (event) => {
         const target = event.target;
         const value = target.value;
         const name = target.name;
 
-        this.setState(
-            Immutable({
-                form: { [name]: value },
-            }),
-        );
+        this.setState({
+            form: { ...this.state.form, [name]: value },
+        });
     };
 
     componentDidMount() {
@@ -55,18 +48,54 @@ export class SignUp extends React.Component {
         const { email, username, first_name, last_name, affiliation } = queryString.parse(
             this.props.location.search,
         );
-        this.setState(
-            Immutable({
-                form: {
-                    email: email,
-                    username: username,
-                    first_name: first_name,
-                    last_name: last_name,
-                    affiliation: affiliation,
-                },
-            }),
-        );
+        this.setState({
+            form: {
+                email: email,
+                username: username,
+                first_name: first_name,
+                last_name: last_name,
+                affiliation: affiliation,
+            },
+        });
     }
+
+    onSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const token = this.recaptchaRef.current.getValue();
+            this.recaptchaRef.current.reset();
+            let response = await fetch('/rest/account/recaptcha', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    token,
+                }),
+            });
+            const { success: captchaPassed } = await response.json();
+            if (!captchaPassed) {
+                return;
+            }
+            response = await fetch('/rest/account/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...this.state.form,
+                    success_uri: '/account/signup/success',
+                    error_uri: this.props.location.pathname,
+                    token,
+                }),
+            });
+            if (response.redirected) {
+                window.location.href = response.url;
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
 
     render() {
         const { error } = queryString.parse(this.props.location.search);
@@ -83,6 +112,7 @@ export class SignUp extends React.Component {
                         id='signup_form'
                         method='post'
                         action='/rest/account/signup'
+                        onSubmit={this.onSubmit}
                     >
                         {error && <div class='alert alert-error'>{error}</div>}
                         <div className='form-group'>
@@ -176,26 +206,15 @@ export class SignUp extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
-                        <input type='hidden' name='success_uri' value='/account/signup/success' />
-                        <input
-                            type='hidden'
-                            name='error_uri'
-                            value={this.props.location.pathname}
-                        />
                         <div style={{ display: this.state.captchaPassed && 'none' }}>
                             Please complete the captcha below.
                         </div>
                         <ReCAPTCHA
                             ref={this.recaptchaRef}
                             sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY}
-                            onChange={() => {
-                                this.setState({ captchaPassed: true });
-                            }}
                             style={{ marginBottom: 10 }}
                         />
-                        <button disabled={!this.state.captchaPassed} type='submit'>
-                            Sign Up &raquo;
-                        </button>
+                        <button type='submit'>Sign Up &raquo;</button>
                     </form>
                 </ContentWrapper>
             </React.Fragment>

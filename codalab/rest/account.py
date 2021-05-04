@@ -3,7 +3,8 @@ Login and signup views.
 Handles create new user accounts and authenticating users.
 """
 from bottle import request, response, template, local, redirect, default_app, get, post
-
+import requests
+import os
 from codalab.lib import crypt_util, spec_util
 from codalab.lib.server_util import redirect_with_query
 from codalab.lib.spec_util import NAME_REGEX
@@ -67,23 +68,38 @@ def do_signup():
             default_app().get_url('success', message="You are already logged into your account.")
         )
 
-    success_uri = request.forms.get('success_uri')
-    error_uri = request.forms.get('error_uri')
-    username = request.forms.get('username')
-    email = request.forms.get('email')
-    first_name = request.forms.get('first_name')
-    last_name = request.forms.get('last_name')
-    password = request.forms.get('password')
-    affiliation = request.forms.get('affiliation')
+    success_uri = request.json.get('success_uri')
+    error_uri = request.json.get('error_uri')
+    username = request.json.get('username')
+    email = request.json.get('email')
+    first_name = request.json.get('first_name')
+    last_name = request.json.get('last_name')
+    password = request.json.get('password')
+    affiliation = request.json.get('affiliation')
+    token = request.json.get('token')
 
     errors = []
+
+    url = 'https://www.google.com/recaptcha/api/siteverify?secret={}&response={}'.format(
+        os.environ['CODALAB_RECAPTCHA_SECRET_KEY'], token
+    )
+    res = requests.post(url)
+
+    try:
+        data = res.json()
+        if not data.get('success'):
+            errors.append('Google reCAPTCHA failed.')
+
+    except UsageError as e:
+        errors.append(str(e))
+
     if request.user.is_authenticated:
         errors.append(
             "You are already logged in as %s, please log out before "
             "creating a new account." % request.user.user_name
         )
 
-    if request.forms.get('confirm_password') != password:
+    if request.json.get('confirm_password') != password:
         errors.append("Passwords do not match.")
 
     if not spec_util.NAME_REGEX.match(username):
@@ -135,6 +151,11 @@ def do_signup():
 
     # Redirect to success page
     return redirect_with_query(success_uri, {'email': email})
+
+
+@post('/account/recaptcha')
+def do_recaptcha():
+    return {"success": True}
 
 
 @get('/account/verify/<key>', skip=UserVerifiedPlugin)
