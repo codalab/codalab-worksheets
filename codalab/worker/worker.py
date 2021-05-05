@@ -476,9 +476,13 @@ class Worker:
         for uuid in self.runs:
             prev_state = self.runs[uuid]
             self.runs[uuid] = self.run_state_manager.transition(prev_state)
+            # it's possible that a bundle can return to the same stage, so we don't want to reset that initial stage.
+            # to prevent this, ensure we are actually going to a new stage as opposed to reiterating on an old one.
             if prev_state.stage != self.runs[uuid].stage:
                 self.end_stage_stats(uuid, prev_state.stage)
-                self.start_stage_stats(uuid, self.runs[uuid].stage)
+                # only start stages that are not endpoints
+                if self.runs[uuid].stage != RunStage.FINISHED:
+                    self.start_stage_stats(uuid, self.runs[uuid].stage)
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
@@ -632,9 +636,6 @@ class Worker:
                     RunStage.CLEANING_UP: self.init_stage_stats(),
                     RunStage.UPLOADING_RESULTS: self.init_stage_stats(),
                     RunStage.FINALIZING: self.init_stage_stats(),
-                    # note: this is not sent over the api, but
-                    # the start time needs to be set
-                    RunStage.FINISHED: self.init_stage_stats(),
                 },
                 resources=resources,
                 bundle_start_time=time.time(),
