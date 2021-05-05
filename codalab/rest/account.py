@@ -80,18 +80,21 @@ def do_signup():
 
     errors = []
 
-    url = 'https://www.google.com/recaptcha/api/siteverify?secret={}&response={}'.format(
-        os.environ['CODALAB_RECAPTCHA_SECRET_KEY'], token
-    )
-    res = requests.post(url)
+    if not token:
+        errors.append('Google reCAPTCHA token is missing.')
+    else:
+        url = 'https://www.google.com/recaptcha/api/siteverify?secret={}&response={}'.format(
+            os.environ['CODALAB_RECAPTCHA_SECRET_KEY'], token
+        )
+        res = requests.post(url)
 
-    try:
-        data = res.json()
-        if not data.get('success'):
-            errors.append('Google reCAPTCHA failed.')
+        try:
+            data = res.json()
+            if not data.get('success'):
+                errors.append('Google reCAPTCHA failed.')
 
-    except UsageError as e:
-        errors.append(str(e))
+        except UsageError as e:
+            errors.append(str(e))
 
     if request.user.is_authenticated:
         errors.append(

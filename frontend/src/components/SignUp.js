@@ -190,9 +190,6 @@ export class SignUp extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
-                        <div style={{ display: this.state.captchaPassed && 'none' }}>
-                            Please complete the captcha below.
-                        </div>
                         <ReCAPTCHA
                             ref={this.recaptchaRef}
                             sitekey={process.env.REACT_APP_CODALAB_RECAPTCHA_SITE_KEY}
