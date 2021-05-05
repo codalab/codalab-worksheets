@@ -1415,7 +1415,6 @@ class BundleCLI(object):
                     params={
                         'filename': packed['filename'],
                         'unpack': packed['should_unpack'],
-                        'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
@@ -1621,7 +1620,6 @@ class BundleCLI(object):
                 params={
                     'filename': filename,
                     'unpack': unpack,
-                    'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },

@@ -13,6 +13,7 @@ import { renderSize, shorten_uuid } from '../../util/worksheet_utils';
 import './FileBrowser.scss';
 import { useState, useEffect, useCallback } from 'react';
 import useSWR, { cache } from 'swr';
+import { apiWrapper } from '../../util/apiWrapper';
 
 export class FileBrowser extends React.Component<
     {
@@ -82,26 +83,23 @@ export class FileBrowser extends React.Component<
         // folder_path is an absolute path
         if (folder_path === undefined) folder_path = this.state.currentWorkingDirectory;
         this.setState({ currentWorkingDirectory: folder_path });
-        let url = '/rest/bundles/' + this.props.uuid + '/contents/info/' + folder_path;
-        $.ajax({
-            type: 'GET',
-            url: url,
-            data: { depth: 1 },
-            dataType: 'json',
-            cache: false,
-            success: (data) => {
-                if (data.data.type === 'directory') {
-                    this.setState({ fileBrowserData: data.data });
-                    $('.file-browser').show();
-                } else {
-                    $('.file-browser').hide();
-                }
-            },
-            error: (xhr, status, err) => {
-                this.setState({ fileBrowserData: {} });
+        const callback = (data) => {
+            if (data.data.type === 'directory') {
+                this.setState({ fileBrowserData: data.data });
+                $('.file-browser').show();
+            } else {
                 $('.file-browser').hide();
-            },
-        });
+            }
+        };
+        const errorHandler = (error) => {
+            console.error(error);
+            this.setState({ fileBrowserData: {} });
+            $('.file-browser').hide();
+        };
+        apiWrapper
+            .updateFileBrowser(this.props.uuid, folder_path)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     render() {
@@ -527,7 +525,6 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
         currentWorkingDirectory +
         '?' +
         new URLSearchParams({ depth: 1 });
-
     useSWR(url, fetcher, {
         revalidateOnMount: true,
         refreshInterval: isRunningBundle ? 4000 : 0,

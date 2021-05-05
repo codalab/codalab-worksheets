@@ -3,8 +3,8 @@ import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import BundleDetail from '../BundleDetail';
 import NewRun from '../NewRun';
 import { useEffect } from 'react';
-import { fetchAsyncBundleContents } from '../../../util/async_loading_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../constants';
+import { fetchAsyncBundleContents } from '../../../util/apiWrapper';
 
 class RecordItem extends React.Component {
     /** Constructor. */
