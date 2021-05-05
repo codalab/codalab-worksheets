@@ -939,9 +939,9 @@ class BundleModel(object):
         if 'cpu_usage' in worker_run.as_dict:
             cpu_usage = worker_run.cpu_usage
 
-        memory_limit: int = 0
-        if 'memory_limit' in worker_run.as_dict:
-            memory_limit = worker_run.memory_limit
+        memory_usage: int = 0
+        if 'memory_usage' in worker_run.as_dict:
+            memory_usage = worker_run.memory_usage
 
         metadata_update = {
             'run_status': worker_run.run_status,
@@ -951,7 +951,7 @@ class BundleModel(object):
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
-            'memory_limit': memory_limit,
+            'memory_usage': memory_usage,
         }
 
         if worker_run.docker_image is not None:

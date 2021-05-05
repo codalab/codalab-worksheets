@@ -270,9 +270,9 @@ def get_container_stats_with_docker_stats(container: docker.models.containers.Co
             container_stats: dict = client.containers.get(container.name).stats(stream=False)
 
             cpu_usage: float = get_cpu_usage(container_stats)
-            memory_limit: int = get_memory_limit(container_stats)
+            memory_usage: float = get_memory_usage(container_stats)
 
-            return cpu_usage, memory_limit
+            return cpu_usage, memory_usage
         except docker.errors.NotFound:
             raise
     else:
@@ -304,11 +304,12 @@ def get_cpu_usage(container_stats: dict) -> float:
         return 0.0
 
 
-def get_memory_limit(container_stats: dict) -> int:
+def get_memory_usage(container_stats: dict) -> float:
     """Takes a dictionary of container stats returned by docker stats, returns memory usage"""
     try:
-        memory_limit: int = container_stats['memory_stats']['limit']
-        return memory_limit
+        memory_limit: float = container_stats['memory_stats']['limit']
+        current_memory_usage: float = container_stats['memory_stats']['usage']
+        return current_memory_usage / memory_limit
     except KeyError:
         return 0
 

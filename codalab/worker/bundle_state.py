@@ -193,7 +193,7 @@ class BundleCheckinState(object):
         failure_message,  # type: Optional[str]
         bundle_profile_stats,  # type: dict
         cpu_usage,  # type: float
-        memory_limit,  # type: int
+        memory_usage,  # type: int
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -207,6 +207,7 @@ class BundleCheckinState(object):
         self.exitcode = exitcode
         self.failure_message = failure_message
         self.cpu_usage = cpu_usage
+        self.memory_usage = memory_usage
         self.memory_limit = memory_limit
         self.bundle_profile_stats = bundle_profile_stats
 
@@ -225,7 +226,7 @@ class BundleCheckinState(object):
             exitcode=dct['exitcode'],
             failure_message=dct['failure_message'],
             cpu_usage=dct.get('cpu_usage'),
-            memory_limit=dct.get('memory_limit'),
+            memory_usage=dct.get('memory_usage'),
             bundle_profile_stats=dct.get('bundle_profile_stats'),
         )
 
