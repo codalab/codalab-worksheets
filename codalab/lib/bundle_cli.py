@@ -1368,7 +1368,7 @@ class BundleCLI(object):
             sources = [path_util.normalize(path) for path in args.path]
             # Calculate size of sources
             total_bundle_size = sum([get_path_size(source) for source in sources])
-            user = client.fetch('users', client.fetch('user')['user_name'])
+            user = client.fetch('user')
             disk_left = user['disk_quota'] - user['disk_used']
             if disk_left - total_bundle_size <= 0:
                 raise DiskQuotaExceededError(
