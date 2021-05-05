@@ -397,9 +397,13 @@ class Worksheet extends React.Component {
             this.setState({ openedDialog: null, deleteItemCallback: null });
             return;
         }
-        if (cmd_type === 'deleteItem') {
+        if (cmd_type === 'deleteMarkdown') {
             // This is used to delete markdown blocks
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_MARKDOWN });
+        }
+        if (cmd_type === 'deleteSchema') {
+            // This is used to delete schema
+            this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_SCHEMA });
         }
         if (cmd_type === 'rm') {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_BUNDLE });
@@ -627,6 +631,9 @@ class Worksheet extends React.Component {
             if (deletion) {
                 const textDeleted = true;
                 const param = { textDeleted };
+                if (this.state.openedDialog) {
+                    this.setState({ openedDialog: null, deleteItemCallback: null });
+                }
                 this.reloadWorksheet(undefined, undefined, param);
             } else {
                 const moveIndex = true;
@@ -643,7 +650,7 @@ class Worksheet extends React.Component {
         this.setState({
             messagePopover: {
                 showMessage: true,
-                messageContent: 'Schema Saved!',
+                messageContent: deletion ? 'Schema Deleted!' : 'Schema Saved!',
             },
         });
         this.autoHideOpenedMessagePopover();
@@ -1029,14 +1036,20 @@ class Worksheet extends React.Component {
             this.toggleWorksheetSize();
         });
 
-        if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
+        if (
+            this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN ||
+            this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_SCHEMA
+        ) {
             Mousetrap.bind(
                 ['enter'],
                 function(e) {
                     e.preventDefault();
                     if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
                         this.state.deleteItemCallback();
-                        this.toggleCmdDialogNoEvent('deleteItem');
+                        this.toggleCmdDialogNoEvent('deleteMarkdown');
+                    } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_SCHEMA) {
+                        this.state.deleteItemCallback();
+                        this.toggleCmdDialogNoEvent('deleteSchema');
                     }
                 }.bind(this),
             );
