@@ -262,12 +262,12 @@ def _compute_target_info_blob(
             # The entry returned by ratarmount for a single .gz file is not technically part of a tar archive
             # and has a name hardcoded as "contents," so we modify the type, name, and permissions of
             # the output accordingly.
-            return dict(
+            return cast(TargetInfo, dict(
                 _get_info("/contents", depth),
                 type="file",
                 name=linked_bundle_path.bundle_uuid,
                 perm=0o755,
-            )
+            ))
         if linked_bundle_path.archive_subpath:
             # Return the contents of a subpath within a directory.
             return _get_info(linked_bundle_path.archive_subpath, depth)
