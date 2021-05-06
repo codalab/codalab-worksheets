@@ -229,12 +229,12 @@ class OpenFile(object):
     mode: str
     gzipped: bool
 
-    def __init__(self, path: str, mode='r', gzipped=False):
+    def __init__(self, path: str, mode='rb', gzipped=False):
         """Initialize OpenFile.
 
         Args:
             path (str): Path to open; can be a path on disk or a path on Blob Storage.
-            mode (str): Mode with which to open the file. Default is "r".
+            mode (str): Mode with which to open the file. Default is "rb". This is only 
             gzipped (bool): Whether the output should be gzipped. Must be True if downloading a directory;
                 can be True or False if downloading a file.
         """
@@ -248,18 +248,13 @@ class OpenFile(object):
             # Stream an entire, single .gz file from Blob Storage. This is gzipped by default,
             # so if the user requested a gzipped version of the entire file, just read and return it.
             if not linked_bundle_path.is_archive_dir and self.gzipped:
-                return FileSystems.open(
-                    self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
-                )
+                return FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
             # Stream an entire, single .tar.gz file from Blob Storage. This is gzipped by default,
             # and directories are always gzipped, so just read and return it.
             if linked_bundle_path.is_archive_dir and not linked_bundle_path.archive_subpath:
                 if not self.gzipped:
                     raise IOError("Directories must be gzipped.")
-                fs = FileSystems.open(
-                    self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
-                )
-                return fs
+                return FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
             # If a file path is specified within an archive file on Blob Storage, open the specified path within the archive.
             with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
                 isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
