@@ -1,14 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import * as Sentry from '@sentry/react';
 import CodalabApp from './CodalabApp';
 import * as serviceWorker from './serviceWorker';
 import './css/imports.scss';
-
-Sentry.init({
-    dsn: process.env.REACT_APP_CODALAB_SENTRY_INGEST_URL,
-    environment: process.env.REACT_APP_CODALAB_SENTRY_ENVIRONMENT,
-});
 
 ReactDOM.render(<CodalabApp />, document.getElementById('root'));
 
