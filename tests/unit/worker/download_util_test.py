@@ -15,7 +15,6 @@ import tempfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 import shutil
 import gzip
-from io import BytesIO
 
 
 class AzureBlobTestBase:
