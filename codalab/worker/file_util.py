@@ -8,7 +8,7 @@ import bz2
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
-from codalab.worker.un_gzip_stream import BytesBuffer, un_gzip_stream
+from codalab.worker.un_gzip_stream import BytesBuffer
 from codalab.worker.tar_subdir_stream import TarSubdirStream
 from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes

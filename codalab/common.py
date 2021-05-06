@@ -176,7 +176,8 @@ class LinkedBundlePath:
 
         is_archive (bool): Whether this bundle is stored as an indexed archive file (contents.gz / contents.tar.gz + an index.sqlite file. Only done currently by Azure Blob Storage.
 
-        is_archive_dir (bool): Whether this bundle is stored as a contents.tar.gz file (which represents a directory) or a contents.gz file (which represents a single file). Only applicable if is_archive is True.
+        is_archive_dir (bool): Whether this bundle is stored as a contents.tar.gz file (which represents a directory) or
+        a contents.gz file (which represents a single file). Only applicable if is_archive is True.
 
         uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
 
