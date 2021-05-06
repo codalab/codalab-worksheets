@@ -31,7 +31,7 @@ class AzureBlobTestBase:
         return bundle_uuid, bundle_path
 
     def create_file(self, contents=b"hello world"):
-        """Creates a file on Blob Storage (compressed as .gzip) and returns its path."""
+        """Creates a file on Blob Storage (compressed as .gz) and returns its path."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.gz"
         compressed_file = BytesIO(gzip.compress(contents))
