@@ -8,7 +8,7 @@ import bz2
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
-from codalab.worker.un_gzip_stream import BytesBuffer
+from codalab.worker.un_gzip_stream import BytesBuffer, un_gzip_stream
 from codalab.worker.tar_subdir_stream import TarSubdirStream
 from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
@@ -178,13 +178,13 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         do_unzip(fileobj_or_name)
 
 
-class OpenIndexedTarGzFile(object):
-    """Open a .tar.gz file specified by the provided path on Azure Blob Storage.
+class OpenIndexedArchiveFile(object):
+    """Open an archive file (.tar.gz / .gz) specified by the provided path on Azure Blob Storage.
     Also reads this file's associated index.sqlite file, then opens the file as an
     SQLiteIndexedTar object.
 
-    This way, the .tar.gz file can be read and specific files can be extracted without
-    needing to download the entire .tar.gz file.
+    This way, the archive file can be read and specific files can be extracted without
+    needing to download the entire archive file.
 
     Returns the SQLiteIndexedTar object.
     """
@@ -196,7 +196,9 @@ class OpenIndexedTarGzFile(object):
             self.index_file_name = index_fileobj.name
             shutil.copyfileobj(
                 FileSystems.open(
-                    path.replace("/contents.tar.gz", "/index.sqlite"),
+                    path.replace("/contents.tar.gz", "/index.sqlite").replace(
+                        "/contents.gz", "/index.sqlite"
+                    ),
                     compression_type=CompressionTypes.UNCOMPRESSED,
                 ),
                 index_fileobj,
@@ -219,40 +221,69 @@ class OpenFile(object):
     """Opens the file indicated by the given file path and returns a handle
     to the associated file object. Can be in a directory.
 
-    The file path can also refer to a .tar.gz file on Azure.
+    The file path can also refer to an archive file on Blob Storage.
     """
 
     path: str
     mode: str
+    gzipped: bool
 
-    def __init__(self, path: str, mode='r'):
+    def __init__(self, path: str, mode='r', gzipped=False):
+        """Initialize OpenFile.
+
+        Args:
+            path (str): Path to open; can be a path on disk or a path on Blob Storage.
+            mode (str): Mode with which to open the file. Default is "r".
+            gzipped (bool): Whether the output should be gzipped. Must be True if downloading a directory;
+                can be True or False if downloading a file.
+        """
         self.path = path
         self.mode = mode
+        self.gzipped = gzipped
 
     def __enter__(self) -> IO[bytes]:
         linked_bundle_path = parse_linked_bundle_url(self.path)
-        if (
-            linked_bundle_path.uses_beam
-            and linked_bundle_path.is_archive
-            and linked_bundle_path.archive_subpath
-        ):
-            # If a file path is specified within a .tar.gz file on Azure, open the specified path within the archive.
-            with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
+        if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
+            # Stream a single file that is directly on Blob Storage (such as the entire archive file).
+            # The file is gzipped by default.
+            if not linked_bundle_path.is_archive_dir and self.gzipped:
+                return FileSystems.open(
+                    self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
+                )
+            # Stream an entire, single .tar.gz file. This is gzipped by default.
+            if linked_bundle_path.is_archive_dir and not linked_bundle_path.archive_subpath:
+                if not self.gzipped:
+                    raise IOError("Directories must be gzipped.")
+                fs = FileSystems.open(
+                    self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
+                )
+                return fs
+            # If a file path is specified within an archive file on Blob Storage, open the specified path within the archive.
+            with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
                 isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
-                fpath = "/" + linked_bundle_path.archive_subpath
+                # If the archive file is a .tar.gz file, open the specified archive subpath within the archive.
+                # If it is a .gz file, open the "/contents" entry, which represents the actual gzipped file.
+                fpath = (
+                    "/" + linked_bundle_path.archive_subpath
+                    if linked_bundle_path.is_archive_dir
+                    else "/contents"
+                )
                 finfo = cast(FileInfo, tf.getFileInfo(fpath))
                 if finfo is None:
                     raise FileNotFoundError(fpath)
                 if isdir(finfo):
                     # Stream a directory from within the archive
-                    return GzipStream(fileobj=TarSubdirStream(self.path))
+                    if not self.gzipped:
+                        raise IOError("Directories must be gzipped.")
+                    return GzipStream(TarSubdirStream(self.path))
+                    return GzipStream(fileobj=fs) if self.gzipped else fs
                 else:
                     # Stream a single file from within the archive
-                    return TarFileStream(tf, finfo)
-        # Stream a single file that is directly on Blob Storage (such as the entire .tar.gz file)
-        return FileSystems.open(
-            self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
-        )
+                    fs = TarFileStream(tf, finfo)
+                    return GzipStream(fs) if self.gzipped else fs
+        else:
+            # Stream a file from disk storage.
+            return open(self.path, self.mode)
 
     def __exit__(self, type, value, traceback):
         pass
@@ -288,14 +319,9 @@ def gzip_file(file_path: str) -> IO[bytes]:
     """
 
     if parse_linked_bundle_url(file_path).uses_beam:
-        # We run gzip in the same process if the file is on Azure, so that
-        # we can use Apache Beam methods to read the file. This may cause
-        # performance issues once we switch all files to use Azure, but
-        # they should be mitigated when we allow users to connect to Azure
-        # servers directly to download files.
         try:
-            with OpenFile(file_path) as file_path_obj:
-                return GzipStream(file_path_obj)
+            with OpenFile(file_path, gzipped=True) as file_path_obj:
+                return file_path_obj
         except Exception as e:
             raise IOError(e)
 
@@ -351,24 +377,23 @@ def get_file_size(file_path):
     FileNotFoundError.
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
-    if (
-        linked_bundle_path.uses_beam
-        and linked_bundle_path.is_archive
-        and linked_bundle_path.archive_subpath
-    ):
-        # If file path is a .tar.gz file on Azure, open the specified path within the
-        # .tar.gz file.
-        with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
-            fpath = "/" + linked_bundle_path.archive_subpath
+    if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
+        # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
+        # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
+        with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
+            fpath = (
+                "/" + linked_bundle_path.archive_subpath
+                if linked_bundle_path.is_archive_dir
+                else "/contents"
+            )
             finfo = tf.getFileInfo(fpath)
             if finfo is None:
                 raise FileNotFoundError(fpath)
             return finfo.size
     if not get_path_exists(file_path):
         raise FileNotFoundError(file_path)
-    # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.
-    filesystem = FileSystems.get_filesystem(file_path)
-    return filesystem.size(file_path)
+    # Local path
+    return os.stat(file_path).st_size
 
 
 def read_file_section(file_path, offset, length):

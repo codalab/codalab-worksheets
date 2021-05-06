@@ -9,7 +9,7 @@ from typing_extensions import TypedDict
 
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
-from codalab.worker.file_util import OpenIndexedTarGzFile
+from codalab.worker.file_util import OpenIndexedArchiveFile
 from codalab.lib.beam.ratarmount import FileInfo
 
 
@@ -188,7 +188,7 @@ def _compute_target_info_blob(
     path: str, depth: Union[int, float], return_generators=False
 ) -> TargetInfo:
     """Computes target info for a file that is externalized on Blob Storage, meaning
-    that it's contained within an indexed .tar.gz file.
+    that it's contained within an indexed archive file.
 
     Args:
         path (str): The path that refers to the specified target.
@@ -208,7 +208,7 @@ def _compute_target_info_blob(
     if not linked_bundle_path.is_archive:
         # Single file
         raise PathException(
-            "Single files on Blob Storage are not supported; only a path within a .tar.gz file is supported."
+            "Single files on Blob Storage are not supported; only a path within an archive file is supported."
         )
 
     # process_contents is used to process the value of the 'contents' key (which is a generator) before it is returned.
@@ -216,7 +216,7 @@ def _compute_target_info_blob(
     # the generator unchanged.
     process_contents = list if return_generators is False else lambda x: x
 
-    with OpenIndexedTarGzFile(linked_bundle_path.bundle_path) as tf:
+    with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
         readlink = lambda finfo: finfo.linkname
 
@@ -257,6 +257,17 @@ def _compute_target_info_blob(
                     )
             return result
 
+        if not linked_bundle_path.is_archive_dir:
+            # Return the contents of the single .gz file.
+            # The entry returned by ratarmount for a single .gz file is not technically part of a tar archive
+            # and has a name hardcoded as "contents," so we modify the type, name, and permissions of
+            # the output accordingly.
+            return dict(
+                _get_info("/contents", depth),
+                type="file",
+                name=linked_bundle_path.bundle_uuid,
+                perm=0o755,
+            )
         if linked_bundle_path.archive_subpath:
             # Return the contents of a subpath within a directory.
             return _get_info(linked_bundle_path.archive_subpath, depth)
@@ -291,7 +302,7 @@ def compute_target_info_blob_descendants_flat(path: str) -> Generator[TargetInfo
     Also includes an entry for the specified directory with `name` equal to an empty string.
 
     This function is used by TarSubdirStream in order to determine the list of descendants
-    that exist inside a given subdirectory in a .tar.gz file on Blob Storage.
+    that exist inside a given subdirectory in an archive file on Blob Storage.
     """
     target_info = _compute_target_info_blob(
         path=path, depth=math.inf, return_generators=True
