@@ -196,6 +196,7 @@ class OpenIndexedArchiveFile(object):
             self.index_file_name = index_fileobj.name
             shutil.copyfileobj(
                 FileSystems.open(
+                    # path can end in either "contents.tar.gz" (if a directory) or "contents.gz" (if a file).
                     path.replace("/contents.tar.gz", "/index.sqlite").replace(
                         "/contents.gz", "/index.sqlite"
                     ),
@@ -244,13 +245,14 @@ class OpenFile(object):
     def __enter__(self) -> IO[bytes]:
         linked_bundle_path = parse_linked_bundle_url(self.path)
         if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
-            # Stream a single file that is directly on Blob Storage (such as the entire archive file).
-            # The file is gzipped by default.
+            # Stream an entire, single .gz file from Blob Storage. This is gzipped by default,
+            # so if the user requested a gzipped version of the entire file, just read and return it.
             if not linked_bundle_path.is_archive_dir and self.gzipped:
                 return FileSystems.open(
                     self.path, self.mode, compression_type=CompressionTypes.UNCOMPRESSED
                 )
-            # Stream an entire, single .tar.gz file. This is gzipped by default.
+            # Stream an entire, single .tar.gz file from Blob Storage. This is gzipped by default,
+            # and directories are always gzipped, so just read and return it.
             if linked_bundle_path.is_archive_dir and not linked_bundle_path.archive_subpath:
                 if not self.gzipped:
                     raise IOError("Directories must be gzipped.")

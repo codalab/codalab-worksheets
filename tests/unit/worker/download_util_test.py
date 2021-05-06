@@ -30,7 +30,7 @@ class AzureBlobTestBase:
         return bundle_uuid, bundle_path
 
     def create_file(self, contents=b"hello world"):
-        """Creates a file on Blob Storage (compressed as .gz) and returns its path."""
+        """Creates a file on Blob (stored as a .gz with an index.sqlite index file) and returns its path."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.gz"
         compressed_file = BytesIO(gzip.compress(contents))
@@ -41,7 +41,7 @@ class AzureBlobTestBase:
         with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
             SQLiteIndexedTar(
                 fileObject=compressed_file,
-                tarFileName="contents",
+                tarFileName="contents",  # Later, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
                 indexFileName=tmp_index_file.name,
@@ -54,7 +54,7 @@ class AzureBlobTestBase:
         return bundle_uuid, bundle_path
 
     def create_directory(self):
-        """Creates a directory and returns its path."""
+        """Creates a directory (stored as a .tar.gz with an index.sqlite index file) and returns its path."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.tar.gz"
 
