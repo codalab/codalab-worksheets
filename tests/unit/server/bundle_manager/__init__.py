@@ -8,7 +8,7 @@ from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.lib.spec_util import generate_uuid
 from codalab.objects.dependency import Dependency
-
+from codalab.worker.worker_run_state import RunStage
 
 BASE_METADATA = {
     "docker_image": "sckoo/bird-brain@sha256:5076a236533caf8bea3410dcfaa10ef2dab506a3505cd33bce5190951d99af84",
@@ -269,6 +269,13 @@ class TestBase:
             remote="",
             exitcode=0,
             failure_message="",
+            bundle_profile_stats={
+                RunStage.PREPARING: {'start': 15, 'end': 20, 'elapsed': 5},
+                RunStage.RUNNING: {'start': 15, 'end': 20, 'elapsed': 5},
+                RunStage.CLEANING_UP: {'start': 15, 'end': 20, 'elapsed': 5},
+                RunStage.UPLOADING_RESULTS: {'start': 15, 'end': 20, 'elapsed': 5},
+                RunStage.FINALIZING: {'start': 15, 'end': 20, 'elapsed': 5},
+            },
         )
         self.bundle_manager._model.bundle_checkin(
             bundle, worker_run, user_id or self.user_id, worker_id
