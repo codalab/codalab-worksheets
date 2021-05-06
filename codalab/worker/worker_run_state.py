@@ -103,6 +103,7 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
+        'bundle_profile_stats',  # dict
     ],
 )
 
