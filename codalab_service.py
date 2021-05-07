@@ -725,7 +725,7 @@ class CodalabServiceManager(object):
                     if arg.frontend:
                         value = getattr(self.args, arg.name, None)
                         f.write('REACT_APP_{}={}\n'.format(arg.env_var, value))
-        
+
         # Build the image using the cache
         self._run_docker_cmd(
             'build%s %s -t %s -f docker_config/dockerfiles/Dockerfile.%s .'
