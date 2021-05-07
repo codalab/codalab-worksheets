@@ -716,6 +716,12 @@ class CodalabServiceManager(object):
         else:
             build_args = ''
 
+        if image == 'frontend' and not self.args.dev:
+            CODALAB_RECAPTCHA_SITE_KEY = os.environ['CODALAB_RECAPTCHA_SITE_KEY']
+            build_args += '--build-arg REACT_APP_CODALAB_RECAPTCHA_SITE_KEY={}'.format(
+                CODALAB_RECAPTCHA_SITE_KEY
+            )
+
         # Build the image using the cache
         self._run_docker_cmd(
             'build%s %s -t %s -f docker_config/dockerfiles/Dockerfile.%s .'

@@ -3,6 +3,7 @@ FROM node:14-slim
 ENV NPM_CONFIG_LOGLEVEL warn
 
 ARG dev=false
+ARG REACT_APP_CODALAB_RECAPTCHA_SITE_KEY
 
 RUN npm install -g serve
 
