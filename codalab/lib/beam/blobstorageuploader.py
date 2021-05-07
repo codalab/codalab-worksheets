@@ -56,28 +56,40 @@ class BlobStorageUploader(Uploader):
     self._write_to_blob(self.buffer)
     self._blob_to_upload.commit_block_list(self.block_list, content_settings=self._content_settings)
 
-# To run test, run:
-# python codalab/lib/beam/blobstorageuploader.py
+"""
+This code is just a quick test / sanity check for BlobStorageUploader that can be
+run from the command line. To run it, first set the LOCAL_PATH variable
+to a local path to a > 100 MB file, then run:
+    npm i -g azurite
+    azurite
+    python codalab/lib/beam/blobstorageuploader.py
+"""
 
 if __name__ == '__main__':
     from azure.core.exceptions import ResourceExistsError
-    from codalab.lib.beam.filesystems import client
+    from apache_beam.io.azure.blobstorageio import BlobStorageIO
+    import filecmp
+    import os
     import shutil
+    
+    os.environ["CODALAB_AZURE_BLOB_CONNECTION_STRING"] = (
+        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
+        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+        "BlobEndpoint=http://localhost:10000/devstoreaccount1;"
+    )
+    from codalab.lib.beam.filesystems import client
     try:
         client.create_container("bundles")
         print("Created initial Azure Blob Storage container \"bundles\".")
     except ResourceExistsError:
         pass
-    PATH = '/Users/epicfaace/Downloads/googlechrome.dmg'
+    LOCAL_PATH = '/Users/epicfaace/Downloads/googlechrome.dmg'
     BLOB_PATH = "azfs://devstoreaccount1/bundles/test.txt"
     uploader = BlobStorageUploader(client, BLOB_PATH)
-    with io.BufferedWriter(UploaderStream(uploader, mode="wb"), buffer_size=128 * 1024) as f, open(PATH, 'rb') as inp_f:
+    with io.BufferedWriter(UploaderStream(uploader, mode="wb"), buffer_size=128 * 1024) as f, open(LOCAL_PATH, 'rb') as inp_f:
         shutil.copyfileobj(inp_f, f)
-
-    from apache_beam.io.azure.blobstorageio import BlobStorageIO
-    import filecmp
     with BlobStorageIO(client).open(BLOB_PATH) as f, tempfile.NamedTemporaryFile() as tf:
         shutil.copyfileobj(f, tf)
-        result = filecmp.cmp(PATH, tf.name)
+        result = filecmp.cmp(LOCAL_PATH, tf.name)
         assert result == True
         print("done")
