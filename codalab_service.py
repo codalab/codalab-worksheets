@@ -717,7 +717,7 @@ class CodalabServiceManager(object):
             build_args = ''
 
         if image == 'frontend' and not self.args.dev:
-            CODALAB_RECAPTCHA_SITE_KEY = os.environ['CODALAB_RECAPTCHA_SITE_KEY']
+            CODALAB_RECAPTCHA_SITE_KEY = os.environ.get('CODALAB_RECAPTCHA_SITE_KEY')
             build_args += '--build-arg REACT_APP_CODALAB_RECAPTCHA_SITE_KEY={}'.format(
                 CODALAB_RECAPTCHA_SITE_KEY
             )
