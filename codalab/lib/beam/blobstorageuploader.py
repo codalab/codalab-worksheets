@@ -26,9 +26,13 @@ class BlobStorageUploader(Uploader):
 
   def put(self, data):
 
+    # Note that Blob Storage currently can hold a maximum of 100,000 uncommitted blobs.
+    # This means that with this current implementation, we can upload a file with a maximum
+    # size of 10 TB to Blob Storage. To exceed that limit, we must either increase MIN_WRITE_SIZE
+    # or modify the implementation of this class to call commit_block_list more often (and not
+    # just at the end of the upload).
     MIN_WRITE_SIZE = 100 * 1024 * 1024
     MAX_WRITE_SIZE = 2 * 1024 * 1024 * 1024
-    print("put", len(data))
 
     # TODO: Byte strings might not be the most performant way to handle this
     self.buffer += data.tobytes()
