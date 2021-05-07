@@ -1,6 +1,11 @@
 import os
 from azure.storage.blob import BlobServiceClient
 
+# Monkey-patch BlobStorageUploader
+from .blobstorageuploader import BlobStorageUploader
+import apache_beam.io.azure.blobstorageio
+apache_beam.io.azure.blobstorageio.BlobStorageUploader = BlobStorageUploader
+
 # Test connection string for Azurite (local development)
 TEST_CONN_STR = (
     "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
