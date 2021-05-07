@@ -83,10 +83,12 @@ def do_signup():
     if not token:
         errors.append('Google reCAPTCHA token is missing.')
     else:
-        url = 'https://www.google.com/recaptcha/api/siteverify?secret={}&response={}'.format(
-            os.environ['CODALAB_RECAPTCHA_SECRET_KEY'], token
-        )
-        res = requests.post(url)
+        url = 'https://www.google.com/recaptcha/api/siteverify'
+        data = {
+            'secret': os.environ['CODALAB_RECAPTCHA_SECRET_KEY'],
+            'response': token,
+        }
+        res = requests.post(url, data)
 
         try:
             data = res.json()
