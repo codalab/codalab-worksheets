@@ -112,7 +112,7 @@ class NavBar extends React.Component<{
         } catch (error) {
             this.setState({
                 snackbarShow: true,
-                snackbarMessage: error.responseText,
+                snackbarMessage: error,
                 snackbarVariant: 'error',
             });
         }
