@@ -64,6 +64,10 @@ export const executeCommand = (command, worksheet_uuid) => {
     return post(url, {
         worksheet_uuid: worksheet_uuid || null,
         command: command,
+    }).catch((error) => {
+        const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
+        const exception = htmlDoc.getElementsByTagName('pre')[0].innerHTML;
+        throw exception;
     });
 };
 
