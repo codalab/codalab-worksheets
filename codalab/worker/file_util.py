@@ -275,7 +275,8 @@ class OpenFile(object):
                     return GzipStream(TarSubdirStream(self.path))
                 else:
                     # Stream a single file from within the archive
-                    return GzipStream(TarFileStream(tf, finfo))
+                    fs = TarFileStream(tf, finfo)
+                    return GzipStream(fs) if self.gzipped else fs
         else:
             # Stream a file from disk storage.
             return open(self.path, self.mode)
