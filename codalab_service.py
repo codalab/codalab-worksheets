@@ -133,13 +133,14 @@ def var_path(name):
 
 # An configuration argument.
 class CodalabArg(object):
-    def __init__(self, name, help, type=str, env_var=None, flag=None, default=None):
+    def __init__(self, name, help, type=str, env_var=None, flag=None, default=None, frontend=False):
         self.name = name
         self.help = help
         self.type = type
         self.env_var = env_var or 'CODALAB_' + name.upper()
         self.flag = flag  # Command-line argument
         self.default = default
+        self.frontend = frontend
 
     def has_constant_default(self):
         return self.default is not None and not callable(self.default)
@@ -371,6 +372,7 @@ CODALAB_ARGUMENTS = [
         type=str,
         default='6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI',  # test key provided by Google, will always pass
         help='API site key needed for reCAPTCHA',
+        frontend=True,
     ),
     CodalabArg(
         name='recaptcha_secret_key',
@@ -716,12 +718,14 @@ class CodalabServiceManager(object):
         else:
             build_args = ''
 
+        # We need the frontend env variables during build time
         if image == 'frontend' and not self.args.dev:
-            CODALAB_RECAPTCHA_SITE_KEY = os.environ.get('CODALAB_RECAPTCHA_SITE_KEY')
-            build_args += '--build-arg REACT_APP_CODALAB_RECAPTCHA_SITE_KEY={}'.format(
-                CODALAB_RECAPTCHA_SITE_KEY
-            )
-
+            with open('frontend/.env.production', "w") as f:
+                for arg in CODALAB_ARGUMENTS:
+                    if arg.frontend:
+                        value = getattr(self.args, arg.name, None)
+                        f.write('REACT_APP_{}={}\n'.format(arg.env_var, value))
+        
         # Build the image using the cache
         self._run_docker_cmd(
             'build%s %s -t %s -f docker_config/dockerfiles/Dockerfile.%s .'
