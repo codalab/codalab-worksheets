@@ -113,7 +113,7 @@ class HomePage extends React.Component<{
                                 </div>
                                 <div>
                                     {this.renderStartButton(
-                                        'Get Started',
+                                        'Quickstart',
                                         'https://codalab-worksheets.readthedocs.io/en/latest/examples/quickstart/',
                                     )}
                                 </div>
