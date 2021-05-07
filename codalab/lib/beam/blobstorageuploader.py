@@ -13,7 +13,7 @@ from codalab.worker.un_gzip_stream import BytesBuffer
 class BlobStorageUploader(Uploader):
   """An improved version of apache_beam.io.azure.blobstorageio.BlobStorageUploader
   that handles multipart streaming (block-by-block) uploads.
-  TODO (Ashwin): contribute this back upstream to Apache Beam.
+  TODO (Ashwin): contribute this back upstream to Apache Beam (https://github.com/codalab/codalab-worksheets/issues/3475).
   """
   def __init__(self, client, path, mime_type='application/octet-stream'):
     self._client = client
@@ -57,8 +57,8 @@ class BlobStorageUploader(Uploader):
     self._blob_to_upload.commit_block_list(self.block_list, content_settings=self._content_settings)
 
 """
-This code is just a quick test / sanity check for BlobStorageUploader that can be
-run from the command line. To run it, first set the LOCAL_PATH variable
+Below is a quick manual integration test / sanity check for BlobStorageUploader
+that can be run from the command line. To run it, first set the LOCAL_PATH variable
 to a local path to a > 100 MB file, then run:
     npm i -g azurite
     azurite
