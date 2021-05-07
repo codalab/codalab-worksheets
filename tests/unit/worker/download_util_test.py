@@ -14,22 +14,47 @@ from io import BytesIO
 import tempfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 import shutil
+import gzip
 
 
 class AzureBlobTestBase:
     """A helper class that contains convenient methods for creating
     files and/or folders."""
 
-    def create_file(self, contents=b"hello world"):
-        """Creates a file and returns its path."""
+    def create_txt_file(self, contents=b"hello world"):
+        """Creates a txt file and returns its path."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/test.txt"
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
             f.write(contents)
         return bundle_uuid, bundle_path
 
+    def create_file(self, contents=b"hello world"):
+        """Creates a file on Blob (stored as a .gz with an index.sqlite index file) and returns its path."""
+        bundle_uuid = str(random.random())
+        bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.gz"
+        compressed_file = BytesIO(gzip.compress(contents))
+        # TODO: Unify this code with code in UploadManager.upload_to_bundle_store().
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
+            shutil.copyfileobj(compressed_file, f)
+        compressed_file.seek(0)
+        with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+            SQLiteIndexedTar(
+                fileObject=compressed_file,
+                tarFileName="contents",  # Later, this file can be accessed by the "/contents" entry in the index.
+                writeIndex=True,
+                clearIndexCache=True,
+                indexFileName=tmp_index_file.name,
+            )
+            with FileSystems.create(
+                bundle_path.replace("/contents.gz", "/index.sqlite"),
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                shutil.copyfileobj(tif, out_index_file)
+        return bundle_uuid, bundle_path
+
     def create_directory(self):
-        """Creates a directory and returns its path."""
+        """Creates a directory (stored as a .tar.gz with an index.sqlite index file) and returns its path."""
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.tar.gz"
 
@@ -65,7 +90,7 @@ class AzureBlobTestBase:
             with open(tmp_tar_file.name, "rb") as ttf:
                 SQLiteIndexedTar(
                     fileObject=ttf,
-                    tarFileName=bundle_uuid,
+                    tarFileName="contents",
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFileName=tmp_index_file.name,
@@ -80,12 +105,21 @@ class AzureBlobTestBase:
 
 
 class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
-    def test_single_file(self):
-        """Test getting target info of a single file on Azure Blob Storage. As this isn't supported
-        (paths should be specified within existing .tar.gz files), this should throw an exception."""
-        bundle_uuid, bundle_path = self.create_file(b"a")
+    def test_single_txt_file(self):
+        """Test getting target info of a single txt file on Azure Blob Storage. As this isn't supported
+        (paths should be specified within existing .gz / .tar.gz files), this should throw an exception."""
+        bundle_uuid, bundle_path = self.create_txt_file(b"a")
         with self.assertRaises(PathException):
             get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
+
+    def test_single_file(self):
+        """Test getting target info of a single file (compressed as .gz) on Azure Blob Storage."""
+        bundle_uuid, bundle_path = self.create_file(b"a")
+        target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
+        target_info.pop("resolved_target")
+        self.assertEqual(
+            target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 0o755}
+        )
 
     def test_nested_directories(self):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
