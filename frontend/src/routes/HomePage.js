@@ -237,7 +237,7 @@ class HomePage extends React.Component<{
                             </Grid>
                             <Grid item xs={12} sm={8} className={classes.textBox}>
                                 <Typography>
-                                    Acquire more knowledge you need to easily use the platform with
+                                    Learn more about how to use the platform with
                                     the CodaLab documentation:
                                 </Typography>
                                 <Typography>
