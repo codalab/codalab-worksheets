@@ -79,7 +79,7 @@ class NewUpload extends React.Component<{
     }
 
     asyncUploadFiles = async (files) => {
-        const { worksheetUUID, after_sort_key } = this.props;
+        const { worksheetUUID, after_sort_key,focusedItem } = this.props;
         const { name, description } = this.state;
         this.setState({
             uploading: true,
@@ -92,7 +92,10 @@ class NewUpload extends React.Component<{
             if (after_sort_key || after_sort_key === 0) {
                 url += `&after_sort_key=${after_sort_key}`;
             }
-
+            // current focused item is an image block
+            if(focusedItem.mode==='image_block'){
+                url += `&after_image=1`;
+            }
             const errorHandler = (error) => {
                 this.clearProgress();
                 alert(createAlertText(url, error.responseText));
