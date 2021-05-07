@@ -305,6 +305,7 @@ def _create_bundles():
         if not detached:
             if shadow_parent_uuid is None:
                 items = [worksheet_util.bundle_item(bundle_uuid)]
+                # Add a blank line after the image block in the worksheet source to ensure it is a separate block
                 if after_image:
                     items.insert(0, worksheet_util.markup_item(''))
                 local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key)
