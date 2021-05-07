@@ -101,14 +101,17 @@ def current_user():
     return user_id, user_name
 
 
-def create_user(context, username, password='codalab'):
+def create_user(context, username, password='codalab', disk_quota='100g'):
     # Currently there isn't a method for creating a user with the CLI. Use CodaLabManager instead.
     manager = CodaLabManager()
     model = manager.model()
 
+    # Set default disk quota
+    model.default_user_info['disk_quota'] = disk_quota
+
     # Creates a user without going through the full sign-up process
     model.add_user(
-        username, random_name(), '', '', password, '', user_id=username, is_verified=True
+        username, random_name(), '', '', password, '', user_id=username, is_verified=True,
     )
     context.collect_user(username)
 
@@ -752,6 +755,14 @@ def test_upload1(ctx):
     # we reset disk quota so tests added later don't fail on upload
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
+    # Run the same tests when on a non root user
+    create_user(ctx, 'non_root_user_dq', disk_quota='2')
+    switch_user('non_root_user_dq')
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    # Switch back to root user
+    switch_user('codalab')
+
 
 @TestModule.register('upload2')
 def test_upload2(ctx):
@@ -1306,6 +1317,10 @@ def test_run(ctx):
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
     check_contains('0x', get_info(uuid, 'data_hash'))
+    check_not_equals('0s', get_info(uuid, 'time_preparing'))
+    check_not_equals('0s', get_info(uuid, 'time_running'))
+    check_not_equals('0s', get_info(uuid, 'time_cleaning_up'))
+    check_not_equals('0s', get_info(uuid, 'time_uploading_results'))
 
     # test search
     check_contains(name, _run_command([cl, 'search', name]))
