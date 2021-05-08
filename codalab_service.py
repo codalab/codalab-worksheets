@@ -140,6 +140,7 @@ class CodalabArg(object):
         self.env_var = env_var or 'CODALAB_' + name.upper()
         self.flag = flag  # Command-line argument
         self.default = default
+        """frontend identifies the env variables needed for the frontend build"""
         self.frontend = frontend
 
     def has_constant_default(self):
@@ -720,7 +721,7 @@ class CodalabServiceManager(object):
 
         # We need the frontend env variables during build time
         if image == 'frontend' and not self.args.dev:
-            with open('frontend/.env.production', "w") as f:
+            with open('frontend/.env', "w+") as f:
                 for arg in CODALAB_ARGUMENTS:
                     if arg.frontend:
                         value = getattr(self.args, arg.name, None)
