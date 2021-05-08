@@ -133,6 +133,12 @@ def var_path(name):
 
 # An configuration argument.
 class CodalabArg(object):
+    """CodalabArg defines the arguments needed for starting the service.
+
+    Attributes:
+        frontend (bool): Whether an arg is needed for frontend build.
+    """
+
     def __init__(self, name, help, type=str, env_var=None, flag=None, default=None, frontend=False):
         self.name = name
         self.help = help
@@ -140,7 +146,6 @@ class CodalabArg(object):
         self.env_var = env_var or 'CODALAB_' + name.upper()
         self.flag = flag  # Command-line argument
         self.default = default
-        """frontend identifies the env variables needed for the frontend build"""
         self.frontend = frontend
 
     def has_constant_default(self):
