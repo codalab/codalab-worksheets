@@ -8,7 +8,7 @@ import shutil
 import tarfile
 import tempfile
 import logging
-from typing import IO, Union, cast
+from typing import IO
 
 from codalab.common import UsageError
 from codalab.worker.file_util import (
