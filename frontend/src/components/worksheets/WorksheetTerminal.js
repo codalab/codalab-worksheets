@@ -179,10 +179,7 @@ class WorksheetTerminal extends React.Component {
                 }
                 return data;
             })
-            .catch(function(error) {
-                // Some exception occurred outside of the CLI
-                const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
-                const exception = htmlDoc.getElementsByTagName('pre')[0].innerHTML;
+            .catch(function(exception) {
                 return { exception };
             });
     }
