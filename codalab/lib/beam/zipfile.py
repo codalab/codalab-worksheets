@@ -1191,7 +1191,7 @@ class ZipFile:
     file: Either the path to the file, or a file-like object.
           If it is a path, the file will be opened and closed by ZipFile.
     mode: The mode can be either read 'r', write 'w', exclusive create 'x',
-          or append 'a'.
+          append 'a', or 'r|' to read from a stream (with no random access).
     compression: ZIP_STORED (no compression), ZIP_DEFLATED (requires zlib),
                  ZIP_BZIP2 (requires bz2) or ZIP_LZMA (requires lzma).
     allowZip64: if True ZipFile will create files with ZIP64 extensions when
@@ -1212,8 +1212,8 @@ class ZipFile:
                  compresslevel=None, *, strict_timestamps=True):
         """Open the ZIP file with mode read 'r', write 'w', exclusive create 'x',
         or append 'a'."""
-        if mode not in ('r', 'w', 'x', 'a'):
-            raise ValueError("ZipFile requires mode 'r', 'w', 'x', or 'a'")
+        if mode not in ('r', 'w', 'x', 'a', 'r|'):
+            raise ValueError("ZipFile requires mode 'r', 'w', 'x', 'a', or 'r|'")
 
         _check_compression(compression)
 
@@ -1222,6 +1222,10 @@ class ZipFile:
         self.debug = 0  # Level of printing: 0 through 3
         self.NameToInfo = {}    # Find file info given name
         self.filelist = []      # List of ZipInfo instances for archive
+        self._loaded = mode != 'r|'  # If False, all members of filelist have not yet been read,
+                                     # as we are still iterating through the file in r| mode.
+                                     # Set to True if the file was not opened in r| mode.
+        self._next_header_pos = 0  # Stores the position of the next header; only relevant in r| mode.
         self.compression = compression  # Method of compression
         self.compresslevel = compresslevel
         self.mode = mode
@@ -1237,7 +1241,7 @@ class ZipFile:
             self._filePassed = 0
             self.filename = file
             modeDict = {'r' : 'rb', 'w': 'w+b', 'x': 'x+b', 'a' : 'r+b',
-                        'r+b': 'w+b', 'w+b': 'wb', 'x+b': 'xb'}
+                        'r+b': 'w+b', 'w+b': 'wb', 'x+b': 'xb', 'r|': 'rb'}
             filemode = modeDict[mode]
             while True:
                 try:
@@ -1290,8 +1294,10 @@ class ZipFile:
                     # even if no files are added to the archive
                     self._didModify = True
                     self.start_dir = self.fp.tell()
+            elif mode == 'r|':
+                pass
             else:
-                raise ValueError("Mode must be 'r', 'w', 'x', or 'a'")
+                raise ValueError("Mode must be 'r', 'w', 'x', 'a', or 'r|'")
         except:
             fp = self.fp
             self.fp = None
@@ -1317,6 +1323,16 @@ class ZipFile:
             result.append(' [closed]')
         result.append('>')
         return ''.join(result)
+
+    def _load(self):
+        """Read through the entire archive file and look for readable
+           members.
+        """
+        while True:
+            zipinfo = self.next()
+            if zipinfo is None:
+                break
+        self._loaded = True
 
     def _RealGetContents(self):
         """Read in the table of contents for the ZIP file."""
@@ -1395,21 +1411,24 @@ class ZipFile:
             if self.debug > 2:
                 print("total", total)
 
-
     def namelist(self):
         """Return a list of file names in the archive."""
-        return [data.filename for data in self.filelist]
+        return [data.filename for data in self.infolist()]
 
     def infolist(self):
         """Return a list of class ZipInfo instances for files in the
         archive."""
+        # If we want to obtain a list of all members,
+        # we first have to scan the whole archive.
+        if not self._loaded:
+            self._load()
         return self.filelist
 
     def printdir(self, file=None):
         """Print a table of contents for the zip file."""
         print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"),
               file=file)
-        for zinfo in self.filelist:
+        for zinfo in self.infolist():
             date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
             print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size),
                   file=file)
@@ -1417,7 +1436,7 @@ class ZipFile:
     def testzip(self):
         """Read all the files and check the CRC."""
         chunk_size = 2 ** 20
-        for zinfo in self.filelist:
+        for zinfo in self.infolist():
             try:
                 # Read by chunks, to avoid an OverflowError or a
                 # MemoryError with very large embedded files.
@@ -1485,7 +1504,7 @@ class ZipFile:
         instance for name, with zinfo.file_size set.
         """
         if mode not in {"r", "w"}:
-            raise ValueError('open() requires mode "r" or "w"')
+            raise ValueError('open() requires mode "r", or "w"')
         if pwd and not isinstance(pwd, bytes):
             raise TypeError("pwd: expected bytes, got %s" % type(pwd).__name__)
         if pwd and (mode == "w"):
@@ -1495,6 +1514,7 @@ class ZipFile:
                 "Attempt to use ZIP archive that was already closed")
 
         # Make sure we have an info object
+        streaming = self.mode == 'r|' and mode == 'r'
         if isinstance(name, ZipInfo):
             # 'name' is already an info object
             zinfo = name
@@ -1502,6 +1522,8 @@ class ZipFile:
             zinfo = ZipInfo(name)
             zinfo.compress_type = self.compression
             zinfo._compresslevel = self.compresslevel
+        # elif self.mode == 'r|':
+        #     zinfo = self.filelist[-1]
         else:
             # Get info object for name
             zinfo = self.getinfo(name)
@@ -1514,12 +1536,34 @@ class ZipFile:
                     "is an open writing handle on it. "
                     "Close the writing handle before trying to read.")
 
+        # check for encrypted flag & handle password
+        is_encrypted = zinfo.flag_bits & 0x1
+        if is_encrypted:
+            if not pwd:
+                pwd = self.pwd
+            if not pwd:
+                raise RuntimeError("File %r is encrypted, password "
+                                "required for extraction" % name)
+        else:
+            pwd = None
+
         # Open for reading:
         self._fileRefCnt += 1
+        if streaming:
+            # Since we're streaming, just start at the current position. We
+            # should already be past the file header.
+            zef_file = _SharedFile(self.fp, self.fp.tell(),
+                                self._fpclose, self._lock, lambda: self._writing)
+            try:
+                return ZipExtFile(zef_file, mode, zinfo, pwd, True)
+            except:
+                zef_file.close()
+                raise
+        
         zef_file = _SharedFile(self.fp, zinfo.header_offset,
                                self._fpclose, self._lock, lambda: self._writing)
         try:
-            # Skip the file header:
+            # Skip the file header.
             fheader = zef_file.read(sizeFileHeader)
             if len(fheader) != sizeFileHeader:
                 raise BadZipFile("Truncated file header")
@@ -1549,17 +1593,6 @@ class ZipFile:
                 raise BadZipFile(
                     'File name in directory %r and header %r differ.'
                     % (zinfo.orig_filename, fname))
-
-            # check for encrypted flag & handle password
-            is_encrypted = zinfo.flag_bits & 0x1
-            if is_encrypted:
-                if not pwd:
-                    pwd = self.pwd
-                if not pwd:
-                    raise RuntimeError("File %r is encrypted, password "
-                                       "required for extraction" % name)
-            else:
-                pwd = None
 
             return ZipExtFile(zef_file, mode, zinfo, pwd, True)
         except:
@@ -1933,6 +1966,78 @@ class ZipFile:
         if not self._fileRefCnt and not self._filePassed:
             fp.close()
 
+    def next(self):
+        """Return the next member of the archive as a ZipInfo object, when
+           ZipFile is opened in r| mode. Return None if there is no more
+           available.
+        """
+        fp = self.fp
+        if self.mode != 'r|':
+            raise OSError("bad operation for mode %r" % self.mode)
+
+        # Advance to the next header, if needed.
+        fp.read(self._next_header_pos - fp.tell())
+
+        # Read the next header.
+        zipinfo = None
+        try:
+            fheader = fp.read(sizeFileHeader)
+            if len(fheader) != sizeFileHeader:
+                raise BadZipFile("Truncated file header")
+            fheader = struct.unpack(structFileHeader, fheader)
+            if fheader[_FH_SIGNATURE] != stringFileHeader:
+                raise BadZipFile("Bad magic number for file header")
+            filename = fp.read(fheader[_FH_FILENAME_LENGTH])
+            flags = fheader[_FH_GENERAL_PURPOSE_FLAG_BITS]
+            if flags & 0x800:
+                # UTF-8 file names extension
+                filename = filename.decode('utf-8')
+            else:
+                # Historical ZIP filename encoding
+                filename = filename.decode('cp437')
+            # Create ZipInfo instance to store file information
+            x = ZipInfo(filename)
+            x.extra = fp.read(fheader[_FH_EXTRA_FIELD_LENGTH])
+            x.comment = None
+            x.header_offset = self._next_header_pos
+            x.create_version, x.create_system = None
+            (x.extract_version, x.reserved, x.flag_bits, x.compress_type, t, d,
+            x.CRC, x.compress_size, x.file_size) = fheader[1:10]
+            if x.extract_version > MAX_EXTRACT_VERSION:
+                raise NotImplementedError("zip file version %.1f" %
+                                        (x.extract_version / 10))
+            x.volume, x.internal_attr, x.external_attr = None, None, None
+            # Convert date/time code to (year, month, day, hour, min, sec)
+            x._raw_time = t
+            x.date_time = ( (d>>9)+1980, (d>>5)&0xF, d&0x1F,
+                            t>>11, (t>>5)&0x3F, (t&0x1F) * 2 )
+
+            x._decodeExtra()
+            self.filelist.append(x)
+            self.NameToInfo[x.filename] = x
+            self._next_header_pos = fp.tell() + x.compress_size  # Beginning of the next file's header.
+            return x
+        
+        except BadZipFile:
+            # We've reached the end of all the file entries.
+            self._loaded = True
+            return None
+
+    def __iter__(self):
+        """Provide an iterator object that yields members of the archive.
+        """
+        if self._loaded:
+            yield from self.infolist
+            return
+
+        # If we're in streaming mode (r|), yield items using ZipFile's next() method.
+        # When all members have been read, set ZipFile as _loaded.
+        while True:
+            zipinfo = self.next()
+            if not zipinfo:
+                self._loaded = True
+                return
+            yield zipinfo
 
 class PyZipFile(ZipFile):
     """Class to create ZIP archives with Python library files and packages."""
