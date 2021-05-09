@@ -184,7 +184,7 @@ class ZipToTarDecompressor:
                     with StreamingZipFile(self.buf) as zf:
                         self.current_zef = zf.open(self.current_zipinfo)
 
-                # ._read1(n) reads up to n compressed bytes. We use this rather than read(n), which takes in uncompressed
+                # ZipExtFile._read1(n) reads up to n compressed bytes. We use this rather than ZipExtFile.read(n), which takes in uncompressed
                 # bytes, because we only know how much compressed bytes we have added so far.
                 uncompressed = self.current_zef._read1(len(remaining))
                 self.output.fileobj.write(uncompressed)

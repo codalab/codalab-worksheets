@@ -101,8 +101,8 @@ class StreamingZipFileTest(unittest.TestCase):
                 with zf.open(zinfo) as f:
                     contents = f._fileobj.read()
                     f._fileobj = BytesIO(contents[:3])
-                    # ._read1(n) reads up to n compressed bytes. We use this function instead of
-                    # .read(n) (which reads n uncompressed bytes), because we only know how many
+                    # ZipExtFile._read1(n) reads up to n compressed bytes. We use this function instead of
+                    # ZipExtFile.read(n) (which reads n uncompressed bytes), because we only know how many
                     # compressed bytes have been input into f._fileobj. We only know that we've
                     # written 3 compressed bytes into f._fileobj, so we can only be assured that calling
                     # ._read1(1) thrice will work, but not that .read(1) thrice will work.
