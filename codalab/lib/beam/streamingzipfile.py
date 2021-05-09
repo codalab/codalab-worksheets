@@ -20,6 +20,8 @@ class StreamingZipFile(ZipFile):
         for zinfo in zf:
             print(zinfo)
             print(zf.open(zinfo).read())
+    
+    TODO (Ashwin): Contribute this back upstream to cpython (https://github.com/codalab/codalab-worksheets/issues/3488).
     """
 
     # Stores the position of the next file header to be read.
