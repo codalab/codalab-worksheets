@@ -16,10 +16,10 @@ class StreamingZipFile(ZipFile):
     Instead, StreamingZipFile can be iterated over in order to read each file one by one,
     using each file header to construct ZipInfo objects for each file. Sample usage:
 
-    zf = StreamingZipFile(fileobj)
-    for zinfo in zf:
-        print(zinfo)
-        print(zf.open(zinfo).read())
+    with StreamingZipFile(fileobj) as zf:
+        for zinfo in zf:
+            print(zinfo)
+            print(zf.open(zinfo).read())
     """
 
     # Stores the position of the next file header to be read.
@@ -45,7 +45,7 @@ class StreamingZipFile(ZipFile):
         else:
             raise OSError("must specify a zipinfo object when reading")
         # Open for reading:
-        return ZipExtFile(self.fp, mode, zinfo, pwd, True)
+        return ZipExtFile(self.fp, mode, zinfo, pwd, False)
 
     def next(self):
         """Return the next member of the archive as a ZipInfo object. Returns
@@ -59,7 +59,7 @@ class StreamingZipFile(ZipFile):
         """
         fp = self.fp
 
-        # Advance to the next header, if needed.
+        # First, advance to the next header, if needed.
         fp.read(self._next_header_pos - fp.tell())
 
         # Read the next header.

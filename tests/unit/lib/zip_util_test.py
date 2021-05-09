@@ -16,7 +16,6 @@ from codalab.lib.zip_util import (
 )
 from codalab.worker.file_util import tar_gzip_directory, zip_directory
 from io import BytesIO
-from filecmp import dircmp
 
 SAMPLE_CONTENTS = b"hello world"
 
@@ -215,8 +214,11 @@ class ZipUtilTest(unittest.TestCase):
                 f.write(SAMPLE_CONTENTS)
                 f.flush()
                 unpack(extension, compress_fn(tmpdir), os.path.join(dest_path, "out"))
-                dc = dircmp(tmpdir, os.path.join(dest_path, "out"))
-                self.assertEqual(dc.diff_files, [])
+                self.assertEqual(os.listdir(tmpdir), ["file.txt"])
+                self.assertEqual(os.listdir(os.path.join(dest_path, "out")), ["file.txt"])
+                self.assertEqual(
+                    open(os.path.join(dest_path, "out", "file.txt"), "rb").read(), SAMPLE_CONTENTS
+                )
 
     def test_unpack_single_compressed_file(self):
         """Unpack a single compressed file."""
