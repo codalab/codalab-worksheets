@@ -11,7 +11,7 @@ try:
         TaskCounts,
         TaskContainerSettings,
     )
-    from azure.batch.models._models_py3 import BatchErrorException  # type: ignore
+    from azure.batch.models import BatchErrorException  # type: ignore
     from msrest.exceptions import ClientRequestError  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
