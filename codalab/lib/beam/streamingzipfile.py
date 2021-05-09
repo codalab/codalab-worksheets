@@ -5,6 +5,29 @@ from zipfile import (  # type: ignore
     _FH_SIGNATURE, _FH_GENERAL_PURPOSE_FLAG_BITS, _FH_FILENAME_LENGTH, _FH_EXTRA_FIELD_LENGTH
 )
 
+class Tellable:
+    """Wrap a fileobj so that it supports the .tell() method.
+    """
+
+    def __init__(self, fileobj):
+        self._fileobj = fileobj
+        self._pos = 0
+    
+    def read(self, i):
+        chunk = self._fileobj.read(i)
+        self._pos += len(chunk)
+        return chunk
+
+    def tell(self):
+        return self._pos
+
+    def __getattr__(self, name):
+        """
+        Proxy any methods/attributes besides read() to the
+        fileobj (for example, if we're wrapping an HTTP response object.
+        """
+        return getattr(self._fileobj, name)
+
 
 class StreamingZipFile(ZipFile):
     """A version of ZipFile that can read file entries in a streaming fashion.
@@ -14,7 +37,9 @@ class StreamingZipFile(ZipFile):
     to retrieve the metadata of each file in the archive to create the list of ZipInfo objects.
 
     Instead, StreamingZipFile can be iterated over in order to read each file one by one,
-    using each file header to construct ZipInfo objects for each file. Sample usage:
+    using each file header to construct ZipInfo objects for each file. This allows us to use
+    StreamingZipFile to read files that are un-seekable and un-tellable (such as a HTTP request
+    body). Sample usage:
 
     with StreamingZipFile(fileobj) as zf:
         for zinfo in zf:
@@ -29,6 +54,13 @@ class StreamingZipFile(ZipFile):
 
     # Whether all entries have been loaded.
     _loaded = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            self.fp.tell()
+        except:
+            self.fp = Tellable(self.fp)
 
     def _RealGetContents(self, *args, **kwargs):
         """Internal method of ZipFile that normally reads the central directory of the archive

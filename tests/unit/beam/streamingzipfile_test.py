@@ -12,11 +12,16 @@ SAMPLE_CONTENTS = b"hello world"
 
 
 class UnseekableBytesIO(BytesIO):
+    """Unseekable and untellable BytesIO."""
+
     def seek(self, *args, **kwargs):
         raise UnsupportedOperation
 
     def seekable(self):
         return False
+
+    def tell(self):
+        raise UnsupportedOperation
 
 
 class StreamingZipFileTest(unittest.TestCase):
@@ -89,24 +94,24 @@ class StreamingZipFileTest(unittest.TestCase):
         """Zip file with a complex directory structure can be read by ZipFile / StreamingZipFile properly"""
         zip_contents = self.create_zip_complex()
         expected_zinfos = [
-            ('file.txt', 11, False, b'hello world'),
             ('a/', 0, True, b''),
             ('a/b/', 0, True, b''),
             ('a/b/file.txt', 11, False, b'hello world'),
             ('c/', 0, True, b''),
             ('c/d/', 0, True, b''),
             ('c/d/e/', 0, True, b''),
+            ('file.txt', 11, False, b'hello world'),
         ]
         with ZipFile(BytesIO(zip_contents)) as zf:
             zinfos = [
                 (zinfo.filename, zinfo.file_size, zinfo.is_dir(), zf.open(zinfo).read())
                 for zinfo in zf.infolist()
             ]
-            self.assertEqual(zinfos, expected_zinfos)
+            self.assertEqual(sorted(zinfos), expected_zinfos)
 
         with StreamingZipFile(UnseekableBytesIO(zip_contents)) as zf:
             zinfos = [
                 (zinfo.filename, zinfo.file_size, zinfo.is_dir(), zf.open(zinfo).read())
                 for zinfo in zf
             ]
-            self.assertEqual(zinfos, expected_zinfos)
+            self.assertEqual(sorted(zinfos), expected_zinfos)
