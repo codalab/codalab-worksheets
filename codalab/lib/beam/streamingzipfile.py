@@ -1,7 +1,7 @@
 import struct
 from zipfile import (  # type: ignore
     ZipFile, ZipInfo, ZipExtFile, BadZipFile,
-    structFileHeader, stringFileHeader, sizeFileHeader, MAX_EXTRACT_VERSION,
+    structFileHeader, stringFileHeader, stringCentralDir, sizeFileHeader, MAX_EXTRACT_VERSION,
     _FH_SIGNATURE, _FH_GENERAL_PURPOSE_FLAG_BITS, _FH_FILENAME_LENGTH, _FH_EXTRA_FIELD_LENGTH
 )
 
@@ -100,56 +100,56 @@ class StreamingZipFile(ZipFile):
 
         # Read the next header.
         zipinfo = None
-        try:
-            fheader = fp.read(sizeFileHeader)
-            if len(fheader) != sizeFileHeader:
-                raise BadZipFile("Truncated file header")
-            fheader = struct.unpack(structFileHeader, fheader)
-            if fheader[_FH_SIGNATURE] != stringFileHeader:
-                raise BadZipFile("Bad magic number for file header")
-            filename = fp.read(fheader[_FH_FILENAME_LENGTH])
-            flags = fheader[_FH_GENERAL_PURPOSE_FLAG_BITS]
-            if flags & 0x800:
-                # UTF-8 file names extension
-                filename = filename.decode('utf-8')
-            else:
-                # Historical ZIP filename encoding
-                filename = filename.decode('cp437')
-            # Create ZipInfo instance to store file information
-            x = ZipInfo(filename)
-            x.extra = fp.read(fheader[_FH_EXTRA_FIELD_LENGTH])
-            x.header_offset = self._next_header_pos
-
-            # The file header stores nearly all the same information needed for ZipInfo as what the
-            # central directory file header stores, except for a couple of missing fields.
-            # We just set them to 0 here.
-            x.comment = 0
-            x.create_version, x.create_system = 0, 0
-            x.volume, x.internal_attr, x.external_attr = 0, 0, 0
-
-            (x.extract_version, x.reserved, x.flag_bits, x.compress_type, t, d,
-            x.CRC, x.compress_size, x.file_size) = fheader[1:10]
-            if x.extract_version > MAX_EXTRACT_VERSION:
-                raise NotImplementedError("zip file version %.1f" %
-                                        (x.extract_version / 10))
-
-            # Convert date/time code to (year, month, day, hour, min, sec)
-            x._raw_time = t
-            x.date_time = ( (d>>9)+1980, (d>>5)&0xF, d&0x1F,
-                            t>>11, (t>>5)&0x3F, (t&0x1F) * 2 )
-
-            x._decodeExtra()
-            self.filelist.append(x)
-            self.NameToInfo[x.filename] = x
-            self._next_header_pos = (
-                fp.tell() + x.compress_size
-            )  # Beginning of the next file's header.
-            return x
-
-        except BadZipFile:
-            # We've reached the end of all the file entries.
+        fheader = fp.read(sizeFileHeader)
+        if len(fheader) != sizeFileHeader:
+            raise BadZipFile("Truncated file header")
+        fheader = struct.unpack(structFileHeader, fheader)
+        if fheader[_FH_SIGNATURE] == stringCentralDir:
+            # We've reached the central directory. This means that we've finished iterating through
+            # all entries in the zip file. We can do this check because the file header signature
+            # and central directory signature are stored in the same spot (index 0) and with the same format.
             self._loaded = True
             return None
+        if fheader[_FH_SIGNATURE] != stringFileHeader:
+            raise BadZipFile("Bad magic number for file header")
+        filename = fp.read(fheader[_FH_FILENAME_LENGTH])
+        flags = fheader[_FH_GENERAL_PURPOSE_FLAG_BITS]
+        if flags & 0x800:
+            # UTF-8 file names extension
+            filename = filename.decode('utf-8')
+        else:
+            # Historical ZIP filename encoding
+            filename = filename.decode('cp437')
+        # Create ZipInfo instance to store file information
+        x = ZipInfo(filename)
+        x.extra = fp.read(fheader[_FH_EXTRA_FIELD_LENGTH])
+        x.header_offset = self._next_header_pos
+
+        # The file header stores nearly all the same information needed for ZipInfo as what the
+        # central directory file header stores, except for a couple of missing fields.
+        # We just set them to 0 here.
+        x.comment = 0
+        x.create_version, x.create_system = 0, 0
+        x.volume, x.internal_attr, x.external_attr = 0, 0, 0
+
+        (x.extract_version, x.reserved, x.flag_bits, x.compress_type, t, d,
+        x.CRC, x.compress_size, x.file_size) = fheader[1:10]
+        if x.extract_version > MAX_EXTRACT_VERSION:
+            raise NotImplementedError("zip file version %.1f" %
+                                    (x.extract_version / 10))
+
+        # Convert date/time code to (year, month, day, hour, min, sec)
+        x._raw_time = t
+        x.date_time = ( (d>>9)+1980, (d>>5)&0xF, d&0x1F,
+                        t>>11, (t>>5)&0x3F, (t&0x1F) * 2 )
+
+        x._decodeExtra()
+        self.filelist.append(x)
+        self.NameToInfo[x.filename] = x
+        self._next_header_pos = (
+            fp.tell() + x.compress_size
+        )  # Beginning of the next file's header.
+        return x
 
     def __iter__(self):
         """Provide an iterator object that yields members of the archive.
