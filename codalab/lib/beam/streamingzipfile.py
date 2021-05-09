@@ -13,8 +13,8 @@ class Tellable:
         self._fileobj = fileobj
         self._pos = 0
     
-    def read(self, i):
-        chunk = self._fileobj.read(i)
+    def read(self, num_bytes=None):
+        chunk = self._fileobj.read(num_bytes)
         self._pos += len(chunk)
         return chunk
 
