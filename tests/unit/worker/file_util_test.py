@@ -153,6 +153,8 @@ class ArchiveTestBase:
     """Base for archive tests -- tests both archiving and unarchiving directories.
     Subclasses must implement the archive() and unarchive() methods."""
 
+    skip_symlinks = False
+
     def archive(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -171,7 +173,8 @@ class ArchiveTestBase:
         self.assertNotIn('b.txt', output_dir_entries)
         self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir1', 'f1')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir1', 'f2')))
-        self.assertTrue(os.path.islink(os.path.join(output_dir, 'a-symlink.txt')))
+        if not self.skip_symlinks:
+            self.assertTrue(os.path.islink(os.path.join(output_dir, 'a-symlink.txt')))
 
     def test_empty(self):
         dir = tempfile.mkdtemp()
@@ -223,6 +226,8 @@ class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
 
 class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):
     """Archive test for zip methods."""
+
+    skip_symlinks = True
 
     def archive(self, *args, **kwargs):
         return zip_directory(*args, **kwargs)
