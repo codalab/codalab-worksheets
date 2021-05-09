@@ -1,6 +1,4 @@
-import contextlib
 import os
-import pickle
 import tempfile
 import unittest
 

@@ -162,12 +162,12 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     os.mkdir(directory_path)
 
     with StreamingZipFile(fileobj) as zf:
-        for member in zf:
+        for member in zf:  # type: ignore
             # Make sure that there is no trickery going on (see note in
             # ZipFile.extractall() documentation).
             member_path = os.path.realpath(os.path.join(directory_path, member.filename))
             if not member_path.startswith(directory_path):
-                raise tarfile.TarError('Archive member extracts outside the directory.')
+                raise UsageError('Archive member extracts outside the directory.')
             zf.extract(member, directory_path)
 
 

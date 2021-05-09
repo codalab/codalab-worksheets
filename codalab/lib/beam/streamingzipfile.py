@@ -1,5 +1,5 @@
 import struct
-from zipfile import (
+from zipfile import (  # type: ignore
     ZipFile, ZipInfo, ZipExtFile, BadZipFile,
     structFileHeader, stringFileHeader, sizeFileHeader, MAX_EXTRACT_VERSION,
     _FH_SIGNATURE, _FH_GENERAL_PURPOSE_FLAG_BITS, _FH_FILENAME_LENGTH, _FH_EXTRA_FIELD_LENGTH
@@ -8,7 +8,7 @@ from zipfile import (
 
 class StreamingZipFile(ZipFile):
     """A version of ZipFile that can read file entries in a streaming fashion.
-    
+
     Normally, using ZipFile to read files in a .zip archive requires random access
     to the file, because ZipFile reads the central directory at the end of the archive first
     to retrieve the metadata of each file in the archive to create the list of ZipInfo objects.
