@@ -6,6 +6,8 @@ import unittest
 import bz2
 import gzip
 
+from io import BytesIO
+
 from codalab.worker.file_util import (
     gzip_file,
     get_file_size,
@@ -19,12 +21,14 @@ from codalab.worker.file_util import (
     unzip_directory,
     OpenFile,
 )
-from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_gzip_stream import un_gzip_stream, ZipToTarStream
 from codalab.worker.un_tar_directory import un_tar_directory
 from tests.unit.worker.download_util_test import AzureBlobTestBase
 
 FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
 IGNORE_TEST_DIR = os.path.join(FILES_DIR, 'ignore_test')
+
+SAMPLE_CONTENTS = b"hello world"
 
 
 class FileUtilTest(unittest.TestCase):
@@ -62,6 +66,87 @@ class FileUtilTest(unittest.TestCase):
 
     def test_gzip_bytestring(self):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
+
+    def create_zip_single_file(self):
+        """Create a simple .zip file with a single file in it."""
+        with tempfile.TemporaryDirectory() as tmpdir, open(
+            os.path.join(tmpdir, "file.txt"), "wb"
+        ) as f:
+            f.write(SAMPLE_CONTENTS)
+            f.flush()
+            zip_contents = zip_directory(tmpdir).read()
+            return zip_contents
+
+    def create_zip_complex(self):
+        """Create a complex .zip file with files / directories / nested directories in it."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "a/b"))
+            os.makedirs(os.path.join(tmpdir, "c/d/e"))
+            with open(os.path.join(tmpdir, "file.txt"), "wb") as f, open(
+                os.path.join(tmpdir, "a", "b", "file.txt"), "wb"
+            ) as f2:
+                f.write(SAMPLE_CONTENTS)
+                f.flush()
+                f2.write(SAMPLE_CONTENTS)
+                f2.flush()
+                zip_contents = zip_directory(tmpdir).read()
+                return zip_contents
+
+    def test_zip_to_tar_single(self):
+        """Test converting a zip to a tar stream with a single file in the tar archive."""
+        zip_contents = self.create_zip_single_file()
+        with tarfile.open(fileobj=ZipToTarStream(BytesIO(zip_contents)), mode="r|") as tf:
+            for tinfo in tf:
+                self.assertEqual(tinfo.name, "file.txt")
+                self.assertEqual(tinfo.size, 11)
+                self.assertEqual(tinfo.type, tarfile.REGTYPE)
+                self.assertEqual(tf.extractfile(tinfo).read(), b"hello world")
+
+    def test_zip_to_tar_single_read_partial(self):
+        """Test converting a zip to a tar stream with a single file in the tar archive,
+        while partially reading the file within the archive."""
+        zip_contents = self.create_zip_single_file()
+        with tarfile.open(fileobj=ZipToTarStream(BytesIO(zip_contents)), mode="r|") as tf:
+            for tinfo in tf:
+                self.assertEqual(tinfo.name, "file.txt")
+                self.assertEqual(tinfo.size, 11)
+                self.assertEqual(tinfo.type, tarfile.REGTYPE)
+                with tf.extractfile(tinfo) as f:
+                    self.assertEqual(f.read(1), b"h")
+                    self.assertEqual(f.read(1), b"e")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"o")
+                    self.assertEqual(f.read(1), b" ")
+                    self.assertEqual(f.read(1), b"w")
+                    self.assertEqual(f.read(1), b"o")
+                    self.assertEqual(f.read(1), b"r")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"d")
+
+    def test_zip_to_tar_complex(self):
+        """Test converting a zip to a tar stream with a complex set of files in the tar archive."""
+        zip_contents = self.create_zip_complex()
+        expected_tinfos = [
+            ('a', 0, tarfile.DIRTYPE, b''),
+            ('a/b', 0, tarfile.DIRTYPE, b''),
+            ('a/b/file.txt', 11, tarfile.REGTYPE, b'hello world'),
+            ('c', 0, tarfile.DIRTYPE, b''),
+            ('c/d', 0, tarfile.DIRTYPE, b''),
+            ('c/d/e', 0, tarfile.DIRTYPE, b''),
+            ('file.txt', 11, tarfile.REGTYPE, b'hello world'),
+        ]
+        with tarfile.open(fileobj=ZipToTarStream(BytesIO(zip_contents)), mode="r|") as tf:
+            tinfos = [
+                (
+                    tinfo.name,
+                    tinfo.size,
+                    tinfo.type,
+                    tf.extractfile(tinfo).read() if tinfo.type == tarfile.REGTYPE else b"",
+                )
+                for tinfo in tf
+            ]
+            self.assertEqual(sorted(tinfos), expected_tinfos)
 
 
 class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
