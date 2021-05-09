@@ -55,7 +55,9 @@ class StreamingZipFile(ZipFile):
         We construct a ZipInfo object using the information stored in the next file header.
         The logic here is based on the implementation of ZipFile._RealGetContents(), which
         constructs a ZipInfo object from information in a central directory file header, but
-        modified to work with the file-header-specific struct.
+        modified to work with the file-header-specific struct
+        (for the implementation of ZipFile._RealGetContents(), see
+        https://github.com/python/cpython/blob/048f54dc75d51e8a1c5822ab7b2828295192aaa5/Lib/zipfile.py#L1316).
         """
         fp = self.fp
 
