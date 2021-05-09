@@ -153,6 +153,7 @@ class ArchiveTestBase:
     """Base for archive tests -- tests both archiving and unarchiving directories.
     Subclasses must implement the archive() and unarchive() methods."""
 
+    # Set to True if symlink tests should be skipped.
     skip_symlinks = False
 
     def archive(self, *args, **kwargs):
@@ -227,6 +228,8 @@ class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
 class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):
     """Archive test for zip methods."""
 
+    # ZipFile does not preserve symlinks, so we should skip
+    # symlink tests.
     skip_symlinks = True
 
     def archive(self, *args, **kwargs):
