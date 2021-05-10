@@ -61,6 +61,7 @@ class BytesBuffer(BytesIO):
     def __init__(self):
         self.__buf = deque()
         self.__size = 0
+        self.__pos = 0
 
     def __len__(self):
         return self.__size
@@ -82,6 +83,7 @@ class BytesBuffer(BytesIO):
             self.__buf.appendleft(remainder)
         ret = b''.join(ret_list)
         self.__size -= len(ret)
+        self.__pos += len(ret)
         return ret
 
     def flush(self):
@@ -89,6 +91,9 @@ class BytesBuffer(BytesIO):
 
     def close(self):
         pass
+
+    def tell(self):
+        return self.__pos
 
     def __bool__(self):
         return True
