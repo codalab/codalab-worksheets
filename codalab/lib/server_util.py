@@ -169,7 +169,8 @@ def bottle_patch(path=None, **options):
 def safe_uri(redirect_uri):
     """Check if an URI is relative, otherwise raise an error.
     """
-    if '://' in redirect_uri or '//' in redirect_uri:
+    absolute = bool(urllib.parse.urlparse(redirect_uri).netloc)
+    if absolute:
         raise UsageError('Only relative URIs are allowed!')
     return redirect_uri
 
