@@ -3,7 +3,8 @@ Login and signup views.
 Handles create new user accounts and authenticating users.
 """
 from bottle import request, response, template, local, redirect, default_app, get, post
-
+import requests
+import os
 from codalab.lib import crypt_util, spec_util
 from codalab.lib.server_util import redirect_with_query
 from codalab.lib.spec_util import NAME_REGEX
@@ -75,8 +76,28 @@ def do_signup():
     last_name = request.forms.get('last_name')
     password = request.forms.get('password')
     affiliation = request.forms.get('affiliation')
+    token = request.forms.get('token')
 
     errors = []
+
+    if not token:
+        errors.append('Google reCAPTCHA token is missing.')
+    else:
+        url = 'https://www.google.com/recaptcha/api/siteverify'
+        data = {
+            'secret': os.environ['CODALAB_RECAPTCHA_SECRET_KEY'],
+            'response': token,
+        }
+        res = requests.post(url, data)
+
+        try:
+            data = res.json()
+            if not data.get('success'):
+                errors.append('Google reCAPTCHA failed.')
+
+        except UsageError as e:
+            errors.append(str(e))
+
     if request.user.is_authenticated:
         errors.append(
             "You are already logged in as %s, please log out before "
