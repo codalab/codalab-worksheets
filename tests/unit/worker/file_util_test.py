@@ -6,7 +6,7 @@ import unittest
 import bz2
 import gzip
 
-from io import BytesIO
+from io import BytesIO, BufferedReader
 
 from codalab.worker.file_util import (
     gzip_file,
@@ -21,7 +21,7 @@ from codalab.worker.file_util import (
     unzip_directory,
     OpenFile,
 )
-from codalab.worker.un_gzip_stream import un_gzip_stream, ZipToTarStream
+from codalab.worker.un_gzip_stream import un_gzip_stream, ZipToTarStream, BytesBuffer
 from codalab.worker.un_tar_directory import un_tar_directory
 from tests.unit.worker.download_util_test import AzureBlobTestBase
 
@@ -29,6 +29,24 @@ FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
 IGNORE_TEST_DIR = os.path.join(FILES_DIR, 'ignore_test')
 
 SAMPLE_CONTENTS = b"hello world"
+
+
+class ReadOneByOne(BytesIO):
+    """A wrapper that reads a fileobj one by one. Calls to .read(n) will only
+    return one byte. This simulates, for example, a HTTP request body that is
+    going to the server one byte at a time."""
+
+    def __init__(self, fileobj):
+        self._fileobj = fileobj
+
+    def read(self, num_bytes=None):
+        return self._fileobj.read(min(1, num_bytes or 0))
+
+    def __getattr__(self, name):
+        """
+        Proxy any methods/attributes to the fileobj.
+        """
+        return getattr(self._fileobj, name)
 
 
 class FileUtilTest(unittest.TestCase):
@@ -147,6 +165,28 @@ class FileUtilTest(unittest.TestCase):
                 for tinfo in tf
             ]
             self.assertEqual(sorted(tinfos), expected_tinfos)
+
+    def test_zip_to_tar_read_byte_by_byte(self):
+        """Test converting a zip to a tar stream, while reading the input fileobj
+        and the output ZipToTarStream byte-by-byte (so that the final tar archive
+        is also assembled byte-by-byte)."""
+        for (name, zip_contents) in [
+            ("single file", self.create_zip_single_file()),
+            ("complex file", self.create_zip_complex()),
+        ]:
+            with self.subTest(name=name):
+                expected_tar_contents = ZipToTarStream(BytesIO(zip_contents)).read()
+                buf = BytesBuffer()
+                buf.write(zip_contents)
+                zts = ZipToTarStream(ReadOneByOne(buf))
+                out = BytesBuffer()
+                buf_length = len(buf)
+                while True:
+                    chunk = zts.read(1)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                self.assertEqual(out.read(), expected_tar_contents)
 
 
 class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
