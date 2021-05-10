@@ -136,7 +136,7 @@ class CodalabArg(object):
     """CodalabArg defines the arguments needed for starting the service.
 
     Attributes:
-        frontend (bool): Whether an arg is needed for frontend build.
+        frontend (bool): frontend arg will be passed down to the frotnend container at build time, prefixed by REACT_APP_.
     """
 
     def __init__(self, name, help, type=str, env_var=None, flag=None, default=None, frontend=False):
