@@ -46,7 +46,7 @@
     "semantic-ui-react": "^1.1.1",
     "swr": "^0.5.3",
     "timeago.js": "^4.0.2",
-    "underscore": "^1.11.0"
+    "underscore": "^1.12.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.3",
