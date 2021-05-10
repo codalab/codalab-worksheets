@@ -7,6 +7,7 @@ from zipfile import ZipFile, BadZipFile
 
 from codalab.lib.beam.streamingzipfile import StreamingZipFile
 from codalab.worker.file_util import zip_directory
+from codalab.worker.un_gzip_stream import BytesBuffer
 
 SAMPLE_CONTENTS = b"hello world"
 
@@ -91,36 +92,27 @@ class StreamingZipFileTest(unittest.TestCase):
                 self.assertEqual(getattr(zinfo, field), getattr(infolist[0], field), field)
 
     def test_unseekable_file_read_partially(self):
-        """Unseekable file can be read partially. In the middle of reading part of the file from open(),
-        we can write compressed data to the underlying fileobj and still get the right result."""
+        """Unseekable file can be read partially. Read a file within the archive byte by byte."""
         zip_contents = self.create_zip_single_file()
-        with StreamingZipFile(UnseekableBytesIO(zip_contents)) as zf:
+        buf = BytesBuffer()
+        buf.write(zip_contents)
+        with StreamingZipFile(buf) as zf:
             for zinfo in zf:
                 self.assertEqual(zinfo.filename, "file.txt")
                 self.assertEqual(zinfo.file_size, 11)
                 with zf.open(zinfo) as f:
-                    contents = f._fileobj.read()
-                    f._fileobj = BytesIO(contents[:3])
-                    # ZipExtFile._read1(n) reads up to n compressed bytes. We use this function instead of
-                    # ZipExtFile.read(n) (which reads n uncompressed bytes), because we only know how many
-                    # compressed bytes have been input into f._fileobj. We only know that we've
-                    # written 3 compressed bytes into f._fileobj, so we can only be assured that calling
-                    # ._read1(1) thrice will work, but not that .read(1) thrice will work.
-                    self.assertEqual(f._read1(1), b"h")
-                    self.assertEqual(f._read1(1), b"e")
-                    self.assertEqual(f._read1(1), b"l")
-                    pos = f._fileobj.tell()
-                    f._fileobj.seek(0, SEEK_END)
-                    f._fileobj.write(contents[3:])
-                    f._fileobj.seek(pos)
-                    self.assertEqual(f._read1(1), b"l")
-                    self.assertEqual(f._read1(1), b"o")
-                    self.assertEqual(f._read1(1), b" ")
-                    self.assertEqual(f._read1(1), b"w")
-                    self.assertEqual(f._read1(1), b"o")
-                    self.assertEqual(f._read1(1), b"r")
-                    self.assertEqual(f._read1(1), b"l")
-                    self.assertEqual(f._read1(1), b"d")
+                    self.assertEqual(f.read(1), b"h")
+                    self.assertEqual(f.read(1), b"e")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"o")
+                    self.assertEqual(f.read(1), b" ")
+                    self.assertEqual(f.read(1), b"w")
+                    self.assertEqual(f.read(1), b"o")
+                    self.assertEqual(f.read(1), b"r")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"d")
+                    pass
 
     def test_read_complex(self):
         """Zip file with a complex directory structure can be read by ZipFile / StreamingZipFile properly"""
