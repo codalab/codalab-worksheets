@@ -27,7 +27,8 @@ from codalab.lib.beam.streamingzipfile import StreamingZipFile
 class GenericUncompressStream(BytesIO):
     """Generic base class that uncompresses a stream.
     Subclasses must set decoder, which must be an instance of a
-    class that implements the decompress(chunk) and flush() methods.
+    class that implements the decompress(chunk) method and (optionally)
+    then flush() method.
     """
 
     decoder = None
@@ -44,7 +45,8 @@ class GenericUncompressStream(BytesIO):
             if chunk:
                 self._buffer.write(self.decoder.decompress(chunk))
             else:
-                self._buffer.write(self.decoder.flush())
+                if hasattr(self.decoder, "flush"):
+                    self._buffer.write(self.decoder.flush())
                 self._finished = True
         if num_bytes is None:
             num_bytes = len(self._buffer)
@@ -205,9 +207,6 @@ class ZipToTarDecompressor:
                     self.reset_info()
 
         return output.read()
-
-    def flush(self):
-        return b""
 
 
 class ZipToTarStream(GenericUncompressStream):

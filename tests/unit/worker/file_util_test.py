@@ -6,7 +6,7 @@ import unittest
 import bz2
 import gzip
 
-from io import BytesIO, BufferedReader
+from io import BytesIO
 
 from codalab.worker.file_util import (
     gzip_file,
@@ -180,7 +180,6 @@ class FileUtilTest(unittest.TestCase):
                 buf.write(zip_contents)
                 zts = ZipToTarStream(ReadOneByOne(buf))
                 out = BytesBuffer()
-                buf_length = len(buf)
                 while True:
                     chunk = zts.read(1)
                     if not chunk:
