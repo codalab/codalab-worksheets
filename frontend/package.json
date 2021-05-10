@@ -23,7 +23,7 @@
     "jsonapi-datastore": "^0.4.0-beta",
     "jszip": "^3.5.0",
     "lint-staged": "^10.2.13",
-    "lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "marked": "^2.0.0",
     "material-ui-chip-input": "^1.1.0",
     "query-string": "^6.13.1",
@@ -47,7 +47,7 @@
     "semantic-ui-react": "^1.1.1",
     "swr": "^0.5.3",
     "timeago.js": "^4.0.2",
-    "underscore": "^1.11.0"
+    "underscore": "^1.12.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.3",
