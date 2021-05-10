@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 
-from io import BytesIO, UnsupportedOperation, SEEK_END
+from io import BytesIO, UnsupportedOperation
 from zipfile import ZipFile, BadZipFile
 
 from codalab.lib.beam.streamingzipfile import StreamingZipFile
