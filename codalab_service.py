@@ -725,7 +725,7 @@ class CodalabServiceManager(object):
             build_args = ''
 
         # We need the frontend env variables during build time
-        if image == 'frontend' and not self.args.dev:
+        if image == 'frontend':
             with open('frontend/.env', "w+") as f:
                 for arg in CODALAB_ARGUMENTS:
                     if arg.frontend:
