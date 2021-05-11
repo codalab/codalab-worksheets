@@ -17,7 +17,7 @@ provided by Microsoft Azure.
 - Tony Lee
 - Yuqi Jin
 - Aditya Prerepa
-- Yuqi Jin
+- Jizhen Wang
 
 ## Former Developers
 
