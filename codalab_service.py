@@ -136,7 +136,7 @@ class CodalabArg(object):
     """CodalabArg defines the arguments needed for starting the service.
 
     Attributes:
-        frontend (bool): frontend arg will be passed down to the frotnend container at build time, prefixed by REACT_APP_.
+        frontend (bool): frontend arg will be passed down to the frotnend container, prefixed by REACT_APP_.
     """
 
     def __init__(self, name, help, type=str, env_var=None, flag=None, default=None, frontend=False):
@@ -723,14 +723,6 @@ class CodalabServiceManager(object):
             build_args = ' --build-arg dev=true'
         else:
             build_args = ''
-
-        # We need the frontend env variables during build time
-        if image == 'frontend':
-            with open('frontend/.env', "w+") as f:
-                for arg in CODALAB_ARGUMENTS:
-                    if arg.frontend:
-                        value = getattr(self.args, arg.name, None)
-                        f.write('REACT_APP_{}={}\n'.format(arg.env_var, value))
 
         # Build the image using the cache
         self._run_docker_cmd(
