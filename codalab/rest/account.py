@@ -6,7 +6,7 @@ from bottle import request, response, template, local, redirect, default_app, ge
 import requests
 import os
 from codalab.lib import crypt_util, spec_util
-from codalab.lib.server_util import redirect_with_query
+from codalab.lib.server_util import redirect_with_query, safe_uri
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.common import UsageError
 from codalab.objects.user import User
@@ -30,7 +30,7 @@ def send_verification_key(username, email, key):
 @get('/account/logout', name='logout', skip=UserVerifiedPlugin)
 def do_logout():
     LoginCookie.clear()
-    redirect_uri = request.query.get('redirect_uri')
+    redirect_uri = safe_uri(request.query.get('redirect_uri'))
     return redirect(redirect_uri)
 
 
@@ -56,7 +56,7 @@ def do_login():
 
     # Redirect client to next page
     if success_uri:
-        return redirect(success_uri)
+        return redirect(safe_uri(success_uri))
     else:
         return redirect('/')
 
