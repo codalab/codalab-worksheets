@@ -12,12 +12,17 @@ import urllib.error
 from dataclasses import dataclass
 from retry import retry
 from enum import Enum
+import logging
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.49'
+CODALAB_VERSION = '0.5.46'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
+
+# Silence verbose HTTP output from Azure Blob
+logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
+logger.setLevel(logging.WARNING)
 
 
 class IntegrityError(ValueError):
@@ -174,10 +179,7 @@ class LinkedBundlePath:
 
         bundle_path (str): Path to the bundle contents in that particular storage.
 
-        is_archive (bool): Whether this bundle is stored as an indexed archive file (contents.gz / contents.tar.gz + an index.sqlite file. Only done currently by Azure Blob Storage.
-
-        is_archive_dir (bool): Whether this bundle is stored as a contents.tar.gz file (which represents a directory) or
-        a contents.gz file (which represents a single file). Only applicable if is_archive is True.
+        is_archive (bool): Whether this bundle is stored as a .tar.gz file on this storage medium stores folders. Only done currently by Azure Blob Storage.
 
         uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
 
@@ -189,7 +191,6 @@ class LinkedBundlePath:
     storage_type: StorageType
     bundle_path: str
     is_archive: bool
-    is_archive_dir: bool
     uses_beam: bool
     archive_subpath: str
     bundle_uuid: str
@@ -197,7 +198,7 @@ class LinkedBundlePath:
 
 def parse_linked_bundle_url(url):
     """Parses a linked bundle URL. This bundle URL usually refers to:
-        - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz" (contents.gz for files, contents.tar.gz for directories)
+        - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz"
         - a single file that is stored within a subpath of an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
 
         Returns a LinkedBundlePath instance to encode this information.
@@ -208,14 +209,12 @@ def parse_linked_bundle_url(url):
         url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
         storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
         bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
-        is_archive = contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
-        is_archive_dir = contents_file.endswith(".tar.gz")
+        is_archive = contents_file.endswith(".tar.gz")
         archive_subpath = remainder[0] if is_archive and len(remainder) else None
     else:
         storage_type = StorageType.DISK_STORAGE.value
         bundle_path = url
         is_archive = False
-        is_archive_dir = False
         uses_beam = False
         archive_subpath = None
         bundle_uuid = None
@@ -223,8 +222,16 @@ def parse_linked_bundle_url(url):
         storage_type=storage_type,
         bundle_path=bundle_path,
         is_archive=is_archive,
-        is_archive_dir=is_archive_dir,
         uses_beam=uses_beam,
         archive_subpath=archive_subpath,
         bundle_uuid=bundle_uuid,
     )
+
+
+def normpath(path):
+    """Performs os.path.normpath on a path if it is on the filesystem, but if it is on Beam,
+    doesn't do anything to the path.
+    """
+    if parse_linked_bundle_url(path).uses_beam:
+        return path
+    return os.path.normpath(path)

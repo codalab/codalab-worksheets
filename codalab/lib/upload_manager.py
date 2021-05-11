@@ -3,8 +3,10 @@ import shutil
 from typing import Union, Tuple, IO, cast
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry
+from codalab.worker.file_util import tar_gzip_directory, GzipStream
 from codalab.lib import file_util, path_util
 from codalab.objects.bundle import Bundle
+from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
 
 Source = Union[str, Tuple[str, IO[bytes]]]
 
@@ -43,26 +45,54 @@ class UploadManager(object):
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             is_url, is_fileobj, filename = self._interpret_source(source)
-            if is_url:
-                assert isinstance(source, str)
-                if git:
-                    file_util.git_clone(source, bundle_path)
-                else:
-                    # If downloading from a URL, convert the source to a file object.
-                    is_fileobj = True
-                    source = (filename, urlopen_with_retry(source))
-            if is_fileobj:
-                if unpack and self.zip_util.path_is_archive(filename):
-                    self._unpack_fileobj(source[0], source[1], bundle_path)
-                else:
-                    with open(bundle_path, 'wb') as out:
-                        shutil.copyfileobj(cast(IO, source[1]), out)
-
-            # is_directory is True if the bundle is a directory and False if it is a single file.
-            is_directory = os.path.isdir(bundle_path)
-            self._bundle_model.update_bundle(
-                bundle, {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
-            )
+            if use_azure_blob_beta:
+                if is_url:
+                    assert isinstance(source, str)
+                    if git:
+                        with tempfile.TemporaryDirectory() as tmpdir:
+                            file_util.git_clone(source, tmpdir)
+                            is_fileobj = True
+                            source = ("contents.tar.gz", tar_gz_directory(tmpdir))
+                    else:
+                        # If downloading from a URL, convert the source to a file object.
+                        is_fileobj = True
+                        source = (filename, urlopen_with_retry(source))
+                if is_fileobj:
+                    if unpack and self.zip_util.path_is_archive(source[0]):
+                        ext = self.zip_util.get_archive_ext(source[0])
+                        output_fileobj = self.zip_util.unpack_to_archive(
+                            ext, source[1], bundle_path
+                        )
+                    else:
+                        ext = ".gz"
+                        output_fileobj = GzipStream(source[1])
+                # is_directory is True if the bundle is a directory and False if it is a single file.
+                is_directory = ext in ARCHIVE_EXTS_DIR
+                self._bundle_model.update_bundle(
+                    bundle,
+                    {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_directory},
+                )
+            else:
+                if is_url:
+                    assert isinstance(source, str)
+                    if git:
+                        file_util.git_clone(source, bundle_path)
+                    else:
+                        # If downloading from a URL, convert the source to a file object.
+                        is_fileobj = True
+                        source = (filename, urlopen_with_retry(source))
+                if is_fileobj:
+                    if unpack and self.zip_util.path_is_archive(filename):
+                        self._unpack_fileobj(source[0], source[1], bundle_path)
+                    else:
+                        with open(bundle_path, 'wb') as out:
+                            shutil.copyfileobj(cast(IO, source[1]), out)
+                # is_directory is True if the bundle is a directory and False if it is a single file.
+                is_directory = os.path.isdir(bundle_path)
+                self._bundle_model.update_bundle(
+                    bundle,
+                    {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
+                )
         except UsageError:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
