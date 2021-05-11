@@ -40,3 +40,5 @@ provided by Microsoft Azure.
 - Jane Ge
 - Levi Lian
 - Yipeng He
+- Yibo Liu
+- Arman Tajback
