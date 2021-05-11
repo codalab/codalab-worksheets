@@ -1,9 +1,9 @@
 import * as React from 'react';
-import Immutable from 'seamless-immutable';
 import { NavLink } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 export const SignUpSuccess = (props) => {
     const { email } = queryString.parse(props.location.search);
@@ -23,24 +23,20 @@ export const SignUpSuccess = (props) => {
 };
 
 export class SignUp extends React.Component {
-    /** Constructor. */
-    constructor(props) {
-        super(props);
-        this.state = Immutable({
-            form: {},
-        });
-    }
+    state = {
+        form: {},
+        captchaPassed: false,
+    };
+    recaptchaRef = React.createRef();
 
     handleInputChange = (event) => {
         const target = event.target;
         const value = target.value;
         const name = target.name;
 
-        this.setState(
-            Immutable({
-                form: { [name]: value },
-            }),
-        );
+        this.setState({
+            form: { ...this.state.form, [name]: value },
+        });
     };
 
     componentDidMount() {
@@ -52,18 +48,38 @@ export class SignUp extends React.Component {
         const { email, username, first_name, last_name, affiliation } = queryString.parse(
             this.props.location.search,
         );
-        this.setState(
-            Immutable({
-                form: {
-                    email: email,
-                    username: username,
-                    first_name: first_name,
-                    last_name: last_name,
-                    affiliation: affiliation,
-                },
-            }),
-        );
+        this.setState({
+            form: {
+                email: email,
+                username: username,
+                first_name: first_name,
+                last_name: last_name,
+                affiliation: affiliation,
+            },
+        });
     }
+
+    onSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const token = this.recaptchaRef.current.getValue();
+            const response = await fetch('/rest/account/signup', {
+                method: 'POST',
+                body: new URLSearchParams({
+                    ...this.state.form,
+                    success_uri: '/account/signup/success',
+                    error_uri: this.props.location.pathname,
+                    token,
+                }),
+            });
+            this.recaptchaRef.current.reset();
+            if (response.redirected) {
+                window.location.href = response.url;
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    };
 
     render() {
         const { error } = queryString.parse(this.props.location.search);
@@ -80,6 +96,7 @@ export class SignUp extends React.Component {
                         id='signup_form'
                         method='post'
                         action='/rest/account/signup'
+                        onSubmit={this.onSubmit}
                     >
                         {error && <div class='alert alert-error'>{error}</div>}
                         <div className='form-group'>
@@ -173,13 +190,17 @@ export class SignUp extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
-                        <input type='hidden' name='success_uri' value='/account/signup/success' />
-                        <input
-                            type='hidden'
-                            name='error_uri'
-                            value={this.props.location.pathname}
+                        <ReCAPTCHA
+                            ref={this.recaptchaRef}
+                            sitekey={process.env.REACT_APP_CODALAB_RECAPTCHA_SITE_KEY}
+                            onChange={() => {
+                                this.setState({ captchaPassed: true });
+                            }}
+                            style={{ marginBottom: 10 }}
                         />
-                        <button type='submit'>Sign Up &raquo;</button>
+                        <button type='submit' disabled={!this.state.captchaPassed}>
+                            Sign Up &raquo;
+                        </button>
                     </form>
                 </ContentWrapper>
             </React.Fragment>
