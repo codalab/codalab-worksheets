@@ -236,7 +236,7 @@ services:
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
-    command: serve -s build -l ${CODALAB_FRONTEND_PORT}
+    command: (sed 's/%CODALAB_RECAPTCHA_SITE_KEY%/$CODALAB_RECAPTCHA_SITE_KEY/g' build/index.prod.html > build/index.html) && serve -s build -l ${CODALAB_FRONTEND_PORT}
     <<: *codalab-base
     <<: *codalab-root
     depends_on:
