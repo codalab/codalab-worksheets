@@ -208,7 +208,6 @@ class BundleCheckinState(object):
         self.failure_message = failure_message
         self.cpu_usage = cpu_usage
         self.memory_usage = memory_usage
-        self.memory_limit = memory_limit
         self.bundle_profile_stats = bundle_profile_stats
 
     @classmethod
