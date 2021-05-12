@@ -11,6 +11,7 @@ WORKDIR /opt/frontend
 # Install dependencies
 COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
+COPY setup-frontend.js setup-frontend.js 
 RUN npm ci
 
 # Overridden in dev mode
