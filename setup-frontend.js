@@ -1,3 +1,6 @@
+/* This script reads environment variables from runtime and create
+   env.js so the frontend app can read them. */
+
 const fs = require("fs");
 
 const path =
