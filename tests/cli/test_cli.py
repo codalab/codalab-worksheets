@@ -1331,6 +1331,10 @@ def test_run(ctx):
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
     check_contains('0x', get_info(uuid, 'data_hash'))
+    check_not_equals('0s', get_info(uuid, 'time_preparing'))
+    check_not_equals('0s', get_info(uuid, 'time_running'))
+    check_not_equals('0s', get_info(uuid, 'time_cleaning_up'))
+    check_not_equals('0s', get_info(uuid, 'time_uploading_results'))
 
     # test search
     check_contains(name, _run_command([cl, 'search', name]))

@@ -235,10 +235,10 @@ class MainPanel extends React.Component<{
                     });
                 }
             })
-            .fail((error) => {
+            .catch((error) => {
                 this.setState({
                     snackbarShow: true,
-                    snackbarMessage: error.responseText,
+                    snackbarMessage: error,
                     snackbarVariant: 'error',
                 });
             });
