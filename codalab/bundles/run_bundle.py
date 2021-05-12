@@ -36,6 +36,11 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important). Negative '
                                                                 'priority bundles are queued behind bundles with no specified priority.', default=None))
     METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.', default=False))
+    METADATA_SPECS.append(
+        MetadataSpec('cpu_usage', float, 'Proportion of current CPU usage for a running bundle. This field is only relevant for running bundles. (e.g., 0.24)', default=0.0, generated=True))
+    METADATA_SPECS.append(
+        MetadataSpec('memory_usage', float, 'Proportion of current memory usage based on the memory limit.', default=0.0, generated=True))
+
     METADATA_SPECS.append(MetadataSpec('exclude_patterns', list, 'Exclude these file patterns from being saved into the bundle contents.', default=[]))
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
