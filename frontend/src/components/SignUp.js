@@ -192,7 +192,7 @@ export class SignUp extends React.Component {
                         </div>
                         <ReCAPTCHA
                             ref={this.recaptchaRef}
-                            sitekey={process.env.REACT_APP_CODALAB_RECAPTCHA_SITE_KEY}
+                            sitekey={window.env.REACT_APP_CODALAB_RECAPTCHA_SITE_KEY}
                             onChange={() => {
                                 this.setState({ captchaPassed: true });
                             }}
