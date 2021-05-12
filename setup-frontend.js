@@ -1,8 +1,14 @@
-const FRONTEND_ARGS = ["REACT_APP_CODALAB_RECAPTCHA_SITE_KEY"];
+const fs = require("fs");
 
-fs = require("fs");
-vars = FRONTEND_ARGS.map(
-  (arg) => `window.env.${arg}="${process.env[arg]}"`
+const path =
+  process.argv[2] === "dev"
+    ? "/opt/frontend/public/js/env.js"
+    : "build/js/env.js";
+
+const args = Object.keys(process.env).filter((arg) =>
+  arg.startsWith("REACT_APP_")
 );
 
-fs.writeFileSync("build/js/env.js", "window.env = {}\n" + vars.join("\n"));
+const vars = args.map((arg) => `window.env.${arg}="${process.env[arg]}"`);
+
+fs.writeFileSync(path, "window.env = {}\n" + vars.join("\n"));
