@@ -237,6 +237,17 @@ def check_contains(true_value, pred_value):
     return pred_value
 
 
+def check_not_contains(true_value, pred_value):
+    if isinstance(true_value, list):
+        for v in true_value:
+            check_not_contains(v, pred_value)
+    else:
+        assert (
+            true_value not in pred_value
+        ), "expected something that does not contain '%s', but got '%s'" % (true_value, pred_value)
+    return pred_value
+
+
 def check_num_lines(true_value, pred_value):
     num_lines = len(pred_value.split('\n'))
     assert num_lines == true_value, "expected %d lines, but got %s" % (true_value, num_lines)
@@ -1030,6 +1041,9 @@ def test_worksheet_search(ctx):
     check_contains(group_wuuid[:8], _run_command([cl, 'wls', '.shared']))
     check_contains(group_wuuid[:8], _run_command([cl, 'wls', 'group={}'.format(group_uuid)]))
     check_contains(group_wuuid[:8], _run_command([cl, 'wls', 'group={}'.format(group_name)]))
+    # Check only search for shared worksheets not owned by the user
+    _run_command([cl, 'wperm', wuuid, group_name, 'r'])
+    check_not_contains(wuuid[:8], _run_command([cl, 'wls', '.shared', '.notmine']))
 
 
 @TestModule.register('worksheet_tags')
