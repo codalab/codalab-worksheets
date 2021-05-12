@@ -1391,6 +1391,8 @@ class BundleModel(object):
                 keyword = 'id=.sort-'
             elif keyword == '.shared':
                 keyword = '.shared=True'
+            elif keyword == '.notmine':
+                keyword = '.notmine=True'
 
             m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
             if m:
@@ -1422,6 +1424,8 @@ class BundleModel(object):
                         )
                     )
                 )
+            elif key == '.notmine':  # shared with any group I am in with read or all permission?
+                clause = getattr(cl_worksheet.c, 'owner_id') != (user_id or '')
             # Bundle fields
             elif key in ('id', 'uuid', 'name', 'title', 'owner_id'):
                 clause = make_condition(getattr(cl_worksheet.c, key), value)
