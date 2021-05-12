@@ -11,16 +11,13 @@ WORKDIR /opt/frontend
 # Install dependencies
 COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
-COPY setup_frontend.js setup_frontend.js 
+COPY setup-frontend.js setup-frontend.js 
 RUN npm ci
 
 # Overridden in dev mode
 COPY frontend .
 
 # Build static files (skipped in dev mode)
-RUN if [ "$dev" = "false" ] ; then \
-    cat public/index.prod.html >| public/index.html &&\
-    npm run build --production; \
-    fi
+RUN if [ "$dev" = "false" ] ; then npm run build --production; fi
 
 EXPOSE 2700
