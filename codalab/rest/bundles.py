@@ -232,6 +232,7 @@ def _create_bundles():
     shadow_parent_uuid = request.query.get('shadow')
     after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
+    after_image = query_get_bool('after_image', default=False)
     if not detached and worksheet_uuid is None:
         abort(
             http.client.BAD_REQUEST,
@@ -303,9 +304,11 @@ def _create_bundles():
         # Add as item to worksheet
         if not detached:
             if shadow_parent_uuid is None:
-                local.model.add_worksheet_items(
-                    worksheet_uuid, [worksheet_util.bundle_item(bundle_uuid)], after_sort_key
-                )
+                items = [worksheet_util.bundle_item(bundle_uuid)]
+                # Add a blank line after the image block in the worksheet source to ensure it is a separate block
+                if after_image:
+                    items.insert(0, worksheet_util.markup_item(''))
+                local.model.add_worksheet_items(worksheet_uuid, items, after_sort_key)
             else:
                 local.model.add_shadow_worksheet_items(shadow_parent_uuid, bundle_uuid)
 

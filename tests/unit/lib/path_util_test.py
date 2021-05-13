@@ -120,14 +120,15 @@ class ParseBundleUrl(unittest.TestCase):
     def test_single_file(self):
         """Parse a URL referring to a single file on Azure."""
         linked_bundle_path = parse_linked_bundle_url(
-            "azfs://storageclwsdev0/bundles/uuid/contents.txt"
+            "azfs://storageclwsdev0/bundles/uuid/contents.gz"
         )
         self.assertEqual(linked_bundle_path.storage_type, StorageType.AZURE_BLOB_STORAGE.value)
         self.assertEqual(linked_bundle_path.uses_beam, True)
         self.assertEqual(
-            linked_bundle_path.bundle_path, "azfs://storageclwsdev0/bundles/uuid/contents.txt"
+            linked_bundle_path.bundle_path, "azfs://storageclwsdev0/bundles/uuid/contents.gz"
         )
-        self.assertEqual(linked_bundle_path.is_archive, False)
+        self.assertEqual(linked_bundle_path.is_archive, True)
+        self.assertEqual(linked_bundle_path.is_archive_dir, False)
         self.assertEqual(linked_bundle_path.archive_subpath, None)
         self.assertEqual(linked_bundle_path.bundle_uuid, "uuid")
 
@@ -141,6 +142,7 @@ class ParseBundleUrl(unittest.TestCase):
             linked_bundle_path.bundle_path, "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz"
         )
         self.assertEqual(linked_bundle_path.is_archive, True)
+        self.assertEqual(linked_bundle_path.is_archive_dir, True)
         self.assertEqual(linked_bundle_path.archive_subpath, None)
         self.assertEqual(linked_bundle_path.bundle_uuid, "uuid")
 
@@ -154,6 +156,7 @@ class ParseBundleUrl(unittest.TestCase):
             linked_bundle_path.bundle_path, "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz"
         )
         self.assertEqual(linked_bundle_path.is_archive, True)
+        self.assertEqual(linked_bundle_path.is_archive_dir, True)
         self.assertEqual(linked_bundle_path.archive_subpath, "a/b.txt")
         self.assertEqual(linked_bundle_path.bundle_uuid, "uuid")
 
