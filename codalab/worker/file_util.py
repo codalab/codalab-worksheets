@@ -341,7 +341,7 @@ def un_bz2_file(source, dest_path):
     # fileno(). Our version requires only read() and close().
 
     BZ2_BUFFER_SIZE = 100 * 1024 * 1024  # Unzip in chunks of 100MB
-    with FileSystems.create(dest_path, compression_type=CompressionTypes.UNCOMPRESSED) as dest:
+    with open(dest_path, 'wb') as dest:
         decompressor = bz2.BZ2Decompressor()
         for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
             dest.write(decompressor.decompress(data))
