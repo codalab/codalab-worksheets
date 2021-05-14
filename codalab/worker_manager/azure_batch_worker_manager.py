@@ -11,6 +11,7 @@ try:
         TaskCounts,
         TaskContainerSettings,
     )
+    from azure.batch.models import BatchErrorException  # type: ignore
     from msrest.exceptions import ClientRequestError  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
@@ -89,7 +90,7 @@ class AzureBatchWorkerManager(WorkerManager):
             # Catch request errors to keep the worker manager running.
             task_counts: TaskCounts = self._batch_client.job.get_task_counts(self.args.job_id)
             return [WorkerJob(True) for _ in range(task_counts.active + task_counts.running)]
-        except ClientRequestError as e:
+        except (ClientRequestError, BatchErrorException) as e:
             logger.error('Batch request to retrieve the number of tasks failed: {}'.format(str(e)))
             return []
 
@@ -171,7 +172,7 @@ class AzureBatchWorkerManager(WorkerManager):
             # Create a task under the Azure Batch job.
             # Catch request errors to keep the worker manager running.
             self._batch_client.task.add(self.args.job_id, task)
-        except ClientRequestError as e:
+        except (ClientRequestError, BatchErrorException) as e:
             logger.error(
                 'Batch request to add task {} to job {} failed: {}'.format(
                     task_id, self.args.job_id, str(e)
