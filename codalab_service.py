@@ -260,12 +260,14 @@ CODALAB_ARGUMENTS = [
         help=(
             'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
+        frontend=True,
     ),
     CodalabArg(
         name='sentry_environment',
         help=(
             'Environment for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
+        frontend=True,
     ),
     # Bundle Manager
     CodalabArg(
