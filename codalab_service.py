@@ -133,13 +133,20 @@ def var_path(name):
 
 # An configuration argument.
 class CodalabArg(object):
-    def __init__(self, name, help, type=str, env_var=None, flag=None, default=None):
+    """CodalabArg defines the arguments needed for starting the service.
+
+    Attributes:
+        frontend (bool): frontend arg will be passed down to the frontend container, prefixed by REACT_APP_.
+    """
+
+    def __init__(self, name, help, type=str, env_var=None, flag=None, default=None, frontend=False):
         self.name = name
         self.help = help
         self.type = type
         self.env_var = env_var or 'CODALAB_' + name.upper()
         self.flag = flag  # Command-line argument
         self.default = default
+        self.frontend = frontend
 
     def has_constant_default(self):
         return self.default is not None and not callable(self.default)
@@ -253,6 +260,14 @@ CODALAB_ARGUMENTS = [
         help=(
             'Ingest URL for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
+        frontend=True,
+    ),
+    CodalabArg(
+        name='sentry_environment',
+        help=(
+            'Environment for logging exceptions with Sentry. If not provided, Sentry is not used.'
+        ),
+        frontend=True,
     ),
     # Bundle Manager
     CodalabArg(
@@ -360,6 +375,19 @@ CODALAB_ARGUMENTS = [
     ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
+    CodalabArg(
+        name='recaptcha_site_key',
+        type=str,
+        default='6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI',  # test key provided by Google, will always pass
+        help='API site key needed for reCAPTCHA',
+        frontend=True,
+    ),
+    CodalabArg(
+        name='recaptcha_secret_key',
+        type=str,
+        default='6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe',  # test key provided by Google, will always pass
+        help='API secret key needed for reCAPTCHA',
+    ),
 ]
 
 for worker_manager_type in ['cpu', 'gpu']:

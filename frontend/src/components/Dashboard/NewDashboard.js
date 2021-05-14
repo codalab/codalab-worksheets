@@ -4,6 +4,7 @@ import { default as SideBar } from './SideBar';
 import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 import { withRouter } from 'react-router';
+import { defaultErrorHandler, getUser, getUsers } from '../../util/apiWrapper';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -34,45 +35,34 @@ class NewDashboard extends React.Component<{
     componentDidMount() {
         $('body').addClass('ws-interface');
         // Fetch the current user's information
-        $.ajax({
-            url: '/rest/user',
-            dataType: 'json',
-            cache: false,
-            type: 'GET',
-            success: function(data) {
-                let authUsername: String = data.data.attributes.user_name;
-                // Redirect to current user's own dashboard
-                this.setState({ authUsername: authUsername });
-                let ownDashboard: boolean;
-                if (!this.props.username) {
-                    this.props.history.push('/users/' + authUsername);
-                    ownDashboard = true;
-                } else {
-                    ownDashboard = authUsername === this.props.username;
-                }
-
-                $.ajax({
-                    url: ownDashboard ? '/rest/user' : '/rest/users/' + this.props.username,
-                    dataType: 'json',
-                    cache: false,
-                    type: 'GET',
-                    success: function(data) {
-                        const userInfo = data.data.attributes;
-                        userInfo.user_id = data.data.id;
-                        this.setState({
-                            userInfo: userInfo,
-                            ownDashboard,
-                        });
-                    }.bind(this),
-                    error: function(xhr, status, err) {
-                        console.error(xhr.responseText);
-                    },
+        const callback = (data) => {
+            let authUsername = data.data.attributes.user_name;
+            // Redirect to current user's own dashboard
+            this.setState({ authUsername: authUsername });
+            let ownDashboard;
+            if (!this.props.username) {
+                this.props.history.push('/users/' + authUsername);
+                ownDashboard = true;
+            } else {
+                ownDashboard = authUsername === this.props.username;
+            }
+            const callback = (data) => {
+                const userInfo = data.data.attributes;
+                userInfo.user_id = data.data.id;
+                this.setState({
+                    userInfo: userInfo,
+                    ownDashboard,
                 });
-            }.bind(this),
-            error: function(xhr, status, err) {
-                console.error(xhr.responseText);
-            },
-        });
+            };
+            if (ownDashboard) {
+                getUser().then(callback);
+            } else {
+                getUsers(this.props.username).then(callback);
+            }
+        };
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     /** Renderer. */

@@ -33,12 +33,17 @@ import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
-import { executeCommand } from '../../../util/cli_utils';
+import {
+    addItems,
+    apiWrapper,
+    defaultErrorHandler,
+    executeCommand,
+    getUser,
+} from '../../../util/apiWrapper';
 import Tooltip from '@material-ui/core/Tooltip';
 import WorksheetDialogs from '../WorksheetDialogs';
 import { ToastContainer, toast, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import queryString from 'query-string';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import { Popover } from '@material-ui/core';
 
@@ -119,19 +124,9 @@ class Worksheet extends React.Component {
             brief: props.brief ? 1 : 0,
         };
 
-        $.ajax({
-            type: 'GET',
-            url:
-                '/rest/interpret/worksheet/' +
-                this.state.ws.uuid +
-                '?' +
-                queryString.stringify(queryParams),
-            // TODO: migrate to using main API
-            // url: '/rest/worksheets/' + ws.uuid,
-            async: props.async,
-            dataType: 'json',
-            cache: false,
-            success: function(info) {
+        apiWrapper
+            .fetchWorksheet(this.state.ws.uuid, queryParams)
+            .then((info) => {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
                 info['date_last_modified'] = addUTCTimeZone(info['date_last_modified']);
                 this.setState({
@@ -141,11 +136,8 @@ class Worksheet extends React.Component {
                     },
                 });
                 props.success(info);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
+            })
+            .catch((error) => props.error(error));
     }
 
     saveWorksheet(props) {
@@ -155,40 +147,28 @@ class Worksheet extends React.Component {
         props.success = props.success || function(data) {};
         props.error = props.error || function(xhr, status, err) {};
         $('#save_error').hide();
-        $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/rest/worksheets/' + this.state.ws.uuid + '/raw',
-            dataType: 'json',
-            data: this.state.ws.info.source.join('\n'),
-            success: function(data) {
+        apiWrapper
+            .saveWorksheet(this.state.ws.uuid, this.state.ws.info.source.join('\n'))
+            .then((data) => {
                 console.log('Saved worksheet ' + this.state.ws.uuid);
                 props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error(xhr, status, err);
-            },
-        });
+            })
+            .catch((error) => {
+                props.error(error);
+            });
     }
 
     deleteWorksheet(props) {
         if (this.state.ws.info === undefined) return;
         $('#update_progress').show();
         $('#save_error').hide();
-        $.ajax({
-            type: 'DELETE',
-            cache: false,
-            url: '/rest/worksheets?force=1',
-            contentType: 'application/json',
-            data: JSON.stringify({ data: [{ id: this.state.ws.info.uuid, type: 'worksheets' }] }),
-            success: function(data) {
+        apiWrapper
+            .deleteWorksheet(this.state.ws.info.uuid)
+            .then((data) => {
                 console.log('Deleted worksheet ' + this.state.ws.info.uuid);
                 props.success && props.success(data);
-            }.bind(this),
-            error: function(xhr, status, err) {
-                props.error && props.error(xhr, status, err);
-            },
-        });
+            })
+            .catch((error) => props.error && props.error(error));
     }
 
     _setfocusIndex(index) {
@@ -337,7 +317,7 @@ class Worksheet extends React.Component {
             ]),
             worksheet_uuid,
         )
-            .done(() => {
+            .then(() => {
                 this.clearCheckedBundles(() => {
                     // This toast info is used for showing a message when a command has finished executing
                     toast.update(toastId, {
@@ -356,10 +336,10 @@ class Worksheet extends React.Component {
                 const param = { fromDeleteCommand };
                 this.reloadWorksheet(undefined, undefined, param);
             })
-            .fail((e) => {
+            .catch((e) => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: e.responseText,
+                    errorDialogMessage: e,
                     forceDelete: false,
                     updating: false,
                 });
@@ -417,9 +397,13 @@ class Worksheet extends React.Component {
             this.setState({ openedDialog: null, deleteItemCallback: null });
             return;
         }
-        if (cmd_type === 'deleteItem') {
+        if (cmd_type === 'deleteMarkdown') {
             // This is used to delete markdown blocks
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_MARKDOWN });
+        }
+        if (cmd_type === 'deleteSchema') {
+            // This is used to delete schema
+            this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_SCHEMA });
         }
         if (cmd_type === 'rm') {
             this.setState({ openedDialog: DIALOG_TYPES.OPEN_DELETE_BUNDLE });
@@ -472,22 +456,19 @@ class Worksheet extends React.Component {
     removeItemsFromSource = (itemIds) => {
         let worksheetUUID = this.state.ws.uuid;
         const url = `/rest/worksheets/${worksheetUUID}/add-items`;
-        $.ajax({
-            url,
-            data: JSON.stringify({ ids: itemIds }),
-            contentType: 'application/json',
-            type: 'POST',
-            success: () => {
-                const textDeleted = true;
-                const param = { textDeleted };
-                this.setState({ deleting: false });
-                this.reloadWorksheet(undefined, undefined, param);
-            },
-            error: (jqHXR, status, error) => {
-                this.setState({ deleting: false });
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            const textDeleted = true;
+            const param = { textDeleted };
+            this.setState({ deleting: false });
+            this.reloadWorksheet(undefined, undefined, param);
+        };
+        const errorHandler = (error) => {
+            this.setState({ deleting: false });
+            alert(createAlertText(url, error));
+        };
+        addItems(worksheetUUID, { ids: itemIds })
+            .then(callback)
+            .catch(errorHandler);
     };
 
     moveFocusToBottom = () => {
@@ -541,20 +522,17 @@ class Worksheet extends React.Component {
             actualData['after_sort_key'] = -1;
         }
         actualData['item_type'] = 'bundle';
-        $.ajax({
-            url,
-            data: JSON.stringify(actualData),
-            contentType: 'application/json',
-            type: 'POST',
-            success: () => {
-                const moveIndex = true;
-                const param = { moveIndex };
-                this.reloadWorksheet(undefined, undefined, param);
-            },
-            error: (jqHXR) => {
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+        const callback = () => {
+            const moveIndex = true;
+            const param = { moveIndex };
+            this.reloadWorksheet(undefined, undefined, param);
+        };
+        const errorHandler = (error) => {
+            alert(createAlertText(url, error));
+        };
+        addItems(worksheetUUID, actualData)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     clearCheckedBundles = (clear_callback) => {
@@ -649,30 +627,30 @@ class Worksheet extends React.Component {
         actualData['item_type'] = 'directive';
         if (!create) actualData['ids'] = ids;
         actualData['after_sort_key'] = after_sort_key;
-        $.ajax({
-            url,
-            data: JSON.stringify(actualData),
-            contentType: 'application/json',
-            type: 'POST',
-            success: () => {
-                if (deletion) {
-                    const textDeleted = true;
-                    const param = { textDeleted };
-                    this.reloadWorksheet(undefined, undefined, param);
-                } else {
-                    const moveIndex = true;
-                    const param = { moveIndex };
-                    this.reloadWorksheet(undefined, undefined, param);
+        const callback = () => {
+            if (deletion) {
+                const textDeleted = true;
+                const param = { textDeleted };
+                if (this.state.openedDialog) {
+                    this.setState({ openedDialog: null, deleteItemCallback: null });
                 }
-            },
-            error: (jqHXR) => {
-                alert(createAlertText(this.url, jqHXR.responseText));
-            },
-        });
+                this.reloadWorksheet(undefined, undefined, param);
+            } else {
+                const moveIndex = true;
+                const param = { moveIndex };
+                this.reloadWorksheet(undefined, undefined, param);
+            }
+        };
+        const errorHandler = (error) => {
+            alert(createAlertText(url, error));
+        };
+        addItems(worksheetUUID, actualData)
+            .then(callback)
+            .catch(errorHandler);
         this.setState({
             messagePopover: {
                 showMessage: true,
-                messageContent: 'Schema Saved!',
+                messageContent: deletion ? 'Schema Deleted!' : 'Schema Saved!',
             },
         });
         this.autoHideOpenedMessagePopover();
@@ -831,22 +809,16 @@ class Worksheet extends React.Component {
         // Initialize history stack
         window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');
-        $.ajax({
-            url: '/rest/user',
-            dataType: 'json',
-            cache: false,
-            type: 'GET',
-            success: function(data) {
-                var userInfo = data.data.attributes;
-                userInfo.user_id = data.data.id;
-                this.setState({
-                    userInfo: userInfo,
-                });
-            }.bind(this),
-            error: function(xhr, status, err) {
-                console.error(xhr.responseText);
-            },
-        });
+        const callback = (data) => {
+            var userInfo = data.data.attributes;
+            userInfo.user_id = data.data.id;
+            this.setState({
+                userInfo: userInfo,
+            });
+        };
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     hasEditPermission() {
@@ -1064,14 +1036,20 @@ class Worksheet extends React.Component {
             this.toggleWorksheetSize();
         });
 
-        if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
+        if (
+            this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN ||
+            this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_SCHEMA
+        ) {
             Mousetrap.bind(
                 ['enter'],
                 function(e) {
                     e.preventDefault();
                     if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_MARKDOWN) {
                         this.state.deleteItemCallback();
-                        this.toggleCmdDialogNoEvent('deleteItem');
+                        this.toggleCmdDialogNoEvent('deleteMarkdown');
+                    } else if (this.state.openedDialog === DIALOG_TYPES.OPEN_DELETE_SCHEMA) {
+                        this.state.deleteItemCallback();
+                        this.toggleCmdDialogNoEvent('deleteSchema');
                     }
                 }.bind(this),
             );
@@ -1221,12 +1199,10 @@ class Worksheet extends React.Component {
                 return 'bundle_uuid=' + bundle_uuid;
             })
             .join('&');
-        $.ajax({
-            type: 'GET',
-            url: '/rest/interpret/worksheet/' + worksheetUuid + '?' + queryParams,
-            dataType: 'json',
-            cache: false,
-            success: function(worksheet_content) {
+        const url = '/rest/interpret/worksheet/' + worksheetUuid + '?' + queryParams;
+        apiWrapper
+            .get(url)
+            .then((worksheet_content) => {
                 if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.blocks) {
                         self.reloadWorksheet(worksheet_content.blocks);
@@ -1242,15 +1218,14 @@ class Worksheet extends React.Component {
                     }, delayTime);
                     startTime = endTime;
                 }
-            }.bind(this),
-            error: (xhr, status, err) => {
+            })
+            .catch((error) => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: xhr.responseText,
+                    errorDialogMessage: error,
                 });
                 $('#worksheet_container').hide();
-            },
-        });
+            });
     };
 
     // Everytime the worksheet is updated, checkRunBundle will loop through all the bundles and find the "unfinished" ones (not ready or failed).
@@ -1615,13 +1590,13 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 this.reloadWorksheet(undefined, rawIndex);
             }.bind(this),
-            error: function(xhr, status, err) {
+            error: function(error) {
                 this.setState({ updating: false });
                 $('#update_progress').hide();
                 $('#save_error').show();
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: xhr.responseText,
+                    errorDialogMessage: error,
                 });
                 if (fromRaw) {
                     this.toggleSourceEditMode(true);

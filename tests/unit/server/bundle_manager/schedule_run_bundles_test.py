@@ -92,3 +92,27 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.READY)
+        self.assertEqual(
+            self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_preparing")[
+                bundle.uuid
+            ],
+            '5',
+        )
+        self.assertEqual(
+            self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_running")[
+                bundle.uuid
+            ],
+            '5',
+        )
+        self.assertEqual(
+            self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_uploading_results")[
+                bundle.uuid
+            ],
+            '5',
+        )
+        self.assertEqual(
+            self.bundle_manager._model.get_bundle_metadata([bundle.uuid], "time_cleaning_up")[
+                bundle.uuid
+            ],
+            '5',
+        )

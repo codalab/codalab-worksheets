@@ -3,6 +3,7 @@ import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import _ from 'underscore';
 import 'jquery.terminal';
+import { apiWrapper } from '../../util/apiWrapper';
 
 const TERMINAL_MINIMIZE_HEIGHT = 30;
 let TERMINAL_DRAGHEIGHT = 350;
@@ -50,6 +51,7 @@ class WorksheetTerminal extends React.Component {
                         self.renderHyperlinks(data.structured_result.refs);
                     }
                 } catch (error) {
+                    console.error(error);
                     terminal.error(error.responseText);
                 } finally {
                     terminal.resume();
@@ -158,20 +160,9 @@ class WorksheetTerminal extends React.Component {
     }
     executeCommand(command) {
         var self = this;
-
-        // returns a jQuery Promise
-        return $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/rest/cli/command',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify({
-                worksheet_uuid: this.props.ws.info.uuid,
-                command: command,
-            }),
-        })
-            .done(function(data) {
+        return apiWrapper
+            .executeCommand(command, this.props.ws.info.uuid)
+            .then(function(data) {
                 // data := {
                 //     structured_result: { ... },
                 //     output: string
@@ -186,34 +177,19 @@ class WorksheetTerminal extends React.Component {
                         self.doUIAction(action[0], action[1]);
                     });
                 }
+                return data;
             })
-            .fail(function(jqXHR, status, error) {
-                // Some exception occurred outside of the CLI
-                console.error(jqXHR.responseText);
+            .catch(function(exception) {
+                return { exception };
             });
     }
     completeCommand(command) {
-        var deferred = $.Deferred();
-        $.ajax({
-            type: 'POST',
-            cache: false,
-            url: '/rest/cli/command',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify({
-                worksheet_uuid: this.props.ws.info.uuid,
-                command: command,
-                autocomplete: true,
-            }),
-            success: function(data, status, jqXHR) {
-                deferred.resolve(data.completions);
-            },
-            error: function(jqHXR, status, error) {
-                console.error(jqHXR.responseText);
-                deferred.reject();
-            },
-        });
-        return deferred.promise();
+        return apiWrapper
+            .completeCommand(command, this.props.ws.info.uuid)
+            .then((data) => data.completions)
+            .catch((error) => {
+                console.error(error);
+            });
     }
     componentWillUnmount() {}
     componentDidUpdate() {}

@@ -1,5 +1,4 @@
 import * as React from 'react';
-import $ from 'jquery';
 import Card from '@material-ui/core/Card';
 import { withStyles } from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
@@ -7,7 +6,6 @@ import { green } from '@material-ui/core/colors';
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import Tooltip from '@material-ui/core/Tooltip';
 import { NAME_REGEX } from '../../constants';
-import { executeCommand } from '../../util/cli_utils';
 import Dialog from '@material-ui/core/Dialog';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContent from '@material-ui/core/DialogContent';
@@ -25,6 +23,7 @@ import ErrorIcon from '@material-ui/icons/Error';
 import SuccessIcon from '@material-ui/icons/CheckCircle';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
+import { defaultErrorHandler, executeCommand, navBarSearch } from '../../util/apiWrapper';
 import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 
@@ -190,34 +189,12 @@ class MainPanel extends React.Component<{
 
     componentDidMount() {
         // Fetch worksheets owned by the current user
-        const worksheetUrl: URL = '/rest/interpret/wsearch';
-        $.ajax({
-            url: worksheetUrl,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({
-                keywords: ['owner=' + this.props.userInfo.user_name, '.limit=' + 100],
-            }), // only fetch the first 100 worksheets to avoid overload
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => this.setWorksheets(data),
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
-
-        $.ajax({
-            url: worksheetUrl,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({ keywords: ['.shared', '.limit=' + 100] }), // only fetch the first 100 worksheets to avoid overload
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => this.setWorksheets(data, true),
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
+        navBarSearch(['owner=' + this.props.userInfo.user_name])
+            .then((data) => this.setWorksheets(data))
+            .catch(defaultErrorHandler);
+        navBarSearch(['.shared', '.notmine', '.limit=' + 100])
+            .then((data) => this.setWorksheets(data, true))
+            .catch(defaultErrorHandler);
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {
@@ -258,10 +235,10 @@ class MainPanel extends React.Component<{
                     });
                 }
             })
-            .fail((error) => {
+            .catch((error) => {
                 this.setState({
                     snackbarShow: true,
-                    snackbarMessage: error.responseText,
+                    snackbarMessage: error,
                     snackbarVariant: 'error',
                 });
             });

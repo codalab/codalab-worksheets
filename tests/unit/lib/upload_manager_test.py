@@ -35,7 +35,7 @@ class UploadManagerTest(unittest.TestCase):
         remove_path(self.temp_dir)
 
     def do_upload(
-        self, source, git=False, unpack=True, simplify_archives=True, use_azure_blob_beta=False,
+        self, source, git=False, unpack=True, use_azure_blob_beta=False,
     ):
         class FakeBundle(object):
             def __init__(self):
@@ -43,7 +43,7 @@ class UploadManagerTest(unittest.TestCase):
                 self.metadata = object()
 
         self.manager.upload_to_bundle_store(
-            FakeBundle(), source, git, unpack, simplify_archives, use_azure_blob_beta,
+            FakeBundle(), source, git, unpack, use_azure_blob_beta,
         )
 
     def test_fileobj(self):
@@ -54,18 +54,11 @@ class UploadManagerTest(unittest.TestCase):
         self.do_upload(('source.gz', BytesIO(gzip_bytestring(b'testing'))))
         self.check_file_contains_string(self.bundle_location, 'testing')
 
-    def test_fileobj_tar_gz_simplify_archives(self):
+    def test_fileobj_tar_gz_should_not_simplify_archives(self):
         source = os.path.join(self.temp_dir, 'source_dir')
         os.mkdir(source)
         self.write_string_to_file('testing', os.path.join(source, 'filename'))
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
-        self.check_file_contains_string(self.bundle_location, 'testing')
-
-    def test_fileobj_tar_gz_no_simplify_archives(self):
-        source = os.path.join(self.temp_dir, 'source_dir')
-        os.mkdir(source)
-        self.write_string_to_file('testing', os.path.join(source, 'filename'))
-        self.do_upload(('source.tar.gz', tar_gzip_directory(source)), simplify_archives=False)
         self.assertEqual(['filename'], os.listdir(self.bundle_location))
         self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
 
@@ -118,6 +111,15 @@ class UploadManagerTest(unittest.TestCase):
             self.mock_url_source(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz")
         )
         self.assertIn('file2', os.listdir(self.bundle_location))
+
+    def test_url_tar_gz_should_not_simplify_archives(self):
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_string_to_file('testing', os.path.join(source, 'filename'))
+        self.do_upload(
+            self.mock_url_source(BytesIO(tar_gzip_directory(source).read()), ext=".tar.gz")
+        )
+        self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
 
     def test_url_git(self):
         self.do_upload('https://github.com/codalab/test', git=True)
