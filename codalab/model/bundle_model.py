@@ -532,7 +532,9 @@ class BundleModel(object):
                 try:
                     target_datetime = parser.isoparse(value)
                 except ValueError:
-                    raise UsageError("Unable to parse datatime, please check the format.")
+                    raise UsageError(
+                        "Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD."
+                    )
 
                 subclause = None
                 if key == '.before':
