@@ -317,7 +317,7 @@ class Worksheet extends React.Component {
             ]),
             worksheet_uuid,
         )
-            .done(() => {
+            .then(() => {
                 this.clearCheckedBundles(() => {
                     // This toast info is used for showing a message when a command has finished executing
                     toast.update(toastId, {
@@ -336,10 +336,10 @@ class Worksheet extends React.Component {
                 const param = { fromDeleteCommand };
                 this.reloadWorksheet(undefined, undefined, param);
             })
-            .fail((e) => {
+            .catch((e) => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: e.responseText,
+                    errorDialogMessage: e,
                     forceDelete: false,
                     updating: false,
                 });

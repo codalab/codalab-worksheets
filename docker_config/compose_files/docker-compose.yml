@@ -67,6 +67,10 @@ x-codalab-env: &codalab-env
   - CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=${CODALAB_ALWAYS_USE_AZURE_BLOB_BETA}
   - CODALAB_SENTRY_INGEST_URL=${CODALAB_SENTRY_INGEST_URL}
   - CODALAB_SENTRY_ENVIRONMENT=${CODALAB_SENTRY_ENVIRONMENT}
+  - CODALAB_RECAPTCHA_SECRET_KEY=${CODALAB_RECAPTCHA_SECRET_KEY}
+  - REACT_APP_CODALAB_RECAPTCHA_SITE_KEY=${CODALAB_RECAPTCHA_SITE_KEY}
+  - REACT_APP_CODALAB_SENTRY_INGEST_URL=${CODALAB_SENTRY_INGEST_URL}
+  - REACT_APP_CODALAB_SENTRY_ENVIRONMENT=${CODALAB_SENTRY_ENVIRONMENT}
 
 # Properties that every service inherits.
 x-codalab-base: &codalab-base
@@ -235,7 +239,7 @@ services:
 
   frontend:
     image: codalab/frontend:${CODALAB_VERSION}
-    command: serve -s build -l ${CODALAB_FRONTEND_PORT}
+    command: bash -c "node setup-frontend.js && serve -s build -l ${CODALAB_FRONTEND_PORT}"
     <<: *codalab-base
     <<: *codalab-root
     depends_on:
