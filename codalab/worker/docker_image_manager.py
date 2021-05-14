@@ -14,7 +14,7 @@ from codalab.worker.fsm import DependencyStage
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.worker_thread import ThreadDict
 from codalab.lib.formatting import size_str
-
+from .image_manager import ImageManager
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ ImageCacheEntry = namedtuple(
 )
 
 
-class DockerImageManager:
+class DockerImageManager(ImageManager):
 
     CACHE_TAG = 'codalab-image-cache/last-used'
 
@@ -156,7 +156,7 @@ class DockerImageManager:
             * READY if the image was downloaded successfully.
             * FAILED if the image wasn't able to be downloaded due to any reason.
         :param image_spec: Repo image_spec of docker image being requested
-        :returns: A DockerAvailabilityState object with the state of the docker image
+        :returns: An ImageAvailabilityState object with the state of the docker image
         """
 
         def image_availability_state(image_spec, success_message, failure_message):
