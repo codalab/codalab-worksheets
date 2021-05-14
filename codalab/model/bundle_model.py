@@ -531,7 +531,7 @@ class BundleModel(object):
             elif key in ('.before', '.after'):
                 try:
                     target_datetime = parser.isoparse(value)
-                except Exception:
+                except ValueError:
                     raise UsageError("Unable to parse datatime, please check the format.")
 
                 subclause = None
