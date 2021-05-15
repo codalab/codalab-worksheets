@@ -15,7 +15,7 @@ import urllib.error
 from bottle import abort, request, HTTPResponse, redirect, app
 from oauthlib.common import to_unicode
 
-from codalab.common import precondition
+from codalab.common import precondition, UsageError
 
 
 def exc_frame_locals():
@@ -166,11 +166,20 @@ def bottle_patch(path=None, **options):
     return app().route(path, 'PATCH', **options)
 
 
+def safe_uri(redirect_uri):
+    """Check if an URI is relative, otherwise raise an error.
+    """
+    absolute = bool(urllib.parse.urlparse(redirect_uri).netloc)
+    if absolute:
+        raise UsageError('Only relative URIs are allowed!')
+    return redirect_uri
+
+
 def redirect_with_query(redirect_uri, params):
     """Return a Bottle redirect to the given target URI with query parameters
     encoded from the params dict.
     """
-    return redirect(redirect_uri + '?' + urllib.parse.urlencode(params))
+    return redirect(safe_uri(redirect_uri) + '?' + urllib.parse.urlencode(params))
 
 
 """
