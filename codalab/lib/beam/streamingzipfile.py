@@ -57,6 +57,8 @@ class StreamingZipFile(ZipFile):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # If self.fp is not tellable, wrap it in a Tellable wrapper
+        # so it supports the .tell() function.
         try:
             self.fp.tell()
         except:
@@ -99,7 +101,6 @@ class StreamingZipFile(ZipFile):
         fp.read(self._next_header_pos - fp.tell())
 
         # Read the next header.
-        zipinfo = None
         fheader = fp.read(sizeFileHeader)
         if len(fheader) != sizeFileHeader:
             raise BadZipFile("Truncated file header")
@@ -139,6 +140,7 @@ class StreamingZipFile(ZipFile):
                                     (x.extract_version / 10))
 
         # Convert date/time code to (year, month, day, hour, min, sec)
+        # This comes from the original cpython code.
         x._raw_time = t
         x.date_time = ( (d>>9)+1980, (d>>5)&0xF, d&0x1F,
                         t>>11, (t>>5)&0x3F, (t&0x1F) * 2 )
