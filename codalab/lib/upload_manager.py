@@ -84,6 +84,26 @@ class Uploader:
                 path_util.remove(bundle_path)
             raise
 
+    def _interpret_source(self, source: Source):
+        """Interprets the given source.
+        Args:
+            source (Source): Source to interpret.
+        Returns:
+            (is_url, is_fileobj, filename)
+        """
+        is_url, is_fileobj = False, False
+        if isinstance(source, str):
+            if path_util.path_is_url(source):
+                is_url = True
+                source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
+            else:
+                raise UsageError("Path must be a URL.")
+            filename = os.path.basename(os.path.normpath(source))
+        else:
+            is_fileobj = True
+            filename = source[0]
+        return is_url, is_fileobj, filename
+
 
 class DiskStorageUploader:
     """Uploader that uploads to uncompressed files / folders on disk."""
@@ -138,7 +158,7 @@ class BlobStorageUploader(Uploader):
         ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
             SQLiteIndexedTar(
                 fileObject=ttf,
-                tarFileName="contents",  # Later, this file can be accessed by the "/contents" entry in the index.
+                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
                 indexFileName=tmp_index_file.name,
@@ -183,25 +203,6 @@ class UploadManager(object):
         """
         UploaderCls = BlobStorageUploader if use_azure_blob_beta else DiskStorageUploader
         return UploaderCls().upload_to_bundle_store(bundle, source, git, unpack)
-
-    def _interpret_source(self, source: Source):
-        is_url, is_fileobj = False, False
-        if isinstance(source, str):
-            if path_util.path_is_url(source):
-                is_url = True
-                source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
-            else:
-                raise UsageError("Path must be a URL.")
-            filename = os.path.basename(os.path.normpath(source))
-        else:
-            is_fileobj = True
-            filename = source[0]
-        return is_url, is_fileobj, filename
-
-    def _unpack_fileobj(self, source_filename, source_fileobj, dest_path):
-        self.zip_util.unpack(
-            self.zip_util.get_archive_ext(source_filename), source_fileobj, dest_path
-        )
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.
