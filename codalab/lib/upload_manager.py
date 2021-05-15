@@ -4,17 +4,140 @@ import tempfile
 
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
-from typing import Union, Tuple, IO, cast
+from typing import Optional, Union, Tuple, IO, cast
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
-from codalab.lib import file_util, path_util
+from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
 from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
 
 Source = Union[str, Tuple[str, IO[bytes]]]
 
+class Uploader:
+
+    @property
+    def storage_type(self):
+        """Returns storage type. Must be one of the values of the StorageType enum."""
+        raise NotImplementedError
+    
+    def write_git_repo(self, source: Source, bundle_path: str):
+        """Clones the git repository indicated by source and uploads it to the path at bundle_path.
+        Args:
+            source (Source): source to git repository.
+            bundle_path (str): Output bundle path.
+        """
+        raise NotImplementedError
+
+    def write_fileobj(self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool):
+        """Writes fileobj indicated, unpacks if specified, and uploads it to the path at bundle_path.
+        Args:
+            source_ext (str): File extension of the source to write.
+            source_fileobj (str): Fileobj of the source to write.
+            bundle_path (str): Output bundle path.
+            unpack_archive (bool): Whether fileobj is an archive that should be unpacked.
+        """
+        raise NotImplementedError
+
+    def upload_to_bundle_store(self, bundle: Bundle, source: Source, git: bool, unpack: bool):
+        """Uploads the given source to the bundle store.
+        Given arguments are the same as UploadManager.upload_to_bundle_store()"""
+        try:
+            bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+            is_url, is_fileobj, filename = self._interpret_source(source)
+            if is_url:
+                assert isinstance(source, str)
+                if git:
+                    self.write_git_repo(source, bundle_path)
+                    is_directory = True
+                else:
+                    # If downloading from a URL, convert the source to a file object.
+                    is_fileobj = True
+                    source = (filename, urlopen_with_retry(source))
+            if is_fileobj:
+                source_filename, source_fileobj = source
+                source_ext = zip_util.get_archive_ext(source_filename)
+                if unpack and zip_util.path_is_archive(filename):
+                    is_directory = source_ext in ARCHIVE_EXTS_DIR
+                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
+                else:
+                    is_directory = False
+                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=False)
+
+            self._bundle_model.update_bundle(
+                bundle,
+                {
+                    'storage_type': self.storage_type,
+                    'is_dir': is_directory  # is_directory is True if the bundle is a directory and False if it is a single file.
+                },
+            )
+        except UsageError:
+            if os.path.exists(bundle_path):
+                path_util.remove(bundle_path)
+            raise
+
+
+class DiskStorageUploader:
+
+    @property
+    def storage_type(self):
+        return StorageType.DISK_STORAGE.value
+    
+    def write_git_repo(self, source: Source, bundle_path: str):
+        file_util.git_clone(source, bundle_path)
+
+    def write_fileobj(self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool):
+        if unpack_archive:
+            zip_util.unpack(
+                source_ext, source_fileobj, bundle_path
+            )
+        else:
+            with open(bundle_path, 'wb') as out:
+                shutil.copyfileobj(cast(IO, source_fileobj), out)
+
+class BlobStorageUploader:
+
+    @property
+    def storage_type(self):
+        return StorageType.AZURE_BLOB_STORAGE.value
+    
+    def write_git_repo(self, source: Source, bundle_path: str):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_util.git_clone(source, tmpdir)
+            # Update source to be a fileobj with the repo's contents, then
+            # upload it.
+            source = ("contents.tar.gz", tar_gzip_directory(tmpdir))
+            self.write_fileobj(source, bundle_path, unpack_archive=False)
+
+    def write_fileobj(self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool):
+        if unpack_archive:
+            output_fileobj = self.zip_util.unpack_to_archive(
+                source_ext, source_fileobj, bundle_path
+            )
+        else:
+            output_fileobj = GzipStream(source_fileobj)
+        # Write archive file.
+        with FileSystems.create(
+            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as out:
+            shutil.copyfileobj(output_fileobj, out)
+        # Write index file to a temporary file, then write that file to Blob Storage.
+        with FileSystems.open(
+            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+            SQLiteIndexedTar(
+                fileObject=ttf,
+                tarFileName="contents",  # Later, this file can be accessed by the "/contents" entry in the index.
+                writeIndex=True,
+                clearIndexCache=True,
+                indexFileName=tmp_index_file.name,
+            )
+            with FileSystems.create(
+                parse_linked_bundle_url(bundle_path).index_path,
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                shutil.copyfileobj(tif, out_index_file)
 
 class UploadManager(object):
     """
@@ -47,82 +170,8 @@ class UploadManager(object):
         - If |git|, then the bundle contains the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
-        bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
-        try:
-            is_url, is_fileobj, filename = self._interpret_source(source)
-            if use_azure_blob_beta:
-                if is_url:
-                    assert isinstance(source, str)
-                    if git:
-                        with tempfile.TemporaryDirectory() as tmpdir:
-                            file_util.git_clone(source, tmpdir)
-                            is_fileobj = True
-                            source = ("contents.tar.gz", tar_gzip_directory(tmpdir))
-                    else:
-                        # If downloading from a URL, convert the source to a file object.
-                        is_fileobj = True
-                        source = (filename, urlopen_with_retry(source))
-                if is_fileobj:
-                    if unpack and self.zip_util.path_is_archive(source[0]):
-                        ext = self.zip_util.get_archive_ext(source[0])
-                        output_fileobj = self.zip_util.unpack_to_archive(
-                            ext, source[1], bundle_path
-                        )
-                    else:
-                        ext = ".gz"
-                        output_fileobj = GzipStream(source[1])
-                with FileSystems.create(
-                    bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-                ) as out:
-                    shutil.copyfileobj(output_fileobj, out)
-                with FileSystems.open(
-                    bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-                ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-                    # Write index file to tmp_index_file.
-                    SQLiteIndexedTar(
-                        fileObject=ttf,
-                        tarFileName=bundle.uuid,
-                        writeIndex=True,
-                        clearIndexCache=True,
-                        indexFileName=tmp_index_file.name,
-                    )
-                    # Write index file to Azure Blob Storage.
-                    with FileSystems.create(
-                        parse_linked_bundle_url(bundle_path).index_path,
-                        compression_type=CompressionTypes.UNCOMPRESSED,
-                    ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                        shutil.copyfileobj(tif, out_index_file)
-                # is_directory is True if the bundle is a directory and False if it is a single file.
-                is_directory = ext in ARCHIVE_EXTS_DIR
-                self._bundle_model.update_bundle(
-                    bundle,
-                    {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_directory},
-                )
-            else:
-                if is_url:
-                    assert isinstance(source, str)
-                    if git:
-                        file_util.git_clone(source, bundle_path)
-                    else:
-                        # If downloading from a URL, convert the source to a file object.
-                        is_fileobj = True
-                        source = (filename, urlopen_with_retry(source))
-                if is_fileobj:
-                    if unpack and self.zip_util.path_is_archive(filename):
-                        self._unpack_fileobj(source[0], source[1], bundle_path)
-                    else:
-                        with open(bundle_path, 'wb') as out:
-                            shutil.copyfileobj(cast(IO, source[1]), out)
-                # is_directory is True if the bundle is a directory and False if it is a single file.
-                is_directory = os.path.isdir(bundle_path)
-                self._bundle_model.update_bundle(
-                    bundle,
-                    {'storage_type': StorageType.DISK_STORAGE.value, 'is_dir': is_directory},
-                )
-        except UsageError:
-            if os.path.exists(bundle_path):
-                path_util.remove(bundle_path)
-            raise
+        UploaderCls = BlobStorageUploader if use_azure_blob_beta else DiskStorageUploader
+        return UploaderCls().upload_to_bundle_store(bundle, source, git, unpack)
 
     def _interpret_source(self, source: Source):
         is_url, is_fileobj = False, False
