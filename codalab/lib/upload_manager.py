@@ -15,13 +15,16 @@ from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
 
 Source = Union[str, Tuple[str, IO[bytes]]]
 
+
 class Uploader:
+    """Uploader base class. Subclasses should extend this class and implement the
+    non-implemented methods that perform the uploads to a bundle store."""
 
     @property
     def storage_type(self):
         """Returns storage type. Must be one of the values of the StorageType enum."""
         raise NotImplementedError
-    
+
     def write_git_repo(self, source: Source, bundle_path: str):
         """Clones the git repository indicated by source and uploads it to the path at bundle_path.
         Args:
@@ -30,7 +33,9 @@ class Uploader:
         """
         raise NotImplementedError
 
-    def write_fileobj(self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool):
+    def write_fileobj(
+        self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool
+    ):
         """Writes fileobj indicated, unpacks if specified, and uploads it to the path at bundle_path.
         Args:
             source_ext (str): File extension of the source to write.
@@ -63,13 +68,15 @@ class Uploader:
                     self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
                 else:
                     is_directory = False
-                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=False)
+                    self.write_fileobj(
+                        source_ext, source_fileobj, bundle_path, unpack_archive=False
+                    )
 
             self._bundle_model.update_bundle(
                 bundle,
                 {
                     'storage_type': self.storage_type,
-                    'is_dir': is_directory  # is_directory is True if the bundle is a directory and False if it is a single file.
+                    'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
                 },
             )
         except UsageError:
@@ -79,29 +86,32 @@ class Uploader:
 
 
 class DiskStorageUploader:
+    """Uploader that uploads to uncompressed files / folders on disk."""
 
     @property
     def storage_type(self):
         return StorageType.DISK_STORAGE.value
-    
+
     def write_git_repo(self, source: Source, bundle_path: str):
         file_util.git_clone(source, bundle_path)
 
-    def write_fileobj(self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool):
+    def write_fileobj(
+        self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool
+    ):
         if unpack_archive:
-            zip_util.unpack(
-                source_ext, source_fileobj, bundle_path
-            )
+            zip_util.unpack(source_ext, source_fileobj, bundle_path)
         else:
             with open(bundle_path, 'wb') as out:
                 shutil.copyfileobj(cast(IO, source_fileobj), out)
 
-class BlobStorageUploader:
+
+class BlobStorageUploader(Uploader):
+    """Uploader that uploads to archive files + index files on Blob Storage."""
 
     @property
     def storage_type(self):
         return StorageType.AZURE_BLOB_STORAGE.value
-    
+
     def write_git_repo(self, source: Source, bundle_path: str):
         with tempfile.TemporaryDirectory() as tmpdir:
             file_util.git_clone(source, tmpdir)
@@ -110,7 +120,9 @@ class BlobStorageUploader:
             source = ("contents.tar.gz", tar_gzip_directory(tmpdir))
             self.write_fileobj(source, bundle_path, unpack_archive=False)
 
-    def write_fileobj(self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool):
+    def write_fileobj(
+        self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool
+    ):
         if unpack_archive:
             output_fileobj = self.zip_util.unpack_to_archive(
                 source_ext, source_fileobj, bundle_path
@@ -118,9 +130,7 @@ class BlobStorageUploader:
         else:
             output_fileobj = GzipStream(source_fileobj)
         # Write archive file.
-        with FileSystems.create(
-            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as out:
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
             shutil.copyfileobj(output_fileobj, out)
         # Write index file to a temporary file, then write that file to Blob Storage.
         with FileSystems.open(
@@ -138,6 +148,7 @@ class BlobStorageUploader:
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
+
 
 class UploadManager(object):
     """
