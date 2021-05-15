@@ -1,8 +1,13 @@
 import os
 import shutil
-from typing import Union, Tuple, IO, cast
+import tempfile
 
-from codalab.common import UsageError, StorageType, urlopen_with_retry
+from apache_beam.io.filesystem import CompressionTypes
+from apache_beam.io.filesystems import FileSystems
+from typing import Union, Tuple, IO, cast
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+
+from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
 from codalab.lib import file_util, path_util
 from codalab.objects.bundle import Bundle
@@ -52,7 +57,7 @@ class UploadManager(object):
                         with tempfile.TemporaryDirectory() as tmpdir:
                             file_util.git_clone(source, tmpdir)
                             is_fileobj = True
-                            source = ("contents.tar.gz", tar_gz_directory(tmpdir))
+                            source = ("contents.tar.gz", tar_gzip_directory(tmpdir))
                     else:
                         # If downloading from a URL, convert the source to a file object.
                         is_fileobj = True
@@ -66,6 +71,27 @@ class UploadManager(object):
                     else:
                         ext = ".gz"
                         output_fileobj = GzipStream(source[1])
+                with FileSystems.create(
+                    bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+                ) as out:
+                    shutil.copyfileobj(output_fileobj, out)
+                with FileSystems.open(
+                    bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+                ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+                    # Write index file to tmp_index_file.
+                    SQLiteIndexedTar(
+                        fileObject=ttf,
+                        tarFileName=bundle.uuid,
+                        writeIndex=True,
+                        clearIndexCache=True,
+                        indexFileName=tmp_index_file.name,
+                    )
+                    # Write index file to Azure Blob Storage.
+                    with FileSystems.create(
+                        parse_linked_bundle_url(bundle_path).index_path,
+                        compression_type=CompressionTypes.UNCOMPRESSED,
+                    ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                        shutil.copyfileobj(tif, out_index_file)
                 # is_directory is True if the bundle is a directory and False if it is a single file.
                 is_directory = ext in ARCHIVE_EXTS_DIR
                 self._bundle_model.update_bundle(
