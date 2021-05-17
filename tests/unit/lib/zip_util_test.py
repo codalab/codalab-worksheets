@@ -12,6 +12,7 @@ from codalab.lib.zip_util import (
     strip_archive_ext,
     path_is_archive,
     pack_files_for_upload,
+    unpack,
 )
 from codalab.worker.file_util import tar_gzip_directory, zip_directory
 from io import BytesIO
@@ -199,3 +200,40 @@ class ZipUtilTest(unittest.TestCase):
                 packed,
                 {"filename": 'contents.tar.gz', "filesize": fileobj.tell(), "should_unpack": True,},
             )
+
+    def test_unpack_single_archive(self):
+        """Unpack a single archive."""
+        for (compress_fn, extension) in [
+            (tar_gzip_directory, ".tar.gz"),
+            (tar_bz2_directory, ".tar.bz2"),
+            (zip_directory, ".zip"),
+        ]:
+            with self.subTest(extension=extension), tempfile.TemporaryDirectory() as tmpdir, open(
+                os.path.join(tmpdir, "file.txt"), "wb"
+            ) as f, tempfile.TemporaryDirectory() as dest_path:
+                f.write(SAMPLE_CONTENTS)
+                f.flush()
+                unpack(extension, compress_fn(tmpdir), os.path.join(dest_path, "out"))
+                self.assertEqual(os.listdir(tmpdir), ["file.txt"])
+                self.assertEqual(os.listdir(os.path.join(dest_path, "out")), ["file.txt"])
+                self.assertEqual(
+                    open(os.path.join(dest_path, "out", "file.txt"), "rb").read(), SAMPLE_CONTENTS
+                )
+
+    def test_unpack_single_compressed_file(self):
+        """Unpack a single compressed file."""
+        for (compress_fn, extension) in [
+            (bz2.compress, ".bz2"),
+            (gzip.compress, ".gz"),
+        ]:
+            with self.subTest(extension=extension), tempfile.TemporaryDirectory() as tmpdir, open(
+                os.path.join(tmpdir, "file.txt"), "wb"
+            ) as f, tempfile.TemporaryDirectory() as dest_path:
+                f.write(compress_fn(SAMPLE_CONTENTS))
+                f.flush()
+                unpack(
+                    extension,
+                    open(os.path.join(tmpdir, "file.txt"), "rb"),
+                    os.path.join(dest_path, "out"),
+                )
+                self.assertEqual(SAMPLE_CONTENTS, open(os.path.join(dest_path, "out"), "rb").read())

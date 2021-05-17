@@ -8,7 +8,7 @@ import shutil
 import tarfile
 import tempfile
 import logging
-from typing import IO, Union, cast
+from typing import IO
 
 from codalab.common import UsageError
 from codalab.worker.file_util import (
@@ -48,20 +48,16 @@ def strip_archive_ext(path):
     raise UsageError('Not an archive: %s' % path)
 
 
-def unpack(ext: str, source: Union[str, IO[bytes]], dest_path: str):
+def unpack(ext: str, source: IO[bytes], dest_path: str):
     """Unpack the archive |source| to |dest_path|.
 
     Args:
         ext (str): Extension of the archive.
-        source (Union[str, IO[bytes]]): File handle or path to the source.
+        source (IO[bytes]): File handle to the source.
         dest_path ([type]): Destination path to unpack to.
 
     """
-    close_source = False
     try:
-        if isinstance(source, str):
-            source = open(source, 'rb')
-            close_source = True
 
         if ext == '.tar.gz' or ext == '.tgz':
             un_tar_directory(source, dest_path, 'gz')
@@ -77,11 +73,8 @@ def unpack(ext: str, source: Union[str, IO[bytes]], dest_path: str):
         else:
             raise UsageError('Not an archive.')
     except (tarfile.TarError, IOError) as e:
-        logging.error("Invalid archive upload: %s", e)
-        raise UsageError('Invalid archive upload.')
-    finally:
-        if close_source:
-            cast(IO[bytes], source).close()
+        logging.error("Invalid archive upload: failed to unpack archive: %s", e)
+        raise UsageError('Invalid archive upload: failed to unpack archive.')
 
 
 def pack_files_for_upload(

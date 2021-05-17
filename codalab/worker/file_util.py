@@ -16,6 +16,7 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
+from codalab.lib.beam.streamingzipfile import StreamingZipFile
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -148,7 +149,7 @@ def zip_directory(
             raise IOError(e.output)
 
 
-def unzip_directory(fileobj_or_name, directory_path, force=False):
+def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False):
     """
     Extracts the given file-like object containing a zip archive into the given
     directory, which will be created and should not already exist. If it already exists,
@@ -160,22 +161,14 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         remove_path(directory_path)
     os.mkdir(directory_path)
 
-    def do_unzip(filename):
-        # TODO(Ashwin): preserve permissions with -X.
-        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
-        if exitcode != 0:
-            raise UsageError('Invalid archive upload. ')
-
-    # If fileobj_or_name is a file object, we have to save it
-    # to a temporary file, because unzip doesn't accept input from standard input.
-    if not isinstance(fileobj_or_name, str):
-        with tempfile.NamedTemporaryFile() as f:
-            shutil.copyfileobj(fileobj_or_name, f)
-            f.seek(0)
-            do_unzip(f.name)
-    else:
-        # In this case, fileobj_or_name is a file name.
-        do_unzip(fileobj_or_name)
+    with StreamingZipFile(fileobj) as zf:
+        for member in zf:  # type: ignore
+            # Make sure that there is no trickery going on (see note in
+            # ZipFile.extractall() documentation).
+            member_path = os.path.realpath(os.path.join(directory_path, member.filename))
+            if not member_path.startswith(directory_path):
+                raise UsageError('Archive member extracts outside the directory.')
+            zf.extract(member, directory_path)
 
 
 class OpenIndexedArchiveFile(object):
