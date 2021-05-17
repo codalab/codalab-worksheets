@@ -200,12 +200,12 @@ class BaseUploadDownloadBundleTest(TestBase):
         )
         self.check_folder_target_contents(target, expected_members=['.', './item2.txt'])
 
-    #     target = BundleTarget(bundle.uuid, "src/item2.txt")
-    #     info = self.download_manager.get_target_info(target, 0)
-    #     self.assertEqual(info["name"], "item2.txt")
-    #     self.assertEqual(info["type"], "file")
-    #     self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:src/item2.txt")
-    #     self.check_file_target_contents(target)
+        target = BundleTarget(bundle.uuid, "src/item2.txt")
+        info = self.download_manager.get_target_info(target, 0)
+        self.assertEqual(info["name"], "item2.txt")
+        self.assertEqual(info["type"], "file")
+        self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:src/item2.txt")
+        self.check_file_target_contents(target)
 
 
 class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
