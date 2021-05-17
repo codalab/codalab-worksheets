@@ -79,7 +79,7 @@ class Uploader:
                     )
 
         except UsageError:
-            if os.path.exists(bundle_path):
+            if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
 
