@@ -529,7 +529,12 @@ class BundleModel(object):
                         alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
                     )
             elif key in ('.before', '.after'):
-                target_datetime = parser.isoparse(value)
+                try:
+                    target_datetime = parser.isoparse(value)
+                except ValueError:
+                    raise UsageError(
+                        "Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD."
+                    )
 
                 subclause = None
                 if key == '.before':
