@@ -21,7 +21,7 @@ class BaseUploadDownloadBundleTest(TestBase):
     and upload_file methods.
     """
 
-    DEFAULT_PERM_FILE = None
+    DEFAULT_PERM_FILE = 0  # Should be overridden by subclasses
 
     DEFAULT_PERM_DIR = 0o777
 
