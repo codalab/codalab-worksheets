@@ -86,7 +86,7 @@ class Uploader:
     def _update_and_get_bundle_location(self, bundle: Bundle, is_directory: bool) -> str:
         """Updates the information of the given bundle based on the current storage type
         and is_directory of the upload, then returns the location where the bundle is stored.
-        
+
         The value of is_directory may affect the bundle location; for example, in Blob Storage,
         directories are stored in .tar.gz files and non-directories are stored as .gz files.
 
