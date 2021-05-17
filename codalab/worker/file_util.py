@@ -376,7 +376,7 @@ def get_file_size(file_path):
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
             if linked_bundle_path.is_archive_dir:
-                # If no archive subpath is specified, open the root path at "/"
+                # If no archive subpath is specified, open the root path at ""
                 fpath = (
                     "/" + linked_bundle_path.archive_subpath
                     if linked_bundle_path.archive_subpath
