@@ -4,7 +4,7 @@ import tempfile
 
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
-from typing import Optional, Union, Tuple, IO, cast
+from typing import Union, Tuple, IO, cast
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
@@ -20,21 +20,25 @@ class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
     non-implemented methods that perform the uploads to a bundle store."""
 
+    def __init__(self, bundle_model, bundle_store):
+        self._bundle_model = bundle_model
+        self._bundle_store = bundle_store
+
     @property
     def storage_type(self):
         """Returns storage type. Must be one of the values of the StorageType enum."""
         raise NotImplementedError
 
-    def write_git_repo(self, source: Source, bundle_path: str):
+    def write_git_repo(self, source: str, bundle_path: str):
         """Clones the git repository indicated by source and uploads it to the path at bundle_path.
         Args:
-            source (Source): source to git repository.
+            source (str): source to git repository.
             bundle_path (str): Output bundle path.
         """
         raise NotImplementedError
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool
+        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
         """Writes fileobj indicated, unpacks if specified, and uploads it to the path at bundle_path.
         Args:
@@ -49,36 +53,53 @@ class Uploader:
         """Uploads the given source to the bundle store.
         Given arguments are the same as UploadManager.upload_to_bundle_store()"""
         try:
-            bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+            # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
             if is_url:
                 assert isinstance(source, str)
                 if git:
-                    self.write_git_repo(source, bundle_path)
                     is_directory = True
+                    self._bundle_model.update_bundle(
+                        bundle,
+                        {
+                            'storage_type': self.storage_type,
+                            'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
+                        },
+                    )
+                    bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+                    self.write_git_repo(source, bundle_path)
                 else:
                     # If downloading from a URL, convert the source to a file object.
                     is_fileobj = True
                     source = (filename, urlopen_with_retry(source))
             if is_fileobj:
-                source_filename, source_fileobj = source
+                source_filename, source_fileobj = cast(Tuple[str, IO[bytes]], source)
                 source_ext = zip_util.get_archive_ext(source_filename)
                 if unpack and zip_util.path_is_archive(filename):
                     is_directory = source_ext in ARCHIVE_EXTS_DIR
+                    self._bundle_model.update_bundle(
+                        bundle,
+                        {
+                            'storage_type': self.storage_type,
+                            'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
+                        },
+                    )
+                    bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
                     self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
                 else:
                     is_directory = False
+                    self._bundle_model.update_bundle(
+                        bundle,
+                        {
+                            'storage_type': self.storage_type,
+                            'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
+                        },
+                    )
+                    bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
                     self.write_fileobj(
                         source_ext, source_fileobj, bundle_path, unpack_archive=False
                     )
 
-            self._bundle_model.update_bundle(
-                bundle,
-                {
-                    'storage_type': self.storage_type,
-                    'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
-                },
-            )
         except UsageError:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
@@ -105,18 +126,18 @@ class Uploader:
         return is_url, is_fileobj, filename
 
 
-class DiskStorageUploader:
+class DiskStorageUploader(Uploader):
     """Uploader that uploads to uncompressed files / folders on disk."""
 
     @property
     def storage_type(self):
         return StorageType.DISK_STORAGE.value
 
-    def write_git_repo(self, source: Source, bundle_path: str):
+    def write_git_repo(self, source: str, bundle_path: str):
         file_util.git_clone(source, bundle_path)
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool
+        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
         if unpack_archive:
             zip_util.unpack(source_ext, source_fileobj, bundle_path)
@@ -132,21 +153,19 @@ class BlobStorageUploader(Uploader):
     def storage_type(self):
         return StorageType.AZURE_BLOB_STORAGE.value
 
-    def write_git_repo(self, source: Source, bundle_path: str):
+    def write_git_repo(self, source: str, bundle_path: str):
         with tempfile.TemporaryDirectory() as tmpdir:
             file_util.git_clone(source, tmpdir)
-            # Update source to be a fileobj with the repo's contents, then
-            # upload it.
-            source = ("contents.tar.gz", tar_gzip_directory(tmpdir))
-            self.write_fileobj(source, bundle_path, unpack_archive=False)
+            # Upload a fileobj with the repo's tarred and gzipped contents.
+            self.write_fileobj(
+                ".tar.gz", tar_gzip_directory(tmpdir), bundle_path, unpack_archive=True
+            )
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: str, bundle_path: str, unpack_archive: bool
+        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
         if unpack_archive:
-            output_fileobj = self.zip_util.unpack_to_archive(
-                source_ext, source_fileobj, bundle_path
-            )
+            output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
         else:
             output_fileobj = GzipStream(source_fileobj)
         # Write archive file.
@@ -177,12 +196,8 @@ class UploadManager(object):
     """
 
     def __init__(self, bundle_model, bundle_store):
-        from codalab.lib import zip_util
-
-        # exclude these patterns by default
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
-        self.zip_util = zip_util
 
     def upload_to_bundle_store(
         self, bundle: Bundle, source: Source, git: bool, unpack: bool, use_azure_blob_beta: bool,
@@ -202,7 +217,9 @@ class UploadManager(object):
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
         UploaderCls = BlobStorageUploader if use_azure_blob_beta else DiskStorageUploader
-        return UploaderCls().upload_to_bundle_store(bundle, source, git, unpack)
+        return UploaderCls(self._bundle_model, self._bundle_store).upload_to_bundle_store(
+            bundle, source, git, unpack
+        )
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.

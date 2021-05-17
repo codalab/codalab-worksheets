@@ -38,7 +38,7 @@ try:
 except ImportError:
     pass
 try:
-    import indexed_gzip # type: ignore
+    import indexed_gzip_fileobj_fork_epicfaace as indexed_gzip # type: ignore
 except ImportError:
     pass
 try:
@@ -740,6 +740,8 @@ class SQLiteIndexedTar:
         loadedTarFile: Any = []  # Feign an empty TAR file if anything goes wrong
         if self.isTar:
             try:
+                print("read 2", len(fileObject.read()))
+                fileObject.seek(0)
                 # r: uses seeks to skip to the next file inside the TAR while r| doesn't do any seeks.
                 # r| might be slower but for compressed files we have to go over all the data once anyways.
                 # Note that with ignore_zeros = True, no invalid header issues or similar will be raised even for
@@ -747,12 +749,13 @@ class SQLiteIndexedTar:
                 loadedTarFile = tarfile.open(
                     # fmt:off
                     fileobj      = fileObject,
-                    mode         = 'r|' if self.compression else 'r:',
-                    ignore_zeros = self.ignoreZeros,
-                    encoding     = self.encoding,
+                    mode         = 'r|',
+                    # ignore_zeros = self.ignoreZeros,
+                    # encoding     = self.encoding,
                     # fmt:on
                 )
             except tarfile.ReadError:
+                print("RE")
                 pass
         
         try:

@@ -1,19 +1,26 @@
+import tests.unit.azure_blob_mock  # noqa: F401
+
+import gzip
 import os
-from io import BytesIO
+import tarfile
 import tempfile
 import unittest
+import urllib
 
-from codalab.lib.upload_manager import UploadManager
-from codalab.worker.file_util import gzip_bytestring, remove_path, tar_gzip_directory
-
+from apache_beam.io.filesystem import CompressionTypes
+from apache_beam.io.filesystems import FileSystems
+from io import BytesIO
+from typing import IO, cast
 from unittest.mock import MagicMock
 from urllib.response import addinfourl
-import urllib
+
+from codalab.worker.file_util import gzip_bytestring, remove_path, tar_gzip_directory
+from tests.unit.server.bundle_manager import TestBase
 
 urlopen_real = urllib.request.urlopen
 
 
-class UploadManagerTestBase:
+class UploadManagerTestBase(TestBase):
     """A class that contains the base for an UploadManager test. Subclasses
     can inherit from this class and unittest.TestCase and provide implementations
     for the unimplemented methods in order to test different types of uploading.
@@ -31,26 +38,25 @@ class UploadManagerTestBase:
             expected_contents (str): Expected string.
         """
         raise NotImplementedError
-    
+
     def listdir(self):
         """List the files in the current bundle location."""
         raise NotImplementedError
 
+    @property
+    def bundle_location(self):
+        """Get bundle location of the currently created bundle."""
+        return self.codalab_manager.bundle_store().get_bundle_location(self.bundle.uuid)
+
     def setUp(self):
-        class MockBundleStore(object):
-            def __init__(self, bundle_location):
-                self.bundle_location = bundle_location
+        super().setUp()
 
-            def get_bundle_location(self, uuid):
-                return self.bundle_location
-
-        class MockBundleModel(object):
-            def update_bundle(self, *args, **kwargs):
-                return
+        bundle = self.create_run_bundle()
+        self.save_bundle(bundle)
+        self.bundle = bundle
 
         self.temp_dir = tempfile.mkdtemp()
-        self.bundle_location = os.path.join(self.temp_dir, 'bundle')
-        self.manager = UploadManager(MockBundleModel(), MockBundleStore(self.bundle_location))
+
         urllib.request.urlopen = urlopen_real
 
     def tearDown(self):
@@ -59,13 +65,9 @@ class UploadManagerTestBase:
     def do_upload(
         self, source, git=False, unpack=True,
     ):
-        class FakeBundle(object):
-            def __init__(self):
-                self.uuid = 'fake'
-                self.metadata = object()
 
-        self.manager.upload_to_bundle_store(
-            FakeBundle(), source, git, unpack, use_azure_blob_beta=self.use_azure_blob_beta,
+        self.upload_manager.upload_to_bundle_store(
+            self.bundle, source, git, unpack, use_azure_blob_beta=self.use_azure_blob_beta,
         )
 
     def test_fileobj(self):
@@ -105,9 +107,7 @@ class UploadManagerTestBase:
         self.write_string_to_file('testing', os.path.join(source, 'README2'))
         self.write_string_to_file('testing', os.path.join(source, '.DS_Store'))
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
-        self.assertEqual(
-            ['.DS_Store', 'README', 'README2'], sorted(self.listdir())
-        )
+        self.assertEqual(['.DS_Store', 'README', 'README2'], sorted(self.listdir()))
 
     def mock_url_source(self, fileobj, ext=""):
         """Returns a URL that is mocked to return the contents of fileobj.
@@ -147,22 +147,63 @@ class UploadManagerTestBase:
         self.do_upload('https://github.com/codalab/test', git=True)
         # This test hits the real GitHub repository. If the contents of README.md at https://github.com/codalab/test
         # change, then update this test.
-        self.check_file_equals_string('README.md', '# test\nUsed for testing\n')
+        self.check_file_equals_string('testfile.md', '# test\nUsed for testing\n')
 
     def write_string_to_file(self, string, file_path):
         with open(file_path, 'w') as f:
             f.write(string)
 
+
 class UploadManagerDiskStorageTest(UploadManagerTestBase, unittest.TestCase):
+    """Tests for UploadManager that upload files to disk storage."""
+
     @property
     def use_azure_blob_beta(self):
         return False
 
     def check_file_equals_string(self, file_subpath: str, expected_contents: str):
-        file_path = os.path.join(self.bundle_location, file_subpath) if file_subpath else self.bundle_location
+        file_path = (
+            os.path.join(self.bundle_location, file_subpath)
+            if file_subpath
+            else self.bundle_location
+        )
         self.assertTrue(os.path.isfile(file_path))
         with open(file_path, 'r') as f:
             self.assertEqual(f.read(), expected_contents)
 
     def listdir(self):
         return os.listdir(self.bundle_location)
+
+
+class UploadManagerBlobStorageTest(UploadManagerTestBase, unittest.TestCase):
+    """Tests for UploadManager that upload files to Blob Storage."""
+
+    @property
+    def use_azure_blob_beta(self):
+        return True
+
+    def check_file_equals_string(self, file_subpath: str, expected_contents: str):
+        with FileSystems.open(
+            self.bundle_location, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as f:
+            if not file_subpath:
+                # Should be a .gz file
+                self.assertTrue(self.bundle_location.endswith("contents.gz"))
+                self.assertEqual(gzip.decompress(f.read()).decode(), expected_contents)
+            else:
+                # Should be a .tar.gz file
+                self.assertTrue(self.bundle_location.endswith("contents.tar.gz"))
+                with tarfile.open(fileobj=f, mode='r:gz') as tf:
+                    # Prepend "./" to the file subpath so that it corresponds with a file in the archive.
+                    self.assertEqual(
+                        cast(IO[bytes], tf.extractfile("./" + file_subpath)).read().decode(),
+                        expected_contents,
+                    )
+
+    def listdir(self):
+        with FileSystems.open(
+            self.bundle_location, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as f, tarfile.open(fileobj=f, mode='r:gz') as tf:
+            # Remove "." entry and "./" prefixes to make the file listing similar to that
+            # in an ordinary directory on disk.
+            return [i.replace("./", "") for i in tf.getnames() if i != "."]
