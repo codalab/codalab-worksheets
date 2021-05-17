@@ -268,7 +268,15 @@ class OpenFile(object):
                     fs = TarFileStream(tf, finfo)
                     return GzipStream(fs) if self.gzipped else fs
         else:
-            # Stream a file from disk storage.
+            # Stream a directory or file from disk storage.
+            if os.path.isdir(self.path):
+                if not self.gzipped:
+                    raise IOError("Directories must be gzipped.")
+                return tar_gzip_directory(self.path)
+            if self.gzipped:
+                raise IOError(
+                    "Gzipping local files from disk from OpenFile is not yet supported. Please use file_util.gzip_file instead."
+                )
             return open(self.path, self.mode)
 
     def __exit__(self, type, value, traceback):
@@ -367,11 +375,15 @@ def get_file_size(file_path):
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-            fpath = (
-                "/" + linked_bundle_path.archive_subpath
-                if linked_bundle_path.is_archive_dir
-                else "/contents"
-            )
+            if linked_bundle_path.is_archive_dir:
+                # If no archive subpath is specified, open the root path at "/"
+                fpath = (
+                    "/" + linked_bundle_path.archive_subpath
+                    if linked_bundle_path.archive_subpath
+                    else ""
+                )
+            else:
+                fpath = "/contents"
             finfo = tf.getFileInfo(fpath)
             if finfo is None:
                 raise FileNotFoundError(fpath)
