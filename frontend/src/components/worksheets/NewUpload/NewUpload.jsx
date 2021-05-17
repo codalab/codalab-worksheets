@@ -94,7 +94,7 @@ class NewUpload extends React.Component<{
             }
             // current focused item is an image block
             // pass after_image to the backend to make the backend add a blank line after the image block in the worksheet source to separate the newly uploaded files from the image block
-            if(focusedItem.mode==='image_block'){
+            if(focusedItem && focusedItem.mode==='image_block'){
                 url += `&after_image=1`;
             }
             const errorHandler = (error) => {
