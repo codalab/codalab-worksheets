@@ -58,15 +58,7 @@ class Uploader:
             if is_url:
                 assert isinstance(source, str)
                 if git:
-                    is_directory = True
-                    self._bundle_model.update_bundle(
-                        bundle,
-                        {
-                            'storage_type': self.storage_type,
-                            'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
-                        },
-                    )
-                    bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+                    bundle_path = self._update_and_get_bundle_location(bundle, is_directory=True)
                     self.write_git_repo(source, bundle_path)
                 else:
                     # If downloading from a URL, convert the source to a file object.
@@ -76,26 +68,12 @@ class Uploader:
                 source_filename, source_fileobj = cast(Tuple[str, IO[bytes]], source)
                 source_ext = zip_util.get_archive_ext(source_filename)
                 if unpack and zip_util.path_is_archive(filename):
-                    is_directory = source_ext in ARCHIVE_EXTS_DIR
-                    self._bundle_model.update_bundle(
-                        bundle,
-                        {
-                            'storage_type': self.storage_type,
-                            'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
-                        },
+                    bundle_path = self._update_and_get_bundle_location(
+                        bundle, is_directory=source_ext in ARCHIVE_EXTS_DIR
                     )
-                    bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
                     self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
                 else:
-                    is_directory = False
-                    self._bundle_model.update_bundle(
-                        bundle,
-                        {
-                            'storage_type': self.storage_type,
-                            'is_dir': is_directory,  # is_directory is True if the bundle is a directory and False if it is a single file.
-                        },
-                    )
-                    bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
+                    bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
                     self.write_fileobj(
                         source_ext, source_fileobj, bundle_path, unpack_archive=False
                     )
@@ -104,6 +82,24 @@ class Uploader:
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
+
+    def _update_and_get_bundle_location(self, bundle: Bundle, is_directory: bool) -> str:
+        """Updates the information of the given bundle based on the current storage type
+        and is_directory of the upload, then returns the location where the bundle is stored.
+        
+        The value of is_directory may affect the bundle location; for example, in Blob Storage,
+        directories are stored in .tar.gz files and non-directories are stored as .gz files.
+
+        Args:
+            bundle (Bundle): Bundle to update.
+            is_directory (bool): Should be set to True if the bundle is a directory and False if it is a single file.
+        Returns:
+            str: Bundle location.
+        """
+        self._bundle_model.update_bundle(
+            bundle, {'storage_type': self.storage_type, 'is_dir': is_directory,},
+        )
+        return self._bundle_store.get_bundle_location(bundle.uuid)
 
     def _interpret_source(self, source: Source):
         """Interprets the given source.
