@@ -11,7 +11,7 @@ from io import BytesIO
 from codalab.common import NotFoundError, StorageType
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.download_util import BundleTarget
-from codalab.worker.file_util import tar_gzip_directory, NONE_PLACEHOLDER
+from codalab.worker.file_util import tar_gzip_directory
 from tests.unit.server.bundle_manager import TestBase
 
 

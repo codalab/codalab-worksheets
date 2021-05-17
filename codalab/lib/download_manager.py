@@ -2,11 +2,15 @@ import logging
 import os
 from contextlib import closing
 
-from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
+from codalab.common import (
+    http_error_to_exception,
+    precondition,
+    UsageError,
+    NotFoundError,
+    parse_linked_bundle_url,
+)
 from codalab.worker import download_util
 from codalab.worker.bundle_state import State
-from codalab.common import parse_linked_bundle_url
-from codalab.common import StorageType
 from codalab.worker.un_gzip_stream import un_gzip_stream
 
 logger = logging.getLogger(__name__)
