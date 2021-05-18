@@ -1,10 +1,12 @@
-import tempfile
-import zipfile
-import tarfile
-import os
-import gzip
 import bz2
+import gzip
+import os
+import tarfile
+import tempfile
 import unittest
+import zipfile
+
+from io import BytesIO
 
 from codalab.common import UsageError
 from codalab.lib.zip_util import (
@@ -13,9 +15,9 @@ from codalab.lib.zip_util import (
     path_is_archive,
     pack_files_for_upload,
     unpack,
+    unpack_to_archive,
 )
 from codalab.worker.file_util import tar_gzip_directory, zip_directory
-from io import BytesIO
 
 SAMPLE_CONTENTS = b"hello world"
 
@@ -236,4 +238,41 @@ class ZipUtilTest(unittest.TestCase):
                     open(os.path.join(tmpdir, "file.txt"), "rb"),
                     os.path.join(dest_path, "out"),
                 )
+                self.assertEqual(SAMPLE_CONTENTS, open(os.path.join(dest_path, "out"), "rb").read())
+
+    def test_unpack_to_archive_single_archive(self):
+        """Unpack a single archive to a .tar.gz file."""
+        for (compress_fn, extension) in [
+            (tar_gzip_directory, ".tar.gz"),
+            (tar_bz2_directory, ".tar.bz2"),
+            (zip_directory, ".zip"),
+        ]:
+            with self.subTest(extension=extension), tempfile.TemporaryDirectory() as tmpdir, open(
+                os.path.join(tmpdir, "file.txt"), "wb"
+            ) as f, tempfile.TemporaryDirectory() as dest_path:
+                f.write(SAMPLE_CONTENTS)
+                f.flush()
+                archive_fileobj = unpack_to_archive(extension, compress_fn(tmpdir))
+                unpack(".tar.gz", archive_fileobj, os.path.join(dest_path, "out"))
+                self.assertEqual(os.listdir(tmpdir), ["file.txt"])
+                self.assertEqual(os.listdir(os.path.join(dest_path, "out")), ["file.txt"])
+                self.assertEqual(
+                    open(os.path.join(dest_path, "out", "file.txt"), "rb").read(), SAMPLE_CONTENTS
+                )
+
+    def test_unpack_to_archive_single_compressed_file(self):
+        """Unpack a single compressed file to a .gz file."""
+        for (compress_fn, extension) in [
+            (bz2.compress, ".bz2"),
+            (gzip.compress, ".gz"),
+        ]:
+            with self.subTest(extension=extension), tempfile.TemporaryDirectory() as tmpdir, open(
+                os.path.join(tmpdir, "file.txt"), "wb"
+            ) as f, tempfile.TemporaryDirectory() as dest_path:
+                f.write(compress_fn(SAMPLE_CONTENTS))
+                f.flush()
+                archive_fileobj = unpack_to_archive(
+                    extension, open(os.path.join(tmpdir, "file.txt"), "rb")
+                )
+                unpack(".gz", archive_fileobj, os.path.join(dest_path, "out"))
                 self.assertEqual(SAMPLE_CONTENTS, open(os.path.join(dest_path, "out"), "rb").read())
