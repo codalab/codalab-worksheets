@@ -302,17 +302,15 @@ jobs:
     strategy:
       matrix:
         test:
-          - upload1 upload2 upload3 upload4 download
-          # TODO(Ashwin): enable more tests below when we add support for downloading bundle dependencies from Blob Storage.
-          # - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
-          # - run
-          # - run2
-          # - search link read kill write mimic workers edit_user sharing_workers
-          # - resources
-          # - memoize
-          # - copy netcat netcurl
-          # - edit
-          # - open wopen
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
+          - run
+          - run2
+          - search link read kill write mimic workers edit_user sharing_workers
+          - resources
+          - memoize
+          - copy netcat netcurl
+          - edit
+          - open wopen
     steps:
       - name: Clear free space
         run: |
