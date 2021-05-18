@@ -103,7 +103,7 @@ def delete_user():
 
     if not (
         request_user_id == local.model.root_user_id
-        or (len(user_ids) == 1 and request_user_id == user_ids[0])
+        or (user_ids == [request_user_id])
     ):
         abort(http.client.UNAUTHORIZED, 'As a non-root user, you can only delete your own account.')
 
