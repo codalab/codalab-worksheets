@@ -753,7 +753,6 @@ class SQLiteIndexedTar:
                     # fmt:on
                 )
             except tarfile.ReadError:
-                print("RE")
                 pass
         
         try:
