@@ -144,11 +144,7 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
     def test_blob_storage_dependency(self):
         """A MakeBundle with a dependency stored on Blob Storage should be made."""
         parent = DatasetBundle.construct(
-            metadata=dict(
-                BASE_METADATA_DATASET_BUNDLE
-            ),  # , storage_type=StorageType.DISK_STORAGE.value, is_dir=False),
-            owner_id=self.user_id,
-            uuid=generate_uuid(),
+            metadata=BASE_METADATA_DATASET_BUNDLE, owner_id=self.user_id, uuid=generate_uuid(),
         )
         bundle = self.create_make_bundle(state=State.STAGED)
         bundle.dependencies = [
