@@ -23,8 +23,10 @@ marked.setOptions({
     breaks: true,
     smartLists: true,
     smartypants: true,
-    highlight: function(code) {
-        return hljs.highlightAuto(code).value;
+    highlight: function(code, lang) {
+        if (lang) {
+            return hljs.highlight(lang, code).value;
+        }
     },
 });
 
