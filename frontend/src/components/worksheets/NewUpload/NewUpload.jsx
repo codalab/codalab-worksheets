@@ -79,7 +79,7 @@ class NewUpload extends React.Component<{
     }
 
     asyncUploadFiles = async (files) => {
-        const { worksheetUUID, after_sort_key } = this.props;
+        const { worksheetUUID, after_sort_key,focusedItem } = this.props;
         const { name, description } = this.state;
         this.setState({
             uploading: true,
@@ -92,7 +92,11 @@ class NewUpload extends React.Component<{
             if (after_sort_key || after_sort_key === 0) {
                 url += `&after_sort_key=${after_sort_key}`;
             }
-
+            // current focused item is an image block
+            // pass after_image to the backend to make the backend add a blank line after the image block in the worksheet source to separate the newly uploaded files from the image block
+            if(focusedItem && focusedItem.mode==='image_block'){
+                url += `&after_image=1`;
+            }
             const errorHandler = (error) => {
                 this.clearProgress();
                 alert(createAlertText(url, error.responseText));
@@ -147,7 +151,7 @@ class NewUpload extends React.Component<{
             return;
         }
 
-        const { worksheetUUID, after_sort_key } = this.props;
+        const { worksheetUUID, after_sort_key, focusedItem } = this.props;
         const { name, description } = this.state;
         const folderNamePos = files[0].webkitRelativePath.indexOf('/');
         let folderName = '';
@@ -162,6 +166,10 @@ class NewUpload extends React.Component<{
         let url = `/rest/bundles?worksheet=${worksheetUUID}`;
         url += `&after_sort_key=${isNaN(after_sort_key) ? -1 : after_sort_key}`;
 
+        if(focusedItem.mode==='image_block'){
+            url += `&after_image=1`;
+        }
+        
         let zip = new JSZip();
         [...files].map((file) => {
             zip.file(file.webkitRelativePath, file);

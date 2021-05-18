@@ -4,6 +4,7 @@ import tarfile
 import tempfile
 import unittest
 import bz2
+import gzip
 
 from codalab.worker.file_util import (
     gzip_file,
@@ -90,17 +91,27 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 
     def test_open_file(self):
         _, fname = self.create_file()
+
+        # Read single file (gzipped)
+        with OpenFile(fname, gzipped=True) as f:
+            self.assertEqual(gzip.decompress(f.read()), b"hello world")
+
+        # Read single file (non-gzipped):
         with OpenFile(fname) as f:
             self.assertEqual(f.read(), b"hello world")
 
         _, dirname = self.create_directory()
 
-        # Read single file from directory
+        # Read single file from directory (gzipped):
+        with OpenFile(f"{dirname}/README.md", gzipped=True) as f:
+            self.assertEqual(gzip.decompress(f.read()), b"hello world")
+
+        # Read single file from directory (non-gzipped):
         with OpenFile(f"{dirname}/README.md") as f:
             self.assertEqual(f.read(), b"hello world")
 
-        # Read entire directory
-        with OpenFile(dirname) as f:
+        # Read entire directory (gzipped)
+        with OpenFile(dirname, gzipped=True) as f:
             self.assertEqual(
                 tarfile.open(fileobj=f, mode='r:gz').getnames(),
                 [
@@ -114,14 +125,24 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
                 ],
             )
 
-        # Read a subdirectory
-        with OpenFile(f"{dirname}/src") as f:
+        # Read entire directory (non-gzipped)
+        with self.assertRaises(IOError):
+            with OpenFile(dirname, gzipped=False) as f:
+                pass
+
+        # Read a subdirectory (gzipped)
+        with OpenFile(f"{dirname}/src", gzipped=True) as f:
             self.assertEqual(
                 tarfile.open(fileobj=f, mode='r:gz').getnames(), ['.', './test.sh'],
             )
 
+        # Read a subdirectory (non-gzipped)
+        with self.assertRaises(IOError):
+            with OpenFile(f"{dirname}/src") as f:
+                pass
+
         # Read a subdirectory with nested children
-        with OpenFile(f"{dirname}/dist") as f:
+        with OpenFile(f"{dirname}/dist", gzipped=True) as f:
             self.assertEqual(
                 tarfile.open(fileobj=f, mode='r:gz').getnames(),
                 ['.', './a', './a/b', './a/b/test2.sh'],
@@ -131,6 +152,9 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 class ArchiveTestBase:
     """Base for archive tests -- tests both archiving and unarchiving directories.
     Subclasses must implement the archive() and unarchive() methods."""
+
+    # Set to True if symlink tests should be skipped.
+    skip_symlinks = False
 
     def archive(self, *args, **kwargs):
         raise NotImplementedError
@@ -150,7 +174,8 @@ class ArchiveTestBase:
         self.assertNotIn('b.txt', output_dir_entries)
         self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir1', 'f1')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir1', 'f2')))
-        self.assertTrue(os.path.islink(os.path.join(output_dir, 'a-symlink.txt')))
+        if not self.skip_symlinks:
+            self.assertTrue(os.path.islink(os.path.join(output_dir, 'a-symlink.txt')))
 
     def test_empty(self):
         dir = tempfile.mkdtemp()
@@ -202,6 +227,10 @@ class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
 
 class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):
     """Archive test for zip methods."""
+
+    # ZipFile does not preserve symlinks, so we should skip
+    # symlink tests.
+    skip_symlinks = True
 
     def archive(self, *args, **kwargs):
         return zip_directory(*args, **kwargs)

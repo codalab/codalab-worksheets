@@ -192,7 +192,7 @@ class MainPanel extends React.Component<{
         navBarSearch(['owner=' + this.props.userInfo.user_name])
             .then((data) => this.setWorksheets(data))
             .catch(defaultErrorHandler);
-        navBarSearch(['.shared', '.limit=' + 100])
+        navBarSearch(['.shared', '.notmine', '.limit=' + 100])
             .then((data) => this.setWorksheets(data, true))
             .catch(defaultErrorHandler);
     }
@@ -235,10 +235,10 @@ class MainPanel extends React.Component<{
                     });
                 }
             })
-            .fail((error) => {
+            .catch((error) => {
                 this.setState({
                     snackbarShow: true,
-                    snackbarMessage: error.responseText,
+                    snackbarMessage: error,
                     snackbarVariant: 'error',
                 });
             });
