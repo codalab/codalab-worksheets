@@ -2370,9 +2370,9 @@ class BundleCLI(object):
         cls = get_bundle_subclass(info['bundle_type'])
 
         # Show all hidden fields for root user
-        show_hidden = client.fetch('user')['user_name'] == 'codalab'
+        is_root = client.fetch('user')['is_root_user']
 
-        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
+        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, is_root):
             lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)
