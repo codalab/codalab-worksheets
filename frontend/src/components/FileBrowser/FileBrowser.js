@@ -1,6 +1,5 @@
 // @flow
 import * as React from 'react';
-import * as $ from 'jquery';
 import Paper from '@material-ui/core/Paper';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -44,6 +43,7 @@ export class FileBrowser extends React.Component<
             currentWorkingDirectory: '',
             fileBrowserData: {},
             isVisible: !this.props.startCollapsed,
+            hidden: true,
         };
     }
 
@@ -85,16 +85,14 @@ export class FileBrowser extends React.Component<
         this.setState({ currentWorkingDirectory: folder_path });
         const callback = (data) => {
             if (data.data.type === 'directory') {
-                this.setState({ fileBrowserData: data.data });
-                $('.file-browser').show();
+                this.setState({ fileBrowserData: data.data, hidden: false });
             } else {
-                $('.file-browser').hide();
+                this.setState({ hidden: true });
             }
         };
         const errorHandler = (error) => {
             console.error(error);
-            this.setState({ fileBrowserData: {} });
-            $('.file-browser').hide();
+            this.setState({ fileBrowserData: {}, hidden: true });
         };
         apiWrapper
             .updateFileBrowser(this.props.uuid, folder_path)
@@ -236,16 +234,18 @@ export class FileBrowser extends React.Component<
             checkbox = null;
         }
         return (
-            <div className='file-browser'>
-                {checkbox}
-                {header}
-                <div className={content_class_name}>
-                    <div className='panel panel-default'>
-                        {bread_crumbs}
-                        <div className='panel-body'>{file_browser}</div>
+            this.state.hidden || (
+                <div className='file-browser'>
+                    {checkbox}
+                    {header}
+                    <div className={content_class_name}>
+                        <div className='panel panel-default'>
+                            {bread_crumbs}
+                            <div className='panel-body'>{file_browser}</div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )
         );
     }
 }
@@ -467,13 +467,14 @@ class FileBrowserItemLite extends React.Component<{
 export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_name }) => {
     const [currentWorkingDirectory, setCurrentWorkingDirectory] = useState('');
     const [fileBrowserData, setFileBrowserData] = useState({});
+    const [hidden, setHidden] = useState(true);
 
     const displayFileBrowser = (data) => {
         if (data.data.type === 'directory') {
             setFileBrowserData(data.data);
-            $('.file-browser').show();
+            setHidden(false);
         } else {
-            $('.file-browser').hide();
+            setHidden(true);
         }
     };
 
@@ -515,7 +516,7 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
             })
             .catch(() => {
                 setFileBrowserData({});
-                $('.file-browser').hide();
+                setHidden(true);
             });
 
     const url =
@@ -590,10 +591,12 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
             );
     });
     return (
-        <Paper>
-            <Table style={{ backgroundColor: 'white' }}>
-                <TableBody>{items}</TableBody>
-            </Table>
-        </Paper>
+        hidden || (
+            <Paper>
+                <Table style={{ backgroundColor: 'white' }}>
+                    <TableBody>{items}</TableBody>
+                </Table>
+            </Paper>
+        )
     );
 };
