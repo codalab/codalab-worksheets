@@ -38,6 +38,7 @@ class SchemaItem extends React.Component<{
             rows: [...this.props.item.field_rows],
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
+            deleting: false,
         };
     }
 
@@ -196,8 +197,9 @@ class SchemaItem extends React.Component<{
     };
 
     deleteThisSchema = () => {
-        this.setState({ showSchemaDetail: false });
+        this.setState({ showSchemaDetail: false, deleting: false });
         this.props.updateSchemaItem([], this.props.item.ids, null, false, true);
+        Mousetrap.unbind(['backspace', 'del']);
     };
 
     getSchemaItemId = () => {
@@ -219,6 +221,7 @@ class SchemaItem extends React.Component<{
         if (this.state.newAddedRow !== -1 && this.state.rows.length === prevState.rows.length + 1) {
             document.getElementById('textbox-' + this.state.newAddedRow + '-0').focus();
         }
+        if (this.props.focused) this.capture_keys();
     }
 
     // Scroll the newly opened schema editor into view
@@ -230,6 +233,22 @@ class SchemaItem extends React.Component<{
             }
         }
     }
+
+    capture_keys = () => {
+        // Delete the schema
+        Mousetrap.bind(
+            ['backspace', 'del'],
+            function(ev) {
+                ev.preventDefault();
+                this.setState({ deleting: true });
+                if (!this.props.item.error && this.props.focused) {
+                    if (this.props.editPermission) {
+                        this.props.setDeleteSchemaItemCallback(this.deleteThisSchema);
+                    }
+                }
+            }.bind(this),
+        );
+    };
 
     render() {
         const { classes, editPermission, focused, item } = this.props;
@@ -333,7 +352,7 @@ class SchemaItem extends React.Component<{
                                         this.props.onSubmit();
                                         return;
                                     }
-                                    this.props.setDeleteItemCallback(this.deleteThisSchema);
+                                    this.props.setDeleteSchemaItemCallback(this.deleteThisSchema);
                                 }}
                             >
                                 <DeleteForeverIcon fontSize='small' />
@@ -436,7 +455,7 @@ class SchemaItem extends React.Component<{
                 </Table>
             );
         }
-        if (focused || this.props.create) {
+        if (!this.state.deleting && (focused || this.props.create)) {
             Mousetrap.bind(
                 ['enter'],
                 (e) => {

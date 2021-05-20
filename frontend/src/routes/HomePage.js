@@ -47,6 +47,21 @@ class HomePage extends React.Component<{
         );
     }
 
+    renderStartButton(title, href, color) {
+        const { classes } = this.props;
+        return (
+            <a href={href}>
+                <Button
+                    variant='contained'
+                    classes={{ root: classes.buttonRoot, label: classes.buttonLabel }}
+                    style={{ backgroundColor: '#5baac0' }}
+                >
+                    {title}
+                </Button>
+            </a>
+        );
+    }
+
     renderTableItem(title, description, href) {
         return (
             <TableRow style={{ height: 0 }}>
@@ -63,7 +78,7 @@ class HomePage extends React.Component<{
     render() {
         const { classes, auth } = this.props;
         return (
-            <Grid container style={{ marginTop: -6 }}>
+            <Grid container style={{ marginTop: -30 }}>
                 <Helmet>
                     <meta
                         id='meta-description'
@@ -95,6 +110,12 @@ class HomePage extends React.Component<{
                                     )}
                                     {auth.isAuthenticated &&
                                         this.renderButton('My Profile', '/users')}
+                                </div>
+                                <div>
+                                    {this.renderStartButton(
+                                        'Quickstart',
+                                        'https://codalab-worksheets.readthedocs.io/en/latest/examples/quickstart/',
+                                    )}
                                 </div>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
@@ -212,35 +233,20 @@ class HomePage extends React.Component<{
                             className={classNames(classes.textBox, classes.spacer)}
                         >
                             <Grid item xs={12} className={classes.textBox}>
-                                <Typography variant='h5'>Getting Started</Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={4} className={classes.textBox}>
-                                <Typography>
-                                    <pre>pip install codalab</pre>
-                                </Typography>
-                                <Typography gutterBottom>
-                                    For <b>beginning users</b>, the best place to start is to clone
-                                    the
-                                    <code>codalab/worksheet-examples</code>
-                                    repository and walk through the material there:
-                                </Typography>
-                                <Button
-                                    variant='outlined'
-                                    color='primary'
-                                    href='https://github.com/codalab/worksheets-examples'
-                                    target='_blank'
-                                    rel='noopener noreferrer'
-                                >
-                                    Go To Repo
-                                </Button>
+                                <Typography variant='h5'>More Information</Typography>
                             </Grid>
                             <Grid item xs={12} sm={8} className={classes.textBox}>
                                 <Typography>
-                                    For more <b>advanced users</b>, the CodaLab documentation has a
-                                    wealth of information about many aspects of using the platform:
+                                    Learn more about how to use the platform with the CodaLab
+                                    documentation:
                                 </Typography>
                                 <Typography>
                                     <Table padding='dense'>
+                                        {this.renderTableItem(
+                                            'Tutorial',
+                                            'Learn CodaLab core concepts.',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest',
+                                        )}
                                         {this.renderTableItem(
                                             'Workflow',
                                             'Use CodaLab in your daily research.',
