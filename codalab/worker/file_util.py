@@ -189,10 +189,7 @@ class OpenIndexedArchiveFile(object):
             self.index_file_name = index_fileobj.name
             shutil.copyfileobj(
                 FileSystems.open(
-                    # path can end in either "contents.tar.gz" (if a directory) or "contents.gz" (if a file).
-                    path.replace("/contents.tar.gz", "/index.sqlite").replace(
-                        "/contents.gz", "/index.sqlite"
-                    ),
+                    parse_linked_bundle_url(self.path).index_path,
                     compression_type=CompressionTypes.UNCOMPRESSED,
                 ),
                 index_fileobj,
@@ -201,7 +198,7 @@ class OpenIndexedArchiveFile(object):
     def __enter__(self) -> SQLiteIndexedTar:
         return SQLiteIndexedTar(
             fileObject=self.f,
-            tarFileName=parse_linked_bundle_url(self.path).bundle_uuid,
+            tarFileName="contents",
             writeIndex=False,
             clearIndexCache=False,
             indexFileName=self.index_file_name,
