@@ -98,7 +98,7 @@ export class SignUp extends React.Component {
                         action='/rest/account/signup'
                         onSubmit={this.onSubmit}
                     >
-                        {error && <div class='alert alert-error'>{error}</div>}
+                        {error && <div className='alert alert-error'>{error}</div>}
                         <div className='form-group'>
                             <label htmlFor='id_email'>Email:</label>
                             <input

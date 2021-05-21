@@ -158,9 +158,8 @@ class TableWorksheetRow extends React.Component {
             <tr className={className} id={this.props.id}>
                 <td>
                     <div onClick={this.handleRowClick}>
-                        <button class='link' onClick={this.handleTextClick}>{`${item.title + ' '}[${
-                            item.name
-                        }]`}</button>
+                        <button className='link' onClick={this.handleTextClick}>{`${item.title +
+                            ' '}[${item.name}]`}</button>
                     </div>
                 </td>
             </tr>
