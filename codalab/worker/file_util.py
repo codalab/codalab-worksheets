@@ -226,7 +226,8 @@ class OpenFile(object):
             path (str): Path to open; can be a path on disk or a path on Blob Storage.
             mode (str): Mode with which to open the file. Default is "rb". This is only
             gzipped (bool): Whether the output should be gzipped. Must be True if downloading a directory;
-                can be True or False if downloading a file.
+                can be True or False if downloading a file. Note that as of now, gzipping local files from disk
+                from OpenFile is not yet supported (only from Blob Storage).
         """
         self.path = path
         self.mode = mode
