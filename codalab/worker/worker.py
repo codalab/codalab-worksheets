@@ -185,7 +185,7 @@ class Worker:
         # Remove complex container objects from state before serializing, these can be retrieved
         runs = {
             uuid: state._replace(
-                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict
+                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
             )
             for uuid, state in self.runs.items()
         }
@@ -474,8 +474,13 @@ class Worker:
 
         # 1. transition all runs
         for uuid in self.runs:
-            run_state = self.runs[uuid]
-            self.runs[uuid] = self.run_state_manager.transition(run_state)
+            prev_state = self.runs[uuid]
+            self.runs[uuid] = self.run_state_manager.transition(prev_state)
+            # Only start saving stats for a new stage when the run has actually transitioned to that stage.
+            if prev_state.stage != self.runs[uuid].stage:
+                self.end_stage_stats(uuid, prev_state.stage)
+                if self.runs[uuid].stage != RunStage.FINISHED:
+                    self.start_stage_stats(uuid, self.runs[uuid].stage)
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
@@ -554,6 +559,9 @@ class Worker:
                 remote=self.id,
                 exitcode=run_state.exitcode,
                 failure_message=run_state.failure_message,
+                bundle_profile_stats=run_state.bundle_profile_stats,
+                cpu_usage=run_state.cpu_usage,
+                memory_usage=run_state.memory_usage,
             )
             for run_state in self.runs.values()
         ]
@@ -622,6 +630,13 @@ class Worker:
                 bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path),
                 bundle_dir_wait_num_tries=Worker.BUNDLE_DIR_WAIT_NUM_TRIES,
+                bundle_profile_stats={
+                    RunStage.PREPARING: self.init_stage_stats(),
+                    RunStage.RUNNING: self.init_stage_stats(),
+                    RunStage.CLEANING_UP: self.init_stage_stats(),
+                    RunStage.UPLOADING_RESULTS: self.init_stage_stats(),
+                    RunStage.FINALIZING: self.init_stage_stats(),
+                },
                 resources=resources,
                 bundle_start_time=time.time(),
                 container_time_total=0,
@@ -642,7 +657,11 @@ class Worker:
                 finished=False,
                 finalized=False,
                 is_restaged=False,
+                cpu_usage=0.0,
+                memory_usage=0.0,
             )
+            # Start measuring bundle stats for the initial bundle state.
+            self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
@@ -758,6 +777,29 @@ class Worker:
             self.bundle_service.reply_data(self.id, socket_id, message, data)
         else:
             self.bundle_service.reply(self.id, socket_id, message)
+
+    def start_stage_stats(self, uuid: str, stage: str) -> None:
+        """
+        Set the start time for a bundle in a certain stage.
+        """
+        self.runs[uuid].bundle_profile_stats[stage]['start'] = time.time()
+
+    def end_stage_stats(self, uuid: str, stage: str) -> None:
+        """
+        Set the end time for a bundle finishing a stage.
+        Set the elapsed time to the end time minus the start time.
+        """
+        self.runs[uuid].bundle_profile_stats[stage]['end'] = time.time()
+        self.runs[uuid].bundle_profile_stats[stage]['elapsed'] = (
+            self.runs[uuid].bundle_profile_stats[stage]['end']
+            - self.runs[uuid].bundle_profile_stats[stage]['start']
+        )
+
+    def init_stage_stats(self) -> Dict:
+        """
+        Returns a stage stats dict with default empty values for start, end, and elapsed.
+        """
+        return {'start': None, 'end': None, 'elapsed': None}
 
     @staticmethod
     def execute_bundle_service_command_with_retry(cmd):

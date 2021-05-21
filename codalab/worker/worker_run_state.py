@@ -103,6 +103,9 @@ RunState = namedtuple(
         'finished',  # bool
         'finalized',  # bool
         'is_restaged',  # bool
+        'cpu_usage',  # float
+        'memory_usage',  # float
+        'bundle_profile_stats',  # dict
     ],
 )
 
@@ -277,7 +280,7 @@ class RunStateMachine(StateTransitioner):
         image_state = self.docker_image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
-                'Pulling docker image: ' + (image_state.message or docker_image or "")
+                'Pulling docker image %s %s' % (docker_image, image_state.message)
             )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
@@ -461,6 +464,12 @@ class RunStateMachine(StateTransitioner):
 
         def check_resource_utilization(run_state: RunState):
             logger.info(f'Checking resource utilization for bundle. uuid: {run_state.bundle.uuid}')
+            cpu_usage, memory_usage = docker_utils.get_container_stats_with_docker_stats(
+                run_state.container
+            )
+            run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
+            run_state = run_state._replace(memory_usage=memory_usage)
+
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(run_state.container)

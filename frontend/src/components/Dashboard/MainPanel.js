@@ -1,5 +1,4 @@
 import * as React from 'react';
-import $ from 'jquery';
 import Card from '@material-ui/core/Card';
 import { withStyles } from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
@@ -7,7 +6,6 @@ import { green } from '@material-ui/core/colors';
 import NewWorksheetIcon from '@material-ui/icons/NoteAdd';
 import Tooltip from '@material-ui/core/Tooltip';
 import { NAME_REGEX } from '../../constants';
-import { executeCommand } from '../../util/cli_utils';
 import Dialog from '@material-ui/core/Dialog';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContent from '@material-ui/core/DialogContent';
@@ -25,6 +23,9 @@ import ErrorIcon from '@material-ui/icons/Error';
 import SuccessIcon from '@material-ui/icons/CheckCircle';
 import InfoIcon from '@material-ui/icons/Info';
 import WarningIcon from '@material-ui/icons/Warning';
+import { defaultErrorHandler, executeCommand, navBarSearch } from '../../util/apiWrapper';
+import Tabs from '@material-ui/core/Tabs';
+import Tab from '@material-ui/core/Tab';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -41,11 +42,24 @@ const styles = ({ palette, spacing, color }) => {
             backgroundColor: 'white',
             alignItems: 'center',
         },
-        titleBox: { margin: 'auto', marginTop: 8, marginBottom: 16, width: '90%' },
+        titleBox: {
+            margin: 'auto',
+            marginTop: 8,
+            marginBottom: 16,
+            width: '90%',
+        },
         wsInlineBox: {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+        },
+        infoBox: {
+            marginLeft: 64,
+            marginRight: 20,
+            marginTop: 20,
+            marginBottom: 40,
+            backgroundColor: '#f1f1f1',
+            alignItems: 'center',
         },
         wsCard: {
             display: 'flex',
@@ -71,7 +85,7 @@ const styles = ({ palette, spacing, color }) => {
             letterSpacing: 0.15,
             lineHeight: '150%',
             marginBottom: 0,
-            marginLeft: 8,
+            marginLeft: 16,
             float: 'left',
         },
         value: {
@@ -95,7 +109,7 @@ const styles = ({ palette, spacing, color }) => {
             backgroundColor: green[500],
             color: 'white',
             right: 0,
-            marginBottom: 10,
+            marginLeft: 'auto',
         },
         snackbarMessage: {
             display: 'flex',
@@ -133,50 +147,54 @@ class MainPanel extends React.Component<{
             snackbarMessage: '',
             snackbarVariant: '',
             worksheets: [],
+            tabIndex: 0, // which tab the main panel is currently on, could be 0 or 1
+            sharedWorksheets: [], // worksheets shared with the user
         };
     }
 
-    componentDidMount() {
+    /**
+     * Fetch worksheets data and update the component state
+     */
+    setWorksheets(data, isSharedWorksheets = false) {
         const { classes } = this.props;
-        // Fetch worksheets owned by the current user
-        const worksheetUrl: URL = '/rest/interpret/wsearch';
-        $.ajax({
-            url: worksheetUrl,
-            dataType: 'json',
-            type: 'POST',
-            cache: false,
-            data: JSON.stringify({ keywords: ['owner=' + this.props.userInfo.user_name] }),
-            contentType: 'application/json; charset=utf-8',
-            success: (data) => {
-                const worksheets = data.response.map((ws, i) => (
-                    <Card className={classes.wsCard}>
-                        <div className={classes.wsBox}>
-                            <div className={classes.wsInlineBox}>
-                                <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
-                                    {ws.title ? ws.title : 'Untitled'}
-                                </a>
-                                <div className={classes.value} style={{ whiteSpace: 'pre' }}>
-                                    {'  by ' + ws.owner_name}
-                                </div>
-                            </div>
-                            <div className={classes.wsInlineBox}>
-                                <p className={classes.value}>{ws.name} </p>
-                                <p className={classes.value}>
-                                    {' '}
-                                    {ws.date_last_modified
-                                        ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
-                                        : ''}
-                                </p>
-                            </div>
+        const worksheets = data.response.map((ws, i) => (
+            <Card className={classes.wsCard}>
+                <div className={classes.wsBox}>
+                    <div className={classes.wsInlineBox}>
+                        <a className={classes.subheader} href={'/worksheets/' + ws.uuid}>
+                            {ws.title ? ws.title : 'Untitled'}
+                        </a>
+                        <div className={classes.value} style={{ whiteSpace: 'pre' }}>
+                            {'  by ' + ws.owner_name}
                         </div>
-                    </Card>
-                ));
-                this.setState({ worksheets });
-            },
-            error: (xhr, status, err) => {
-                console.error(xhr.responseText);
-            },
-        });
+                    </div>
+                    <div className={classes.wsInlineBox}>
+                        <p className={classes.value}>{ws.name} </p>
+                        <p className={classes.value}>
+                            {' '}
+                            {ws.date_last_modified
+                                ? format(new Date(addUTCTimeZone(ws.date_last_modified)))
+                                : ''}
+                        </p>
+                    </div>
+                </div>
+            </Card>
+        ));
+        if (isSharedWorksheets) {
+            this.setState({ sharedWorksheets: worksheets });
+        } else {
+            this.setState({ worksheets });
+        }
+    }
+
+    componentDidMount() {
+        // Fetch worksheets owned by the current user
+        navBarSearch(['owner=' + this.props.userInfo.user_name])
+            .then((data) => this.setWorksheets(data))
+            .catch(defaultErrorHandler);
+        navBarSearch(['.shared', '.notmine', '.limit=' + 100])
+            .then((data) => this.setWorksheets(data, true))
+            .catch(defaultErrorHandler);
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {
@@ -217,14 +235,25 @@ class MainPanel extends React.Component<{
                     });
                 }
             })
-            .fail((error) => {
+            .catch((error) => {
                 this.setState({
                     snackbarShow: true,
-                    snackbarMessage: error.responseText,
+                    snackbarMessage: error,
                     snackbarVariant: 'error',
                 });
             });
     }
+
+    handleTabChange = (event, newIndex) => {
+        this.setState({ tabIndex: newIndex });
+    };
+    a11yProps(index) {
+        return {
+            id: `mainpanel-tab-${index}`,
+            'aria-controls': `mainpanel-tabpanel-${index}`,
+        };
+    }
+
     /** Renderer. */
     render() {
         let SnackbarIcon = {
@@ -234,28 +263,77 @@ class MainPanel extends React.Component<{
             warning: WarningIcon,
         }[this.state.snackbarVariant];
         const { classes } = this.props;
+        const infoMessage = (
+            <div className={classes.infoBox}>
+                <div>Note: this page only displays up to the first 100 worksheets.</div>
+            </div>
+        );
         return (
             <div>
-                <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
-                    <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
-                        <h3 className={classes.heading}>Worksheets &nbsp;&nbsp;</h3>
-                        &nbsp;&nbsp;&nbsp;&nbsp;
-                        {this.props.ownDashboard ? (
-                            <Tooltip title='New Worksheet'>
-                                <Button
-                                    variant='contained'
-                                    className={classes.button}
-                                    startIcon={<NewWorksheetIcon />}
-                                    onClick={() => this.setState({ newWorksheetShowDialog: true })}
-                                >
-                                    ADD
-                                </Button>
-                            </Tooltip>
-                        ) : null}
-                    </div>
+                {this.props.ownDashboard ? (
+                    <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
+                        <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
+                            <Tabs
+                                value={this.state.tabIndex}
+                                onChange={this.handleTabChange}
+                                aria-label='mainpanel tabs'
+                            >
+                                <Tab label='My Worksheets' {...this.a11yProps(0)}></Tab>
+                                <Tab
+                                    label='Shared Worksheets with Me'
+                                    {...this.a11yProps(1)}
+                                    disabled={!this.props.ownDashboard}
+                                ></Tab>
+                                {this.props.ownDashboard ? (
+                                    <Tooltip title='New Worksheet'>
+                                        <Button
+                                            variant='contained'
+                                            className={classes.button}
+                                            startIcon={<NewWorksheetIcon />}
+                                            onClick={() =>
+                                                this.setState({ newWorksheetShowDialog: true })
+                                            }
+                                        >
+                                            ADD
+                                        </Button>
+                                    </Tooltip>
+                                ) : null}
+                            </Tabs>
+                        </div>
+                        <TabPanel tabIndex={this.state.tabIndex} index={0}>
+                            {this.state.worksheets}
+                            {infoMessage}
+                        </TabPanel>
+                        <TabPanel tabIndex={this.state.tabIndex} index={1}>
+                            {this.state.sharedWorksheets}
+                            {infoMessage}
+                        </TabPanel>
+                    </Card>
+                ) : (
+                    <Card elevation={0} style={{ height: '100%', backgroundColor: '#f1f1f1' }}>
+                        <div className={classes.titleBox} display={'flex'} alignItems={'center'}>
+                            <h3 className={classes.heading}>Worksheets &nbsp;&nbsp;</h3>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                            {this.props.ownDashboard ? (
+                                <Tooltip title='New Worksheet'>
+                                    <Button
+                                        variant='contained'
+                                        className={classes.button}
+                                        startIcon={<NewWorksheetIcon />}
+                                        onClick={() =>
+                                            this.setState({ newWorksheetShowDialog: true })
+                                        }
+                                    >
+                                        ADD
+                                    </Button>
+                                </Tooltip>
+                            ) : null}
+                        </div>
 
-                    {this.state.worksheets}
-                </Card>
+                        {this.state.worksheets}
+                        {infoMessage}
+                    </Card>
+                )}
                 <Dialog
                     open={this.state.newWorksheetShowDialog}
                     onClose={() => this.resetDialog()}
@@ -338,6 +416,21 @@ class MainPanel extends React.Component<{
             </div>
         );
     }
+}
+
+function TabPanel(props) {
+    const { children, tabIndex, index, ...other } = props;
+    return (
+        <div
+            role='tabpanel'
+            hidden={tabIndex !== index}
+            id={`mainpanel-tabpanel-${index}`}
+            aria-labelledby={`mainpanel-tab-${index}`}
+            {...other}
+        >
+            {tabIndex === index && <div>{children}</div>}
+        </div>
+    );
 }
 
 export default withStyles(styles)(MainPanel);

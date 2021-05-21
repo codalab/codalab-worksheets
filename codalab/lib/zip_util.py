@@ -8,6 +8,7 @@ import shutil
 import tarfile
 import tempfile
 import logging
+from typing import IO
 
 from codalab.common import UsageError
 from codalab.worker.file_util import (
@@ -15,13 +16,15 @@ from codalab.worker.file_util import (
     tar_gzip_directory,
     un_bz2_file,
     unzip_directory,
+    GzipStream,
 )
-from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_gzip_stream import un_gzip_stream, UnBz2Stream, ZipToTarStream
 from codalab.worker.un_tar_directory import un_tar_directory
 
 
 # Files with these extensions are considered archive.
 ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz', '.bz2']
+ARCHIVE_EXTS_DIR = ['.tar.gz', '.tgz', '.tar.bz2', '.zip']
 
 
 def path_is_archive(path):
@@ -47,17 +50,16 @@ def strip_archive_ext(path):
     raise UsageError('Not an archive: %s' % path)
 
 
-def unpack(ext, source, dest_path):
+def unpack(ext: str, source: IO[bytes], dest_path: str):
+    """Unpack the archive |source| to |dest_path|.
+
+    Args:
+        ext (str): Extension of the archive.
+        source (IO[bytes]): File handle to the source.
+        dest_path ([type]): Destination path to unpack to.
+
     """
-    Unpack the archive |source| to |dest_path|.
-    Note: |source| can be a file handle or a path.
-    |ext| contains the extension of the archive.
-    """
-    close_source = False
     try:
-        if isinstance(source, str):
-            source = open(source, 'rb')
-            close_source = True
 
         if ext == '.tar.gz' or ext == '.tgz':
             un_tar_directory(source, dest_path, 'gz')
@@ -73,11 +75,39 @@ def unpack(ext, source, dest_path):
         else:
             raise UsageError('Not an archive.')
     except (tarfile.TarError, IOError) as e:
-        logging.error("Invalid archive upload: %s", e)
-        raise UsageError('Invalid archive upload.')
-    finally:
-        if close_source:
-            source.close()
+        logging.error("Invalid archive upload: failed to unpack archive: %s", e)
+        raise UsageError('Invalid archive upload: failed to unpack archive.')
+
+
+def unpack_to_archive(ext: str, source: IO[bytes]) -> IO[bytes]:
+    """Unpack the archive |source| and returns the unpacked fileobj.
+    If |source| is an archive, unpacks to a .tar.gz archive file.
+    If |source| is a non-archive file, unpacks to a .gz file.
+
+    Args:
+        ext (str): Extension of the source archive.
+        source (IO[bytes]): File handle to the source.
+
+    Returns:
+        IO[bytes]: File object with the archive.
+    """
+    try:
+
+        if ext == '.tar.gz' or ext == '.tgz':
+            return source
+        elif ext == '.tar.bz2':
+            return GzipStream(UnBz2Stream(source))
+        elif ext == '.bz2':
+            return GzipStream(UnBz2Stream(source))
+        elif ext == '.gz':
+            return source
+        elif ext == '.zip':
+            return GzipStream(ZipToTarStream(source))
+        else:
+            raise UsageError('Not an archive.')
+    except (tarfile.TarError, IOError) as e:
+        logging.error("Invalid archive upload: failed to unpack archive: %s", e)
+        raise UsageError('Invalid archive upload: failed to unpack archive.')
 
 
 def pack_files_for_upload(
@@ -108,8 +138,7 @@ def pack_files_for_upload(
         'fileobj': <file object of archive>,
         'filename': <name of archive file>,
         'filesize': <size of archive in bytes, or None if unknown>,
-        'should_unpack': <True iff archive should be unpacked at server>,
-        'should_simplify': <True iff directory should be 'simplified' at server>
+        'should_unpack': <True iff archive should be unpacked at server>
         }
     """
     exclude_patterns = exclude_patterns or []
@@ -143,7 +172,6 @@ def pack_files_for_upload(
                 'filename': filename + '.tar.gz',
                 'filesize': None,
                 'should_unpack': True,
-                'should_simplify': False,
             }
         elif path_is_archive(source):
             return {
@@ -151,7 +179,6 @@ def pack_files_for_upload(
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': should_unpack,
-                'should_simplify': True,
             }
         elif force_compression:
             return {
@@ -159,7 +186,6 @@ def pack_files_for_upload(
                 'filename': filename + '.gz',
                 'filesize': None,
                 'should_unpack': True,
-                'should_simplify': False,
             }
         else:
             return {
@@ -167,7 +193,6 @@ def pack_files_for_upload(
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': False,
-                'should_simplify': False,
             }
 
     # Build archive file incrementally from all sources
@@ -188,17 +213,8 @@ def pack_files_for_upload(
         return None if should_exclude(tarinfo.name) else tarinfo
 
     for source in sources:
-        if should_unpack and path_is_archive(source):
-            # Unpack archive into scratch space
-            dest_basename = strip_archive_ext(os.path.basename(source))
-            dest_path = os.path.join(scratch_dir, dest_basename)
-            unpack(get_archive_ext(source), source, dest_path)
-
-            # Add file or directory to archive
-            archive.add(dest_path, arcname=dest_basename, recursive=True)
-        else:
-            # Add file to archive, or add files recursively if directory
-            archive.add(source, arcname=os.path.basename(source), recursive=True, filter=filter)
+        # Add file to archive, or add files recursively if directory
+        archive.add(source, arcname=os.path.basename(source), recursive=True, filter=filter)
 
     # Clean up, rewind archive file, and return it
     archive.close()
@@ -210,5 +226,4 @@ def pack_files_for_upload(
         'filename': 'contents.tar.gz',
         'filesize': filesize,
         'should_unpack': True,
-        'should_simplify': False,
     }

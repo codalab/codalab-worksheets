@@ -1,9 +1,9 @@
 from contextlib import ExitStack
-from ratarmount import FileInfo
+from codalab.lib.beam.ratarmount import FileInfo
 import tarfile
 from io import BytesIO
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, cast
 
 from codalab.worker.un_gzip_stream import BytesBuffer
 from codalab.common import parse_linked_bundle_url
@@ -37,7 +37,7 @@ EmptyFileInfo = FileInfo(
 
 
 class TarSubdirStream(BytesIO):
-    """Streams a subdirectory from a tar file stored on Blob Storage, as its own tar archive.
+    """Streams a subdirectory from an indexed archive file stored on Blob Storage, as its own .tar.gz archive.
 
     The general idea is that on initialization, this class will construct a list
     "descendants" that contains all files within the specified subdirectory in the tar file.
@@ -56,15 +56,17 @@ class TarSubdirStream(BytesIO):
         Args:
             path (str): Specified path of the subdirectory on Blob Storage. Must refer to a subdirectory path within a .tar.gz file.
         """
-        from codalab.worker.file_util import OpenIndexedTarGzFile
+        from codalab.worker.file_util import OpenIndexedArchiveFile
         from codalab.worker.download_util import compute_target_info_blob_descendants_flat
 
         self.linked_bundle_path = parse_linked_bundle_url(path)
 
-        # We add OpenIndexedTarGzFile to self._stack so that the context manager remains open and is exited
+        # We add OpenIndexedArchiveFile to self._stack so that the context manager remains open and is exited
         # only in the method self.close().
         with ExitStack() as stack:
-            self.tf = stack.enter_context(OpenIndexedTarGzFile(self.linked_bundle_path.bundle_path))
+            self.tf = stack.enter_context(
+                OpenIndexedArchiveFile(self.linked_bundle_path.bundle_path)
+            )
             self._stack = stack.pop_all()
 
         # Keep track of descendants of the specified subdirectory and the current descendant
@@ -92,7 +94,7 @@ class TarSubdirStream(BytesIO):
 
             # TODO (Ashwin): Make sure this works with symlinks, too (it should work, but add a test to ensure it).
             full_name = f"{self.linked_bundle_path.archive_subpath}/{member['name']}"
-            member_finfo = self.tf.getFileInfo("/" + full_name)
+            member_finfo = cast(FileInfo, self.tf.getFileInfo("/" + full_name))
             member_tarinfo = tarfile.TarInfo(name="./" + member['name'] if member['name'] else '.')
             for attr in ("size", "mtime", "mode", "type", "linkname", "uid", "gid"):
                 setattr(member_tarinfo, attr, getattr(member_finfo, attr))
@@ -152,7 +154,7 @@ class TarSubdirStream(BytesIO):
         return self._buffer.read(num_bytes)
 
     def close(self):
-        # Close the OpenIndexedTarGzFile context manager that was initialized in __init__.
+        # Close the OpenIndexedArchiveFile context manager that was initialized in __init__.
         self._stack.__exit__(self, None, None)
 
     def __getattr__(self, name):

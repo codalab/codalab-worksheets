@@ -401,11 +401,15 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
     Storage. Otherwise, the bundle is retrieved from the underlying disk bundle store.
 
     In Blob Storage, each bundle is stored in the format:
-    azfs://{container name}/bundles/{bundle uuid}/contents.tar.gz.
+    azfs://{container name}/bundles/{bundle uuid}/contents.tar.gz if a directory,
+    azfs://{container name}/bundles/{bundle uuid}/contents.gz
 
     If the bundle is a directory, the entire contents of the bundle is stored in the .tar.gz file;
-    otherwise, if the bundle is a single file, the file is stored in the .tar.gz file as an archive
+    otherwise, if the bundle is a single file, the file is stored in the .gz file as an archive
     member with name equal to the bundle uuid and is_dir is set to False in the database.
+
+    See this design doc for more information about Blob Storage design:
+    https://docs.google.com/document/d/1l4kOqi9irBjOApmn4E6vlzsjAXDJbetIyVw8gMRHrpU/edit#
     """
 
     def __init__(self, bundle_model, codalab_home, azure_blob_account_name):
@@ -416,6 +420,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
     def get_bundle_location(self, uuid):
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
         if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
-            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/contents.tar.gz"
+            file_name = "contents.tar.gz" if is_dir else "contents.gz"
+            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}"
         else:
             return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
