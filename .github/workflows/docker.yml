@@ -1,8 +1,9 @@
 name: Push Default
 on:
-  push:
-    branches: [ master ]
-    paths: ['docker_config/dockerfiles/default-*']
+  # push:
+  #   branches: [ master ]
+  pull_request:
+    # paths: ['docker_config/dockerfiles/default-*']
 
 jobs:
   build_default:
