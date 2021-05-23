@@ -55,4 +55,4 @@ class ImageManager:
 
     # should be implemented in subclasses
     def _cleanup(self):
-        pass
+        raise NotImplementedError
