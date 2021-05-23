@@ -226,7 +226,8 @@ class OpenFile(object):
             path (str): Path to open; can be a path on disk or a path on Blob Storage.
             mode (str): Mode with which to open the file. Default is "rb". This is only
             gzipped (bool): Whether the output should be gzipped. Must be True if downloading a directory;
-                can be True or False if downloading a file.
+                can be True or False if downloading a file. Note that as of now, gzipping local files from disk
+                from OpenFile is not yet supported (only from Blob Storage).
         """
         self.path = path
         self.mode = mode
@@ -268,7 +269,15 @@ class OpenFile(object):
                     fs = TarFileStream(tf, finfo)
                     return GzipStream(fs) if self.gzipped else fs
         else:
-            # Stream a file from disk storage.
+            # Stream a directory or file from disk storage.
+            if os.path.isdir(self.path):
+                if not self.gzipped:
+                    raise IOError("Directories must be gzipped.")
+                return tar_gzip_directory(self.path)
+            if self.gzipped:
+                raise IOError(
+                    "Gzipping local files from disk from OpenFile is not yet supported. Please use file_util.gzip_file instead."
+                )
             return open(self.path, self.mode)
 
     def __exit__(self, type, value, traceback):
@@ -364,14 +373,15 @@ def get_file_size(file_path):
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
+        # If no archive subpath is specified for a .tar.gz or .gz file, get the compressed size of the entire file.
+        if not linked_bundle_path.archive_subpath:
+            filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+            return filesystem.size(linked_bundle_path.bundle_path)
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-            fpath = (
-                "/" + linked_bundle_path.archive_subpath
-                if linked_bundle_path.is_archive_dir
-                else "/contents"
-            )
+            assert linked_bundle_path.is_archive_dir
+            fpath = "/" + linked_bundle_path.archive_subpath
             finfo = tf.getFileInfo(fpath)
             if finfo is None:
                 raise FileNotFoundError(fpath)
