@@ -1,7 +1,10 @@
 FROM ubuntu:xenial
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
+RUN apt-get update && apt-get install -y \
+    software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa 
+ENV DEBIAN_FRONTEND=noninteractive
 
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
