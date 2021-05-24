@@ -3,6 +3,7 @@ on:
   # push:
   #   branches: [ master ]
   pull_request:
+    branches: [ auto-build ]
     # paths: ['docker_config/dockerfiles/default-*']
 
 jobs:
