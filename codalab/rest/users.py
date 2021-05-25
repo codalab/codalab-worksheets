@@ -39,7 +39,11 @@ USER_ACCESSIBLE_KEYWORDS = (
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
     """Fetch authenticated user."""
-    return AuthenticatedUserSchema().dump(request.user).data
+    user_info = AuthenticatedUserSchema().dump(request.user).data
+    user_info['data']['attributes']['is_root_user'] = (
+        request.user.user_id == local.model.root_user_id
+    )
+    return user_info
 
 
 @patch('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
