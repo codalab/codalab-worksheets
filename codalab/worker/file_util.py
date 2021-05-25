@@ -373,10 +373,16 @@ def get_file_size(file_path):
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
-        # If no archive subpath is specified for a .tar.gz or .gz file, get the compressed size of the entire file.
+        # If no archive subpath is specified for a .tar.gz or .gz file, get the uncompressed size of the entire file,
+        # or the compressed size of the entire directory.
         if not linked_bundle_path.archive_subpath:
-            filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-            return filesystem.size(linked_bundle_path.bundle_path)
+            if linked_bundle_path.is_archive_dir:
+                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+                return filesystem.size(linked_bundle_path.bundle_path)
+            else:
+                with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
+                    fileobj.seek(0, os.SEEK_END)
+                    return fileobj.tell()
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:

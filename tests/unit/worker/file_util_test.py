@@ -194,7 +194,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 
     def test_get_file_size(self):
         _, fname = self.create_file()
-        self.assertEqual(get_file_size(fname), 31)
+        self.assertEqual(get_file_size(fname), 11)
 
         _, dirname = self.create_directory()
         self.assertEqual(get_file_size(dirname), 249)
