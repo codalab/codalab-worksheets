@@ -488,7 +488,7 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
 
     useEffect(() => {
         setFileBrowserData({});
-        updateFileBrowser('');
+        setCurrentWorkingDirectory('');
     }, [uuid]);
 
     useEffect(() => {
