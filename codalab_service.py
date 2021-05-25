@@ -338,6 +338,31 @@ CODALAB_ARGUMENTS = [
         help='Azure Batch service url for the Azure Batch worker manager',
     ),
     CodalabArg(
+        name='worker_manager_gcp_project',
+        type=str,
+        help='GCP project for the GCP Batch worker manager',
+    ),
+    CodalabArg(
+        name='worker_manager_gcp_gke_cluster',
+        type=str,
+        help='Name of the GKE cluster for the GCP Batch worker manager',
+    ),
+    CodalabArg(
+        name='worker_manager_gcp_gke_zone',
+        type=str,
+        help='Availability zone of the GKE cluster for the GCP Batch worker manager',
+    ),
+    CodalabArg(
+        name='worker_manager_gcp_credentials_path',
+        type=str,
+        help='Path to the GCP service account json file for the GCP Batch worker manager',
+    ),
+    CodalabArg(
+        name='worker_manager_gcp_cert_path',
+        type=str,
+        help='Path to the generated SSL cert for the GCP Batch worker manager',
+    ),
+    CodalabArg(
         name='worker_manager_aws_region',
         type=str,
         default='us-east-1',
@@ -915,6 +940,9 @@ class CodalabServiceManager(object):
         if self.args.worker_manager_type == 'azure-batch':
             self.bring_up_service('azure-batch-worker-manager-cpu')
             self.bring_up_service('azure-batch-worker-manager-gpu')
+        elif self.args.worker_manager_type == 'gcp-batch':
+            self.bring_up_service('gcp-batch-worker-manager-cpu')
+            self.bring_up_service('gcp-batch-worker-manager-gpu')
         elif self.args.worker_manager_type == 'aws-batch':
             self.bring_up_service('aws-batch-worker-manager-cpu')
             self.bring_up_service('aws-batch-worker-manager-gpu')

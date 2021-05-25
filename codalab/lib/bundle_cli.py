@@ -2368,7 +2368,11 @@ class BundleCLI(object):
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
-        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw):
+
+        # Show all hidden fields for root user
+        show_hidden = client.fetch('user')['is_root_user']
+
+        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)
@@ -4124,7 +4128,7 @@ class BundleCLI(object):
     @Commands.command(
         'ufarewell',
         help=[
-            'Delete user permanently. Root user only.',
+            'Delete user permanently. Only root user can delete other users. Non-root user can delete his/her own account.',
             'To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.',
         ],
         arguments=(Commands.Argument('user_spec', help='Username or id of user to delete.'),),

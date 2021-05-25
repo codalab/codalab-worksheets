@@ -186,7 +186,7 @@ def get_worksheet_lines(worksheet_info):
     return lines
 
 
-def get_formatted_metadata(cls, metadata, raw=False):
+def get_formatted_metadata(cls, metadata, raw=False, show_hidden=False):
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -196,7 +196,7 @@ def get_formatted_metadata(cls, metadata, raw=False):
     """
     result = []
     for spec in cls.METADATA_SPECS:
-        if spec.hidden:
+        if spec.hidden and not show_hidden:
             continue
         key = spec.key
         if not raw:

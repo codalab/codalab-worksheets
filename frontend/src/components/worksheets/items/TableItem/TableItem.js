@@ -262,7 +262,7 @@ class TableItem extends React.Component<{
         return (
             <div className='ws-item'>
                 <TableContainer style={{ overflowX: 'auto' }}>
-                    <Table className={tableClassName}>
+                    <Table className={tableClassName} style={{ marginBottom: '0' }}>
                         <TableHead>
                             <TableRow
                                 style={{
