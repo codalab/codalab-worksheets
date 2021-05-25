@@ -81,7 +81,7 @@ class DockerImageManager(ImageManager):
             float(image.attrs['VirtualSize']) for image in self._docker.images.list(self.CACHE_TAG)
         )
 
-    def _cleanup(self):
+    def cleanup(self):
         """
         Prunes the image cache for runs.
         1. Only care about images we (this DockerImageManager) downloaded and know about.

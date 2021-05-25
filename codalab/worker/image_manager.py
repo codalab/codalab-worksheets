@@ -51,8 +51,8 @@ class ImageManager:
         pass
 
     def get(self, image_spec: str) -> ImageAvailabilityState:
-        pass
+        raise NotImplementedError
 
     # should be implemented in subclasses
-    def _cleanup(self):
+    def cleanup(self):
         raise NotImplementedError
