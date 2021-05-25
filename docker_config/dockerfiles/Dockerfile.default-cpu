@@ -67,9 +67,9 @@ ENV SCALA_HOME /usr/share/java
 
 ## Python packages
 
-RUN pip2 install -U pip
+RUN python -m pip install --upgrade "pip < 21.0"
 RUN pip3 install -U pip
-
+RUN pip2 install -U setuptools 
 RUN pip2 install -U \
       numpy \
       scipy \
