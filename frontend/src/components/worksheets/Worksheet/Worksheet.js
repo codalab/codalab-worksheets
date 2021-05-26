@@ -1985,6 +1985,7 @@ class Worksheet extends React.Component {
                                     onClick={this.moveFocusToBottom}
                                     color='primary'
                                     variant='contained'
+                                    aria-label='Move focus to bottom'
                                     style={{
                                         borderRadius: '400px',
                                         position: 'fixed',
