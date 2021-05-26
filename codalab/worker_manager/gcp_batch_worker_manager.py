@@ -6,10 +6,9 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         'Running the worker manager requires the kubernetes module.\n'
-        'Please run: pip install kubernetes'
+        'Please run: pip install kubernetes google-cloud-container'
     )
 
-import base64
 import logging
 import os
 import uuid
@@ -29,19 +28,14 @@ class GCPBatchWorkerManager(WorkerManager):
     @staticmethod
     def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         # GCP arguments
-        subparser.add_argument('--project', type=str, help='Name of the GCP project', required=True)
-        subparser.add_argument('--cluster', type=str, help='Name of the GKE cluster', required=True)
         subparser.add_argument(
-            '--zone', type=str, help='The availability zone of the GKE cluster', required=True
+            '--cluster-host', type=str, help='Host address of the GKE cluster', required=True
         )
         subparser.add_argument(
-            '--credentials-path',
-            type=str,
-            help='Path to the GCP service account json file',
-            required=True,
+            '--auth-token', type=str, help='GKE cluster authorization token', required=True,
         )
         subparser.add_argument(
-            '--cert-path', type=str, default='.', help='Path to the generated SSL cert.'
+            '--cert-path', type=str, help='Path to the SSL cert for the GKE cluster', required=True
         )
 
         # Job-related arguments
@@ -65,28 +59,12 @@ class GCPBatchWorkerManager(WorkerManager):
                 'Valid credentials need to be set as environment variables: CODALAB_USERNAME and CODALAB_PASSWORD'
             )
 
-        # Authenticate via GCP
-        credentials: service_account.Credentials = service_account.Credentials.from_service_account_file(
-            self.args.credentials_path, scopes=['https://www.googleapis.com/auth/cloud-platform']
-        )
-
-        cluster_manager_client: ClusterManagerClient = ClusterManagerClient(credentials=credentials)
-        cluster = cluster_manager_client.get_cluster(
-            name=f'projects/{self.args.project}/locations/{self.args.zone}/clusters/{self.args.cluster}'
-        )
-
-        # Save SSL certificate to connect to the GKE cluster securely
-        cert_path = os.path.join(self.args.cert_path, 'gke.crt')
-        with open(cert_path, 'wb') as f:
-            f.write(base64.b64decode(cluster.master_auth.cluster_ca_certificate))
-
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
-        configuration.host = f'https://{cluster.endpoint}:443'
-        configuration.api_key = {'authorization': f'Bearer {credentials.token}'}
-        configuration.verify_ssl = True
-        configuration.ssl_ca_cert = cert_path
-        client.Configuration.set_default(configuration)
+        configuration.api_key_prefix['authorization'] = 'Bearer'
+        configuration.api_key['authorization'] = args.auth_token
+        configuration.host = args.cluster_host
+        configuration.ssl_ca_cert = args.cert_path
 
         self.k8_client: client.ApiClient = client.ApiClient(configuration)
         self.k8_api: client.CoreV1Api = client.CoreV1Api(self.k8_client)

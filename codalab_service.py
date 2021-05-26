@@ -338,24 +338,14 @@ CODALAB_ARGUMENTS = [
         help='Azure Batch service url for the Azure Batch worker manager',
     ),
     CodalabArg(
-        name='worker_manager_gcp_project',
+        name='worker_manager_gcp_cluster_host',
         type=str,
-        help='GCP project for the GCP Batch worker manager',
+        help='Host address of the GKE cluster for the GCP Batch worker manager',
     ),
     CodalabArg(
-        name='worker_manager_gcp_gke_cluster',
+        name='worker_manager_gcp_auth_token',
         type=str,
-        help='Name of the GKE cluster for the GCP Batch worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_gcp_gke_zone',
-        type=str,
-        help='Availability zone of the GKE cluster for the GCP Batch worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_gcp_credentials_path',
-        type=str,
-        help='Path to the GCP service account json file for the GCP Batch worker manager',
+        help='GKE cluster authorization token for the GCP Batch worker manager',
     ),
     CodalabArg(
         name='worker_manager_gcp_cert_path',
