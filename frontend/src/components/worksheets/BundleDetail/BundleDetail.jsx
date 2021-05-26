@@ -100,20 +100,12 @@ const BundleDetail = ({
     });
 
     const fetcherContents = (url) =>
-        apiWrapper.get(url).catch((error) => {
-            // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-            if (!error || !error.status || error.response.status !== 404) {
-                setBundleInfo(null);
-                setFileContents(null);
-                setStderr(null);
-                setStdout(null);
-                setErrorMessages((errorMessages) => errorMessages.concat([error]));
-            } else {
-                // If contents aren't available yet, then also clear stdout and stderr.
-                setFileContents(null);
-                setStderr(null);
-                setStdout(null);
-            }
+        apiWrapper.get(url).catch(( error) => {
+            // If contents aren't available yet, then also clear stdout and stderr.
+            setFileContents(null);
+            setStderr(null);
+            setStdout(null);
+            setErrorMessages((errorMessages) => errorMessages.concat([error]));
         });
 
     const urlContents =
