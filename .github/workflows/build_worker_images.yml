@@ -5,6 +5,7 @@ on:
       paths: ['docker_config/dockerfiles/default-*']
   release:
     types: [published]
+    paths: ['docker_config/dockerfiles/default-*']
 
 jobs:
   build_default:
