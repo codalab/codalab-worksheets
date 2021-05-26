@@ -173,7 +173,7 @@ def start_bundle_container(
 
     if runtime == NVIDIA_RUNTIME:
         # nvidia-docker runtime uses this env variable to allocate GPUs
-        environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
+        environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else ''
 
     # Name the container with the UUID for readability
     container_name = 'codalab_run_%s' % uuid
