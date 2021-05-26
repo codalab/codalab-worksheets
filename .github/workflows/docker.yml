@@ -1,14 +1,14 @@
-name: Push Default
+name: Build default worker images
 on:
-  # push:
-  #   branches: [ master ]
   push:
-    branches: [ auto-build ]
-    # paths: ['docker_config/dockerfiles/default-*']
+    branches: [ master ]
+      paths: ['docker_config/dockerfiles/default-*']
+  release:
+    types: [published]
 
 jobs:
   build_default:
-    name: Build Default Images
+    name: Build and push default worker images
     runs-on: ubuntu-latest
     strategy:
       matrix:
