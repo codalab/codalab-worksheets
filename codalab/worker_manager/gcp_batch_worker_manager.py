@@ -13,6 +13,8 @@ import uuid
 from argparse import ArgumentParser
 from typing import Any, Dict, List
 
+from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
+
 from .worker_manager import WorkerManager, WorkerJob
 
 
@@ -75,7 +77,7 @@ class GCPBatchWorkerManager(WorkerManager):
             )
             logger.debug(pods.items)
             return [WorkerJob(True) for _ in pods.items]
-        except client.ApiException as e:
+        except (client.ApiException, MaxRetryError, NewConnectionError) as e:
             logger.error(f'Exception when calling Kubernetes CoreV1Api->list_namespaced_pod: {e}')
             return []
 
@@ -130,5 +132,5 @@ class GCPBatchWorkerManager(WorkerManager):
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
         try:
             utils.create_from_dict(self.k8_client, config)
-        except (client.ApiException, FailToCreateError) as e:
+        except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
             logger.error(f'Exception when calling Kubernetes utils->create_from_dict: {e}')
