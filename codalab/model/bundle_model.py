@@ -58,6 +58,8 @@ from codalab.objects.user import User
 from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
+from codalab.worker.worker_run_state import RunStage
+
 
 logger = logging.getLogger(__name__)
 
@@ -527,7 +529,12 @@ class BundleModel(object):
                         alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
                     )
             elif key in ('.before', '.after'):
-                target_datetime = parser.isoparse(value)
+                try:
+                    target_datetime = parser.isoparse(value)
+                except ValueError:
+                    raise UsageError(
+                        "Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD."
+                    )
 
                 subclause = None
                 if key == '.before':
@@ -933,6 +940,14 @@ class BundleModel(object):
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
+        cpu_usage: float = 0.0
+        if 'cpu_usage' in worker_run.as_dict:
+            cpu_usage = worker_run.cpu_usage
+
+        memory_usage: int = 0
+        if 'memory_usage' in worker_run.as_dict:
+            memory_usage = worker_run.memory_usage
+
         metadata_update = {
             'run_status': worker_run.run_status,
             'last_updated': int(time.time()),
@@ -940,10 +955,26 @@ class BundleModel(object):
             'time_user': worker_run.container_time_user,
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
+            'cpu_usage': cpu_usage,
+            'memory_usage': memory_usage,
         }
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
+
+        if worker_run.bundle_profile_stats is not None:
+            metadata_update['time_preparing'] = worker_run.bundle_profile_stats[RunStage.PREPARING][
+                'elapsed'
+            ]
+            metadata_update['time_running'] = worker_run.bundle_profile_stats[RunStage.RUNNING][
+                'elapsed'
+            ]
+            metadata_update['time_cleaning_up'] = worker_run.bundle_profile_stats[
+                RunStage.CLEANING_UP
+            ]['elapsed']
+            metadata_update['time_uploading_results'] = worker_run.bundle_profile_stats[
+                RunStage.UPLOADING_RESULTS
+            ]['elapsed']
 
         self.update_bundle(
             bundle, {'state': worker_run.state, 'metadata': metadata_update}, connection
@@ -1375,6 +1406,8 @@ class BundleModel(object):
                 keyword = 'id=.sort-'
             elif keyword == '.shared':
                 keyword = '.shared=True'
+            elif keyword == '.notmine':
+                keyword = '.notmine=True'
 
             m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
             if m:
@@ -1406,6 +1439,8 @@ class BundleModel(object):
                         )
                     )
                 )
+            elif key == '.notmine':  # shared with any group I am in with read or all permission?
+                clause = getattr(cl_worksheet.c, 'owner_id') != (user_id or '')
             # Bundle fields
             elif key in ('id', 'uuid', 'name', 'title', 'owner_id'):
                 clause = make_condition(getattr(cl_worksheet.c, key), value)

@@ -101,14 +101,17 @@ def current_user():
     return user_id, user_name
 
 
-def create_user(context, username, password='codalab'):
+def create_user(context, username, password='codalab', disk_quota='100g'):
     # Currently there isn't a method for creating a user with the CLI. Use CodaLabManager instead.
     manager = CodaLabManager()
     model = manager.model()
 
+    # Set default disk quota
+    model.default_user_info['disk_quota'] = disk_quota
+
     # Creates a user without going through the full sign-up process
     model.add_user(
-        username, random_name(), '', '', password, '', user_id=username, is_verified=True
+        username, random_name(), '', '', password, '', user_id=username, is_verified=True,
     )
     context.collect_user(username)
 
@@ -231,6 +234,17 @@ def check_contains(true_value, pred_value):
         assert true_value in pred_value or re.search(
             true_value, pred_value
         ), "expected something that contains '%s', but got '%s'" % (true_value, pred_value)
+    return pred_value
+
+
+def check_not_contains(true_value, pred_value):
+    if isinstance(true_value, list):
+        for v in true_value:
+            check_not_contains(v, pred_value)
+    else:
+        assert (
+            true_value not in pred_value
+        ), "expected something that does not contain '%s', but got '%s'" % (true_value, pred_value)
     return pred_value
 
 
@@ -359,6 +373,7 @@ class ModuleContext(object):
         self.users = []
         self.worker_to_user = {}
         self.error = None
+        self.disk_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -376,6 +391,7 @@ class ModuleContext(object):
         temp_worksheet = _run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
+        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
 
         print("[*][*] BEGIN TEST")
 
@@ -423,6 +439,10 @@ class ModuleContext(object):
                     print('CAUGHT')
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
+
+        # Reset disk quota
+        if self.disk_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -739,6 +759,21 @@ def test_upload1(ctx):
         2 + 1, _run_command([cl, 'cat', uuid])
     )  # Directory listing with 2 headers lines and one file
 
+    # Upload a file that exceeds the disk quota
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    # we reset disk quota so tests added later don't fail on upload
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
+
+    # Run the same tests when on a non root user
+    create_user(ctx, 'non_root_user_dq', disk_quota='2')
+    switch_user('non_root_user_dq')
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    # Switch back to root user
+    switch_user('codalab')
+
 
 @TestModule.register('upload2')
 def test_upload2(ctx):
@@ -775,7 +810,7 @@ def test_upload2(ctx):
         # Upload it and unpack
         uuid = _run_command([cl, 'upload', archive_path])
         check_equals(os.path.basename(archive_path).replace(suffix, ''), get_info(uuid, 'name'))
-        check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/f1']))
+        check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1']))
 
         # Upload it but don't unpack
         uuid = _run_command([cl, 'upload', archive_path, '--pack'])
@@ -803,15 +838,21 @@ def test_upload3(ctx):
 
     # Upload URL that's an archive
     uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2'])
-    check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
+    check_contains(['bc-1.06.95'], _run_command([cl, 'cat', uuid]))
 
     # Upload URL with a query string, that's an archive
     uuid = _run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2?a=b'])
-    check_contains(['README', 'INSTALL', 'FAQ'], _run_command([cl, 'cat', uuid]))
+    check_contains(['bc-1.06.95'], _run_command([cl, 'cat', uuid]))
 
     # Upload URL from Git
     uuid = _run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], _run_command([cl, 'cat', uuid]))
+
+    # Uploading multiple URLs is not supported
+    _run_command(
+        [cl, 'upload', 'https://www.wikipedia.org', 'https://www.wikipedia.org'],
+        expected_exit_code=1,
+    )
 
 
 @TestModule.register('upload4')
@@ -826,10 +867,10 @@ def test_upload4(ctx):
         )
     uuid = _run_command([cl, 'upload'] + archive_exts)
 
-    # Make sure the names do not end with '.tar.gz' after being unpacked.
+    # Make sure the names do with '.tar.gz', because when we upload multiple archives, they
+    # should not get unpacked.
     check_contains(
-        [os.path.basename(archive_paths[0]) + r'\s', os.path.basename(archive_paths[1]) + r'\s'],
-        _run_command([cl, 'cat', uuid]),
+        [os.path.basename(ext) for ext in archive_exts], _run_command([cl, 'cat', uuid]),
     )
 
     # Cleanup
@@ -1000,6 +1041,9 @@ def test_worksheet_search(ctx):
     check_contains(group_wuuid[:8], _run_command([cl, 'wls', '.shared']))
     check_contains(group_wuuid[:8], _run_command([cl, 'wls', 'group={}'.format(group_uuid)]))
     check_contains(group_wuuid[:8], _run_command([cl, 'wls', 'group={}'.format(group_name)]))
+    # Check only search for shared worksheets not owned by the user
+    _run_command([cl, 'wperm', wuuid, group_name, 'r'])
+    check_not_contains(wuuid[:8], _run_command([cl, 'wls', '.shared', '.notmine']))
 
 
 @TestModule.register('worksheet_tags')
@@ -1287,6 +1331,10 @@ def test_run(ctx):
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
     check_contains('0x', get_info(uuid, 'data_hash'))
+    check_not_equals('0s', get_info(uuid, 'time_preparing'))
+    check_not_equals('0s', get_info(uuid, 'time_running'))
+    check_not_equals('0s', get_info(uuid, 'time_cleaning_up'))
+    check_not_equals('0s', get_info(uuid, 'time_uploading_results'))
 
     # test search
     check_contains(name, _run_command([cl, 'search', name]))

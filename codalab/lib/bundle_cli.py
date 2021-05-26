@@ -49,6 +49,7 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
+    DiskQuotaExceededError,
 )
 from codalab.lib import (
     file_util,
@@ -98,6 +99,7 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
+from codalab.worker.file_util import get_path_size
 
 
 # Command groupings
@@ -1214,7 +1216,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument(
                 'path',
-                help='Paths (or URLs) of the files/directories to upload.',
+                help='Paths of the files/directories to upload, or a single URL to upload.',
                 nargs='*',
                 completer=require_not_headless(FilesCompleter()),
             ),
@@ -1338,6 +1340,8 @@ class BundleCLI(object):
         elif any(map(path_util.path_is_url, args.path)):
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
+            if len(args.path) > 1:
+                raise UsageError("Only one URL can be specified at a time.")
             bundle_info['metadata']['source_url'] = str(args.path)
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
@@ -1362,6 +1366,15 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
+            # Calculate size of sources
+            total_bundle_size = sum([get_path_size(source) for source in sources])
+            user = client.fetch('user')
+            disk_left = user['disk_quota'] - user['disk_used']
+            if disk_left - total_bundle_size <= 0:
+                raise DiskQuotaExceededError(
+                    'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
+                    % (total_bundle_size, disk_left)
+                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -1402,7 +1415,6 @@ class BundleCLI(object):
                     params={
                         'filename': packed['filename'],
                         'unpack': packed['should_unpack'],
-                        'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
@@ -1608,7 +1620,6 @@ class BundleCLI(object):
                 params={
                     'filename': filename,
                     'unpack': unpack,
-                    'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_info['state'],  # copy bundle state
                     'finalize_on_success': True,
                 },
@@ -2357,7 +2368,11 @@ class BundleCLI(object):
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
-        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw):
+
+        # Show all hidden fields for root user
+        show_hidden = client.fetch('user')['is_root_user']
+
+        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)
@@ -3408,6 +3423,7 @@ class BundleCLI(object):
             '  wls tag=paper           : List worksheets tagged as "paper".',
             '  wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.',
             '  wls .mine               : List my worksheets.',
+            '  wls .notmine            : List the worksheets not owned by me.',
             '  wls .shared             : List worksheets that have been shared with any of the groups I am in.',
             '  wls .limit=10           : Limit the number of results to the top 10.',
         ],
@@ -4112,7 +4128,7 @@ class BundleCLI(object):
     @Commands.command(
         'ufarewell',
         help=[
-            'Delete user permanently. Root user only.',
+            'Delete user permanently. Only root user can delete other users. Non-root user can delete his/her own account.',
             'To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.',
         ],
         arguments=(Commands.Argument('user_spec', help='Username or id of user to delete.'),),

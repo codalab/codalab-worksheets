@@ -1,5 +1,6 @@
 // @flow
 import * as React from 'react';
+import { useEffect, useState } from 'react';
 import * as $ from 'jquery';
 // import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
@@ -8,243 +9,200 @@ import ConfigurationPanel from '../ConfigPanel';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
-import {findDOMNode} from "react-dom";
+import { findDOMNode } from 'react-dom';
+import useSWR from 'swr';
+import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
 
-class BundleDetail extends React.Component<
-    {
-        uuid: string,
-        // Callback on metadata change.
-        bundleMetadataChanged: () => void,
-        onClose: () => void,
-        onOpen: () => void,
-    },
-    {
-        errorMessages: string[],
-        bundleInfo: {},
-        fileContents: string,
-        stdout: string,
-        stderr: string,
-    }
-> {
+const BundleDetail = ({
+    uuid,
+    // Callback on metadata change.
+    bundleMetadataChanged,
+    onClose,
+    onOpen,
+    onUpdate,
+    rerunItem,
+    showNewRerun,
+    showDetail,
+    handleDetailClick,
+    editPermission,
+}) => {
+    const [errorMessages, setErrorMessages] = useState([]);
+    const [bundleInfo, setBundleInfo] = useState(null);
+    const [fileContents, setFileContents] = useState(null);
+    const [stdout, setStdout] = useState(null);
+    const [stderr, setStderr] = useState(null);
+    const [prevUuid, setPrevUuid] = useState(uuid);
+    const [open, setOpen] = useState(true);
 
-    static getDerivedStateFromProps(props, state) {
-        // Any time the current bundle uuid changes,
-        // clear the error messages and not the actual contents, so that in
-        // the side panel, the page doesn't flicker.
-        if (props.uuid !== state.prevUuid) {
-            return {
-                prevUuid: props.uuid,
-                errorMessages: [],
-            };
+    useEffect(() => {
+        if (uuid !== prevUuid) {
+            setPrevUuid(uuid);
+            setErrorMessages([]);
         }
-        return null;
-    }
+    }, [uuid]);
 
-    constructor(props) {
-        super(props);
-        this.state = {
-            errorMessages: [],
-            bundleInfo: null,
-            fileContents: null,
-            stdout: null,
-            stderr: null,
-            prevUuid: props.uuid,
-            open: true,
-            fetch: true,
-        };
-    }
+    // If info is not available yet, fetch
+    // If bundle is in a state that is possible to transition to a different state, fetch data
+    // we have ignored ready|failed|killed states here
+    const refreshInterval =
+        !bundleInfo ||
+        bundleInfo.state.match(
+            'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
+        )
+            ? 4000
+            : 0;
 
-    componentDidMount() {
-        this.fetchBundleMetaData();
-        this.fetchBundleContents();
-        this.timer = setInterval(()=>{ 
-            if (!this.state.bundleInfo){
-                // If info is not available yet, fetch
-                this.fetchBundleMetaData();
-                this.fetchBundleContents();
-                return;
-            }
-            if (this.state.bundleInfo.state.match("uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline")){
-                // If bundle is in a state that is possible to transition to a different state, fetch data
-                // we have ignored ready|failed|killed states here
-                this.fetchBundleMetaData();
-                this.fetchBundleContents();
-            } else{
-                // otherwise just clear the timer
-                clearInterval(this.timer);
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (onOpen) {
+                onOpen();
             }
         }, 4000);
-        if(this.props.onOpen){
-            this.props.onOpen();
-        }
-    }
+        return () => clearInterval(timer);
+    }, []);
 
-    componentWillUnmount() {
-        // Clear the timer
-        clearInterval(this.timer);
-    }
-
-    /**
-     * Return a Promise to fetch the summary of the given file.
-     * @param uuid  uuid of bundle
-     * @param path  path within the bundle
-     * @return  jQuery Deferred object
-     */
-    fetchFileSummary(uuid, path) {
-        return $.ajax({
+    const fetcherMetadata = (url) =>
+        fetch(url, {
             type: 'GET',
-            url: '/rest/bundles/' + uuid + '/contents/blob' + path,
-            data: {
-                head: 50,
-                tail: 50,
-                truncation_text: '\n... [truncated] ...\n\n',
-            },
-            dataType: 'text',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        });
-    }
-
-    fetchBundleMetaData = () => {
-        const { uuid } = this.props;
-
-        $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid,
-            data: {
-                include_display_metadata: 1,
-                include: 'owner,group_permissions,host_worksheets',
-            },
+            url: url,
             dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        }).then(function(response) {
+        })
+            .then((r) => {
+                return r.json();
+            })
+            .catch((error) => {
+                setBundleInfo(null);
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
+                setErrorMessages((errorMessages) => errorMessages.concat([error]));
+            });
+
+    const urlMetadata =
+        '/rest/bundles/' +
+        uuid +
+        '?' +
+        new URLSearchParams({
+            include_display_metadata: 1,
+            include: 'owner,group_permissions,host_worksheets',
+        }).toString();
+
+    const { dataMetadata, errorMetadata, mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
+        revalidateOnMount: true,
+        refreshInterval: refreshInterval,
+        onSuccess: (response, key, config) => {
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
             bundleInfo.metadataType = response.data.meta.metadata_type;
-            this.setState({ bundleInfo });
-        }).fail(function(xhr, status, err) {
-            this.setState({
-                bundleInfo: null,
-                fileContents: null,
-                stdout: null,
-                stderr: null,
-                errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+            setBundleInfo(bundleInfo);
+        },
+    });
+
+    const fetcherContents = (url) =>
+        apiWrapper.get(url).catch(( error) => {
+            // If contents aren't available yet, then also clear stdout and stderr.
+            setFileContents(null);
+            setStderr(null);
+            setStdout(null);
+            setErrorMessages((errorMessages) => errorMessages.concat([error]));
+        });
+
+    const urlContents =
+        '/rest/bundles/' + uuid + '/contents/info/' + '?' + new URLSearchParams({ depth: 1 });
+
+    const updateBundleDetail = (response) => {
+        const info = response.data;
+        if (!info) return;
+        if (info.type === 'file' || info.type === 'link') {
+            return fetchFileSummary(uuid, '/').then(function(blob) {
+                setFileContents(blob);
+                setStderr(null);
+                setStdout(null);
             });
-        });
+        } else if (info.type === 'directory') {
+            // Get stdout/stderr (important to set things to null).
+            let fetchRequests = [];
+            let stateUpdate = {
+                fileContents: null,
+            };
+            ['stdout', 'stderr'].forEach(function(name) {
+                if (info.contents.some((entry) => entry.name === name)) {
+                    fetchRequests.push(
+                        fetchFileSummary(uuid, '/' + name).then(function(blob) {
+                            stateUpdate[name] = blob;
+                        }),
+                    );
+                } else {
+                    stateUpdate[name] = null;
+                }
+            });
+            Promise.all(fetchRequests).then((r) => {
+                setFileContents(stateUpdate['fileContents']);
+                if ('stdout' in stateUpdate) {
+                    setStdout(stateUpdate['stdout']);
+                }
+                if ('stderr' in stateUpdate) {
+                    setStderr(stateUpdate['stderr']);
+                }
+            });
+        }
+    };
+    useSWR(urlContents, fetcherContents, {
+        revalidateOnMount: true,
+        refreshInterval: refreshInterval,
+        onSuccess: (response) => {
+            updateBundleDetail(response);
+        },
+    });
+
+    const scrollToNewlyOpenedDetail = (node) => {
+        // Only scroll to the bundle detail when it is opened
+        if (node && open) {
+            findDOMNode(node).scrollIntoView({ block: 'center' });
+            // Avoid undesirable scroll
+            setOpen(false);
+        }
+    };
+
+    if (!bundleInfo) {
+        return <div></div>;
+    }
+    if (bundleInfo.bundle_type === 'private') {
+        return <div>Detail not available for this bundle</div>;
     }
 
-    // Fetch bundle contents
-    fetchBundleContents = () => {
-        const { uuid } = this.props;
-
-        $.ajax({
-            type: 'GET',
-            url: '/rest/bundles/' + uuid + '/contents/info/',
-            data: {
-                depth: 1,
-            },
-            dataType: 'json',
-            cache: false,
-            context: this, // automatically bind `this` in all callbacks
-        }).then(async function(response) {
-            const info = response.data;
-            if (!info) return;
-            if (info.type === 'file' || info.type === 'link') {
-                return this.fetchFileSummary(uuid, '/').then(function(blob) {
-                    this.setState({ fileContents: blob, stdout: null, stderr: null });
-                });
-            } else if (info.type === 'directory') {
-                // Get stdout/stderr (important to set things to null).
-                let fetchRequests = [];
-                let stateUpdate = {
-                    fileContents: null,
-                };
-                ['stdout', 'stderr'].forEach(
-                    function(name) {
-                        if (info.contents.some((entry) => entry.name === name)) {
-                            fetchRequests.push(
-                                this.fetchFileSummary(uuid, '/' + name).then(
-                                    function(blob) {
-                                        stateUpdate[name] = blob;
-                                    },
-                                ),
-                            );
-                        } else {
-                            stateUpdate[name] = null;
-                        }
-                    }.bind(this),
-                );
-                await Promise.all(fetchRequests);
-                this.setState(stateUpdate);
-            }
-        }).fail(function(xhr, status, err) {
-            // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-            if (xhr.status !== 404) {
-                this.setState({
-                    bundleInfo: null,
-                    fileContents: null,
-                    stdout: null,
-                    stderr: null,
-                    errorMessages: this.state.errorMessages.concat([xhr.responseText]),
-                });
-            } else {
-                // If contents aren't available yet, then also clear stdout and stderr.
-                this.setState({ fileContents: null, stdout: null, stderr: null });
-            }
-        });
-    }
-  
-    render(): React.Node {
-        const { bundleMetadataChanged,
-            onUpdate,
-            rerunItem, showNewRerun,
-            showDetail, handleDetailClick,
-            editPermission } = this.props;
-        const {
-            bundleInfo,
-            stdout,
-            stderr,
-            fileContents } = this.state;
-        if (!bundleInfo){
-            return <div></div>
-        }
-        if (bundleInfo.bundle_type === 'private') {
-            return <div>Detail not available for this bundle</div>
-        }
-
-        return (
-            <ConfigurationPanel
-                //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
-                ref={(node) => this.scrollToNewlyOpenedDetail(node)}
-                buttons={ <BundleActions
+    return (
+        <ConfigurationPanel
+            //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
+            ref={(node) => scrollToNewlyOpenedDetail(node)}
+            buttons={
+                <BundleActions
                     showNewRerun={showNewRerun}
                     showDetail={showDetail}
                     handleDetailClick={handleDetailClick}
-                    bundleInfo={ bundleInfo }
-                    rerunItem={ rerunItem }
-                    onComplete={ bundleMetadataChanged }
-                    editPermission={editPermission} /> }
-                sidebar={ <BundleDetailSideBar bundleInfo={ bundleInfo } onUpdate={ onUpdate } onMetaDataChange={ this.fetchBundleMetaData } /> }
-            >
-                <MainContent
-                    bundleInfo={ bundleInfo }
-                    stdout={ stdout }
-                    stderr={ stderr }
-                    fileContents={ fileContents }
+                    bundleInfo={bundleInfo}
+                    rerunItem={rerunItem}
+                    onComplete={bundleMetadataChanged}
+                    editPermission={editPermission}
                 />
-            </ConfigurationPanel>
-        );
-  }
-    scrollToNewlyOpenedDetail(node) {
-        // Only scroll to the bundle detail when it is opened
-        if (node && this.state.open) {
-            findDOMNode(node).scrollIntoView({block:'center'});
-            // Avoid undesirable scroll
-            this.setState({open:false})
-        }
-    }
-}
+            }
+            sidebar={
+                <BundleDetailSideBar
+                    bundleInfo={bundleInfo}
+                    onUpdate={onUpdate}
+                    onMetaDataChange={mutateMetadata}
+                />
+            }
+        >
+            <MainContent
+                bundleInfo={bundleInfo}
+                stdout={stdout}
+                stderr={stderr}
+                fileContents={fileContents}
+            />
+        </ConfigurationPanel>
+    );
+};
 
 export default BundleDetail;

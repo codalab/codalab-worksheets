@@ -325,6 +325,7 @@ class WorksheetItemList extends React.Component {
                         // (otherwise, chrome will not call onchange on a file input when
                         // the file hasn't changed)
                         onUploadFinish={(e) => this.setState({ newUploadKey: Math.random() + '' })}
+                        focusedItem={focusedItem}
                     />
                     <ImageEditor
                         key={this.state.newUploadKey + 1}

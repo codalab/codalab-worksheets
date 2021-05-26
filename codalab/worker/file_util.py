@@ -7,9 +7,17 @@ import subprocess
 import bz2
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
+from codalab.common import parse_linked_bundle_url
+from codalab.worker.un_gzip_stream import BytesBuffer
+from codalab.worker.tar_subdir_stream import TarSubdirStream
+from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
+import tarfile
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
+from codalab.lib.beam.streamingzipfile import StreamingZipFile
+from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -141,7 +149,7 @@ def zip_directory(
             raise IOError(e.output)
 
 
-def unzip_directory(fileobj_or_name, directory_path, force=False):
+def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False):
     """
     Extracts the given file-like object containing a zip archive into the given
     directory, which will be created and should not already exist. If it already exists,
@@ -153,40 +161,170 @@ def unzip_directory(fileobj_or_name, directory_path, force=False):
         remove_path(directory_path)
     os.mkdir(directory_path)
 
-    def do_unzip(filename):
-        # TODO(Ashwin): preserve permissions with -X.
-        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
-        if exitcode != 0:
-            raise UsageError('Invalid archive upload. ')
-
-    # If fileobj_or_name is a file object, we have to save it
-    # to a temporary file, because unzip doesn't accept input from standard input.
-    if not isinstance(fileobj_or_name, str):
-        with tempfile.NamedTemporaryFile() as f:
-            shutil.copyfileobj(fileobj_or_name, f)
-            f.seek(0)
-            do_unzip(f.name)
-    else:
-        # In this case, fileobj_or_name is a file name.
-        do_unzip(fileobj_or_name)
+    with StreamingZipFile(fileobj) as zf:
+        for member in zf:  # type: ignore
+            # Make sure that there is no trickery going on (see note in
+            # ZipFile.extractall() documentation).
+            member_path = os.path.realpath(os.path.join(directory_path, member.filename))
+            if not member_path.startswith(directory_path):
+                raise UsageError('Archive member extracts outside the directory.')
+            zf.extract(member, directory_path)
 
 
-def open_file(file_path, mode='r', compression_type=CompressionTypes.UNCOMPRESSED):
+class OpenIndexedArchiveFile(object):
+    """Open an archive file (.tar.gz / .gz) specified by the provided path on Azure Blob Storage.
+    Also reads this file's associated index.sqlite file, then opens the file as an
+    SQLiteIndexedTar object.
+
+    This way, the archive file can be read and specific files can be extracted without
+    needing to download the entire archive file.
+
+    Returns the SQLiteIndexedTar object.
     """
-    Opens the given file. Can be in a directory.
+
+    def __init__(self, path: str):
+        self.f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
+        self.path = path
+        with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as index_fileobj:
+            self.index_file_name = index_fileobj.name
+            shutil.copyfileobj(
+                FileSystems.open(
+                    parse_linked_bundle_url(self.path).index_path,
+                    compression_type=CompressionTypes.UNCOMPRESSED,
+                ),
+                index_fileobj,
+            )
+
+    def __enter__(self) -> SQLiteIndexedTar:
+        return SQLiteIndexedTar(
+            fileObject=self.f,
+            tarFileName="contents",
+            writeIndex=False,
+            clearIndexCache=False,
+            indexFileName=self.index_file_name,
+        )
+
+    def __exit__(self, type, value, traceback):
+        os.remove(self.index_file_name)
+
+
+class OpenFile(object):
+    """Opens the file indicated by the given file path and returns a handle
+    to the associated file object. Can be in a directory.
+
+    The file path can also refer to an archive file on Blob Storage.
     """
-    return FileSystems.open(file_path, mode, compression_type)
+
+    path: str
+    mode: str
+    gzipped: bool
+
+    def __init__(self, path: str, mode='rb', gzipped=False):
+        """Initialize OpenFile.
+
+        Args:
+            path (str): Path to open; can be a path on disk or a path on Blob Storage.
+            mode (str): Mode with which to open the file. Default is "rb". This is only
+            gzipped (bool): Whether the output should be gzipped. Must be True if downloading a directory;
+                can be True or False if downloading a file. Note that as of now, gzipping local files from disk
+                from OpenFile is not yet supported (only from Blob Storage).
+        """
+        self.path = path
+        self.mode = mode
+        self.gzipped = gzipped
+
+    def __enter__(self) -> IO[bytes]:
+        linked_bundle_path = parse_linked_bundle_url(self.path)
+        if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
+            # Stream an entire, single .gz file from Blob Storage. This is gzipped by default,
+            # so if the user requested a gzipped version of the entire file, just read and return it.
+            if not linked_bundle_path.is_archive_dir and self.gzipped:
+                return FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
+            # Stream an entire, single .tar.gz file from Blob Storage. This is gzipped by default,
+            # and directories are always gzipped, so just read and return it.
+            if linked_bundle_path.is_archive_dir and not linked_bundle_path.archive_subpath:
+                if not self.gzipped:
+                    raise IOError("Directories must be gzipped.")
+                return FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
+            # If a file path is specified within an archive file on Blob Storage, open the specified path within the archive.
+            with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
+                isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+                # If the archive file is a .tar.gz file, open the specified archive subpath within the archive.
+                # If it is a .gz file, open the "/contents" entry, which represents the actual gzipped file.
+                fpath = (
+                    "/" + linked_bundle_path.archive_subpath
+                    if linked_bundle_path.is_archive_dir
+                    else "/contents"
+                )
+                finfo = cast(FileInfo, tf.getFileInfo(fpath))
+                if finfo is None:
+                    raise FileNotFoundError(fpath)
+                if isdir(finfo):
+                    # Stream a directory from within the archive
+                    if not self.gzipped:
+                        raise IOError("Directories must be gzipped.")
+                    return GzipStream(TarSubdirStream(self.path))
+                else:
+                    # Stream a single file from within the archive
+                    fs = TarFileStream(tf, finfo)
+                    return GzipStream(fs) if self.gzipped else fs
+        else:
+            # Stream a directory or file from disk storage.
+            if os.path.isdir(self.path):
+                if not self.gzipped:
+                    raise IOError("Directories must be gzipped.")
+                return tar_gzip_directory(self.path)
+            if self.gzipped:
+                raise IOError(
+                    "Gzipping local files from disk from OpenFile is not yet supported. Please use file_util.gzip_file instead."
+                )
+            return open(self.path, self.mode)
+
+    def __exit__(self, type, value, traceback):
+        pass
 
 
-def gzip_file(file_path):
+class GzipStream(BytesIO):
+    """A stream that gzips a file in chunks.
+    """
+
+    def __init__(self, fileobj: IO[bytes]):
+        self.__input = fileobj
+        self.__buffer = BytesBuffer()
+        self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+
+    def read(self, num_bytes=None) -> bytes:
+        while num_bytes is None or len(self.__buffer) < num_bytes:
+            s = self.__input.read(num_bytes)
+            if not s:
+                self.__gzip.close()
+                break
+            self.__gzip.write(s)
+        return self.__buffer.read(num_bytes)
+
+    def close(self):
+        self.__input.close()
+
+
+def gzip_file(file_path: str) -> IO[bytes]:
     """
     Returns a file-like object containing the gzipped version of the given file.
     Note: For right now, it's important for gzip to run in a separate process,
     otherwise things on CodaLab grind to a halt!
     """
+
+    if parse_linked_bundle_url(file_path).uses_beam:
+        try:
+            with OpenFile(file_path, gzipped=True) as file_path_obj:
+                return file_path_obj
+        except Exception as e:
+            raise IOError(e)
+
     args = ['gzip', '-c', '-n', file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        if proc.stdout is None:
+            raise IOError("Stdout is empty")
         return proc.stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
@@ -202,7 +340,7 @@ def un_bz2_file(source, dest_path):
     # fileno(). Our version requires only read() and close().
 
     BZ2_BUFFER_SIZE = 100 * 1024 * 1024  # Unzip in chunks of 100MB
-    with FileSystems.create(dest_path, compression_type=CompressionTypes.UNCOMPRESSED) as dest:
+    with open(dest_path, 'wb') as dest:
         decompressor = bz2.BZ2Decompressor()
         for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
             dest.write(decompressor.decompress(data))
@@ -233,11 +371,25 @@ def get_file_size(file_path):
     Gets the size of the file, in bytes. If file is not found, raises a
     FileNotFoundError.
     """
+    linked_bundle_path = parse_linked_bundle_url(file_path)
+    if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
+        # If no archive subpath is specified for a .tar.gz or .gz file, get the compressed size of the entire file.
+        if not linked_bundle_path.archive_subpath:
+            filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+            return filesystem.size(linked_bundle_path.bundle_path)
+        # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
+        # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
+        with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
+            assert linked_bundle_path.is_archive_dir
+            fpath = "/" + linked_bundle_path.archive_subpath
+            finfo = tf.getFileInfo(fpath)
+            if finfo is None:
+                raise FileNotFoundError(fpath)
+            return finfo.size
     if not get_path_exists(file_path):
-        raise FileNotFoundError
-    # TODO: add a FileSystems.size() method to Apache Beam to make this less verbose.
-    filesystem = FileSystems.get_filesystem(file_path)
-    return filesystem.size(file_path)
+        raise FileNotFoundError(file_path)
+    # Local path
+    return os.stat(file_path).st_size
 
 
 def read_file_section(file_path, offset, length):
@@ -247,7 +399,7 @@ def read_file_section(file_path, offset, length):
     """
     if offset >= get_file_size(file_path):
         return b''
-    with open_file(file_path, 'rb') as fileobj:
+    with OpenFile(file_path, 'rb') as fileobj:
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
@@ -273,7 +425,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     except FileNotFoundError:
         return NONE_PLACEHOLDER
 
-    with TextIOWrapper(open_file(file_path)) as fileobj:
+    with OpenFile(file_path) as f, TextIOWrapper(f) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the
@@ -336,6 +488,15 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
     If ignore_nonexistent_path is True and the input path is nonexistent, the value
     0 is returned. Else, an exception is raised (FileNotFoundError).
     """
+    if parse_linked_bundle_url(path).uses_beam:
+        # On Azure, use Apache Beam methods, not native os methods,
+        # to get the path size.
+
+        # Get the size of the specified path (file / directory).
+        # This will only get the right size of files, not of directories (but we don't
+        # store any bundles as directories on Azure).
+        return get_file_size(path)
+
     try:
         result = os.lstat(path).st_size
     except FileNotFoundError:

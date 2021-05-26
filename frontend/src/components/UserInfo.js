@@ -5,6 +5,16 @@ import _ from 'underscore';
 import { renderSize, renderDuration } from '../util/worksheet_utils';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
+import { apiWrapper, defaultErrorHandler, getUser, updateUser } from '../util/apiWrapper';
+import DeleteIcon from '@material-ui/icons/Delete';
+import Button from '@material-ui/core/Button';
+import TextField from '@material-ui/core/TextField';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import Divider from '@material-ui/core/Divider';
 
 /**
  * This stateful component ___.
@@ -42,21 +52,14 @@ class UserInfo extends React.Component {
     }
 
     componentDidMount() {
-        $.ajax({
-            method: 'GET',
-            url: '/rest/user',
-            dataType: 'json',
-        })
-            .done((response) => {
-                this.setState({
-                    user: this.processData(response),
-                });
-            })
-            .fail((xhr, status, err) => {
-                this.setState({
-                    errors: xhr.responseText,
-                });
+        const callback = (data) => {
+            this.setState({
+                user: this.processData(data),
             });
+        };
+        getUser()
+            .then(callback)
+            .catch(defaultErrorHandler);
     }
 
     handleChange = (key, value) => {
@@ -66,38 +69,14 @@ class UserInfo extends React.Component {
         newUser.attributes[key] = value;
 
         // Push changes to server
-        $.ajax({
-            method: 'PATCH',
-            url: '/rest/user',
-            data: JSON.stringify({ data: newUser }),
-            dataType: 'json',
-            contentType: 'application/json',
-            context: this,
-            xhr: function() {
-                // Hack for IE < 9 to use PATCH method
-                return window.XMLHttpRequest === null ||
-                    new window.XMLHttpRequest().addEventListener === null
-                    ? new window.ActiveXObject('Microsoft.XMLHTTP')
-                    : $.ajaxSettings.xhr();
-            },
-        })
-            .done(function(response) {
-                // Update state to reflect changed profile
-                var errors = $.extend({}, this.state.errors);
-                delete errors[key];
-                this.setState({
-                    user: this.processData(response),
-                    errors: errors,
-                });
-            })
-            .fail(function(xhr, status, err) {
-                // Update errors for the specified field to pick up
-                var errors = $.extend({}, this.state.errors);
-                errors[key] = xhr.responseText;
-                this.setState({
-                    errors: errors,
-                });
+        const callback = (data) => {
+            this.setState({
+                user: this.processData(data),
             });
+        };
+        updateUser(newUser)
+            .then(callback)
+            .catch(defaultErrorHandler);
     };
 
     /** Renderer. */
@@ -239,6 +218,7 @@ class UserInfo extends React.Component {
                                 title='Send me general updates about new features (once a month).'
                                 fieldKey='2'
                             />
+                            <DeleteAccountDialog user={this.state.user} />
                         </form>
                     )}
                 </ContentWrapper>
@@ -371,6 +351,85 @@ class AccountProfileField extends React.Component {
             </div>
         );
     }
+}
+
+function DeleteAccountDialog(user) {
+    const [open, setOpen] = React.useState(false);
+    const [message, setMessage] = React.useState('');
+
+    const handleClickOpen = () => {
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+    };
+
+    const deleteAccount = () => {
+        if (message !== 'Delete my account') {
+            alert(
+                'Please type "Delete my account" to verify your intention to delete your account. Case sensitive.',
+            );
+            return;
+        }
+        setOpen(false);
+        apiWrapper
+            .executeCommand('ufarewell ' + user.user.id)
+            .then((data) => {
+                window.location.href = 'https://worksheets.codalab.org';
+            })
+            .catch((error) => alert(error));
+    };
+
+    return (
+        <div>
+            <Divider style={{ marginBottom: '30px' }} />
+            <h2 style={{ color: '#bc3638' }}>Delete account</h2>
+            <p>
+                To be safe, you can only delete your account if you do not own any bundles,
+                worksheets, or groups.
+            </p>
+            <Button
+                variant='contained'
+                startIcon={<DeleteIcon />}
+                onClick={handleClickOpen}
+                style={{ backgroundColor: '#bc3638', color: 'white' }}
+            >
+                Delete your account
+            </Button>
+            <Dialog open={open} onClose={handleClose} aria-labelledby='delete-account-title'>
+                <DialogTitle id='delete-account-title'>
+                    {' '}
+                    Are you sure you want to delete your account?
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        <p>Once you delete your account, you can not return back.</p>
+                        <p>
+                            Please ensure that you do not own any bundles, worksheets, or groups
+                            before deleting your account; otherwise the deletion will fail.
+                        </p>
+                        <br />
+                    </DialogContentText>
+                    <TextField
+                        autoFocus
+                        id='message'
+                        label='To verify, type "Delete my account" below:'
+                        onChange={(e) => setMessage(e.target.value)}
+                        fullWidth
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClose} color='primary'>
+                        Cancel
+                    </Button>
+                    <Button onClick={deleteAccount} style={{ color: 'red' }}>
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </div>
+    );
 }
 
 export default UserInfo;
