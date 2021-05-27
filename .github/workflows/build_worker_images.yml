@@ -34,5 +34,5 @@ jobs:
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
           # Gives us the branch name of the PR if on a pull_request-triggered build,
           # otherwise, "master" if on a push-triggered build
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ (github.event_name == 'release' && 'latest') || github.head_ref || 'master' }}
           SERVICE: ${{ matrix.service }}
