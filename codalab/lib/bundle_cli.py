@@ -1375,7 +1375,7 @@ class BundleCLI(object):
                     'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
                     % (total_bundle_size, disk_left)
                 )
-            print("Bundle of size %d meets the disk quota requirement of %d, continuing..." % (total_bundle_size, disk_left), file=self.stderr)
+            print("Bundle of size %s meets the disk quota requirement of %s, continuing..." % (FileTransferProgress.format_size(total_bundle_size), FileTransferProgress.format_size(disk_left)), file=self.stderr)
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
                 print(
