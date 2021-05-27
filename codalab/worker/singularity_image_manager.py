@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 
 from codalab.lib.formatting import size_str
@@ -6,7 +7,6 @@ from codalab.worker.docker_image_manager import ImageAvailabilityState
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.image_manager import ImageManager
 from codalab.worker.singularity_utils import get_singularity_container_size
-from codalab.worker.state_committer import JsonStateCommitter
 from spython.main import Client
 
 logger = logging.getLogger(__name__)
@@ -14,14 +14,28 @@ logger = logging.getLogger(__name__)
 
 class SingularityImageManager(ImageManager):
 
-    # IMAGE_CACHE_DIRdo
-
     def __init__(self, max_image_size: int, max_image_cache_size: int, image_folder: str):
+        """
+        image_folder needs to be an absolute path
+        """
         super().__init__(max_image_size, max_image_cache_size)
+        if not os.path.isdir(image_folder):
+            raise ValueError("image_folder %s is not an absolute path" % image_folder)
         self.image_folder = image_folder
 
-    # This will for now be built without caching - thats a little more complicated.
+    def cleanup(self):
+        files = os.listdir(self.image_folder)
+        for f in files:
+            os.remove(os.path.join(self.image_folder, f))
+
     def get(self, image_spec):
+        """
+        This will for now be built without caching - thats a little more complicated.
+        image_spec is in singularity format:
+        - Docker: 'docker://<image>'
+        - Sylabs Cloud hub: 'library://<image>'
+        - Singularity Hub (deprecated): 'shub://<image>'
+        """
         if image_spec in self._downloading:
             with self._downloading[image_spec]['lock']:
                 if self._downloading[image_spec].is_alive():
@@ -50,7 +64,7 @@ class SingularityImageManager(ImageManager):
                     return status
         else:
             def download():
-                logger.debug('Downloading Docker image %s', image_spec)
+                logger.debug('Downloading image %s', image_spec)
                 try:
                     # stream=True for singularity doesnt return progress or anything really - for now no progess
                     img = Client.pull(image_spec, pull_folder=self.image_folder)
