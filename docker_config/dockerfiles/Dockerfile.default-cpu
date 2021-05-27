@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y \
     python-dev \	
     python-software-properties \	
     python-tk \
-    software-properties-common \
     build-essential \
     cmake \
     libhdf5-dev \
