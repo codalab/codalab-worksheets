@@ -1,7 +1,7 @@
 name: Build default worker images
 # Default images are built and pushed when pushed to master, release, and pull request, 
 # and only when the corresponding dockerfiles are changed.
-# This workflow ensures the worker images are up-to-date on docker hub.
+# This workflow ensures the worker images are up-to-date on Docker Hub.
 on:
   push:
     branches: [master]
