@@ -65,7 +65,7 @@ RUN wget http://scala-lang.org/files/archive/scala-$SCALA_VERSION.deb && \
 ENV SCALA_HOME /usr/share/java
 
 ## Python packages
-
+# Newer pip dropped the support for python 2 so we need to specify the version.
 RUN python -m pip install --upgrade "pip < 21.0"
 RUN pip3 install -U pip
 RUN pip2 install -U setuptools 
