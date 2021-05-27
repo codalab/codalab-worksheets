@@ -117,4 +117,3 @@ RUN python3 -m pip install -U \
       torch==1.1.0 \
       torchvision
 
-RUN rm -rf /var/lib/apt/lists/*
