@@ -194,9 +194,10 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 
     def test_get_file_size(self):
         _, fname = self.create_file()
-        self.assertEqual(get_file_size(fname), 11)
+        self.assertEqual(get_file_size(fname), 31)
 
         _, dirname = self.create_directory()
+        self.assertEqual(get_file_size(dirname), 249)
         self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
 
     def test_read_file_section(self):

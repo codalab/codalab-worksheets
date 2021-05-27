@@ -2368,7 +2368,11 @@ class BundleCLI(object):
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
-        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw):
+
+        # Show all hidden fields for root user
+        show_hidden = client.fetch('user')['is_root_user']
+
+        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)
