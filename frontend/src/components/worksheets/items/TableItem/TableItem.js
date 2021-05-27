@@ -262,7 +262,6 @@ class TableItem extends React.Component<{
         return (
             <div className='ws-item'>
                 <TableContainer style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-                    {/*The 0.5px margin space is for the divider between table header and table body*/}
                     <Table className={tableClassName} style={{ marginBottom: '0.5px' }}>
                         <TableHead>
                             <TableRow
