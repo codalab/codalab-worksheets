@@ -15,8 +15,7 @@ RUN apt-get update && apt-get install -y \
     git \
     python2.7 \	
     python-pip \	
-    python-dev \	
-    python-software-properties \	
+    python-dev \		
     python-tk \
     build-essential \
     cmake \
