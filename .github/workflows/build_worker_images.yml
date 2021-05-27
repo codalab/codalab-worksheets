@@ -5,12 +5,12 @@ name: Build default worker images
 on:
   push:
     branches: [master]
-    paths: ["docker_config/dockerfiles/default-*"]
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
   release:
     types: [published]
-    paths: ["docker_config/dockerfiles/default-*"]
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
   pull_request:
-    paths: ["docker_config/dockerfiles/default-*"]
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
 
 jobs:
   build_default:
