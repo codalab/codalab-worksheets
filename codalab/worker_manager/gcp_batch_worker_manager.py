@@ -1,6 +1,13 @@
 try:
     from google.cloud.container_v1 import ClusterManagerClient  # type: ignore
     from google.oauth2 import service_account  # type: ignore
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        'Running the worker manager requires the kubernetes module.\n'
+        'Please run: pip install google-cloud-container'
+    )
+
+try:
     from kubernetes import client, utils  # type: ignore
     from kubernetes.utils.create_from_yaml import FailToCreateError  # type: ignore
 except ModuleNotFoundError:
