@@ -15,16 +15,16 @@ RUN apt-get update && apt-get install -y \
     git \
     python2 \
     python2-dev \
-    curl
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
-RUN python2 get-pip.py	
-RUN apt-get install -y \
-    software-properties-common \
+    curl \
     build-essential \
     cmake \
     libhdf5-dev \
     swig \
     wget
+
+RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
+RUN python2 get-pip.py	
+
 
 ## Python 3.6
 RUN add-apt-repository ppa:deadsnakes/ppa && \
