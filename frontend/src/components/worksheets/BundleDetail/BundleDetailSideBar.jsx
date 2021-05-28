@@ -160,7 +160,7 @@ class BundleDetailSideBar extends React.Component<
                                 </div>        
                         </CopyToClipboard>
                         <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
-                            {bundleInfo.command}
+                             <pre>{bundleInfo.command} </pre>
                         </div>
                     </Grid>
                 }
