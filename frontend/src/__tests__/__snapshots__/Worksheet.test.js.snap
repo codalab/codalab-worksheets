@@ -732,6 +732,7 @@ Object {
                 </div>
               </div>
               <button
+                aria-label="Move focus to bottom"
                 class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-contained-126 MuiButton-containedPrimary-127 MuiButton-raised-129 MuiButton-raisedPrimary-130"
                 style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px; z-index: 10;"
                 tabindex="0"
@@ -800,17 +801,7 @@ Object {
           <li
             class="MuiButtonBase-root-141 MuiListItem-root-226 MuiListItem-default-229 MuiListItem-gutters-234 MuiListItem-button-235 MuiMenuItem-root-223 WithStyles-MenuItem--root-222 MuiMenuItem-gutters-224"
             role="menuitem"
-            style="position: absolute; overflow: hidden; height: 1px; width: 1px; margin: -1px; padding: 0px; border: 0px;"
             tabindex="0"
-          >
-            <span
-              class="MuiTouchRipple-root-238"
-            />
-          </li>
-          <li
-            class="MuiButtonBase-root-141 MuiListItem-root-226 MuiListItem-default-229 MuiListItem-gutters-234 MuiListItem-button-235 MuiMenuItem-root-223 WithStyles-MenuItem--root-222 MuiMenuItem-gutters-224"
-            role="menuitem"
-            tabindex="-1"
           >
             <label
               class="ActionButtons-uploadLabel-114"
@@ -1567,6 +1558,7 @@ Object {
               </div>
             </div>
             <button
+              aria-label="Move focus to bottom"
               class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-contained-126 MuiButton-containedPrimary-127 MuiButton-raised-129 MuiButton-raisedPrimary-130"
               style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px; z-index: 10;"
               tabindex="0"
