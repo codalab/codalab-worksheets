@@ -16,7 +16,7 @@ import {
     NAVBAR_HEIGHT,
     HEADER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
-    DEFAULT_WORKSHEET_WIDTH,
+    NARROW_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
     AUTO_HIDDEN_DURATION,
@@ -847,9 +847,9 @@ class Worksheet extends React.Component {
     };
     toggleWorksheetSize = () => {
         let newPercentage =
-            this.state.worksheetWidthPercentage === DEFAULT_WORKSHEET_WIDTH
+            this.state.worksheetWidthPercentage === NARROW_WORKSHEET_WIDTH
                 ? EXPANDED_WORKSHEET_WIDTH
-                : DEFAULT_WORKSHEET_WIDTH;
+                : NARROW_WORKSHEET_WIDTH;
         window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
         this.setState({ worksheetWidthPercentage: newPercentage });
     };
