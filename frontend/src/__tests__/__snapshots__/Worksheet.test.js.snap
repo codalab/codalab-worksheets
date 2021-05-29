@@ -606,7 +606,7 @@ Object {
           >
             <div
               class="Worksheet-worksheetOuter-2"
-              style="width: 65%;"
+              style="width: 99%;"
             >
               <div
                 class="Worksheet-worksheetDummyHeader-4"
@@ -1441,7 +1441,7 @@ Object {
         >
           <div
             class="Worksheet-worksheetOuter-2"
-            style="width: 65%;"
+            style="width: 99%;"
           >
             <div
               class="Worksheet-worksheetDummyHeader-4"
