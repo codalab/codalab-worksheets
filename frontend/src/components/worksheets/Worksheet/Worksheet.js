@@ -98,7 +98,7 @@ class Worksheet extends React.Component {
             deleteItemCallback: null,
             copiedBundleIds: '',
             showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
-            worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
+            worksheetWidthPercentage: localWorksheetWidthPreference || EXPANDED_WORKSHEET_WIDTH,
             messagePopover: {
                 showMessage: false,
                 messageContent: null,
