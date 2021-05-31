@@ -60,20 +60,73 @@ class FileUtilTest(unittest.TestCase):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(b"hello world")
         self.assertEqual(read_file_section(f.name, 2, 4), b"llo ")
+        self.assertEqual(read_file_section(f.name, 100, 4), b"")
 
     def test_summarize_file(self):
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            f.write(b"hello world\ngoodbye world\n")
-        self.assertEqual(
-            summarize_file(
-                f.name,
-                num_head_lines=50,
-                num_tail_lines=0,
-                max_line_length=128,
-                truncation_text="....",
-            ),
-            "hello world\ngoodbye world\n",
-        )
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(("aaa\nbbb\n").encode())
+            f.flush()
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=0,
+                    max_line_length=4,
+                    truncation_text="....",
+                ),
+                "aaa\n"
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=0,
+                    num_tail_lines=1,
+                    max_line_length=4,
+                    truncation_text="....",
+                ),
+                "bbb\n"
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=1,
+                    max_line_length=4,
+                    truncation_text="....",
+                ),
+                "aaa\nbbb\n"
+            )
+            # Should not recognize a line if max_line_length is smaller than the actual line length (4)
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=0,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                ""
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=0,
+                    num_tail_lines=1,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                ""
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=1,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "...."
+            )
 
     def test_gzip_stream(self):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -209,7 +262,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 
     def test_get_file_size(self):
         _, fname = self.create_file()
-        self.assertEqual(get_file_size(fname), 11)
+        self.assertEqual(get_file_size(fname), 31)  # compressed size of entire bundle
 
         _, dirname = self.create_directory()
         self.assertEqual(get_file_size(dirname), 249)
@@ -218,6 +271,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
     def test_read_file_section(self):
         _, fname = self.create_file()
         self.assertEqual(read_file_section(fname, 2, 4), b"llo ")
+        self.assertEqual(read_file_section(fname, 100, 4), b"")
 
         _, dirname = self.create_directory()
         self.assertEqual(read_file_section(f"{dirname}/README.md", 2, 4), b"llo ")
