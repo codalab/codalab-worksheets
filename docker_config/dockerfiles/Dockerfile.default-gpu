@@ -53,7 +53,7 @@ ENV SCALA_HOME /usr/share/java
 
 ## Python packages
 RUN pip3 install -U pip
-RUN python3 -m pip install -U \
+RUN python3 -m pip install -U --no-cache-dir \
       numpy \
       scipy \
       matplotlib \
@@ -72,7 +72,7 @@ RUN python3 -m pip install -U \
 
 RUN python3 -m spacy download en
 
-RUN python3 -m pip install --no-cache-dir\
+RUN python3 -m pip install --no-cache-dir \
       torch==1.5.0+cu92 \
       torchvision==0.6.0+cu92 \
       -f https://download.pytorch.org/whl/torch_stable.html

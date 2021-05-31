@@ -51,7 +51,7 @@ ENV SCALA_HOME /usr/share/java
 
 ## Python packages
 RUN pip3 install -U pip
-RUN python3 -m pip install -U \
+RUN python3 -m pip install -U --no-cache-dir \
       numpy \
       scipy \
       matplotlib \
