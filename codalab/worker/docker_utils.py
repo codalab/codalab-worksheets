@@ -119,7 +119,7 @@ def get_nvidia_devices():
     )
     # Get newline delimited gpu-index, gpu-uuid list
     output = output.decode()
-    logger.info("GPUs: " + output.split('\n')[:-1])
+    logger.info("GPUs: " + str(output.split('\n')[:-1]))
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
 
 
