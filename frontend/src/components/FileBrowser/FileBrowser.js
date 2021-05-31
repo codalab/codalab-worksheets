@@ -487,15 +487,9 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
     );
 
     useEffect(() => {
-        if (!startCollapsed) {
-            updateFileBrowser('');
-        }
-    }, [startCollapsed, updateFileBrowser]);
-
-    useEffect(() => {
         setFileBrowserData({});
-        updateFileBrowser('');
-    }, [updateFileBrowser, uuid]);
+        setCurrentWorkingDirectory('');
+    }, [uuid]);
 
     useEffect(() => {
         if (cache.has(url)) {
