@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     libhdf5-dev \
     swig \
     wget \
-    python3.6 -y \
+    python3.6 \
     python3.6-venv \
     python3.6-dev \
     python3-pip \
