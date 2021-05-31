@@ -27,9 +27,7 @@ RUN python2 get-pip.py
 
 
 ## Python 3.6
-RUN add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update -y  && \
-    apt-get install python3.6 -y \
+RUN apt-get install python3.6 -y \
         python3.6-venv \
         python3.6-dev \
         python3-pip \

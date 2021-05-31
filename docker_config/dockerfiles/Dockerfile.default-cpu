@@ -13,8 +13,6 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
-    python2 \
-    python2-dev \
     curl \
     build-essential \
     cmake \
@@ -22,13 +20,8 @@ RUN apt-get update && apt-get install -y \
     swig \
     wget
 
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
-RUN python2 get-pip.py	
-
 ## Python 3.6
-RUN add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update -y  && \
-    apt-get install python3.6 -y \
+RUN apt-get install python3.6 -y \
         python3.6-venv \
         python3.6-dev \
         python3-pip \
@@ -65,22 +58,7 @@ RUN wget http://scala-lang.org/files/archive/scala-$SCALA_VERSION.deb && \
 ENV SCALA_HOME /usr/share/java
 
 ## Python packages
-
-RUN python2 -m pip install --upgrade "pip < 21.0"
 RUN pip3 install -U pip
-RUN pip2 install -U setuptools 
-RUN pip2 install -U \
-      numpy \
-      scipy \
-      matplotlib \
-      pandas \
-      sympy \
-      nose \
-      tqdm \
-      wheel \
-      scikit-learn \
-      scikit-image \
-      nltk
 RUN python3 -m pip install -U \
       numpy \
       scipy \
@@ -95,23 +73,11 @@ RUN python3 -m pip install -U \
       scikit-image \
       nltk
 
-# Install spacy separately for python2.7, otherwise it tries to force a newer version of numpy which isn't supported on python2.7
-RUN pip2 install spacy
-RUN python2 -m spacy download en
-RUN python3 -m spacy download en
-
-RUN pip2 install -U \
-      tensorflow-gpu==1.12.0 \
-      tensorboard \
-      keras
 RUN python3 -m pip install -U \
       tensorflow-gpu==1.12.0 \
       tensorboard \
       keras
 
-RUN pip2 install -U \
-      torch==1.1.0 \
-      torchvision
 RUN python3 -m pip install -U \
       torch==1.1.0 \
       torchvision
