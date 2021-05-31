@@ -469,7 +469,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 lines = tail_lines
         else:
             try:
-                lines = fileobj.read().splitlines()
+                lines = fileobj.read().splitlines(True)
             except UnicodeDecodeError:
                 return BINARY_PLACEHOLDER
             ensure_ends_with_newline(lines)
