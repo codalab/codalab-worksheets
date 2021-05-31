@@ -13,8 +13,6 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
-    python2 \
-    python2-dev \
     curl \
     build-essential \
     cmake \
@@ -65,21 +63,7 @@ ENV SCALA_HOME /usr/share/java
 
 ## Python packages
 
-RUN python2 -m pip install --upgrade "pip < 21.0"
 RUN pip3 install -U pip
-RUN pip2 install -U setuptools 
-RUN pip2 install -U \
-      numpy \
-      scipy \
-      matplotlib \
-      pandas \
-      sympy \
-      nose \
-      tqdm \
-      wheel \
-      scikit-learn \
-      scikit-image \
-      nltk
 RUN python3 -m pip install -U \
       numpy \
       scipy \
@@ -93,23 +77,14 @@ RUN python3 -m pip install -U \
       scikit-learn \
       scikit-image \
       nltk
- 
-RUN pip2 install spacy
-RUN python2 -m spacy download en
+
 RUN python3 -m spacy download en
 
-RUN pip2 install -U \
-      tensorflow-gpu==1.12.0 \
-      tensorboard \
-      keras
 RUN python3 -m pip install -U \
       tensorflow-gpu==1.12.0 \
       tensorboard \
       keras
 
-RUN pip2 install -U \
-      torch==1.1.0 \
-      torchvision
 RUN python3 -m pip install \
       torch==1.5.0+cu92 \
       torchvision==0.6.0+cu92 \
