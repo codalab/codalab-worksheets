@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa 
 
+
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
 
@@ -70,5 +71,5 @@ RUN python3 -m pip install -U --no-cache-dir \
       torch==1.1.0 \
       torchvision
 
-RUN python3 -m spacy download en
+RUN python3 -m spacy download en_core_web_sm
 

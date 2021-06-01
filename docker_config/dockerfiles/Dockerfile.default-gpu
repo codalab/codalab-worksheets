@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.3.0-cudnn8-devel
+FROM nvidia/cuda:11.1.1-cudnn8-devel-ubuntu20.04
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -66,21 +66,20 @@ RUN python3 -m pip install -U --no-cache-dir \
       scikit-learn \
       scikit-image \
       nltk \
-      tensorflow-gpu==1.12.0 \
+      tensorflow-gpu==2.4.0 \
       tensorboard \
       keras
 
-RUN python3 -m spacy download en
+RUN python3 -m spacy download en_core_web_sm
 
 RUN python3 -m pip install --no-cache-dir \
-      torch==1.5.0+cu92 \
-      torchvision==0.6.0+cu92 \
+      torch==1.8.1+cu111 \
+      torchvision==0.9.1+cu111 \
       -f https://download.pytorch.org/whl/torch_stable.html
 
 # Install apex
 WORKDIR /tmp/apex_install
 RUN git clone https://github.com/NVIDIA/apex.git
 WORKDIR /tmp/apex_install/apex
-RUN git checkout 4a8c4ac088b6f84a10569ee89db3a938b48922b4
-RUN TORCH_CUDA_ARCH_LIST="6.0;6.1;6.2;7.0" python3 -m pip install --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .
+RUN python3 -m pip install --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 WORKDIR /
