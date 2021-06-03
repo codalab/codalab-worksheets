@@ -7,7 +7,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import {renderDuration} from '../../../util/worksheet_utils';
+import { renderDuration } from '../../../util/worksheet_utils';
 import { Icon } from '@material-ui/core';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { BundleEditableField } from '../../EditableField';
@@ -16,6 +16,7 @@ import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
 import { ConfigLabel } from '../ConfigPanel';
 import { renderPermissions } from '../../../util/worksheet_utils';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
+import Button from "@material-ui/core/Button";
 
 class Dependency extends React.PureComponent<
     {
@@ -61,12 +62,26 @@ class BundleDetailSideBar extends React.Component<
         classes: {},
         bundleInfo: {},
         onUpdate: () => any,
+        showCompleteBundleInfo: false,
     }
 >   {
     state= {
         showPermisson: false,
     }
-  
+
+    toggleCompleteBundleInfo = () => {
+        this.setState(prevState => {
+            return {
+                showCompleteBundleInfo: !prevState.showCompleteBundleInfo
+            }
+        })
+    };
+
+    renderInfoLabel = (str) => {
+        str = str.replace("_", " ");
+        return str.charAt(0).toUpperCase() + str.slice(1) + ":";
+    }
+
     render() {
         const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields=[], metadataType } = bundleInfo;
@@ -82,6 +97,42 @@ class BundleDetailSideBar extends React.Component<
         const bundleRunTime = bundleInfo.metadata.time
             ? renderDuration(bundleInfo.metadata.time)
             : "-- --";
+
+
+        // Collect complete bundle detail info
+        // Sort the metadata by key.
+        let keys = [];
+        let items = [
+            (<div>
+                    <ConfigLabel label="UUID:" inline={true}/>
+                    <div className={classes.dataText}>
+                        {bundleInfo.uuid}
+                    </div>
+                </div>
+            ),
+            (<div>
+                <ConfigLabel label="Is anonymous:" inline={true}/>
+                <div className={classes.dataText}>
+                    {renderFormat(bundleInfo.is_anonymous, 'bool')}
+                </div>
+            </div>)];
+        const repeatedFields = ['data_size', 'description', 'name', 'tags', 'time'];
+        for (let property in metadata) {
+            if (metadata.hasOwnProperty(property) && !repeatedFields.includes(property))
+                keys.push(property);
+        }
+        keys.sort();
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            items.push(
+                <div>
+                    <ConfigLabel label={this.renderInfoLabel(key)} inline={true}/>
+                    <div className={classes.dataText}>
+                        {renderFormat(metadata[key], metadataType[key])}
+                    </div>
+                </div>
+            )
+        }
 
         return (
             <div>
@@ -241,14 +292,37 @@ class BundleDetailSideBar extends React.Component<
                         :   null
                     }
                 </div>
+                {this.state.showCompleteBundleInfo ?
+                    (
+                        <>
+                            {items}
+                        </>
+                    ) : null
+                }
                 {/** ----------------------------------------------------------------------------------------------- */}
+                <div>
+                    {this.state.showCompleteBundleInfo ?
+                        (<Button
+                            class='link'
+                            onClick={this.toggleCompleteBundleInfo}
+                        >
+                            Less details
+                        </Button>) :
+                        (<button
+                            class='link'
+                            onClick={this.toggleCompleteBundleInfo}
+                        >
+                            More details
+                        </button>)
+                    }
+                </div>
                 <div>
                     <a
                         href={ `/bundles/${ bundleInfo.uuid }` }
                         className={ classes.uuidLink }
                         target="_blank"
                     >
-                        More details
+                        View Bundle
                     </a>
                 </div>
             </div>
