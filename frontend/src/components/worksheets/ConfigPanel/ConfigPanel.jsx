@@ -30,7 +30,7 @@ class ConfigPanel extends React.Component<{
         return (
             <Grid container direction='row' className={classes.container}>
                 {/* Column 1: Main content area ================================================ */}
-                <Grid item xs={12} md={sidebar ? 7 : 12}
+                <Grid item xs={12} md={sidebar ? 9 : 12}
                       container direction='column' justify='space-between' wrap='nowrap'
                       className={classes.content}>
                     <Grid item container direction='column'>
@@ -44,7 +44,7 @@ class ConfigPanel extends React.Component<{
                 </Grid>
                 {/* Column 2: Sidebar ========================================================== */}
                 { !sidebar ? null : (
-                    <Grid item xs={12} md={5}
+                    <Grid item xs={12} md={3}
                           container direction='column'
                           className={classes.sidebar}>
                         { sidebar }
