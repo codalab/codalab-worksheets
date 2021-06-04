@@ -276,6 +276,12 @@ CODALAB_ARGUMENTS = [
         type=int,
         default=60,
     ),
+    CodalabArg(
+        name='bundle_manager_unresponsive_bundles_check_frequency_hours',
+        help='Number of hours between checks for failing unresponsive bundles.',
+        type=int,
+        default=8,
+    ),
     # Worker manager
     CodalabArg(
         name='worker_manager_type',

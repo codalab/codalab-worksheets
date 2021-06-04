@@ -120,6 +120,7 @@ services:
     command: |
       cl-bundle-manager
       --worker-timeout-seconds ${CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS}
+      --unresponsive-bundles-check-frequency-hours ${CODALAB_BUNDLE_MANAGER_UNRESPONSIVE_BUNDLES_CHECK_FREQUENCY_HOURS}
     <<: *codalab-base
     <<: *codalab-server
     depends_on:

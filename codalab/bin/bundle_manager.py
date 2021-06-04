@@ -19,9 +19,19 @@ def main():
         type=int,
         default=60,
     )
+    parser.add_argument(
+        '--unresponsive-bundles-check-frequency-hours',
+        help='Number of hours between checks for failing unresponsive bundles.',
+        type=int,
+        default=8,
+    )
     args = parser.parse_args()
 
-    manager = BundleManager(CodaLabManager(), args.worker_timeout_seconds)
+    manager = BundleManager(
+        CodaLabManager(),
+        args.worker_timeout_seconds,
+        args.unresponsive_bundles_check_frequency_hours,
+    )
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: manager.signal())

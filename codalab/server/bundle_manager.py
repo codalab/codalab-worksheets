@@ -24,7 +24,8 @@ from codalab.worker.bundle_state import State, RunResources
 
 logger = logging.getLogger(__name__)
 
-SECONDS_PER_DAY = 60 * 60 * 24
+SECONDS_PER_HOUR = 60 * 60
+SECONDS_PER_DAY = SECONDS_PER_HOUR * 24
 # Fail unresponsive bundles in uploading, staged and running state after this many days.
 BUNDLE_TIMEOUT_DAYS = 60
 # Impose a minimum container request memory 4mb (4 * 1024 * 1024 bytes), same as docker's minimum allowed value
@@ -42,7 +43,12 @@ class BundleManager(object):
     Assigns run bundles to workers and makes make bundles.
     """
 
-    def __init__(self, codalab_manager, worker_timeout_seconds=60):
+    def __init__(
+        self,
+        codalab_manager,
+        worker_timeout_seconds=60,
+        unresponsive_bundles_check_frequency_hours=8,
+    ):
         config = codalab_manager.config.get('workers')
         if not config:
             print('config.json file missing a workers section.', file=sys.stderr)
@@ -65,6 +71,8 @@ class BundleManager(object):
             return to_value(config[field]) if field in config else None
 
         self._worker_timeout_seconds = worker_timeout_seconds
+        self._unresponsive_check_frequency_hours = unresponsive_bundles_check_frequency_hours
+        self._unresponsive_bundles_last_checked_time = 0.0
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time') or 0
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory') or 0
         self._min_request_memory = (
@@ -759,11 +767,17 @@ class BundleManager(object):
         Fail bundles in uploading, staged and running state if we haven't heard from them for more than
         BUNDLE_TIMEOUT_DAYS days.
         """
+        now = time.time()
+        if (
+            now - self._unresponsive_bundles_last_checked_time
+            < self._unresponsive_check_frequency_hours * SECONDS_PER_HOUR
+        ):
+            return
+        self._unresponsive_bundles_last_checked_time = now
+
         bundles_to_fail = self._model.batch_get_bundles(
             state=[State.UPLOADING, State.STAGED, State.RUNNING]
         )
-
-        now = time.time()
 
         for bundle in bundles_to_fail:
             # For simplicity, we use field metadata.created to calculate timeout for now.

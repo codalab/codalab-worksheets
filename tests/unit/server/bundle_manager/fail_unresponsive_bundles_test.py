@@ -23,3 +23,21 @@ class BundleManagerFailUnresponsiveBundlesTest(BaseBundleManagerTest):
             "Bundle has been stuck in uploading state for more than 60 days",
             bundle.metadata.failure_message,
         )
+
+    @freeze_time("2021-05-03", as_kwarg='frozen_time')
+    def test_fail_bundle_frequency(self, frozen_time):
+        self.bundle_manager._fail_unresponsive_bundles()
+
+        bundle = self.create_run_bundle(State.UPLOADING)
+        self.save_bundle(bundle)
+        self.bundle_manager._fail_unresponsive_bundles()
+
+        # The check should not be executed at this point
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.UPLOADING)
+
+        frozen_time.move_to("2021-05-04")
+        self.bundle_manager._fail_unresponsive_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.FAILED)
