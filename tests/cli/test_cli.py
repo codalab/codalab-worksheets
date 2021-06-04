@@ -1831,8 +1831,10 @@ def test_resources(ctx):
 
     # Test network access
     REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
-    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 1)
-    wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
+    # Network access is set to true by default
+    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
+    # Should fail if network access not granted
+    wait(_run_command([cl, 'run', '--request-network', 'False', REQUEST_CMD], request_memory="10m"), 1)
 
 
 @TestModule.register('copy')
