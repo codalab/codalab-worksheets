@@ -1835,9 +1835,9 @@ def test_resources(ctx):
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # Should fail if network access not granted
     wait(
-        _run_command([cl, 'run', '--no-request-network', REQUEST_CMD], request_memory="10m"),
-        1,
+        _run_command([cl, 'run', '--no-request-network', REQUEST_CMD], request_memory="10m"), 1,
     )
+
 
 @TestModule.register('copy')
 def test_copy(ctx):

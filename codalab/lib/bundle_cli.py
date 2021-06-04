@@ -422,9 +422,9 @@ class Commands(object):
             )
 
             # Register arguments for the subcommand
-            for argument in command.arguments:         
+            for argument in command.arguments:
                 argument_kwargs = argument.kwargs.copy()
-               
+
                 completer = argument_kwargs.pop('completer', None)
                 arg = argument
                 argument = subparser.add_argument(*argument.args, **argument_kwargs)
