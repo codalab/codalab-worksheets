@@ -338,7 +338,8 @@ def parse_gpuset_args(arg):
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
     """
-    if arg == '':
+    logger.info(f"GPUSET arg: {arg}")
+    if arg == '' or arg == 'NONE':
         return set()
 
     try:

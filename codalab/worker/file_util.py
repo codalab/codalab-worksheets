@@ -16,7 +16,6 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
-from codalab.lib.beam.streamingzipfile import StreamingZipFile
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -161,14 +160,26 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
         remove_path(directory_path)
     os.mkdir(directory_path)
 
-    with StreamingZipFile(fileobj) as zf:
-        for member in zf:  # type: ignore
-            # Make sure that there is no trickery going on (see note in
-            # ZipFile.extractall() documentation).
-            member_path = os.path.realpath(os.path.join(directory_path, member.filename))
-            if not member_path.startswith(directory_path):
-                raise UsageError('Archive member extracts outside the directory.')
-            zf.extract(member, directory_path)
+    # TODO (Ashwin): re-enable streaming zip files once this works again. Disabled because of https://github.com/codalab/codalab-worksheets/issues/3579.
+    # with StreamingZipFile(fileobj) as zf:
+    #     for member in zf:  # type: ignore
+    #         # Make sure that there is no trickery going on (see note in
+    #         # ZipFile.extractall() documentation).
+    #         member_path = os.path.realpath(os.path.join(directory_path, member.filename))
+    #         if not member_path.startswith(directory_path):
+    #             raise UsageError('Archive member extracts outside the directory.')
+    #         zf.extract(member, directory_path)
+
+    def do_unzip(filename):
+        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
+        if exitcode != 0:
+            raise UsageError('Invalid archive upload. ')
+
+    # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
+    with tempfile.NamedTemporaryFile() as f:
+        shutil.copyfileobj(fileobj, f)
+        f.seek(0)
+        do_unzip(f.name)
 
 
 class OpenIndexedArchiveFile(object):

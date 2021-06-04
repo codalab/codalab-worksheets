@@ -1,7 +1,10 @@
 FROM ubuntu:xenial
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
+RUN apt-get update && apt-get install -y \
+    software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa 
+ENV DEBIAN_FRONTEND=noninteractive
 
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
@@ -12,10 +15,8 @@ RUN apt-get update && apt-get install -y \
     git \
     python2.7 \	
     python-pip \	
-    python-dev \	
-    python-software-properties \	
+    python-dev \		
     python-tk \
-    software-properties-common \
     build-essential \
     cmake \
     libhdf5-dev \
@@ -63,10 +64,10 @@ RUN wget http://scala-lang.org/files/archive/scala-$SCALA_VERSION.deb && \
 ENV SCALA_HOME /usr/share/java
 
 ## Python packages
-
-RUN pip2 install -U pip
+# Newer pip dropped the support for python 2 so we need to specify the version.
+RUN python -m pip install --upgrade "pip < 21.0"
 RUN pip3 install -U pip
-
+RUN pip2 install -U setuptools 
 RUN pip2 install -U \
       numpy \
       scipy \
