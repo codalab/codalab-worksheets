@@ -131,7 +131,7 @@ class KubernetesBatchWorkerManager(WorkerManager):
             },
         }
 
-        # Start a worker pod on the K8s cluster
+        # Start a worker pod on the k8s cluster
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
         try:
             utils.create_from_dict(self.k8_client, config)
