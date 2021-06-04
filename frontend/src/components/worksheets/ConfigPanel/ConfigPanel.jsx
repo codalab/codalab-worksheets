@@ -30,21 +30,21 @@ class ConfigPanel extends React.Component<{
         return (
             <Grid container direction='row' className={classes.container}>
                 {/* Column 1: Main content area ================================================ */}
-                <Grid item xs={12} md={sidebar ? 8 : 12}
+                <Grid item xs={12} md={sidebar ? 9 : 12}
                       container direction='column' justify='space-between' wrap='nowrap'
                       className={classes.content}>
                     <Grid item container direction='column'>
                         { children }
                     </Grid>
                     { !buttons ? null : (
-                        <Grid item container className={classes.buttons} justify='flex-end'>
+                        <Grid item container className={classes.buttons} justify='flex-start'>
                             { buttons }
                         </Grid>
                     )}
                 </Grid>
                 {/* Column 2: Sidebar ========================================================== */}
                 { !sidebar ? null : (
-                    <Grid item xs={12} md={4}
+                    <Grid item xs={12} md={3}
                           container direction='column'
                           className={classes.sidebar}>
                         { sidebar }
@@ -79,7 +79,8 @@ const styles = (theme) => ({
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
-        maxWidth: 250,
+        maxWidth: '50%',
+        flexGrow: 1,
     },
     buttons: {
         '& button': {
@@ -87,6 +88,7 @@ const styles = (theme) => ({
         },
         paddingBottom: theme.spacing.large,
         paddingTop: theme.spacing.larger,
+        maxWidth: '90%',
     }
 });
 
