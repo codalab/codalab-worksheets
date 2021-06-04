@@ -195,7 +195,7 @@ class NewRun extends React.Component<
         cpu: kDefaultCpu,
         gpu: kDefaultGpu,
         docker: kDefaultDockerCpu,
-        networkAccess: false,
+        networkAccess: true,
         failedDependencies: false,
         queue: '',
     };
