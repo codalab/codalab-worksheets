@@ -234,7 +234,7 @@ export class FileBrowser extends React.Component<
             checkbox = null;
         }
         return (
-            this.state.hidden || (
+            !this.state.hidden && (
                 <div className='file-browser'>
                     {checkbox}
                     {header}
