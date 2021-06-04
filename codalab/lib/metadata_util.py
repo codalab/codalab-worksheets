@@ -27,7 +27,7 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     new_initial_metadata = {}
     for spec in bundle_subclass.get_user_defined_metadata():
         new_initial_metadata[spec.key] = initial_metadata.get(spec.key)
-        if not new_initial_metadata[spec.key]:
+        if new_initial_metadata[spec.key] is None:
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
             new_initial_metadata[spec.key] = default
         final_value = new_initial_metadata[spec.key]
@@ -39,7 +39,6 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
         )
         if is_unicode_string or is_unicode_list:
             raise UsageError('Metadata cannot contain unicode: %s = %s' % (spec.key, final_value))
-
     return new_initial_metadata
 
 
