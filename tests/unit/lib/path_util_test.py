@@ -129,6 +129,9 @@ class ParseBundleUrl(unittest.TestCase):
         )
         self.assertEqual(linked_bundle_path.is_archive, True)
         self.assertEqual(linked_bundle_path.is_archive_dir, False)
+        self.assertEqual(
+            linked_bundle_path.index_path, "azfs://storageclwsdev0/bundles/uuid/index.sqlite"
+        )
         self.assertEqual(linked_bundle_path.archive_subpath, None)
         self.assertEqual(linked_bundle_path.bundle_uuid, "uuid")
 
@@ -143,6 +146,9 @@ class ParseBundleUrl(unittest.TestCase):
         )
         self.assertEqual(linked_bundle_path.is_archive, True)
         self.assertEqual(linked_bundle_path.is_archive_dir, True)
+        self.assertEqual(
+            linked_bundle_path.index_path, "azfs://storageclwsdev0/bundles/uuid/index.sqlite"
+        )
         self.assertEqual(linked_bundle_path.archive_subpath, None)
         self.assertEqual(linked_bundle_path.bundle_uuid, "uuid")
 
@@ -157,6 +163,9 @@ class ParseBundleUrl(unittest.TestCase):
         )
         self.assertEqual(linked_bundle_path.is_archive, True)
         self.assertEqual(linked_bundle_path.is_archive_dir, True)
+        self.assertEqual(
+            linked_bundle_path.index_path, "azfs://storageclwsdev0/bundles/uuid/index.sqlite"
+        )
         self.assertEqual(linked_bundle_path.archive_subpath, "a/b.txt")
         self.assertEqual(linked_bundle_path.bundle_uuid, "uuid")
 

@@ -363,7 +363,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             GPUSET=${GPUSET::-1}
             if [ -z "$GPUSET" ]; then
                   echo "No GPUs on the machine"
-                  GPU_ARGS="--gpuset="
+                  GPU_ARGS="--gpuset NONE"
             else
                   echo "Using GPUs $GPUSET"
                   GPU_ARGS="--gpuset $GPUSET"

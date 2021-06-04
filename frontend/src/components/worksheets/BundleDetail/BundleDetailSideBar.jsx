@@ -159,7 +159,7 @@ class BundleDetailSideBar extends React.Component<
                                     </span>
                                 </div>        
                         </CopyToClipboard>
-                        <div style={{ maxWidth: 300, flexWrap: 'wrap', flexShrink: 1}}>      
+                        <div style={{  flexWrap: 'wrap', flexShrink: 1}}>
                             {bundleInfo.command}
                         </div>
                     </Grid>
@@ -308,7 +308,6 @@ const styles = (theme) => ({
 		padding: theme.spacing.large,
         borderRadius: theme.spacing.unit,
         wordWrap: 'break-all',
-        maxWidth: 300,
         flexWrap: 'wrap',
     },
     permissions: {
@@ -324,7 +323,6 @@ const styles = (theme) => ({
         paddingLeft: 2,
     },
     wrappableText: {
-        maxWidth: 300, 
         flexWrap: 'wrap', 
         flexShrink: 1,
     },

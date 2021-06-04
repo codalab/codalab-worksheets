@@ -24,6 +24,7 @@ from codalab.worker.un_tar_directory import un_tar_directory
 
 # Files with these extensions are considered archive.
 ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz', '.bz2']
+ARCHIVE_EXTS_DIR = ['.tar.gz', '.tgz', '.tar.bz2', '.zip']
 
 
 def path_is_archive(path):
