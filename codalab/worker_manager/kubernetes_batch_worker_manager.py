@@ -35,7 +35,10 @@ class KubernetesBatchWorkerManager(WorkerManager):
             '--auth-token', type=str, help='Kuberntes cluster authorization token', required=True,
         )
         subparser.add_argument(
-            '--cert-path', type=str, help='Path to the SSL cert for the Kubernetes cluster', required=True
+            '--cert-path',
+            type=str,
+            help='Path to the SSL cert for the Kubernetes cluster',
+            required=True,
         )
 
         # Job-related arguments
