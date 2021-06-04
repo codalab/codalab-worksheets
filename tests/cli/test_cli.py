@@ -1834,7 +1834,10 @@ def test_resources(ctx):
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # Should fail if network access not granted
-    wait(_run_command([cl, 'run', '--request-network', 'False', REQUEST_CMD], request_memory="10m"), 1)
+    wait(
+        _run_command([cl, 'run', '--request-network', 'False', REQUEST_CMD], request_memory="10m"),
+        1,
+    )
 
 
 @TestModule.register('copy')
