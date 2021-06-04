@@ -21,21 +21,21 @@ from .worker_manager import WorkerManager, WorkerJob
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class GCPBatchWorkerManager(WorkerManager):
-    NAME: str = 'gcp-batch'
-    DESCRIPTION: str = 'Worker manager for submitting jobs to Google Cloud Platform via Kubernetes'
+class KubernetesBatchWorkerManager(WorkerManager):
+    NAME: str = 'kubernetes-batch'
+    DESCRIPTION: str = 'Worker manager for submitting jobs to a Kubernetes cluster'
 
     @staticmethod
     def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
-        # GCP arguments
+        # Kubernetes arguments
         subparser.add_argument(
-            '--cluster-host', type=str, help='Host address of the GKE cluster', required=True
+            '--cluster-host', type=str, help='Host address of the Kubernetes cluster', required=True
         )
         subparser.add_argument(
-            '--auth-token', type=str, help='GKE cluster authorization token', required=True,
+            '--auth-token', type=str, help='Kuberntes cluster authorization token', required=True,
         )
         subparser.add_argument(
-            '--cert-path', type=str, help='Path to the SSL cert for the GKE cluster', required=True
+            '--cert-path', type=str, help='Path to the SSL cert for the Kubernetes cluster', required=True
         )
 
         # Job-related arguments
@@ -88,7 +88,7 @@ class GCPBatchWorkerManager(WorkerManager):
         )
         worker_id: str = uuid.uuid4().hex
         worker_name: str = f'cl-worker-{worker_id}'
-        work_dir: str = os.path.join(work_dir_prefix, f'{worker_name}_work_dir')
+        work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
@@ -128,7 +128,7 @@ class GCPBatchWorkerManager(WorkerManager):
             },
         }
 
-        # Use Kubernetes to start a worker on GCP
+        # Start a worker pod on the K8s cluster
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
         try:
             utils.create_from_dict(self.k8_client, config)
