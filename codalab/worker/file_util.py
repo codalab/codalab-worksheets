@@ -171,9 +171,17 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     #         zf.extract(member, directory_path)
 
     def do_unzip(filename):
-        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
+        exitcode = subprocess.Popen(
+            ['unzip', '-q', filename, '-d', directory_path], stdout=subprocess.PIPE
+        )
+        exitcode = proc.wait()
         if exitcode != 0:
-            raise UsageError('Invalid archive upload. ')
+            logging.error(
+                "Invalid archive upload: failed to unzip .zip file. stderr: <%s>. stdout: <%s>.",
+                proc.stderr(),
+                proc.stdout(),
+            )
+            raise UsageError('Invalid archive upload: failed to unzip .zip file.')
 
     # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
     with tempfile.NamedTemporaryFile() as f:
