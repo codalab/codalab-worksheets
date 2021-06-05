@@ -1,6 +1,7 @@
 from contextlib import closing
 from io import BytesIO, TextIOWrapper
 import gzip
+import logging
 import os
 import shutil
 import subprocess
