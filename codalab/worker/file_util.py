@@ -171,7 +171,7 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     #         zf.extract(member, directory_path)
 
     def do_unzip(filename):
-        exitcode = subprocess.Popen(
+        proc = subprocess.Popen(
             ['unzip', '-q', filename, '-d', directory_path], stdout=subprocess.PIPE
         )
         exitcode = proc.wait()
