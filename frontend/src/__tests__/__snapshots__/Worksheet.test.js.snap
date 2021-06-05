@@ -128,7 +128,7 @@ Object {
                           Text
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                       <span>
@@ -165,7 +165,7 @@ Object {
                             Upload
                           </span>
                           <span
-                            class="MuiTouchRipple-root-238"
+                            class="MuiTouchRipple-root-237"
                           />
                         </button>
                       </span>
@@ -196,7 +196,7 @@ Object {
                           Run
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                       <button
@@ -228,7 +228,7 @@ Object {
                           Paste bundles
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                       <button
@@ -260,7 +260,7 @@ Object {
                           Schema
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                       <button
@@ -295,7 +295,7 @@ Object {
                           Image
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                     </div>
@@ -335,7 +335,7 @@ Object {
                           Edit Source
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                       <button
@@ -367,7 +367,7 @@ Object {
                           SHOW TERMINAL
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                       <button
@@ -397,7 +397,7 @@ Object {
                           </svg>
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                     </div>
@@ -432,7 +432,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </a>
                     <a
@@ -463,7 +463,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </a>
                   </div>
@@ -606,7 +606,7 @@ Object {
           >
             <div
               class="Worksheet-worksheetOuter-2"
-              style="width: 65%;"
+              style="width: 99%;"
             >
               <div
                 class="Worksheet-worksheetDummyHeader-4"
@@ -671,7 +671,7 @@ Object {
                                 </svg>
                               </span>
                               <span
-                                class="MuiTouchRipple-root-238"
+                                class="MuiTouchRipple-root-237"
                               />
                             </button>
                               
@@ -701,7 +701,7 @@ Object {
                                 </svg>
                               </span>
                               <span
-                                class="MuiTouchRipple-root-238"
+                                class="MuiTouchRipple-root-237"
                               />
                             </button>
                           </div>
@@ -758,7 +758,7 @@ Object {
                   </svg>
                 </span>
                 <span
-                  class="MuiTouchRipple-root-238"
+                  class="MuiTouchRipple-root-237"
                 />
               </button>
             </div>
@@ -785,21 +785,21 @@ Object {
     >
       <div
         aria-hidden="true"
-        class="MuiBackdrop-root-189 MuiBackdrop-invisible-190"
+        class="MuiBackdrop-root-188 MuiBackdrop-invisible-189"
         style="opacity: 0;"
       />
       <div
-        class="MuiPaper-root-191 MuiMenu-paper-153 MuiPaper-elevation0-193 MuiPaper-rounded-192 MuiPopover-paper-154"
+        class="MuiPaper-root-190 MuiMenu-paper-153 MuiPaper-elevation0-192 MuiPaper-rounded-191 MuiPopover-paper-154"
         role="document"
         style="opacity: 0; transform: scale(0.75, 0.5625);"
         tabindex="-1"
       >
         <ul
-          class="MuiList-root-218 MuiList-padding-219"
+          class="MuiList-root-217 MuiList-padding-218"
           role="menu"
         >
           <li
-            class="MuiButtonBase-root-141 MuiListItem-root-226 MuiListItem-default-229 MuiListItem-gutters-234 MuiListItem-button-235 MuiMenuItem-root-223 WithStyles-MenuItem--root-222 MuiMenuItem-gutters-224"
+            class="MuiButtonBase-root-141 MuiListItem-root-225 MuiListItem-default-228 MuiListItem-gutters-233 MuiListItem-button-234 MuiMenuItem-root-222 WithStyles-MenuItem--root-221 MuiMenuItem-gutters-223"
             role="menuitem"
             tabindex="0"
           >
@@ -810,11 +810,11 @@ Object {
               File(s) Upload
             </label>
             <span
-              class="MuiTouchRipple-root-238"
+              class="MuiTouchRipple-root-237"
             />
           </li>
           <li
-            class="MuiButtonBase-root-141 MuiListItem-root-226 MuiListItem-default-229 MuiListItem-gutters-234 MuiListItem-button-235 MuiMenuItem-root-223 WithStyles-MenuItem--root-222 MuiMenuItem-gutters-224"
+            class="MuiButtonBase-root-141 MuiListItem-root-225 MuiListItem-default-228 MuiListItem-gutters-233 MuiListItem-button-234 MuiMenuItem-root-222 WithStyles-MenuItem--root-221 MuiMenuItem-gutters-223"
             role="menuitem"
             tabindex="-1"
           >
@@ -825,7 +825,7 @@ Object {
               Folder Upload
             </label>
             <span
-              class="MuiTouchRipple-root-238"
+              class="MuiTouchRipple-root-237"
             />
           </li>
         </ul>
@@ -954,7 +954,7 @@ Object {
                         Text
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                     <span>
@@ -991,7 +991,7 @@ Object {
                           Upload
                         </span>
                         <span
-                          class="MuiTouchRipple-root-238"
+                          class="MuiTouchRipple-root-237"
                         />
                       </button>
                     </span>
@@ -1022,7 +1022,7 @@ Object {
                         Run
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                     <button
@@ -1054,7 +1054,7 @@ Object {
                         Paste bundles
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                     <button
@@ -1086,7 +1086,7 @@ Object {
                         Schema
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                     <button
@@ -1121,7 +1121,7 @@ Object {
                         Image
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                   </div>
@@ -1161,7 +1161,7 @@ Object {
                         Edit Source
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                     <button
@@ -1193,7 +1193,7 @@ Object {
                         SHOW TERMINAL
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                     <button
@@ -1223,7 +1223,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-238"
+                        class="MuiTouchRipple-root-237"
                       />
                     </button>
                   </div>
@@ -1258,7 +1258,7 @@ Object {
                       </svg>
                     </span>
                     <span
-                      class="MuiTouchRipple-root-238"
+                      class="MuiTouchRipple-root-237"
                     />
                   </a>
                   <a
@@ -1289,7 +1289,7 @@ Object {
                       </svg>
                     </span>
                     <span
-                      class="MuiTouchRipple-root-238"
+                      class="MuiTouchRipple-root-237"
                     />
                   </a>
                 </div>
@@ -1432,7 +1432,7 @@ Object {
         >
           <div
             class="Worksheet-worksheetOuter-2"
-            style="width: 65%;"
+            style="width: 99%;"
           >
             <div
               class="Worksheet-worksheetDummyHeader-4"
@@ -1497,7 +1497,7 @@ Object {
                               </svg>
                             </span>
                             <span
-                              class="MuiTouchRipple-root-238"
+                              class="MuiTouchRipple-root-237"
                             />
                           </button>
                             
@@ -1527,7 +1527,7 @@ Object {
                               </svg>
                             </span>
                             <span
-                              class="MuiTouchRipple-root-238"
+                              class="MuiTouchRipple-root-237"
                             />
                           </button>
                         </div>
@@ -1584,7 +1584,7 @@ Object {
                 </svg>
               </span>
               <span
-                class="MuiTouchRipple-root-238"
+                class="MuiTouchRipple-root-237"
               />
             </button>
           </div>
