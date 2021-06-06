@@ -307,7 +307,8 @@ jobs:
           - worker_manager service
           - run
           - run2
-          - search link read kill write mimic workers edit_user sharing_workers
+          - search read kill write mimic workers edit_user sharing_workers
+#           - search link read kill write mimic workers edit_user sharing_workers
           - resources
           - memoize
           - copy netcat netcurl
