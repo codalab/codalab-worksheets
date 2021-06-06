@@ -179,8 +179,8 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
         if exitcode != 0:
             logging.error(
                 "Invalid archive upload: failed to unzip .zip file. stderr: <%s>. stdout: <%s>.",
-                proc.stderr(),
-                proc.stdout(),
+                proc.stderr.read(),
+                proc.stdout.read(),
             )
             raise UsageError('Invalid archive upload: failed to unzip .zip file.')
 
