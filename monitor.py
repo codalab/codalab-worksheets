@@ -251,7 +251,7 @@ def backup_db():
 
 
 def check_disk_space(paths):
-    lines = run_command(['df'] + paths).split('\n')[1:]
+    lines = run_command(['df', '-h'] + paths).split('\n')[1:]
     results = [int(line.split()[3]) for line in lines]
     # Flag an error if disk space running low
     total = sum(results)
