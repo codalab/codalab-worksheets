@@ -173,7 +173,9 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
 
     def do_unzip(filename):
         proc = subprocess.Popen(
-            ['unzip', '-q', filename, '-d', directory_path], stdout=subprocess.PIPE
+            ['unzip', '-q', filename, '-d', directory_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         exitcode = proc.wait()
         if exitcode != 0:
