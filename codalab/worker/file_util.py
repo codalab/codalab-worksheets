@@ -189,7 +189,7 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
     with tempfile.NamedTemporaryFile() as f:
         shutil.copyfileobj(fileobj, f)
-        f.seek(0)
+        f.flush()
         do_unzip(f.name)
 
 
