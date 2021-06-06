@@ -74,7 +74,7 @@ class FileUtilTest(unittest.TestCase):
                     max_line_length=4,
                     truncation_text="....",
                 ),
-                "aaa\n"
+                "aaa\n",
             )
             self.assertEqual(
                 summarize_file(
@@ -84,7 +84,7 @@ class FileUtilTest(unittest.TestCase):
                     max_line_length=4,
                     truncation_text="....",
                 ),
-                "bbb\n"
+                "bbb\n",
             )
             self.assertEqual(
                 summarize_file(
@@ -94,7 +94,7 @@ class FileUtilTest(unittest.TestCase):
                     max_line_length=4,
                     truncation_text="....",
                 ),
-                "aaa\nbbb\n"
+                "aaa\nbbb\n",
             )
             # Should not recognize a line if max_line_length is smaller than the actual line length (4)
             self.assertEqual(
@@ -105,7 +105,7 @@ class FileUtilTest(unittest.TestCase):
                     max_line_length=3,
                     truncation_text="....",
                 ),
-                ""
+                "",
             )
             self.assertEqual(
                 summarize_file(
@@ -115,7 +115,7 @@ class FileUtilTest(unittest.TestCase):
                     max_line_length=3,
                     truncation_text="....",
                 ),
-                ""
+                "",
             )
             self.assertEqual(
                 summarize_file(
@@ -125,7 +125,7 @@ class FileUtilTest(unittest.TestCase):
                     max_line_length=3,
                     truncation_text="....",
                 ),
-                "...."
+                "....",
             )
 
     def test_gzip_stream(self):
