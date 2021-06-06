@@ -1,6 +1,7 @@
 from contextlib import closing
 from io import BytesIO, TextIOWrapper
 import gzip
+import logging
 import os
 import shutil
 import subprocess
@@ -171,14 +172,24 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     #         zf.extract(member, directory_path)
 
     def do_unzip(filename):
-        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
+        proc = subprocess.Popen(
+            ['unzip', '-q', filename, '-d', directory_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        exitcode = proc.wait()
         if exitcode != 0:
-            raise UsageError('Invalid archive upload. ')
+            logging.error(
+                "Invalid archive upload: failed to unzip .zip file. stderr: <%s>. stdout: <%s>.",
+                proc.stderr.read(),
+                proc.stdout.read(),
+            )
+            raise UsageError('Invalid archive upload: failed to unzip .zip file.')
 
     # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
     with tempfile.NamedTemporaryFile() as f:
         shutil.copyfileobj(fileobj, f)
-        f.seek(0)
+        f.flush()
         do_unzip(f.name)
 
 
