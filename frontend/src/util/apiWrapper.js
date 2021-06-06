@@ -133,7 +133,7 @@ export async function createFileBundle(url, data, errorHandler) {
 export function getQueryParams(filename) {
     const formattedFilename = createDefaultBundleName(filename);
     const queryParams = {
-        finalize: 1,
+        finalize_on_failure: 1,
         filename: pathIsArchive(filename)
             ? formattedFilename + getArchiveExt(filename)
             : formattedFilename,
