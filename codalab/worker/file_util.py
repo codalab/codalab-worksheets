@@ -171,9 +171,12 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     #             raise UsageError('Archive member extracts outside the directory.')
     #         zf.extract(member, directory_path)
 
-    def do_unzip(filename):
+    # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
+    with tempfile.NamedTemporaryFile() as f:
+        shutil.copyfileobj(fileobj, f)
+        f.flush()
         proc = subprocess.Popen(
-            ['unzip', '-q', filename, '-d', directory_path],
+            ['unzip', '-q', f.name, '-d', directory_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -185,12 +188,6 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
                 proc.stdout.read(),
             )
             raise UsageError('Invalid archive upload: failed to unzip .zip file.')
-
-    # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
-    with tempfile.NamedTemporaryFile() as f:
-        shutil.copyfileobj(fileobj, f)
-        f.flush()
-        do_unzip(f.name)
 
 
 class OpenIndexedArchiveFile(object):
