@@ -309,6 +309,7 @@ class Worksheet extends React.Component {
             closeOnClick: true,
             pauseOnHover: false,
             draggable: true,
+            autoClose: false,
         });
         executeCommand(
             buildTerminalCommand([
