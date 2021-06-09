@@ -103,6 +103,9 @@ class Worksheet extends React.Component {
                 showMessage: false,
                 messageContent: null,
             },
+            showUpdateProgress: false,
+            showWorksheetContent: false,
+            showWorksheetContainer: true,
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -142,11 +145,10 @@ class Worksheet extends React.Component {
 
     saveWorksheet(props) {
         if (this.state.ws.info === undefined) return;
-        $('#update_progress').show();
+        this.setState({ showUpdateProgress: true });
         props = props || {};
         props.success = props.success || function(data) {};
         props.error = props.error || function(xhr, status, err) {};
-        $('#save_error').hide();
         apiWrapper
             .saveWorksheet(this.state.ws.uuid, this.state.ws.info.source.join('\n'))
             .then((data) => {
@@ -160,8 +162,7 @@ class Worksheet extends React.Component {
 
     deleteWorksheet(props) {
         if (this.state.ws.info === undefined) return;
-        $('#update_progress').show();
-        $('#save_error').hide();
+        this.setState({ showUpdateProgress: true });
         apiWrapper
             .deleteWorksheet(this.state.ws.info.uuid)
             .then((data) => {
@@ -473,7 +474,8 @@ class Worksheet extends React.Component {
     };
 
     moveFocusToBottom = () => {
-        $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
+        const container = document.querySelector('#worksheet_container');
+        container.scrollTop = container.scrollHeight;
         this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
     };
 
@@ -790,11 +792,11 @@ class Worksheet extends React.Component {
         this.fetch({
             brief: true,
             success: function(data) {
-                $('#worksheet_content').show();
                 this.setState({
                     updating: false,
                     version: this.state.version + 1,
                     numOfBundles: this.getNumOfBundles(),
+                    showWorksheetContent: true,
                 });
                 // Fix out of bounds.
             }.bind(this),
@@ -1224,8 +1226,8 @@ class Worksheet extends React.Component {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: error,
+                    showWorksheetContainer: false,
                 });
-                $('#worksheet_container').hide();
             });
     };
 
@@ -1397,8 +1399,7 @@ class Worksheet extends React.Component {
         } = {},
     ) => {
         if (partialUpdateItems === undefined) {
-            $('#update_progress').show();
-            this.setState({ updating: true });
+            this.setState({ updating: true, showUpdateProgress: true });
             this.fetch({
                 brief: true,
                 success: function(data) {
@@ -1409,8 +1410,7 @@ class Worksheet extends React.Component {
                         });
                         return false;
                     }
-                    $('#update_progress').hide();
-                    $('#worksheet_content').show();
+                    this.setState({ showUpdateProgress: false, showWorksheetContent: true });
                     var items = this.state.ws.info.blocks;
                     var numOfBundles = this.getNumOfBundles();
                     var focus = this.state.focusIndex;
@@ -1532,8 +1532,7 @@ class Worksheet extends React.Component {
                         openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                         errorDialogMessage: xhr.responseText,
                     });
-                    $('#update_progress').hide();
-                    $('#worksheet_container').hide();
+                    this.setState({ showUpdateProgress: false, showWorksheetContainer: false });
                 }.bind(this),
             });
         } else {
@@ -1592,9 +1591,7 @@ class Worksheet extends React.Component {
                 this.reloadWorksheet(undefined, rawIndex);
             }.bind(this),
             error: function(error) {
-                this.setState({ updating: false });
-                $('#update_progress').hide();
-                $('#save_error').show();
+                this.setState({ updating: false, showUpdateProgress: false });
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: error,
@@ -1613,9 +1610,7 @@ class Worksheet extends React.Component {
                 window.location = '/users';
             }.bind(this),
             error: function(xhr, status, err) {
-                this.setState({ updating: false });
-                $('#update_progress').hide();
-                $('#save_error').show();
+                this.setState({ updating: false, showUpdateProgress: false });
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: xhr.responseText,
@@ -1735,8 +1730,16 @@ class Worksheet extends React.Component {
     };
 
     render() {
+        console.log(this.state);
         const { classes } = this.props;
-        const { anchorEl, uploadAnchor } = this.state;
+        const {
+            anchorEl,
+            uploadAnchor,
+            showUpdateProgress,
+            showInformationModal,
+            showWorksheetContent,
+            showWorksheetContainer,
+        } = this.state;
 
         this.setupEventHandlers();
         let info = this.state.ws.info;
@@ -1950,57 +1953,61 @@ class Worksheet extends React.Component {
                     rtl={false}
                     pauseOnVisibilityChange
                 />
-                <div id='worksheet_container'>
-                    <div id='worksheet' className={searchClassName}>
-                        <div
-                            className={classes.worksheetDesktop}
-                            onClick={this.handleClickForDeselect}
-                        >
+                {showWorksheetContainer && (
+                    <div id='worksheet_container'>
+                        <div id='worksheet' className={searchClassName}>
                             <div
-                                className={classes.worksheetOuter}
+                                className={classes.worksheetDesktop}
                                 onClick={this.handleClickForDeselect}
-                                style={{ width: this.state.worksheetWidthPercentage }}
                             >
-                                {this.state.focusIndex === -1 ? (
-                                    <div
-                                        className={classes.worksheetDummyHeader}
-                                        id='worksheet_dummy_header'
-                                    />
-                                ) : (
-                                    <div style={{ height: 8 }} />
-                                )}
                                 <div
-                                    className={classes.worksheetInner}
+                                    className={classes.worksheetOuter}
                                     onClick={this.handleClickForDeselect}
+                                    style={{ width: this.state.worksheetWidthPercentage }}
                                 >
+                                    {this.state.focusIndex === -1 ? (
+                                        <div
+                                            className={classes.worksheetDummyHeader}
+                                            id='worksheet_dummy_header'
+                                        />
+                                    ) : (
+                                        <div style={{ height: 8 }} />
+                                    )}
                                     <div
-                                        id='worksheet_content'
-                                        className={editableClassName + ' worksheet_content'}
+                                        className={classes.worksheetInner}
+                                        onClick={this.handleClickForDeselect}
                                     >
-                                        {worksheetDisplay}
-                                        {/* Show error dialog if bulk bundle execution failed*/}
-                                        {this.state.BulkBundleDialog}
+                                        {showWorksheetContent && (
+                                            <div
+                                                id='worksheet_content'
+                                                className={editableClassName + ' worksheet_content'}
+                                            >
+                                                {worksheetDisplay}
+                                                {/* Show error dialog if bulk bundle execution failed*/}
+                                                {this.state.BulkBundleDialog}
+                                            </div>
+                                        )}
                                     </div>
+                                    <Button
+                                        onClick={this.moveFocusToBottom}
+                                        color='primary'
+                                        variant='contained'
+                                        style={{
+                                            borderRadius: '400px',
+                                            position: 'fixed',
+                                            bottom: '50px',
+                                            right: '30px',
+                                            backgroundColor: '00BFFF',
+                                            zIndex: 10,
+                                        }}
+                                    >
+                                        <ExpandMoreIcon size='medium' />
+                                    </Button>
                                 </div>
-                                <Button
-                                    onClick={this.moveFocusToBottom}
-                                    color='primary'
-                                    variant='contained'
-                                    style={{
-                                        borderRadius: '400px',
-                                        position: 'fixed',
-                                        bottom: '50px',
-                                        right: '30px',
-                                        backgroundColor: '00BFFF',
-                                        zIndex: 10,
-                                    }}
-                                >
-                                    <ExpandMoreIcon size='medium' />
-                                </Button>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
                 <WorksheetDialogs
                     openedDialog={this.state.openedDialog}
                     closeDialog={() => {
@@ -2018,7 +2025,8 @@ class Worksheet extends React.Component {
                     showBundleContentCallback={this.showBundleContentCallback}
                 />
                 <InformationModal
-                    showInformationModal={this.state.showInformationModal}
+                    showUpdateProgress={showUpdateProgress}
+                    showInformationModal={showInformationModal}
                     toggleInformationModal={this.toggleInformationModal}
                 />
                 <Popover
