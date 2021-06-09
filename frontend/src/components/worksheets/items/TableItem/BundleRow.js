@@ -149,7 +149,11 @@ class BundleRow extends Component {
                     />
                 );
                 showDetailButton = (
-                    <IconButton onClick={this.handleDetailClick} style={{ padding: 2 }}>
+                    <IconButton
+                        onClick={this.handleDetailClick}
+                        style={{ padding: 2 }}
+                        aria-label='Expand'
+                    >
                         {showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                     </IconButton>
                 );
