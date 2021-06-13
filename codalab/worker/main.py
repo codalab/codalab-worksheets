@@ -20,6 +20,7 @@ from . import docker_utils
 from .worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
+from codalab.worker.singularity_image_manager import SingularityImageManager
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,11 @@ def parse_args():
         '--exit-when-idle',
         action='store_true',
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
+    )
+    parser.add_argument(
+        '--singularity',
+        action='store_true',
+        help='If specified the worker will run jobs on a singularity backend',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -245,6 +251,11 @@ def main():
             args.work_dir,
             args.max_work_dir_size,
         )
+
+    if args.singularity:
+        singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
+    else:
+        singularity_folder = None
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -252,13 +263,23 @@ def main():
     if local_bundles_dir and not os.path.exists(local_bundles_dir):
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
+    if singularity_folder and not os.path.exists(singularity_folder):
+        logger.info('codalab local singularity image location %s doesn\'t exist, creating.', singularity_folder)
+        os.makedirs(singularity_folder, 0o770)
 
     docker_runtime = docker_utils.get_available_runtime()
-    image_manager = DockerImageManager(
-        os.path.join(args.work_dir, 'images-state.json'),
-        args.max_image_cache_size,
-        args.max_image_size,
-    )
+    if args.singularity:
+        image_manager = SingularityImageManager(
+            args.max_image_size,
+            args.max_image_cache_size,
+            singularity_folder,
+        )
+    else:
+        image_manager = DockerImageManager(
+            os.path.join(args.work_dir, 'images-state.json'),
+            args.max_image_cache_size,
+            args.max_image_size,
+        )
 
     worker = Worker(
         image_manager,
