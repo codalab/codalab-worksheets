@@ -16,6 +16,7 @@ import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
 import classNames from 'classnames';
 import { fetchAsyncBundleContents } from '../../../../util/apiWrapper';
+import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -259,6 +260,17 @@ class TableItem extends React.Component<{
                 />
             );
         });
+        if (this.state.openSchemaTextBox) {
+            Mousetrap.bindGlobal(['ctrl+enter'], () => {
+                this.setState({ openSchemaTextBox: false });
+                this.props.updateBundleBlockSchema(
+                    this.state.curSchemaNames,
+                    'table',
+                    this.props.item.first_bundle_source_index,
+                );
+                Mousetrap.unbindGlobal(['ctrl+enter']);
+            });
+        }
         return (
             <div className='ws-item'>
                 <TableContainer style={{ overflowX: 'auto', overflowY: 'hidden' }}>
