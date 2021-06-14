@@ -3,7 +3,7 @@ try:
     from google.oauth2 import service_account  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
-        'Running the worker manager requires the kubernetes module.\n'
+        'Running the worker manager requires the google-cloud-container module.\n'
         'Please run: pip install google-cloud-container'
     )
 
