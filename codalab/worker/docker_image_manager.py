@@ -14,13 +14,10 @@ from codalab.worker.fsm import DependencyStage
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.worker_thread import ThreadDict
 from codalab.lib.formatting import size_str
-from .image_manager import ImageManager
+from .image_manager import ImageManager, ImageAvailabilityState
 
 logger = logging.getLogger(__name__)
 
-# Stores the download state of a Docker image (also includes the digest being pulled, digest string,
-# DependencyStage and relevant status message from the download)
-ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['digest', 'stage', 'message'])
 # Stores information relevant about caching about docker images
 ImageCacheEntry = namedtuple(
     'ImageCacheEntry', ['id', 'digest', 'last_used', 'virtual_size', 'marginal_size']

@@ -3,7 +3,7 @@ import os
 import threading
 
 from codalab.lib.formatting import size_str
-from codalab.worker.docker_image_manager import ImageAvailabilityState
+from codalab.worker.image_manager import ImageAvailabilityState
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.image_manager import ImageManager
 from codalab.worker.singularity_utils import get_singularity_container_size

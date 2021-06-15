@@ -283,7 +283,7 @@ def main():
 
     worker = Worker(
         image_manager,
-        dependency_manager,
+        dependency_manager, 
         os.path.join(args.work_dir, 'worker-state.json'),
         args.cpuset,
         args.gpuset,

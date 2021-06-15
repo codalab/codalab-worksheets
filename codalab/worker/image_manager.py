@@ -2,11 +2,14 @@ import logging
 import threading
 import time
 import traceback
+from collections import namedtuple
 
-from codalab.worker.docker_image_manager import ImageAvailabilityState
 from codalab.worker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
+# Stores the download state of a Docker image (also includes the digest being pulled, digest string,
+# DependencyStage and relevant status message from the download)
+ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['digest', 'stage', 'message'])
 
 class ImageManager:
     """
