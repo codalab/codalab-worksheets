@@ -51,8 +51,10 @@ class ImageManager:
         pass
 
     def get(self, image_spec: str) -> ImageAvailabilityState:
+        print("what why am I here ")
         pass
 
     # should be implemented in subclasses
     def _cleanup(self):
-        raise NotImplementedError
+        print("what why am I here cleanup")
+        pass
