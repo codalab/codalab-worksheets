@@ -267,19 +267,19 @@ def main():
         logger.info('codalab local singularity image location %s doesn\'t exist, creating.', singularity_folder)
         os.makedirs(singularity_folder, 0o770)
 
-    docker_runtime = docker_utils.get_available_runtime()
-    if args.singularity:
-        image_manager = SingularityImageManager(
-            args.max_image_size,
-            args.max_image_cache_size,
-            singularity_folder,
-        )
-    else:
-        image_manager = DockerImageManager(
-            os.path.join(args.work_dir, 'images-state.json'),
-            args.max_image_cache_size,
-            args.max_image_size,
-        )
+    # docker_runtime = docker_utils.get_available_runtime()
+    # if args.singularity:
+    #     image_manager = SingularityImageManager(
+    #         args.max_image_size,
+    #         args.max_image_cache_size,
+    #         singularity_folder,
+    #     )
+    # else:
+    image_manager = DockerImageManager(
+        os.path.join(args.work_dir, 'images-state.json'),
+        args.max_image_cache_size,
+        args.max_image_size,
+    )
 
     worker = Worker(
         image_manager,
