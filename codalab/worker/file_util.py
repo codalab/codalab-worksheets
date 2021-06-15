@@ -1,6 +1,7 @@
 from contextlib import closing
 from io import BytesIO, TextIOWrapper
 import gzip
+import logging
 import os
 import shutil
 import subprocess
@@ -16,7 +17,6 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
-from codalab.lib.beam.streamingzipfile import StreamingZipFile
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -161,14 +161,33 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
         remove_path(directory_path)
     os.mkdir(directory_path)
 
-    with StreamingZipFile(fileobj) as zf:
-        for member in zf:  # type: ignore
-            # Make sure that there is no trickery going on (see note in
-            # ZipFile.extractall() documentation).
-            member_path = os.path.realpath(os.path.join(directory_path, member.filename))
-            if not member_path.startswith(directory_path):
-                raise UsageError('Archive member extracts outside the directory.')
-            zf.extract(member, directory_path)
+    # TODO (Ashwin): re-enable streaming zip files once this works again. Disabled because of https://github.com/codalab/codalab-worksheets/issues/3579.
+    # with StreamingZipFile(fileobj) as zf:
+    #     for member in zf:  # type: ignore
+    #         # Make sure that there is no trickery going on (see note in
+    #         # ZipFile.extractall() documentation).
+    #         member_path = os.path.realpath(os.path.join(directory_path, member.filename))
+    #         if not member_path.startswith(directory_path):
+    #             raise UsageError('Archive member extracts outside the directory.')
+    #         zf.extract(member, directory_path)
+
+    # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
+    with tempfile.NamedTemporaryFile() as f:
+        shutil.copyfileobj(fileobj, f)
+        f.flush()
+        proc = subprocess.Popen(
+            ['unzip', '-q', f.name, '-d', directory_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        exitcode = proc.wait()
+        if exitcode != 0:
+            logging.error(
+                "Invalid archive upload: failed to unzip .zip file. stderr: <%s>. stdout: <%s>.",
+                proc.stderr.read() if proc.stderr is not None else "",
+                proc.stdout.read() if proc.stdout is not None else "",
+            )
+            raise UsageError('Invalid archive upload: failed to unzip .zip file.')
 
 
 class OpenIndexedArchiveFile(object):
