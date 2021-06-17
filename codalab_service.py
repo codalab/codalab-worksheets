@@ -32,6 +32,7 @@ DEFAULT_SERVICES = [
     'rest-server',
     'bundle-manager',
     'worker',
+    'worker-singularity',
     'init',
 ]
 
@@ -52,6 +53,7 @@ SERVICE_TO_IMAGE = {
     'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
+    'worker-singularity': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through

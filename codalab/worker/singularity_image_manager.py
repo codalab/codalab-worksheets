@@ -30,8 +30,8 @@ class SingularityImageManager(ImageManager):
 
     def get(self, image_spec):
         """
-        This will for now be built without caching - thats a little more complicated.
-        image_spec is in singularity format:https://github.com/codalab/codalab-worksheets/issues/3609
+        This will for now be built without caching - that's a little more complicated.
+        image_spec is in singularity format:
         - Docker: 'docker://<image>'
         - Sylabs Cloud hub: 'library://<image>'
         - Singularity Hub (deprecated): 'shub://<image>'
