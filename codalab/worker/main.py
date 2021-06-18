@@ -264,15 +264,16 @@ def main():
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
     if singularity_folder and not os.path.exists(singularity_folder):
-        logger.info('codalab local singularity image location %s doesn\'t exist, creating.', singularity_folder)
+        logger.info(
+            'codalab local singularity image location %s doesn\'t exist, creating.',
+            singularity_folder,
+        )
         os.makedirs(singularity_folder, 0o770)
 
     docker_runtime = docker_utils.get_available_runtime()
     if args.singularity:
         image_manager = SingularityImageManager(
-            args.max_image_size,
-            args.max_image_cache_size,
-            singularity_folder,
+            args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
     else:
         image_manager = DockerImageManager(
@@ -283,7 +284,7 @@ def main():
 
     worker = Worker(
         image_manager,
-        dependency_manager, 
+        dependency_manager,
         os.path.join(args.work_dir, 'worker-state.json'),
         args.cpuset,
         args.gpuset,

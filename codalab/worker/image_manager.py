@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 # DependencyStage and relevant status message from the download)
 ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['digest', 'stage', 'message'])
 
+
 class ImageManager:
     """
     ImageManager is the base interface for all image managers (docker, singularity, etc.)
@@ -22,7 +23,6 @@ class ImageManager:
         self._max_image_cache_size = max_image_cache_size
         self._stop = False
         self._sleep_secs = 10
-        self._cleanup_thread = None
         self._downloading = ThreadDict(
             fields={'success': False, 'status': 'Download starting'}, lock=True
         )
@@ -30,6 +30,7 @@ class ImageManager:
     def start(self) -> None:
         logger.info("Starting image manager")
         if self._max_image_cache_size:
+
             def cleanup_loop(self):
                 while not self._stop:
                     try:
@@ -54,10 +55,9 @@ class ImageManager:
         pass
 
     def get(self, image_spec: str) -> ImageAvailabilityState:
-        print("what why am I here ")
-        pass
+        raise NotImplementedError("get should not be called in the ImageManager base class")
 
     # should be implemented in subclasses
     def _cleanup(self):
-        print("what why am I here cleanup")
+        raise NotImplementedError("cleanup should not be called in the ImageManager base class")
         pass

@@ -7,13 +7,12 @@ from codalab.worker.image_manager import ImageAvailabilityState
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.image_manager import ImageManager
 from codalab.worker.singularity_utils import get_singularity_container_size
-from spython.main import Client
+from spython.main import Client  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 
 class SingularityImageManager(ImageManager):
-
     def __init__(self, max_image_size: int, max_image_cache_size: int, image_folder: str):
         """
         image_folder needs to be an absolute path
@@ -47,9 +46,7 @@ class SingularityImageManager(ImageManager):
                 else:
                     if self._downloading[image_spec]['success']:
                         status = ImageAvailabilityState(
-                            digest=None,
-                            stage=DependencyStage.READY,
-                            message="Image ready",
+                            digest=None, stage=DependencyStage.READY, message="Image ready",
                         )
                     else:
                         # in the future, we would check if the image exists locally before erroring,
@@ -58,17 +55,21 @@ class SingularityImageManager(ImageManager):
                             digest=None,
                             stage=DependencyStage.READY,
                             # the error should default to something
-                            message="Image could not be downloaded: %s" % self._downloading[image_spec]['message'],
+                            message="Image could not be downloaded: %s"
+                            % self._downloading[image_spec]['message'],
                         )
                     self._downloading.remove(image_spec)
                     return status
         else:
+
             def download():
                 logger.debug('Downloading image %s', image_spec)
                 try:
-                    # stream=True for singularity doesnt return progress or anything really - for now no progess
+                    # stream=True for singularity doesnt return progress or anything really - for now no progress
                     self._downloading[image_spec]['message'] = "Starting Download"
-                    img, puller = Client.pull(image_spec, pull_folder=self.image_folder, stream=True)
+                    img, puller = Client.pull(
+                        image_spec, pull_folder=self.image_folder, stream=True
+                    )
                     # maybe add img to a list and in cleanup rm the files in the list
                     logger.debug('Download for image %s complete to %s', image_spec, img)
                     self._downloading[image_spec]['success'] = True
@@ -76,9 +77,7 @@ class SingularityImageManager(ImageManager):
                 except Exception as ex:
                     logger.debug('Download for Singularity image %s failed: %s', image_spec, ex)
                     self._downloading[image_spec]['success'] = False
-                    self._downloading[image_spec][
-                        'message'
-                    ] = "Can't download image: {}".format(ex)
+                    self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
 
             # Check docker image size before pulling from Docker Hub.
             # Do not download images larger than self._max_image_size
@@ -94,11 +93,11 @@ class SingularityImageManager(ImageManager):
                         logger.info(failure_msg)
                     elif image_size_bytes > self._max_image_size:
                         failure_msg = (
-                                "The size of "
-                                + image_spec
-                                + ": {} exceeds the maximum image size allowed {}.".format(
-                            size_str(image_size_bytes), size_str(self._max_image_size)
-                        )
+                            "The size of "
+                            + image_spec
+                            + ": {} exceeds the maximum image size allowed {}.".format(
+                                size_str(image_size_bytes), size_str(self._max_image_size)
+                            )
                         )
                         logger.error(failure_msg)
                         return ImageAvailabilityState(
