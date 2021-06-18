@@ -23,8 +23,9 @@ import subprocess
 import sys
 from typing import Optional
 
-from codalab.common import precondition, UsageError
+from codalab.common import precondition, UsageError, parse_linked_bundle_url
 from codalab.lib import file_util
+from codalab.worker.file_util import get_path_size
 
 
 # Block sizes and canonical strings used when hashing files.
@@ -176,6 +177,8 @@ def get_size(path, dirs_and_files=None):
     Get the size (in bytes) of the file or directory at or under the given path.
     Does not include symlinked files and directories.
     """
+    if parse_linked_bundle_url(path).uses_beam:
+        return get_path_size(path)
     if os.path.islink(path) or not os.path.isdir(path):
         return os.lstat(path).st_size
     dirs_and_files = dirs_and_files or recursive_ls(path)
@@ -188,6 +191,9 @@ def hash_directory(path, dirs_and_files=None):
     This hash is independent of the path itself - if you were to move the
     directory and call get_hash again, you would get the same result.
     """
+    if parse_linked_bundle_url(path).uses_beam:
+        # On Azure Blob Storage, we just use the directory size for the hashed contents.
+        return get_size(path)
     (directories, files) = dirs_and_files or recursive_ls(path)
     # Sort and then hash all directories and then compute a hash of the hashes.
     # This two-level hash is necessary so that the overall hash is unambiguous -
@@ -299,6 +305,12 @@ def remove(path):
     """
     Remove the given path, whether it is a directory, file, or link.
     """
+    if parse_linked_bundle_url(path).uses_beam:
+        from apache_beam.io.filesystems import FileSystems
+
+        if not FileSystems.exists(path):
+            FileSystems.delete([path])
+        return
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):

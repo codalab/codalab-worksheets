@@ -1,7 +1,15 @@
 try:
     from google.cloud.container_v1 import ClusterManagerClient  # type: ignore
     from google.oauth2 import service_account  # type: ignore
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        'Running the worker manager requires the google-cloud-container module.\n'
+        'Please run: pip install google-cloud-container'
+    )
+
+try:
     from kubernetes import client, utils  # type: ignore
+    from kubernetes.utils.create_from_yaml import FailToCreateError  # type: ignore
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         'Running the worker manager requires the kubernetes module.\n'
@@ -153,5 +161,5 @@ class GCPBatchWorkerManager(WorkerManager):
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
         try:
             utils.create_from_dict(self.k8_client, config)
-        except client.ApiException as e:
+        except (client.ApiException, FailToCreateError) as e:
             logger.error(f'Exception when calling Kubernetes utils->create_from_dict: {e}')

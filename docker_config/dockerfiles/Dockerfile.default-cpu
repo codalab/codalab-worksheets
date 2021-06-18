@@ -1,7 +1,11 @@
-FROM ubuntu:xenial
+FROM ubuntu:20.04
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    software-properties-common
 RUN add-apt-repository ppa:deadsnakes/ppa 
+
 
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
@@ -10,43 +14,28 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     iputils-ping \
     git \
-    python2.7 \	
-    python-pip \	
-    python-dev \	
-    python-software-properties \	
-    python-tk \
-    software-properties-common \
+    curl \
     build-essential \
     cmake \
     libhdf5-dev \
     swig \
     wget \
-    curl
+    python3.6 \
+    python3.6-venv \
+    python3.6-dev \
+    python3-pip \
+    python3-software-properties \
+    openjdk-8-jdk && \
+    rm -rf /var/lib/apt/lists/*
 
-## Python 3.6
-RUN add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update -y  && \
-    apt-get install python3.6 -y \
-        python3.6-venv \
-        python3.6-dev \
-        python3-pip \
-        python3-software-properties
-
-# Set Python3.6 as the default python3 version
+# Set Python3.6 as the default python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
 
 RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
-
-## Java (Oracle can be flaky sometimes, so use OpenJDK)
-#RUN echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | debconf-set-selections && \
-#    add-apt-repository -y ppa:linuxuprising/java && \
-#    apt-get update && \
-#    apt-get install -y oracle-java12-installer && \
-#    rm -rf /var/cache/oracle-jdk12-installer
-RUN apt-get install -y openjdk-8-jdk
 
 ## Scala
 ENV SCALA_VERSION 2.12.6
@@ -59,27 +48,12 @@ RUN wget http://scala-lang.org/files/archive/scala-$SCALA_VERSION.deb && \
     apt-get clean && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/*
-
+ 
 ENV SCALA_HOME /usr/share/java
 
 ## Python packages
-
-RUN pip2 install -U pip
 RUN pip3 install -U pip
-
-RUN pip2 install -U \
-      numpy \
-      scipy \
-      matplotlib \
-      pandas \
-      sympy \
-      nose \
-      tqdm \
-      wheel \
-      scikit-learn \
-      scikit-image \
-      nltk
-RUN python3 -m pip install -U \
+RUN python3 -m pip install -U --no-cache-dir \
       numpy \
       scipy \
       matplotlib \
@@ -91,25 +65,14 @@ RUN python3 -m pip install -U \
       wheel \
       scikit-learn \
       scikit-image \
-      nltk
-
-# Install spacy separately for python2.7, otherwise it tries to force a newer version of numpy which isn't supported on python2.7
-RUN pip2 install spacy
-RUN python -m spacy download en
-RUN python3 -m spacy download en
-
-RUN pip2 install -U \
+      nltk \
       tensorflow-gpu==1.12.0 \
       tensorboard \
-      keras
-RUN python3 -m pip install -U \
-      tensorflow-gpu==1.12.0 \
-      tensorboard \
-      keras
+      keras \
+      torch==1.1.0 \
+      torchvision
 
-RUN pip2 install -U \
-      torch==1.1.0 \
-      torchvision
-RUN python3 -m pip install -U \
-      torch==1.1.0 \
-      torchvision
+RUN python3 -m spacy download en_core_web_sm
+
+# Check to make sure python works from the command line
+RUN python

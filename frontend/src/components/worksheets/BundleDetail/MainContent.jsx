@@ -46,7 +46,7 @@ class MainContent extends React.Component<
 
 		return (
             <div className={ classes.outter }>
-    			<Grid container>    
+    			<Grid container>
                     
                     { /** Stdout/stderr components ================================================================= */}
                     <Grid container>
@@ -141,8 +141,7 @@ const styles = (theme) => ({
     },
 	snippet: {
 		fontFamily: 'monospace',
-        maxHeight: 300, 
-        width: 680,
+        maxHeight: 300,
         padding: 10,
         flexWrap: 'wrap', 
         flexShrink: 1,

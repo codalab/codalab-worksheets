@@ -382,7 +382,7 @@ class NavBar extends React.Component<{
                         )}
                         <Tooltip title='Gallery'>
                             <Link to='/worksheets?name=home'>
-                                <IconButton>
+                                <IconButton aria-label='Gallery'>
                                     <GalleryIcon />
                                 </IconButton>
                             </Link>
