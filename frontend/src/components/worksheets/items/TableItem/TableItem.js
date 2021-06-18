@@ -403,7 +403,6 @@ const TableWrapper = (props) => {
             }
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item, item.rows, item.status, onAsyncItemLoad]);
     return <TableItem {...props} />;
 };

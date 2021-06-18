@@ -691,26 +691,25 @@ class Worksheet extends React.Component {
 
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
+        function isOnScreen(element) {
+            if (element.offset() === undefined) return false;
+            let elementOffsetTop = element.offset().top;
+            let elementHeight = element.height();
+            let screenScrollTop = $(window).scrollTop();
+            let screenHeight = $(window).height();
+            // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
+            // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
+            let scrollIsAboveElement =
+                elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
+            let elementIsVisibleOnScreen = screenScrollTop + screenHeight - elementOffsetTop >= 0;
+            return scrollIsAboveElement && elementIsVisibleOnScreen;
+        }
         if (shouldScroll) {
             const element =
                 $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
                     ? $(`#codalab-worksheet-item-${index}`)
                     : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
 
-            function isOnScreen(element) {
-                if (element.offset() === undefined) return false;
-                let elementOffsetTop = element.offset().top;
-                let elementHeight = element.height();
-                let screenScrollTop = $(window).scrollTop();
-                let screenHeight = $(window).height();
-                // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
-                // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
-                let scrollIsAboveElement =
-                    elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
-                let elementIsVisibleOnScreen =
-                    screenScrollTop + screenHeight - elementOffsetTop >= 0;
-                return scrollIsAboveElement && elementIsVisibleOnScreen;
-            }
             shouldScroll = !isOnScreen(element);
         }
 
@@ -753,9 +752,7 @@ class Worksheet extends React.Component {
         // A protection mechanism to avoid possible error
         if (index >= info.blocks.length) {
             index = info.blocks.length - 1;
-            if (subIndex >= info.blocks[index].length || 1) {
-                subIndex = 0;
-            }
+            subIndex = 0;
         }
 
         // Change the focus - triggers updating of all descendants.
