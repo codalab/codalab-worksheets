@@ -77,7 +77,9 @@ def should_run_service(args, service):
     # `default no-worker` is generally used for real deployment since we don't want a worker running on the same machine.
     services = [] if args.services is None else args.services
     if 'default' in args.services:
+        print("IM RUNNING DEFAULT")
         services.extend(DEFAULT_SERVICES)
+        print('services: {}'.format(services))
 
     # 'worker-shared-file-system` is just `worker` but with a different argument, so they're equivalent for us
     if service == 'worker-shared-file-system':
@@ -935,6 +937,7 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker-shared-file-system')
         else:
             self.bring_up_service('worker')
+        self.bring_up_service('worker-singularity')
 
         self.bring_up_service('monitor')
 
