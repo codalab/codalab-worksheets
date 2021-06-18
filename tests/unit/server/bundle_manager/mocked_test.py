@@ -123,7 +123,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
-                'tag': 'worker_X',
+                'tag': 'workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -137,7 +137,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 1000,
-                'tag': 'worker_X',
+                'tag': 'workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
@@ -151,11 +151,25 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
                 'memory_bytes': 2 * 1000,
                 'free_disk_bytes': 2 * 1000,
                 'exit_after_num_runs': 0,
-                'tag': 'worker_X',
+                'tag': 'workerX',
                 'run_uuids': [],
                 'dependencies': [],
                 'shared_file_system': False,
                 'tag_exclusive': True,
+                'has_gpus': False,
+            },
+            {
+                'worker_id': 8,
+                'cpus': 6,
+                'gpus': 0,
+                'memory_bytes': 2 * 1000,
+                'free_disk_bytes': 2 * 1000,
+                'exit_after_num_runs': 1000,
+                'tag': 'workerY,workerX',
+                'run_uuids': [],
+                'dependencies': [],
+                'shared_file_system': False,
+                'tag_exclusive': False,
                 'has_gpus': False,
             },
         ]
@@ -194,7 +208,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.workers_list, self.bundle, self.bundle_resources
         )
-        self.assertEqual(len(sorted_workers_list), 6)
+        self.assertEqual(len(sorted_workers_list), 7)
         self.assertEqual(sorted_workers_list[0]['worker_id'], 3)
         self.assertEqual(sorted_workers_list[1]['worker_id'], 4)
         self.assertEqual(sorted_workers_list[-1]['worker_id'], 0)
@@ -204,29 +218,34 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.workers_list, self.bundle, self.bundle_resources
         )
-        self.assertEqual(len(sorted_workers_list), 6)
+        self.assertEqual(len(sorted_workers_list), 7)
         for worker in sorted_workers_list:
             self.assertEqual(worker['tag_exclusive'], False)
 
     def test_filter_and_sort_workers_tag_exclusive_priority(self):
         # All other things being equal, tag_exclusive workers
         # should appear in the top from the returned sorted workers list.
-        self.bundle.metadata.request_queue = "tag=worker_X"
+        self.bundle.metadata.request_queue = "tag=workerX"
         sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.workers_list, self.bundle, self.bundle_resources
         )
-        self.assertEqual(len(sorted_workers_list), 2)
+        self.assertEqual(len(sorted_workers_list), 3)
         self.assertEqual(sorted_workers_list[0]['worker_id'], 6)
-        self.assertEqual(sorted_workers_list[1]['worker_id'], 5)
+        self.assertEqual(
+            set([sorted_workers_list[1]['worker_id'], sorted_workers_list[2]['worker_id']]),
+            set([5, 8]),
+        )
 
     def test_get_matched_workers_with_tag(self):
-        self.bundle.metadata.request_queue = "tag=worker_X"
+        self.bundle.metadata.request_queue = "tag=workerX"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
-        self.assertEqual(len(matched_workers), 3)
+        self.assertEqual(len(matched_workers), 4)
         self.assertEqual(matched_workers[0]['worker_id'], 5)
         self.assertEqual(matched_workers[1]['worker_id'], 6)
+        self.assertEqual(matched_workers[2]['worker_id'], 7)
+        self.assertEqual(matched_workers[3]['worker_id'], 8)
 
     def test_get_matched_workers_with_bad_formatted_tag(self):
         self.bundle.metadata.request_queue = "tag="
@@ -236,16 +255,26 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.assertEqual(len(matched_workers), 0)
 
     def test_get_matched_workers_without_tag_prefix(self):
-        self.bundle.metadata.request_queue = "worker_X"
+        self.bundle.metadata.request_queue = "workerX"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
-        self.assertEqual(len(matched_workers), 3)
+        self.assertEqual(len(matched_workers), 4)
         self.assertEqual(matched_workers[0]['worker_id'], 5)
         self.assertEqual(matched_workers[1]['worker_id'], 6)
+        self.assertEqual(matched_workers[2]['worker_id'], 7)
+        self.assertEqual(matched_workers[3]['worker_id'], 8)
+
+    def test_get_matched_workers_multiple_tags(self):
+        self.bundle.metadata.request_queue = "workerY"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 1)
+        self.assertEqual(matched_workers[0]['worker_id'], 8)
 
     def test_get_matched_workers_not_exist_tag(self):
-        self.bundle.metadata.request_queue = "worker_Y"
+        self.bundle.metadata.request_queue = "workerZ"
         matched_workers = BundleManager._get_matched_workers(
             self.bundle.metadata.request_queue, self.workers_list
         )
@@ -257,3 +286,46 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
             self.bundle.metadata.request_queue, self.workers_list
         )
         self.assertEqual(len(matched_workers), 0)
+
+    def test_get_matched_workers_non_existent_or_existing_tag(self):
+        self.bundle.metadata.request_queue = "workerZ|workerX"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 4)
+        self.assertEqual(matched_workers[0]['worker_id'], 5)
+        self.assertEqual(matched_workers[1]['worker_id'], 6)
+        self.assertEqual(matched_workers[2]['worker_id'], 7)
+        self.assertEqual(matched_workers[3]['worker_id'], 8)
+
+    def test_get_matched_workers_non_existent_and_existing_tag(self):
+        self.bundle.metadata.request_queue = "workerZ & workerX"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 0)
+
+    def test_get_matched_workers_non_existent_nested_or_existing_tags(self):
+        self.bundle.metadata.request_queue = "workerZ | (workerX & workerY)"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 1)
+        self.assertEqual(matched_workers[0]['worker_id'], 8)
+
+    def test_get_matched_workers_not_existing_tag(self):
+        self.bundle.metadata.request_queue = "!workerX"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 0)
+
+    def test_get_matched_workers_not_existing_tag_with_multiple(self):
+        self.bundle.metadata.request_queue = "!workerY"
+        matched_workers = BundleManager._get_matched_workers(
+            self.bundle.metadata.request_queue, self.workers_list
+        )
+        self.assertEqual(len(matched_workers), 3)
+        self.assertEqual(matched_workers[0]['worker_id'], 5)
+        self.assertEqual(matched_workers[1]['worker_id'], 6)
+        self.assertEqual(matched_workers[2]['worker_id'], 7)

@@ -4,22 +4,23 @@ import datetime
 import logging
 import os
 import random
-import re
 import sys
 import threading
 import time
 import traceback
-from typing import List
+from typing import List, Sequence
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
     check_bundle_have_run_permission,
 )
 from codalab.common import NotFoundError, PermissionError
-from codalab.lib import bundle_util, formatting, path_util
+from codalab.lib import bundle_util, formatting, parsing_util, path_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.bundle_state import State, RunResources
+
+import lark
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,8 @@ class BundleManager(object):
     """
     Assigns run bundles to workers and makes make bundles.
     """
+
+    _request_queue_parser = parsing_util.RequestQueueParser()
 
     def __init__(self, codalab_manager, worker_timeout_seconds=60):
         config = codalab_manager.config.get('workers')
@@ -347,7 +350,7 @@ class BundleManager(object):
         1. For a given user, schedule the highest-priority bundles first, followed by bundles
            that request to run on a specific worker.
         2. If the bundle requests to run on a specific worker, schedule the bundle
-           to run on a worker that has a tag that exactly matches the bundle's request_queue.
+           to run on a worker that has a tag that matches the bundle's request_queue.
         3. If the bundle doesn't request to run on a specific worker,
           (1) try to schedule the bundle to run on a worker that belongs to the bundle's owner
           (2) if there is no such qualified private worker, uses CodaLab-owned workers, which have user ID root_user_id.
@@ -846,18 +849,40 @@ class BundleManager(object):
                 )
         return None
 
-    @staticmethod
-    def _get_matched_workers(request_queue, workers):
+    @classmethod
+    def _get_matched_workers(cls, request_queue, workers):
         """
         Get all of the workers that match with the name of the requested worker
         :param request_queue: a tag with the format "tag=worker_X" or "worker_X" that can be used to match workers
         :param workers: a list of workers
         :return: a list of matched workers
         """
-        tag_match = re.match('(?:tag=)?(.+)', request_queue)
-        if tag_match is not None:
-            return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
+        prefix = "tag="
+        if request_queue.startswith(prefix):
+            # Strip off "tag=" from the request_queue value
+            request_queue = request_queue[len(prefix) :]
+        if request_queue:
+            try:
+                return [
+                    worker
+                    for worker in workers
+                    if (
+                        worker["tag"]
+                        and cls._request_queue_matches_worker_tags(
+                            request_queue=request_queue, worker_tags=worker["tag"].split(",")
+                        )
+                    )
+                ]
+            except lark.exceptions.LarkError:
+                logger.debug(traceback.format_exc())
+                return []
         return []
+
+    @classmethod
+    def _request_queue_matches_worker_tags(cls, request_queue: str, worker_tags: Sequence[str]):
+        return cls._request_queue_parser.parse_request_queue_to_callable(
+            request_queue=request_queue
+        )(worker_tags)
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """
