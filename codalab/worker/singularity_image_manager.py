@@ -67,7 +67,8 @@ class SingularityImageManager(ImageManager):
                 logger.debug('Downloading image %s', image_spec)
                 try:
                     # stream=True for singularity doesnt return progress or anything really - for now no progess
-                    img = Client.pull(image_spec, pull_folder=self.image_folder)
+                    self._downloading[image_spec]['message'] = "Starting Download"
+                    img, puller = Client.pull(image_spec, pull_folder=self.image_folder, stream=True)
                     # maybe add img to a list and in cleanup rm the files in the list
                     logger.debug('Download for image %s complete to %s', image_spec, img)
                     self._downloading[image_spec]['success'] = True
