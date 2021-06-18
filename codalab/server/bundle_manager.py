@@ -4,12 +4,11 @@ import datetime
 import logging
 import os
 import random
-import re
 import sys
 import threading
 import time
 import traceback
-from typing import List
+from typing import List, Sequence
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -347,7 +346,7 @@ class BundleManager(object):
         1. For a given user, schedule the highest-priority bundles first, followed by bundles
            that request to run on a specific worker.
         2. If the bundle requests to run on a specific worker, schedule the bundle
-           to run on a worker that has a tag that exactly matches the bundle's request_queue.
+           to run on a worker that has a tag that matches the bundle's request_queue.
         3. If the bundle doesn't request to run on a specific worker,
           (1) try to schedule the bundle to run on a worker that belongs to the bundle's owner
           (2) if there is no such qualified private worker, uses CodaLab-owned workers, which have user ID root_user_id.
@@ -534,7 +533,7 @@ class BundleManager(object):
             workers_list = [
                 worker
                 for worker in workers_list
-                if not worker['tag_exclusive'] or not worker['tag']
+                if not worker['tag_exclusive'] or not worker['tags']
             ]
 
         # Filter by CPUs.
@@ -854,10 +853,26 @@ class BundleManager(object):
         :param workers: a list of workers
         :return: a list of matched workers
         """
-        tag_match = re.match('(?:tag=)?(.+)', request_queue)
-        if tag_match is not None:
-            return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
+        prefix = "tag="
+        if request_queue.startswith(prefix):
+            # Strip off "tag=" from the request_queue value
+            request_queue = request_queue[len(prefix) :]
+        if request_queue:
+            return [
+                worker
+                for worker in workers
+                if (
+                    worker["tags"]
+                    and BundleManager._request_queue_matches_worker_tags(
+                        request_queue=request_queue, worker_tags=worker["tags"].split(",")
+                    )
+                )
+            ]
         return []
+
+    @staticmethod
+    def _request_queue_matches_worker_tags(request_queue: str, worker_tags: Sequence[str]):
+        return request_queue in worker_tags
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """

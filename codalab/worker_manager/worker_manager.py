@@ -122,8 +122,8 @@ class WorkerManager(object):
         ]
 
         # Additional optional arguments
-        if self.args.worker_tag:
-            command.extend(['--tag', self.args.worker_tag])
+        if self.args.worker_tags:
+            command.extend(['--tag'] + self.args.worker_tags)
         if self.args.worker_group:
             command.extend(['--group', self.args.worker_group])
         if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
@@ -190,8 +190,8 @@ class WorkerManager(object):
         # (and not tag=<worker tag>) this search query can again be simplified.
         # NOTE: server/bundle_manager.py has the server-side matching logic that should be synced
         # with this search request.
-        if self.args.worker_tag_exclusive and self.args.worker_tag:
-            keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tag, self.args.worker_tag)]
+        if self.args.worker_tag_exclusive and self.args.worker_tags:
+            keywords += ["request_queue=%s,tag=%s" % (self.args.worker_tags, self.args.worker_tags)]
 
         bundles: BundlesPayload = self.codalab_client.fetch(
             'bundles', params={'worksheet': None, 'keywords': keywords, 'include': ['owner']}

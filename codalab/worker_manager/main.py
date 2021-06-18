@@ -52,7 +52,7 @@ def main():
         default=1 * 60,
         type=int,
     )
-    parser.add_argument('--worker-tag', help='Tag to look for and put on workers')
+    parser.add_argument('--worker-tags', nargs="+", help='Tags to look for and put on workers')
     parser.add_argument(
         '--worker-work-dir-prefix', help="Prefix to use for each worker's working directory."
     )
@@ -140,6 +140,12 @@ def main():
             'Minimum # of workers (%d) greater than maximum # of workers (%d)'
             % (args.min_workers, args.max_workers)
         )
+    if args.worker_tags:
+        for tag in args.worker_tags:
+            if not tag.isalnum():
+                raise argparse.ArgumentTypeError(
+                    f"Worker tags must be alphanumeric (only contain letters and numbers), but {tag} is not."
+                )
 
     manager = worker_manager_types[args.worker_manager_name](args)
     manager.run_loop()
