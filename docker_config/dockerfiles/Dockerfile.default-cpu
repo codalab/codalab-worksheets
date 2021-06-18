@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     openjdk-8-jdk && \
     rm -rf /var/lib/apt/lists/*
 
-# Set Python3.6 as the default python3 version
+# Set Python3.6 as the default python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
 
