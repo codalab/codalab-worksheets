@@ -159,7 +159,7 @@ class RunStateMachine(StateTransitioner):
 
     def __init__(
         self,
-        docker_image_manager,  # Component to request docker images from
+        image_manager,  # Component to request docker images from
         dependency_manager,  # Component to request dependency downloads from
         worker_docker_network,  # Docker network to add all bundles to
         docker_network_internal,  # Docker network to add non-net connected bundles to
@@ -179,7 +179,7 @@ class RunStateMachine(StateTransitioner):
         self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
-        self.docker_image_manager = docker_image_manager
+        self.docker_image_manager = image_manager
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
@@ -416,14 +416,14 @@ class RunStateMachine(StateTransitioner):
             )
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
-            message = 'Cannot start Docker container: {}'.format(e)
+            message = 'Cannot start container: {}'.format(e)
             logger.error(message)
             logger.error(traceback.format_exc())
             raise
 
         return run_state._replace(
             stage=RunStage.RUNNING,
-            run_status='Running job in Docker container',
+            run_status='Running job in container',
             container_id=container.id,
             container=container,
             docker_image=image_state.digest,

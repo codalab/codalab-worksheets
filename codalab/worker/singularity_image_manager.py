@@ -72,7 +72,7 @@ class SingularityImageManager(ImageManager):
                     # maybe add img to a list and in cleanup rm the files in the list
                     logger.debug('Download for image %s complete to %s', image_spec, img)
                     self._downloading[image_spec]['success'] = True
-                    self._downloading[image_spec]['message'] = "Downloading image"
+                    self._downloading[image_spec]['message'] = "Downloaded image"
                 except Exception as ex:
                     logger.debug('Download for Singularity image %s failed: %s', image_spec, ex)
                     self._downloading[image_spec]['success'] = False
