@@ -73,3 +73,5 @@ RUN python3 -m pip install -U --no-cache-dir \
 
 RUN python3 -m spacy download en_core_web_sm
 
+# Check to make sure python works from the command line
+RUN python
