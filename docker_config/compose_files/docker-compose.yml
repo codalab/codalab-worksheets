@@ -241,7 +241,7 @@ services:
     networks:
       - rest-server
 
-  kubernetes-batch-worker-manager-cpu:
+  kubernetes-worker-manager-cpu:
     image: codalab/server:${CODALAB_VERSION}
     command: |
       cl-worker-manager
@@ -270,7 +270,7 @@ services:
     networks:
       - rest-server
 
-  kubernetes-batch-worker-manager-gpu:
+  kubernetes-worker-manager-gpu:
     image: codalab/server:${CODALAB_VERSION}
     command: |
       cl-worker-manager

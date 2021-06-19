@@ -22,7 +22,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class KubernetesBatchWorkerManager(WorkerManager):
-    NAME: str = 'kubernetes-batch'
+    NAME: str = 'kubernetes'
     DESCRIPTION: str = 'Worker manager for submitting jobs to a Kubernetes cluster'
 
     @staticmethod
@@ -32,7 +32,7 @@ class KubernetesBatchWorkerManager(WorkerManager):
             '--cluster-host', type=str, help='Host address of the Kubernetes cluster', required=True
         )
         subparser.add_argument(
-            '--auth-token', type=str, help='Kuberntes cluster authorization token', required=True,
+            '--auth-token', type=str, help='Kubernetes cluster authorization token', required=True,
         )
         subparser.add_argument(
             '--cert-path',

@@ -930,9 +930,9 @@ class CodalabServiceManager(object):
         if self.args.worker_manager_type == 'azure-batch':
             self.bring_up_service('azure-batch-worker-manager-cpu')
             self.bring_up_service('azure-batch-worker-manager-gpu')
-        elif self.args.worker_manager_type == 'kubernetes-batch':
-            self.bring_up_service('kubernetes-batch-worker-manager-cpu')
-            self.bring_up_service('kubernetes-batch-worker-manager-gpu')
+        elif self.args.worker_manager_type == 'kubernetes':
+            self.bring_up_service('kubernetes-worker-manager-cpu')
+            self.bring_up_service('kubernetes-worker-manager-gpu')
         elif self.args.worker_manager_type == 'aws-batch':
             self.bring_up_service('aws-batch-worker-manager-cpu')
             self.bring_up_service('aws-batch-worker-manager-gpu')
