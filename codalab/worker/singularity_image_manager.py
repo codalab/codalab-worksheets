@@ -15,11 +15,17 @@ logger = logging.getLogger(__name__)
 class SingularityImageManager(ImageManager):
     def __init__(self, max_image_size: int, max_image_cache_size: int, image_folder: str):
         """
-        image_folder needs to be an absolute path
+
+        Args:
+            max_image_size: Maximum image size of any pulled singularity image.
+            max_image_cache_size: The maximum size of the image cache (folder images are pulled into)
+            image_folder: folder images are pulled into.
         """
         super().__init__(max_image_size, max_image_cache_size)
         if not os.path.isdir(image_folder):
-            raise ValueError("image_folder %s is not an absolute path" % image_folder)
+            raise ValueError("image_folder %s is not a directory" % image_folder)
+        if not os.path.isabs(image_folder):
+            raise ValueError("image_folder %s needs to be an absolute path" % image_folder)
         self.image_folder = image_folder
 
     def cleanup(self):

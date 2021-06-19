@@ -118,9 +118,9 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--singularity',
-        action='store_true',
-        help='If specified the worker will run jobs on a singularity backend',
+        '--container_runtime',
+        default='docker',
+        help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -252,10 +252,24 @@ def main():
             args.max_work_dir_size,
         )
 
-    if args.singularity:
+    if args.container_runtime == "singularity":
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
+        if not os.path.exists(singularity_folder):
+            logger.info(
+                'codalab local singularity image location %s doesn\'t exist, creating.',
+                singularity_folder,
+            )
+            os.makedirs(singularity_folder, 0o770)
+        image_manager = SingularityImageManager(
+            args.max_image_size, args.max_image_cache_size, singularity_folder,
+        )
     else:
-        singularity_folder = None
+        # assume anything else is docker -- no need to error
+        image_manager = DockerImageManager(
+            os.path.join(args.work_dir, 'images-state.json'),
+            args.max_image_cache_size,
+            args.max_image_size,
+        )
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -263,24 +277,8 @@ def main():
     if local_bundles_dir and not os.path.exists(local_bundles_dir):
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
-    if singularity_folder and not os.path.exists(singularity_folder):
-        logger.info(
-            'codalab local singularity image location %s doesn\'t exist, creating.',
-            singularity_folder,
-        )
-        os.makedirs(singularity_folder, 0o770)
 
     docker_runtime = docker_utils.get_available_runtime()
-    if args.singularity:
-        image_manager = SingularityImageManager(
-            args.max_image_size, args.max_image_cache_size, singularity_folder,
-        )
-    else:
-        image_manager = DockerImageManager(
-            os.path.join(args.work_dir, 'images-state.json'),
-            args.max_image_cache_size,
-            args.max_image_size,
-        )
 
     worker = Worker(
         image_manager,

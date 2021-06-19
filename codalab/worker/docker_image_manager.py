@@ -35,14 +35,12 @@ class DockerImageManager(ImageManager):
         :param max_image_cache_size: Total size in bytes that the image cache can use
         :param max_image_size: Total size in bytes that the image can have
         """
+        super().__init__(self, max_image_size, max_image_cache_size)
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)  # type: DockerClient
         self._downloading = ThreadDict(
             fields={'success': False, 'status': 'Download starting'}, lock=True
         )
-        self._max_image_cache_size = max_image_cache_size
-        self._max_image_size = max_image_size
-
         self._stop = False
         self._sleep_secs = 10
         self._cleanup_thread = None
