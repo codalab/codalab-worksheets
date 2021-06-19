@@ -1,13 +1,30 @@
 {
-    "extends": "react-app",
-    "rules": {},
-    "overrides": [
-        {
-            "files": ["./src/util/ws_mousetrap_fork.js"],
-            "rules": {
-                // Override the rule check for ws_mousetrap_fork.js since it is external code
-                "no-shadow-restricted-names": "off"
-            }
+    "extends": ["eslint:recommended", "plugin:react/recommended"],
+    "env": {
+        "es6": true,
+        "jest": true,
+        "browser": true,
+        "node": true
+    },
+    "parser": "@babel/eslint-parser",
+    "plugins": ["react", "prettier", "jsx"],
+    "rules": {
+        "react/jsx-indent": [1, 4],
+        "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
+        "react/prop-types": 0,
+        "react/no-unescaped-entities": 0,
+        "react/no-deprecated": 0,
+        "no-unused-vars": 0,
+        "no-prototype-builtins" : 0,
+        "react/jsx-key": 0,
+        "no-shadow-restricted-names" : 0,
+        "react/display-name": 0,
+        "react/no-find-dom-node": 0,
+        "react/no-string-refs": 0
+    },
+    "settings": {
+        "react": {
+            "version": "detect"
         }
-    ]
+    }
 }

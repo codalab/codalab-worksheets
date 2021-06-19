@@ -53,7 +53,7 @@ export class ChangeEmail extends React.Component {
                     )}
                     {this.props.auth.isAuthenticated && (
                         <React.Fragment>
-                            <p class='user-authenticated'>
+                            <p className='user-authenticated'>
                                 Use this form to update the email address that you would like
                                 CodaLab to use for notifications and identification. Note that this
                                 will temporarily deactivate your account (i.e. you will be unable to
@@ -62,18 +62,18 @@ export class ChangeEmail extends React.Component {
                             </p>
                             <div className='user-authenticated row'>
                                 <div className='col-md-6'>
-                                    {error && <div class='alert alert-error'>{error}</div>}
+                                    {error && <div className='alert alert-error'>{error}</div>}
                                     <form method='post' action='/rest/account/changeemail'>
                                         <div className='form-group'>
                                             <div className='form-group'>
-                                                <label for='id_email'>Email:</label>
+                                                <label htmlFor='id_email'>Email:</label>
                                                 <input
                                                     id='id_email'
                                                     className='form-control'
                                                     name='email'
                                                     placeholder='Email address'
                                                     type='email'
-                                                    autofocus
+                                                    autoFocus
                                                     required
                                                     value={this.state.form.email}
                                                     onChange={this.handleInputChange}

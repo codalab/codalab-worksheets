@@ -31,7 +31,14 @@ jobs:
           restore-keys: |
             pip-
       - run: pip install -r requirements.txt
-      - run: python3 codalab_service.py build ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
+      - run: | 
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo rm -rf /opt/ghc
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - run: python3 codalab_service.py build --version ${VERSION} ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
         env:
           CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}

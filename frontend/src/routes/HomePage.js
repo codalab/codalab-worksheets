@@ -86,7 +86,7 @@ class HomePage extends React.Component<{
                         content='A collaborative platform for reproducible research.'
                     />
                 </Helmet>
-                 {/** Splash w/ tagline, primary buttons, and video.*/}
+                {/** Splash w/ tagline, primary buttons, and video.*/}
                 <Grid item xs={12} container className={classes.splash}>
                     <Grid item xs={12} container className={classes.outer}>
                         <Grid item xs={12} container className={classes.inner}>

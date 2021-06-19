@@ -366,7 +366,6 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         """
         Normalize the path for the dependency by replacing / with _, avoiding conflicts
         """
-        # TODO(Ashwin): make this not fs-specific.
         if dependency_key.parent_path:
             path = os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
         else:

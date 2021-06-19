@@ -34,7 +34,10 @@ class MockBlobStorageFileSystem(LocalFileSystem):
         if not path.startswith("azfs://"):
             return path
         path = MockBlobStorageFileSystem.AZFS_MOCK_LOCATION + path[len("azfs://") :]
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+        except FileExistsError:
+            pass
         return path
 
     def join(self, basepath, *paths):

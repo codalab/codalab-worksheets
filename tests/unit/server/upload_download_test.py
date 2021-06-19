@@ -100,6 +100,30 @@ class BaseUploadDownloadBundleTest(TestBase):
         ) as f:
             self.assertEqual(f.read(), b"....")
 
+        with BytesIO(
+            self.download_manager.summarize_file(
+                target,
+                num_head_lines=50,
+                num_tail_lines=0,
+                max_line_length=128,
+                truncation_text="....",
+                gzipped=False,
+            )
+        ) as f:
+            self.assertEqual(f.read(), b"hello world\n")
+
+        with BytesIO(
+            self.download_manager.summarize_file(
+                target,
+                num_head_lines=50,
+                num_tail_lines=0,
+                max_line_length=128,
+                truncation_text="....",
+                gzipped=True,
+            )
+        ) as f:
+            self.assertEqual(gzip.decompress(f.read()), b"hello world\n")
+
     def check_folder_target_contents(self, target, expected_members=[]):
         """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
         with self.assertRaises(IOError):
