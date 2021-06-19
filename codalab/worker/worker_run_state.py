@@ -179,7 +179,7 @@ class RunStateMachine(StateTransitioner):
         self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
-        self.docker_image_manager = image_manager
+        self.image_manager = image_manager
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
