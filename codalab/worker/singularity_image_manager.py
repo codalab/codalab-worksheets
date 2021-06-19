@@ -7,7 +7,7 @@ from codalab.worker.image_manager import ImageAvailabilityState
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.image_manager import ImageManager
 from codalab.worker.singularity_utils import get_singularity_container_size
-from spython.main import Client  # type: ignore
+from spython.main import Client
 
 logger = logging.getLogger(__name__)
 
