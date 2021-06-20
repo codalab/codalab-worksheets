@@ -21,7 +21,7 @@ from .worker_manager import WorkerManager, WorkerJob
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class KubernetesBatchWorkerManager(WorkerManager):
+class KubernetesWorkerManager(WorkerManager):
     NAME: str = 'kubernetes'
     DESCRIPTION: str = 'Worker manager for submitting jobs to a Kubernetes cluster'
 
