@@ -340,17 +340,17 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='worker_manager_kubernetes_cluster_host',
         type=str,
-        help='Host address of the Kubernetes cluster for the Kubernetes Batch worker manager',
+        help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
     ),
     CodalabArg(
         name='worker_manager_kubernetes_auth_token',
         type=str,
-        help='Kubernetes cluster authorization token for the Kubernetes Batch worker manager',
+        help='Kubernetes cluster authorization token for the Kubernetes worker manager',
     ),
     CodalabArg(
         name='worker_manager_kubernetes_cert_path',
         type=str,
-        help='Path to the generated SSL cert for the Kubernetes Batch worker manager',
+        help='Path to the generated SSL cert for the Kubernetes worker manager',
     ),
     CodalabArg(
         name='worker_manager_aws_region',
