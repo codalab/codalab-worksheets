@@ -68,23 +68,6 @@ class SingularityImageManager(ImageManager):
                     return status
         else:
 
-            def download():
-                logger.debug('Downloading image %s', image_spec)
-                try:
-                    # stream=True for singularity doesnt return progress or anything really - for now no progress
-                    self._downloading[image_spec]['message'] = "Starting Download"
-                    img, puller = Client.pull(
-                        image_spec, pull_folder=self.image_folder, stream=True
-                    )
-                    # maybe add img to a list and in cleanup rm the files in the list
-                    logger.debug('Download for image %s complete to %s', image_spec, img)
-                    self._downloading[image_spec]['success'] = True
-                    self._downloading[image_spec]['message'] = "Downloaded image"
-                except Exception as ex:
-                    logger.debug('Download for Singularity image %s failed: %s', image_spec, ex)
-                    self._downloading[image_spec]['success'] = False
-                    self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
-
             # Check docker image size before pulling from Docker Hub.
             # Do not download images larger than self._max_image_size
             # Download images if size cannot be obtained
@@ -118,9 +101,42 @@ class SingularityImageManager(ImageManager):
                         digest=None, stage=DependencyStage.FAILED, message=failure_msg
                     )
 
-            self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
+            self._downloading.add_if_new(image_spec, threading.Thread(target=self._download, args=[]))
             return ImageAvailabilityState(
                 digest=None,
                 stage=DependencyStage.DOWNLOADING,
                 message=self._downloading[image_spec]['status'],
             )
+
+    def _download(self, image_spec):
+        logger.debug('Downloading image %s', image_spec)
+        try:
+            # stream=True for singularity doesnt return progress or anything really - for now no progress
+            self._downloading[image_spec]['message'] = "Starting Download"
+            img, puller = Client.pull(
+                image_spec, pull_folder=self.image_folder, stream=True
+            )
+            # maybe add img to a list and in cleanup rm the files in the list
+            logger.debug('Download for image %s complete to %s', image_spec, img)
+            self._downloading[image_spec]['success'] = True
+            self._downloading[image_spec]['message'] = "Downloaded image"
+        except Exception as ex:
+            logger.debug('Download for Singularity image %s failed: %s', image_spec, ex)
+            self._downloading[image_spec]['success'] = False
+            self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
+
+    def _image_availability_state(self, image_spec, success_message, failure_message) -> ImageAvailabilityState:
+        """
+        We know that the images are stored in a folder we know about and know exists
+        But, how do we do versioning?
+        golang:latest stored at one point in time will not be the same as golang:latest later, but if the user
+        requests that, the latest one will not be stored.
+        Maybe if the image_spec is the latest we pull and overwrite regardless?
+        Args:
+            image_spec:
+            success_message:
+            failure_message:
+
+        Returns:
+
+        """

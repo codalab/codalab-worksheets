@@ -4,6 +4,8 @@ import time
 import traceback
 from collections import namedtuple
 
+from codalab.lib.formatting import size_str
+from codalab.worker.fsm import DependencyStage
 from codalab.worker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
@@ -77,6 +79,7 @@ class ImageManager:
 
     def get(self, image_spec: str) -> ImageAvailabilityState:
         """
+        get will ensure that the e
         Args:
             image_spec: the image that the requester needs.
                 The caller will need to determine the type of image they need before calling this function.
@@ -86,12 +89,123 @@ class ImageManager:
         Returns:
             ImageAvailabilityState of the image requested.
         """
-        raise NotImplementedError
+        try:
+            if image_spec in self._downloading:
+                with self._downloading[image_spec]['lock']:
+                    if self._downloading[image_spec].is_alive():
+                        return ImageAvailabilityState(
+                            digest=None,
+                            stage=DependencyStage.DOWNLOADING,
+                            message=self._downloading[image_spec]['status'],
+                        )
+                    else:
+                        if self._downloading[image_spec]['success']:
+                            status = self._image_availability_state(
+                                image_spec,
+                                success_message='Image ready',
+                                failure_message='Image {} was downloaded successfully, '
+                                'but it cannot be found locally due to unhandled error %s'.format(
+                                    image_spec
+                                ),
+                            )
+                        else:
+                            status = self._image_availability_state(
+                                image_spec,
+                                success_message='Image {} can not be downloaded from the cloud '
+                                'but it is found locally'.format(image_spec),
+                                failure_message=self._downloading[image_spec]['message'] + ": %s",
+                            )
+                        self._downloading.remove(image_spec)
+                        return status
+            else:
+                if self._max_image_size:
+                    try:
+                        image_size_bytes = self._image_size_without_pulling(image_spec)
+                        if image_size_bytes is None:
+                            failure_msg = (
+                                "Unable to find Docker image: {} from Docker HTTP Rest API V2. "
+                                "Skipping Docker image size precheck.".format(image_spec)
+                            )
+                            logger.info(failure_msg)
+                        elif image_size_bytes > self._max_image_size:
+                            failure_msg = (
+                                    "The size of "
+                                    + image_spec
+                                    + ": {} exceeds the maximum image size allowed {}.".format(
+                                size_str(image_size_bytes), size_str(self._max_image_size)
+                            )
+                            )
+                            logger.error(failure_msg)
+                            return ImageAvailabilityState(
+                                digest=None, stage=DependencyStage.FAILED, message=failure_msg
+                            )
+                    except Exception as ex:
+                        failure_msg = "Cannot fetch image size before pulling Docker image: {} from Docker Hub: {}.".format(
+                            image_spec, ex
+                        )
+                        logger.error(failure_msg)
+                        return ImageAvailabilityState(
+                            digest=None, stage=DependencyStage.FAILED, message=failure_msg
+                        )
+
+            self._downloading.add_if_new(image_spec, threading.Thread(target=self._download, args=[]))
+            return ImageAvailabilityState(
+                digest=None,
+                stage=DependencyStage.DOWNLOADING,
+                message=self._downloading[image_spec]['status'],
+            )
+        except Exception as ex:
+            logger.error(ex)
+            return ImageAvailabilityState(
+                digest=None, stage=DependencyStage.FAILED, message=str(ex)
+            )
+
 
     def _cleanup(self):
         """
         _cleanup should prune and clean up images in accordance with the image cache and
             how much space the images take up. The logic will vary per container runtime.
             Therefore, this function should be implemented in the subclasses.
+        """
+        raise NotImplementedError
+
+    def _image_availability_state(self, image_spec, success_message, failure_message) -> ImageAvailabilityState:
+        """
+        Try to get the image specified by image_spec from host machine.
+        Args:
+            image_spec: container-runtime specific spec
+            success_message: message to return in the ImageAvailabilityState if the image was successfully found
+            failure_message: message to return if there were any issues in getting the image.
+
+        Returns: ImageAvailabilityState
+
+        """
+        raise NotImplementedError
+
+    def _download(self, image_spec) -> None:
+        """
+        Download the container image from the cloud to the host machine.
+        This function needs to be implemented specific to the container runtime.
+        For instance:
+            - _download's docker image implementation should pull from DockerHub.
+            - _downloads's singularity image implementation shoudl pull from the singularity hub or
+                sylab's cloud hub, based on the image scheme.
+        This function usually makes network requests.
+        Args:
+            image_spec: container-runtime specific image specification
+
+        Returns: None
+
+        """
+        raise NotImplementedError
+
+    def _image_size_without_pulling(self, image_spec):
+        """
+        Attempt to query the requested image's size, based on the container runtime.
+        Args:
+            image_spec: image specification
+
+        Returns: None if the image size cannot be queried, or the size of the image(float).
+
         """
         raise NotImplementedError
