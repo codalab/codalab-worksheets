@@ -301,22 +301,19 @@ class WorkerManager(object):
             if bundle['metadata']['request_cpus'] > self.args.cpus:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_cpus={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_cpus'],
+                        bundle['uuid'], bundle['metadata']['request_cpus'],
                     )
                 )
             elif bundle['metadata']['request_gpus'] > self.args.gpus:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_gpus={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_gpus'],
+                        bundle['uuid'], bundle['metadata']['request_gpus'],
                     )
                 )
             elif parse_size(bundle['metadata']['request_memory']) > worker_memory_bytes:
                 logger.info(
                     'Filtered out bundle {} based on unfulfillable resource requested: request_memory={}'.format(
-                        bundle['uuid'],
-                        bundle['metadata']['request_memory'],
+                        bundle['uuid'], bundle['metadata']['request_memory'],
                     )
                 )
             else:

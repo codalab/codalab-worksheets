@@ -43,7 +43,8 @@ class TarFileStream(BytesIO):
         self.pos += len(contents)
 
     def read(self, num_bytes=None):
-        """Read the specified number of bytes from the associated file."""
+        """Read the specified number of bytes from the associated file.
+        """
         while (self.pos < self.finfo.size) and (num_bytes is None or len(self._buffer) < num_bytes):
             self._read_from_tar(num_bytes)
         if num_bytes is None:

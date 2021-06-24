@@ -261,9 +261,7 @@ def main():
             )
             os.makedirs(singularity_folder, 0o770)
         image_manager = SingularityImageManager(
-            args.max_image_size,
-            args.max_image_cache_size,
-            singularity_folder,
+            args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
     else:
         # assume anything else is docker -- no need to error

@@ -200,11 +200,7 @@ class ZipUtilTest(unittest.TestCase):
             fileobj.seek(0, os.SEEK_END)
             self.assertEqual(
                 packed,
-                {
-                    "filename": 'contents.tar.gz',
-                    "filesize": fileobj.tell(),
-                    "should_unpack": True,
-                },
+                {"filename": 'contents.tar.gz', "filesize": fileobj.tell(), "should_unpack": True,},
             )
 
     def test_unpack_single_archive(self):

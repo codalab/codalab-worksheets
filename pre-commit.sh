@@ -13,7 +13,7 @@ venv/bin/pip install -r requirements-server.txt
 venv/bin/pip install -r requirements.docs.txt
 venv/bin/pip install -r requirements.dev.txt
 
-venv/bin/pip install -e . --no-use-pep517 --no-build-isolation
+venv/bin/pip install -e .
 
 venv/bin/pip check
 

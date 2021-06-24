@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 class BaseStateCommitter(object):
     def load(self):
-        """Load and return the state"""
+        """ Load and return the state """
         raise NotImplementedError
 
     def commit(self, state):
-        """Commit the state"""
+        """ Commit the state """
         raise NotImplementedError
 
 
@@ -31,7 +31,7 @@ class JsonStateCommitter(BaseStateCommitter):
             return dict() if default is None else default
 
     def commit(self, state):
-        """Write out the state in JSON format to a temporary file and rename it into place"""
+        """ Write out the state in JSON format to a temporary file and rename it into place """
         with tempfile.NamedTemporaryFile(delete=False) as f:
             try:
                 self.temp_file = f.name

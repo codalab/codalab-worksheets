@@ -15,9 +15,9 @@ class PathUtilTest(unittest.TestCase):
     @mock.patch('codalab.lib.path_util.os', new_callable=lambda: None)
     def test_get_relative_path(self, mock_os):
         '''
-        Test that get_relative_path checks if the root is a prefix of the path,
-        and if so, returns the path's suffix.
-        '''
+    Test that get_relative_path checks if the root is a prefix of the path,
+    and if so, returns the path's suffix.
+    '''
         # The path is a prefix, so get_relative_path should return the suffix.
         self.assertEqual(path_util.get_relative_path('asdf', 'asdfblah'), 'blah')
         self.assertRaises(
@@ -27,8 +27,8 @@ class PathUtilTest(unittest.TestCase):
     @mock.patch('codalab.lib.path_util.os', new_callable=lambda: None)
     def test_hash_directory(self, mock_os):
         '''
-        Test the two-level hashing scheme, mocking out all filesystem operations.
-        '''
+    Test the two-level hashing scheme, mocking out all filesystem operations.
+    '''
         tester = self
         directories = ['asdf', 'blah', 'this', 'is', 'not', 'sorted']
         files = ['foo', 'bar']
@@ -75,8 +75,8 @@ class PathUtilTest(unittest.TestCase):
     @mock.patch('codalab.lib.path_util.os')
     def test_make_directory(self, mock_os):
         '''
-        Check that make_directory calls normalize and then creates the directory.
-        '''
+    Check that make_directory calls normalize and then creates the directory.
+    '''
         mock_os.path.join = os.path.join
         path_util.make_directory(self.test_path)
         self.assertEqual(mock_os.mkdir.call_args_list, self.mkdir_calls)
@@ -84,8 +84,8 @@ class PathUtilTest(unittest.TestCase):
     @mock.patch('codalab.lib.path_util.os')
     def test_make_directory_if_exists(self, mock_os):
         '''
-        Check that make_directory still works if the directory exists.
-        '''
+    Check that make_directory still works if the directory exists.
+    '''
         mock_os.path.join = os.path.join
         failures = [0]
 
@@ -103,8 +103,8 @@ class PathUtilTest(unittest.TestCase):
     @mock.patch('codalab.lib.path_util.os')
     def test_make_directory_with_failures(self, mock_os):
         '''
-        Check that make_directory still works if the directory exists.
-        '''
+    Check that make_directory still works if the directory exists.
+    '''
         mock_os.path.join = os.path.join
 
         def mkdir_with_other_failure(path):

@@ -159,11 +159,7 @@ class CodalabArg(object):
 
 CODALAB_ARGUMENTS = [
     # Basic settings
-    CodalabArg(
-        name='version',
-        help='Version of CodaLab (usually the branch name)',
-        flag='-v',
-    ),
+    CodalabArg(name='version', help='Version of CodaLab (usually the branch name)', flag='-v',),
     CodalabArg(
         name='instance_name',
         help='Instance name (prefixed to Docker containers)',

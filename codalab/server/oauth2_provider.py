@@ -892,7 +892,8 @@ class OAuth2RequestValidator(RequestValidator):
         return False
 
     def revoke_token(self, token, token_type_hint, request, *args, **kwargs):
-        """Revoke an access or refresh token."""
+        """Revoke an access or refresh token.
+        """
         if token_type_hint:
             tok = self._tokengetter(**{token_type_hint: token})
         else:

@@ -185,9 +185,7 @@ class Worker:
         # Remove complex container objects from state before serializing, these can be retrieved
         runs = {
             uuid: state._replace(
-                container=None,
-                bundle=state.bundle.as_dict,
-                resources=state.resources.as_dict,
+                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
             )
             for uuid, state in self.runs.items()
         }
@@ -465,7 +463,7 @@ class Worker:
                 logger.warning("Unrecognized action type from server: %s", action_type)
 
     def process_runs(self):
-        """Transition each run then filter out finished runs"""
+        """ Transition each run then filter out finished runs """
         # We (re-)initialize the Docker networks here, in case they've been removed.
         # For any networks that exist, this is essentially a no-op.
         self.init_docker_networks(self.docker_network_prefix, verbose=False)

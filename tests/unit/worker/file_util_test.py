@@ -327,8 +327,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         # Read a subdirectory (gzipped)
         with OpenFile(f"{dirname}/src", gzipped=True) as f:
             self.assertEqual(
-                tarfile.open(fileobj=f, mode='r:gz').getnames(),
-                ['.', './test.sh'],
+                tarfile.open(fileobj=f, mode='r:gz').getnames(), ['.', './test.sh'],
             )
 
         # Read a subdirectory (non-gzipped)

@@ -92,7 +92,7 @@ if fuse_is_available:
             return arr
 
         def _get_chunk_id(self, offset):
-            '''Return chunk id given offset'''
+            ''' Return chunk id given offset '''
             return offset // self.chunk_size
 
     class MWT(object):
@@ -177,7 +177,7 @@ if fuse_is_available:
 
         @Memoize(timeout=5)
         def _get_info(self, path):
-            '''Set a request through the json api client to get info about the bundle'''
+            ''' Set a request through the json api client to get info about the bundle '''
             try:
                 info = self.client.fetch_contents_info(BundleTarget(self.bundle_uuid, path), 1)
             except NotFoundError:
@@ -192,7 +192,7 @@ if fuse_is_available:
         # ==================
 
         def getattr(self, path, fh=None):
-            '''Fetch standard filesystem attributes'''
+            ''' Fetch standard filesystem attributes '''
 
             if self.single_file_bundle:
                 info = self._get_info('/')
@@ -233,7 +233,7 @@ if fuse_is_available:
             return attributes
 
         def readdir(self, path, fh):
-            '''Yield a sequence of entries in the filesystem under the current path'''
+            ''' Yield a sequence of entries in the filesystem under the current path '''
             dirents = ['.', '..']
 
             if self.single_file_bundle:
@@ -250,7 +250,7 @@ if fuse_is_available:
                 yield r
 
         def readlink(self, path):
-            '''Figure out where the link points to'''
+            ''' Figure out where the link points to '''
 
             if self.single_file_bundle:
                 path = '/'
@@ -281,7 +281,7 @@ if fuse_is_available:
             return self.fd
 
         def read(self, path, length, offset, fh):
-            '''Return a range of bytes from a path as specified.'''
+            ''' Return a range of bytes from a path as specified.  '''
 
             if self.single_file_bundle:
                 path = '/'
@@ -292,5 +292,5 @@ if fuse_is_available:
             return result
 
     def bundle_mount(client, mountpoint, bundle_uuid, verbose=False):
-        '''Mount the filesystem on the mountpoint.'''
+        ''' Mount the filesystem on the mountpoint. '''
         FUSE(BundleFuse(client, bundle_uuid, verbose), mountpoint, nothreads=True, foreground=True)

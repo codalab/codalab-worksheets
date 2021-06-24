@@ -50,9 +50,7 @@ bundle = Table(
     ),  # Where the bundle contents are stored. If set to null, nothing has been uploaded for the bundle yet.
     # When updating this column, sync it with codalab.common.StorageType.
     Column(
-        'is_dir',
-        Boolean,
-        nullable=True,
+        'is_dir', Boolean, nullable=True,
     ),  # Whether the bundle is a directory or just a single file. If set to null, nothing has been uploaded for the bundle yet.
     UniqueConstraint('uuid', name='uix_1'),
     Index('bundle_data_hash_index', 'data_hash'),

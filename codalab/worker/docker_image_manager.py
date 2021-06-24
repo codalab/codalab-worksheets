@@ -164,12 +164,14 @@ class DockerImageManager(ImageManager):
                 self._downloading[image_spec]['status'] = ''
                 # Set the status to the percent completed
                 if (
-                    line['status'] == 'Downloading'
-                    and 'total' in line['progressDetail']
-                    and 'current' in line['progressDetail']
+                        line['status'] == 'Downloading'
+                        and 'total' in line['progressDetail']
+                        and 'current' in line['progressDetail']
                 ):
                     self._downloading[image_spec]['status'] = '(%d%%)' % (
-                        line['progressDetail']['current'] * 100 / line['progressDetail']['total']
+                            line['progressDetail']['current']
+                            * 100
+                            / line['progressDetail']['total']
                     )
 
             logger.debug('Download for Docker image %s complete', image_spec)
@@ -178,10 +180,11 @@ class DockerImageManager(ImageManager):
         except (docker.errors.APIError, docker.errors.ImageNotFound) as ex:
             logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
             self._downloading[image_spec]['success'] = False
-            self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
+            self._downloading[image_spec][
+                'message'
+            ] = "Can't download image: {}".format(ex)
         raise NotImplementedError
 
-    @docker_utils.wrap_exception('Unable to get image size without pulling from Docker Hub')
     def _image_size_without_pulling(self, image_spec):
         """
         Get the compressed size of a docker image without pulling it from Docker Hub. Note that since docker-py doesn't
@@ -216,9 +219,7 @@ class DockerImageManager(ImageManager):
 
         requests_session = requests.Session()
         # Retry 5 times, sleeping for [0.1s, 0.2s, 0.4s, ...] between retries.
-        retries = Retry(
-            total=5, backoff_factor=0.1, status_forcelist=[413, 429, 500, 502, 503, 504]
-        )
+        retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[413, 429, 500, 502, 503, 504])
         requests_session.mount('https://', HTTPAdapter(max_retries=retries))
 
         while True:
@@ -243,9 +244,8 @@ class DockerImageManager(ImageManager):
 
         return image_size_bytes
 
-    def _image_availability_state(
-        self, image_spec, success_message, failure_message
-    ) -> ImageAvailabilityState:
+    @docker_utils.wrap_exception('Unable to get image size without pulling from Docker Hub')
+    def _image_availability_state(self, image_spec, success_message, failure_message) -> ImageAvailabilityState:
         """
         Try to get the image specified by image_spec from host machine.
         Return ImageAvailabilityState.

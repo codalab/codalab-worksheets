@@ -281,19 +281,17 @@ def get_container_stats_with_docker_stats(container: docker.models.containers.Co
 
 def get_cpu_usage(container_stats: dict) -> float:
     """Calculates CPU usage from container stats returned from the Docker Stats API.
-    The way of calculation comes from here:
-    https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
-    That method is also based on how the docker client calculates it:
-    https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309"""
+       The way of calculation comes from here:
+       https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
+       That method is also based on how the docker client calculates it:
+       https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309"""
     try:
-        cpu_delta: int = (
-            container_stats['cpu_stats']['cpu_usage']['total_usage']
-            - container_stats['precpu_stats']['cpu_usage']['total_usage']
-        )
-        system_delta: int = (
-            container_stats['cpu_stats']['system_cpu_usage']
-            - container_stats['precpu_stats']['system_cpu_usage']
-        )
+        cpu_delta: int = container_stats['cpu_stats']['cpu_usage']['total_usage'] - container_stats[
+            'precpu_stats'
+        ]['cpu_usage']['total_usage']
+        system_delta: int = container_stats['cpu_stats']['system_cpu_usage'] - container_stats[
+            'precpu_stats'
+        ]['system_cpu_usage']
         if system_delta > 0 and cpu_delta > 0:
             cpu_usage: float = float(cpu_delta / system_delta) * float(
                 len(container_stats['cpu_stats']['cpu_usage']['percpu_usage'])
@@ -373,3 +371,5 @@ def get_container_running_time(container):
     # formatted datetime string directly.
     container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
     return container_running_time.total_seconds()
+
+

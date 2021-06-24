@@ -19,16 +19,16 @@ class PathException(Exception):
 
 class BundleTarget:
     """
-    bundle_uuid: UUID of the bundle the path is actually found on. This is
-        used for when a path resolves to a dependency of a bundle.
-    subpath: the particular path to resolve in the bundle UUID in the end. If
-        the path resolves to a dependency, then the first component of the
-        path is the dependency key and should not be used within the actual
-        dependency bundle. This field strips that value.
+        bundle_uuid: UUID of the bundle the path is actually found on. This is
+            used for when a path resolves to a dependency of a bundle.
+        subpath: the particular path to resolve in the bundle UUID in the end. If
+            the path resolves to a dependency, then the first component of the
+            path is the dependency key and should not be used within the actual
+            dependency bundle. This field strips that value.
 
-    for example if a bundle has the dependency key:dep-bundle/dep-subpath
-    the bundle target (bundle, key/subpath) would resolve to
-    (dep-bundle, dep-subpath/subpath)
+        for example if a bundle has the dependency key:dep-bundle/dep-subpath
+        the bundle target (bundle, key/subpath) would resolve to
+        (dep-bundle, dep-subpath/subpath)
     """
 
     def __init__(self, bundle_uuid, subpath):

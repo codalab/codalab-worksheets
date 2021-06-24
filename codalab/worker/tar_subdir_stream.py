@@ -11,7 +11,8 @@ from codalab.common import parse_linked_bundle_url
 
 @dataclass()
 class CurrentDescendant:
-    """Current descendant, used in TarSubdirStream."""
+    """Current descendant, used in TarSubdirStream.
+    """
 
     desc: Optional[Any]  # Current descendant
     pos: int  # Position within the current descendant
@@ -134,14 +135,12 @@ class TarSubdirStream(BytesIO):
                     blocks += 1
                 self.output.offset += blocks * tarfile.BLOCKSIZE  # type: ignore
             self.current_desc = CurrentDescendant(
-                desc=None,
-                pos=0,
-                finfo=EmptyFileInfo,
-                tinfo=tarfile.TarInfo(),
+                desc=None, pos=0, finfo=EmptyFileInfo, tinfo=tarfile.TarInfo(),
             )
 
     def read(self, num_bytes=None):
-        """Read the specified number of bytes from the tar version of the associated subdirectory."""
+        """Read the specified number of bytes from the tar version of the associated subdirectory.
+        """
         while num_bytes is None or len(self._buffer) < num_bytes:
             try:
                 self._read_from_tar(num_bytes)

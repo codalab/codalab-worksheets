@@ -6,8 +6,8 @@ from codalab.lib import worksheet_util
 class WorksheetUtilTest(unittest.TestCase):
     def test_apply_func(self):
         '''
-        Test apply_func for rendering values in worksheets.
-        '''
+    Test apply_func for rendering values in worksheets.
+    '''
         self.assertEqual(worksheet_util.apply_func(None, 'hello'), 'hello')
         self.assertEqual(worksheet_util.apply_func('[1:2]', 'hello'), 'e')
         self.assertEqual(worksheet_util.apply_func('[:2]', 'hello'), 'he')

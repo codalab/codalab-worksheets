@@ -766,10 +766,9 @@ class BundleManager(object):
             )
             for dependency in message['bundle']['dependencies']:
                 parent_bundle_link_url = parent_bundle_link_urls.get(dependency['parent_uuid'])
-                dependency[
-                    'location'
-                ] = parent_bundle_link_url or self._bundle_store.get_bundle_location(
-                    dependency['parent_uuid']
+                dependency['location'] = (
+                    parent_bundle_link_url
+                    or self._bundle_store.get_bundle_location(dependency['parent_uuid'])
                 )
 
         # Figure out the resource requirements.

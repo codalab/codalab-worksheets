@@ -20,7 +20,7 @@ class JsonStateCommitterTest(unittest.TestCase):
         os.rmdir(self.test_dir)
 
     def test_path_parsing(self):
-        """Simple test to ensure we don't mess up the state file path"""
+        """ Simple test to ensure we don't mess up the state file path"""
         self.assertEqual(self.committer._state_file, self.state_path)
 
     def test_commit(self):
@@ -33,7 +33,7 @@ class JsonStateCommitterTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.committer.temp_file))
 
     def test_load(self):
-        """Make sure load loads the state file if it exists"""
+        """ Make sure load loads the state file if it exists """
         test_state = {'state': 'value'}
         test_state_json_str = '{\"state\": \"value\"}'
         with open(self.state_path, 'w') as f:
@@ -42,7 +42,7 @@ class JsonStateCommitterTest(unittest.TestCase):
         self.assertDictEqual(test_state, loaded_state)
 
     def test_default(self):
-        """Make sure load with a default works if state file doesn't exist"""
+        """ Make sure load with a default works if state file doesn't exist """
         default_state = {'state': 'value'}
         loaded_state = self.committer.load(default=default_state)
         self.assertDictEqual(default_state, loaded_state)
