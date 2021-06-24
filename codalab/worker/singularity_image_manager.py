@@ -80,8 +80,9 @@ class SingularityImageManager(ImageManager):
         version = image_spec.split(":")[-1]
         hypofile = os.path.join(self.image_folder, img + "_" + version)
         if os.path.isfile(hypofile):
-            return ImageAvailabilityState(stage=DependencyStage.READY, message=success_message)
+            return ImageAvailabilityState(digest=None, stage=DependencyStage.READY, message=success_message)
         return ImageAvailabilityState(
+            digest=None,
             stage=DependencyStage.FAILED,
             message=failure_message % "image file {} should exist but does not".format(hypofile),
         )
