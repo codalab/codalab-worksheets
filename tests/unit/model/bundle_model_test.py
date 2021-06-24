@@ -7,10 +7,10 @@ def metadata_to_dicts(uuid, metadata):
 
 def canonicalize(metadata_dicts):
     '''
-  Convert a list of metadata dicts (which may be computed in-memory by
-  calling metadata_to_dicts, or which may come from SQLAlchemy) into a
-  canonical form for comparison.
-  '''
+    Convert a list of metadata dicts (which may be computed in-memory by
+    calling metadata_to_dicts, or which may come from SQLAlchemy) into a
+    canonical form for comparison.
+    '''
     # Strip out any 'id' columns coming from the database.
     return sorted(
         sorted((k, v) for (k, v) in dict(metadata_dict).items() if k != 'id')

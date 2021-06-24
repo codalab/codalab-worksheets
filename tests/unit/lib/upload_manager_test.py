@@ -63,11 +63,18 @@ class UploadManagerTestBase(TestBase):
         remove_path(self.temp_dir)
 
     def do_upload(
-        self, source, git=False, unpack=True,
+        self,
+        source,
+        git=False,
+        unpack=True,
     ):
 
         self.upload_manager.upload_to_bundle_store(
-            self.bundle, source, git, unpack, use_azure_blob_beta=self.use_azure_blob_beta,
+            self.bundle,
+            source,
+            git,
+            unpack,
+            use_azure_blob_beta=self.use_azure_blob_beta,
         )
 
     def test_fileobj(self):

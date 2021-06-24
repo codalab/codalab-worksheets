@@ -69,23 +69,23 @@ class BundleTest(unittest.TestCase):
 
     def test_columns(self):
         '''
-    Test that Bundle.COLUMNS includes precisely the non-id columns of cl_bundle,
-    in the same order.
-    '''
+        Test that Bundle.COLUMNS includes precisely the non-id columns of cl_bundle,
+        in the same order.
+        '''
         self.assertEqual(Bundle.COLUMNS, self.COLUMNS)
 
     def test_init(self):
         '''
-    Test that initializing a Bundle works and that its fields are correct.
-    '''
+        Test that initializing a Bundle works and that its fields are correct.
+        '''
         bundle = self.construct_mock_bundle()
         bundle.validate()
         self.check_bundle(bundle)
 
     def test_to_dict(self):
         '''
-    Test that serializing and deserializing a bundle recovers the original.
-    '''
+        Test that serializing and deserializing a bundle recovers the original.
+        '''
         bundle = self.construct_mock_bundle()
         serialized_bundle = bundle.to_dict()
         # Serialize through JSON to check that the serialized bundle can be

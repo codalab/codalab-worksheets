@@ -53,16 +53,16 @@ class PathUtilFSTest(unittest.TestCase):
 
     def test_recursive_ls(self):
         '''
-    Test that recursive_ls lists all absolute paths within a directory.
-    '''
+        Test that recursive_ls lists all absolute paths within a directory.
+        '''
         (directories, files) = path_util.recursive_ls(self.bundle_path)
         self.assertEqual(set(directories), set(self.bundle_directories))
         self.assertEqual(set(files), set(self.bundle_files))
 
     def test_hash_file_contests(self):
         '''
-    Test that hash_file_contents reads a file and hashes its contents.
-    '''
+        Test that hash_file_contents reads a file and hashes its contents.
+        '''
         self.assertNotEqual(path_util.FILE_PREFIX, path_util.LINK_PREFIX)
         # Check that files are hashed with a file prefix.
         # TODO(skishore): Try this test with a much larger file.

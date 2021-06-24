@@ -7,8 +7,7 @@ from freezegun import freeze_time
 class WorksheetsTest(BaseTestCase):
     @freeze_time("2012-01-14", as_kwarg="frozen_time")
     def test_create(self, frozen_time):
-        """Create a new worksheet, then ensure that the proper fields are returned.
-        """
+        """Create a new worksheet, then ensure that the proper fields are returned."""
         worksheet_name = f"codalab-{uuid.uuid4()}"
         response = self.app.post_json(
             "/rest/worksheets",
@@ -42,8 +41,7 @@ class WorksheetsTest(BaseTestCase):
         self.assertEqual(current_time, worksheet_info["date_last_modified"])
 
     def test_refresh(self):
-        """Upload 3 bundles to a worksheet, then specify a bundle_uuid to refresh, only the queried bundle info should be returned
-        """
+        """Upload 3 bundles to a worksheet, then specify a bundle_uuid to refresh, only the queried bundle info should be returned"""
         worksheet_id = self.create_worksheet()
         body = {
             'data': [

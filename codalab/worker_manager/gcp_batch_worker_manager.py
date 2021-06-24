@@ -73,8 +73,11 @@ class GCPBatchWorkerManager(WorkerManager):
             )
 
         # Authenticate via GCP
-        credentials: service_account.Credentials = service_account.Credentials.from_service_account_file(
-            self.args.credentials_path, scopes=['https://www.googleapis.com/auth/cloud-platform']
+        credentials: service_account.Credentials = (
+            service_account.Credentials.from_service_account_file(
+                self.args.credentials_path,
+                scopes=['https://www.googleapis.com/auth/cloud-platform'],
+            )
         )
 
         cluster_manager_client: ClusterManagerClient = ClusterManagerClient(credentials=credentials)

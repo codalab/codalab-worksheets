@@ -97,7 +97,11 @@ class Uploader:
             str: Bundle location.
         """
         self._bundle_model.update_bundle(
-            bundle, {'storage_type': self.storage_type, 'is_dir': is_directory,},
+            bundle,
+            {
+                'storage_type': self.storage_type,
+                'is_dir': is_directory,
+            },
         )
         return self._bundle_store.get_bundle_location(bundle.uuid)
 
@@ -196,7 +200,12 @@ class UploadManager(object):
         self._bundle_store = bundle_store
 
     def upload_to_bundle_store(
-        self, bundle: Bundle, source: Source, git: bool, unpack: bool, use_azure_blob_beta: bool,
+        self,
+        bundle: Bundle,
+        source: Source,
+        git: bool,
+        unpack: bool,
+        use_azure_blob_beta: bool,
     ):
         """
         Uploads contents for the given bundle to the bundle store.

@@ -2953,7 +2953,8 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch(
-            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+            'bundles',
+            params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
         )
 
         for info in bundles:
@@ -2978,7 +2979,10 @@ class BundleCLI(object):
         )
 
     def worksheet_url_and_name(self, worksheet_info):
-        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
+        return '%s (%s)' % (
+            self.worksheet_url(worksheet_info['uuid']),
+            worksheet_info['name'],
+        )
 
     @Commands.command(
         'new',

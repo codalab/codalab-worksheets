@@ -304,8 +304,7 @@ class OpenFile(object):
 
 
 class GzipStream(BytesIO):
-    """A stream that gzips a file in chunks.
-    """
+    """A stream that gzips a file in chunks."""
 
     def __init__(self, fileobj: IO[bytes]):
         self.__input = fileobj

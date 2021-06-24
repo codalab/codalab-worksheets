@@ -94,7 +94,7 @@ class PyJSONEncoder(json.JSONEncoder):
 
 
 class PyJSONDecoder(json.JSONDecoder):
-    """ Decoder """
+    """Decoder"""
 
     def __init__(self, *args, **kwargs):
         json.JSONDecoder.__init__(self, *args, object_hook=self.json_as_python, **kwargs)

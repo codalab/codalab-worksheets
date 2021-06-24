@@ -111,7 +111,14 @@ def create_user(context, username, password='codalab', disk_quota='100g'):
 
     # Creates a user without going through the full sign-up process
     model.add_user(
-        username, random_name(), '', '', password, '', user_id=username, is_verified=True,
+        username,
+        random_name(),
+        '',
+        '',
+        password,
+        '',
+        user_id=username,
+        is_verified=True,
     )
     context.collect_user(username)
 
@@ -870,7 +877,8 @@ def test_upload4(ctx):
     # Make sure the names do with '.tar.gz', because when we upload multiple archives, they
     # should not get unpacked.
     check_contains(
-        [os.path.basename(ext) for ext in archive_exts], _run_command([cl, 'cat', uuid]),
+        [os.path.basename(ext) for ext in archive_exts],
+        _run_command([cl, 'cat', uuid]),
     )
 
     # Cleanup
@@ -1496,7 +1504,12 @@ def test_link(ctx):
     # Note that CodaLab can't actually read the contents of this bundle
     # because the file is in /tmp in the Docker container, which is
     # inaccessible from the host.
-    with tempfile.NamedTemporaryFile(mode='w', dir='/tmp', suffix=".txt", delete=False,) as f:
+    with tempfile.NamedTemporaryFile(
+        mode='w',
+        dir='/tmp',
+        suffix=".txt",
+        delete=False,
+    ) as f:
         f.write("hello world!")
     _, filename = f.name.split("/tmp/")
     uuid = _run_command([cl, 'upload', filename, '--link'], force_subprocess=True, cwd="/tmp")

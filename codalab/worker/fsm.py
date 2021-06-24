@@ -29,7 +29,7 @@ class StateTransitioner(object):
             raise Exception('Stage name already exists!')
 
     def transition(self, state):
-        """ Return the updated state """
+        """Return the updated state"""
         if state.stage in self._terminal_states:
             return state
         return self._transition_functions[state.stage](state)
@@ -43,11 +43,11 @@ class StateTransitioner(object):
 
 class BaseDependencyManager(object):
     def run(self):
-        """ Start execution of this dependency manager. Returns immediately """
+        """Start execution of this dependency manager. Returns immediately"""
         raise NotImplementedError
 
     def has(self, dependency):
-        """ Return whether or not the corresponding DependencyState exists in the manager """
+        """Return whether or not the corresponding DependencyState exists in the manager"""
         raise NotImplementedError
 
     def get(self, uuid, dependency):
@@ -66,9 +66,9 @@ class BaseDependencyManager(object):
         raise NotImplementedError
 
     def list_all(self):
-        """ Return a list all dependencies that are ready """
+        """Return a list all dependencies that are ready"""
         raise NotImplementedError
 
     def stop(self):
-        """ Stop execution of this running dependency manager. Blocks until stopped """
+        """Stop execution of this running dependency manager. Blocks until stopped"""
         raise NotImplementedError

@@ -206,10 +206,10 @@ class LinkedBundlePath:
 
 def parse_linked_bundle_url(url):
     """Parses a linked bundle URL. This bundle URL usually refers to:
-        - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz" (contents.gz for files, contents.tar.gz for directories)
-        - a single file that is stored within a subpath of an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
+    - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz" (contents.gz for files, contents.tar.gz for directories)
+    - a single file that is stored within a subpath of an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
 
-        Returns a LinkedBundlePath instance to encode this information.
+    Returns a LinkedBundlePath instance to encode this information.
     """
     if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
         uses_beam = True
