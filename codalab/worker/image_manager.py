@@ -129,11 +129,11 @@ class ImageManager:
                             logger.info(failure_msg)
                         elif image_size_bytes > self._max_image_size:
                             failure_msg = (
-                                    "The size of "
-                                    + image_spec
-                                    + ": {} exceeds the maximum image size allowed {}.".format(
-                                size_str(image_size_bytes), size_str(self._max_image_size)
-                            )
+                                "The size of "
+                                + image_spec
+                                + ": {} exceeds the maximum image size allowed {}.".format(
+                                    size_str(image_size_bytes), size_str(self._max_image_size)
+                                )
                             )
                             logger.error(failure_msg)
                             return ImageAvailabilityState(
@@ -148,7 +148,9 @@ class ImageManager:
                             digest=None, stage=DependencyStage.FAILED, message=failure_msg
                         )
 
-            self._downloading.add_if_new(image_spec, threading.Thread(target=self._download, args=[]))
+            self._downloading.add_if_new(
+                image_spec, threading.Thread(target=self._download, args=[])
+            )
             return ImageAvailabilityState(
                 digest=None,
                 stage=DependencyStage.DOWNLOADING,
@@ -160,7 +162,6 @@ class ImageManager:
                 digest=None, stage=DependencyStage.FAILED, message=str(ex)
             )
 
-
     def _cleanup(self):
         """
         _cleanup should prune and clean up images in accordance with the image cache and
@@ -169,9 +170,14 @@ class ImageManager:
         """
         raise NotImplementedError
 
-    def _image_availability_state(self, image_spec, success_message, failure_message) -> ImageAvailabilityState:
+    def _image_availability_state(
+        self, image_spec, success_message, failure_message
+    ) -> ImageAvailabilityState:
         """
         Try to get the image specified by image_spec from host machine.
+        The message field of the ImageAvailabiltyState will contain success_message or failure_message and the respective
+        stages of DependencyStage.READY or DependencyStage.FAILED depending on whether or not the image can be found locally.
+        If the image can be found locally, the image is considered "ready", and "failed" if not.
         Args:
             image_spec: container-runtime specific spec
             success_message: message to return in the ImageAvailabilityState if the image was successfully found
