@@ -6,7 +6,7 @@ import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
 from .azure_batch_worker_manager import AzureBatchWorkerManager
-from .gcp_batch_worker_manager import GCPBatchWorkerManager
+from .kubernetes_worker_manager import KubernetesWorkerManager
 from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
@@ -119,7 +119,7 @@ def main():
     worker_manager_types = {
         AWSBatchWorkerManager.NAME: AWSBatchWorkerManager,
         AzureBatchWorkerManager.NAME: AzureBatchWorkerManager,
-        GCPBatchWorkerManager.NAME: GCPBatchWorkerManager,
+        KubernetesWorkerManager.NAME: KubernetesWorkerManager,
         SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
     }
     for worker_manager_name, worker_manager_type in worker_manager_types.items():
