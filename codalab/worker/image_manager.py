@@ -79,7 +79,7 @@ class ImageManager:
 
     def get(self, image_spec: str) -> ImageAvailabilityState:
         """
-        get will ensure that the e
+        get will ensure that the image requested exists on the host.
         Args:
             image_spec: the image that the requester needs.
                 The caller will need to determine the type of image they need before calling this function.
