@@ -16,7 +16,7 @@ import {
     NAVBAR_HEIGHT,
     HEADER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
-    DEFAULT_WORKSHEET_WIDTH,
+    NARROW_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
     AUTO_HIDDEN_DURATION,
@@ -98,11 +98,14 @@ class Worksheet extends React.Component {
             deleteItemCallback: null,
             copiedBundleIds: '',
             showPasteButton: window.localStorage.getItem('CopiedBundles') !== '',
-            worksheetWidthPercentage: localWorksheetWidthPreference || DEFAULT_WORKSHEET_WIDTH,
+            worksheetWidthPercentage: localWorksheetWidthPreference || EXPANDED_WORKSHEET_WIDTH,
             messagePopover: {
                 showMessage: false,
                 messageContent: null,
             },
+            showUpdateProgress: false,
+            showWorksheetContent: false,
+            showWorksheetContainer: true,
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -142,11 +145,10 @@ class Worksheet extends React.Component {
 
     saveWorksheet(props) {
         if (this.state.ws.info === undefined) return;
-        $('#update_progress').show();
+        this.setState({ showUpdateProgress: true });
         props = props || {};
         props.success = props.success || function(data) {};
         props.error = props.error || function(xhr, status, err) {};
-        $('#save_error').hide();
         apiWrapper
             .saveWorksheet(this.state.ws.uuid, this.state.ws.info.source.join('\n'))
             .then((data) => {
@@ -160,8 +162,7 @@ class Worksheet extends React.Component {
 
     deleteWorksheet(props) {
         if (this.state.ws.info === undefined) return;
-        $('#update_progress').show();
-        $('#save_error').hide();
+        this.setState({ showUpdateProgress: true });
         apiWrapper
             .deleteWorksheet(this.state.ws.info.uuid)
             .then((data) => {
@@ -308,6 +309,7 @@ class Worksheet extends React.Component {
             closeOnClick: true,
             pauseOnHover: false,
             draggable: true,
+            autoClose: false,
         });
         executeCommand(
             buildTerminalCommand([
@@ -472,7 +474,8 @@ class Worksheet extends React.Component {
     };
 
     moveFocusToBottom = () => {
-        $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
+        const container = document.querySelector('#worksheet_container');
+        container.scrollTop = container.scrollHeight;
         this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
     };
 
@@ -518,8 +521,8 @@ class Worksheet extends React.Component {
             actualData['after_sort_key'] = after_sort_key;
         } else {
             // If no location for the insertion is specified,
-            // insert the new item at the top of the worksheet in default.
-            actualData['after_sort_key'] = -1;
+            // insert the new item at the top of the worksheet by default.
+            actualData['after_sort_key'] = 0;
         }
         actualData['item_type'] = 'bundle';
         const callback = () => {
@@ -688,26 +691,25 @@ class Worksheet extends React.Component {
 
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
+        function isOnScreen(element) {
+            if (element.offset() === undefined) return false;
+            let elementOffsetTop = element.offset().top;
+            let elementHeight = element.height();
+            let screenScrollTop = $(window).scrollTop();
+            let screenHeight = $(window).height();
+            // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
+            // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
+            let scrollIsAboveElement =
+                elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
+            let elementIsVisibleOnScreen = screenScrollTop + screenHeight - elementOffsetTop >= 0;
+            return scrollIsAboveElement && elementIsVisibleOnScreen;
+        }
         if (shouldScroll) {
             const element =
                 $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
                     ? $(`#codalab-worksheet-item-${index}`)
                     : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
 
-            function isOnScreen(element) {
-                if (element.offset() === undefined) return false;
-                let elementOffsetTop = element.offset().top;
-                let elementHeight = element.height();
-                let screenScrollTop = $(window).scrollTop();
-                let screenHeight = $(window).height();
-                // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
-                // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
-                let scrollIsAboveElement =
-                    elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
-                let elementIsVisibleOnScreen =
-                    screenScrollTop + screenHeight - elementOffsetTop >= 0;
-                return scrollIsAboveElement && elementIsVisibleOnScreen;
-            }
             shouldScroll = !isOnScreen(element);
         }
 
@@ -750,9 +752,7 @@ class Worksheet extends React.Component {
         // A protection mechanism to avoid possible error
         if (index >= info.blocks.length) {
             index = info.blocks.length - 1;
-            if (subIndex >= info.blocks[index].length || 1) {
-                subIndex = 0;
-            }
+            subIndex = 0;
         }
 
         // Change the focus - triggers updating of all descendants.
@@ -789,11 +789,11 @@ class Worksheet extends React.Component {
         this.fetch({
             brief: true,
             success: function(data) {
-                $('#worksheet_content').show();
                 this.setState({
                     updating: false,
                     version: this.state.version + 1,
                     numOfBundles: this.getNumOfBundles(),
+                    showWorksheetContent: true,
                 });
                 // Fix out of bounds.
             }.bind(this),
@@ -847,9 +847,9 @@ class Worksheet extends React.Component {
     };
     toggleWorksheetSize = () => {
         let newPercentage =
-            this.state.worksheetWidthPercentage === DEFAULT_WORKSHEET_WIDTH
+            this.state.worksheetWidthPercentage === NARROW_WORKSHEET_WIDTH
                 ? EXPANDED_WORKSHEET_WIDTH
-                : DEFAULT_WORKSHEET_WIDTH;
+                : NARROW_WORKSHEET_WIDTH;
         window.localStorage.setItem(LOCAL_STORAGE_WORKSHEET_WIDTH, newPercentage);
         this.setState({ worksheetWidthPercentage: newPercentage });
     };
@@ -1223,8 +1223,8 @@ class Worksheet extends React.Component {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: error,
+                    showWorksheetContainer: false,
                 });
-                $('#worksheet_container').hide();
             });
     };
 
@@ -1396,8 +1396,7 @@ class Worksheet extends React.Component {
         } = {},
     ) => {
         if (partialUpdateItems === undefined) {
-            $('#update_progress').show();
-            this.setState({ updating: true });
+            this.setState({ updating: true, showUpdateProgress: true });
             this.fetch({
                 brief: true,
                 success: function(data) {
@@ -1408,8 +1407,7 @@ class Worksheet extends React.Component {
                         });
                         return false;
                     }
-                    $('#update_progress').hide();
-                    $('#worksheet_content').show();
+                    this.setState({ showUpdateProgress: false, showWorksheetContent: true });
                     var items = this.state.ws.info.blocks;
                     var numOfBundles = this.getNumOfBundles();
                     var focus = this.state.focusIndex;
@@ -1531,8 +1529,7 @@ class Worksheet extends React.Component {
                         openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                         errorDialogMessage: xhr.responseText,
                     });
-                    $('#update_progress').hide();
-                    $('#worksheet_container').hide();
+                    this.setState({ showUpdateProgress: false, showWorksheetContainer: false });
                 }.bind(this),
             });
         } else {
@@ -1591,9 +1588,7 @@ class Worksheet extends React.Component {
                 this.reloadWorksheet(undefined, rawIndex);
             }.bind(this),
             error: function(error) {
-                this.setState({ updating: false });
-                $('#update_progress').hide();
-                $('#save_error').show();
+                this.setState({ updating: false, showUpdateProgress: false });
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: error,
@@ -1612,9 +1607,7 @@ class Worksheet extends React.Component {
                 window.location = '/users';
             }.bind(this),
             error: function(xhr, status, err) {
-                this.setState({ updating: false });
-                $('#update_progress').hide();
-                $('#save_error').show();
+                this.setState({ updating: false, showUpdateProgress: false });
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: xhr.responseText,
@@ -1734,8 +1727,16 @@ class Worksheet extends React.Component {
     };
 
     render() {
+        console.log(this.state);
         const { classes } = this.props;
-        const { anchorEl, uploadAnchor } = this.state;
+        const {
+            anchorEl,
+            uploadAnchor,
+            showUpdateProgress,
+            showInformationModal,
+            showWorksheetContent,
+            showWorksheetContainer,
+        } = this.state;
 
         this.setupEventHandlers();
         let info = this.state.ws.info;
@@ -1949,57 +1950,61 @@ class Worksheet extends React.Component {
                     rtl={false}
                     pauseOnVisibilityChange
                 />
-                <div id='worksheet_container'>
-                    <div id='worksheet' className={searchClassName}>
-                        <div
-                            className={classes.worksheetDesktop}
-                            onClick={this.handleClickForDeselect}
-                        >
+                {showWorksheetContainer && (
+                    <div id='worksheet_container'>
+                        <div id='worksheet' className={searchClassName}>
                             <div
-                                className={classes.worksheetOuter}
+                                className={classes.worksheetDesktop}
                                 onClick={this.handleClickForDeselect}
-                                style={{ width: this.state.worksheetWidthPercentage }}
                             >
-                                {this.state.focusIndex === -1 ? (
-                                    <div
-                                        className={classes.worksheetDummyHeader}
-                                        id='worksheet_dummy_header'
-                                    />
-                                ) : (
-                                    <div style={{ height: 8 }} />
-                                )}
                                 <div
-                                    className={classes.worksheetInner}
+                                    className={classes.worksheetOuter}
                                     onClick={this.handleClickForDeselect}
+                                    style={{ width: this.state.worksheetWidthPercentage }}
                                 >
+                                    {this.state.focusIndex === -1 ? (
+                                        <div
+                                            className={classes.worksheetDummyHeader}
+                                            id='worksheet_dummy_header'
+                                        />
+                                    ) : (
+                                        <div style={{ height: 8 }} />
+                                    )}
                                     <div
-                                        id='worksheet_content'
-                                        className={editableClassName + ' worksheet_content'}
+                                        className={classes.worksheetInner}
+                                        onClick={this.handleClickForDeselect}
                                     >
-                                        {worksheetDisplay}
-                                        {/* Show error dialog if bulk bundle execution failed*/}
-                                        {this.state.BulkBundleDialog}
+                                        {showWorksheetContent && (
+                                            <div
+                                                id='worksheet_content'
+                                                className={editableClassName + ' worksheet_content'}
+                                            >
+                                                {worksheetDisplay}
+                                                {/* Show error dialog if bulk bundle execution failed*/}
+                                                {this.state.BulkBundleDialog}
+                                            </div>
+                                        )}
                                     </div>
+                                    <Button
+                                        onClick={this.moveFocusToBottom}
+                                        color='primary'
+                                        variant='contained'
+                                        style={{
+                                            borderRadius: '400px',
+                                            position: 'fixed',
+                                            bottom: '50px',
+                                            right: '30px',
+                                            backgroundColor: '00BFFF',
+                                            zIndex: 10,
+                                        }}
+                                    >
+                                        <ExpandMoreIcon size='medium' />
+                                    </Button>
                                 </div>
-                                <Button
-                                    onClick={this.moveFocusToBottom}
-                                    color='primary'
-                                    variant='contained'
-                                    style={{
-                                        borderRadius: '400px',
-                                        position: 'fixed',
-                                        bottom: '50px',
-                                        right: '30px',
-                                        backgroundColor: '00BFFF',
-                                        zIndex: 10,
-                                    }}
-                                >
-                                    <ExpandMoreIcon size='medium' />
-                                </Button>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
                 <WorksheetDialogs
                     openedDialog={this.state.openedDialog}
                     closeDialog={() => {
@@ -2017,7 +2022,8 @@ class Worksheet extends React.Component {
                     showBundleContentCallback={this.showBundleContentCallback}
                 />
                 <InformationModal
-                    showInformationModal={this.state.showInformationModal}
+                    showUpdateProgress={showUpdateProgress}
+                    showInformationModal={showInformationModal}
                     toggleInformationModal={this.toggleInformationModal}
                 />
                 <Popover

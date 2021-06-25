@@ -78,7 +78,7 @@ class HomePage extends React.Component<{
     render() {
         const { classes, auth } = this.props;
         return (
-            <Grid container style={{ marginTop: -6 }}>
+            <Grid container style={{ marginTop: -30 }}>
                 <Helmet>
                     <meta
                         id='meta-description'
@@ -86,7 +86,7 @@ class HomePage extends React.Component<{
                         content='A collaborative platform for reproducible research.'
                     />
                 </Helmet>
-                 {/** Splash w/ tagline, primary buttons, and video.*/}
+                {/** Splash w/ tagline, primary buttons, and video.*/}
                 <Grid item xs={12} container className={classes.splash}>
                     <Grid item xs={12} container className={classes.outer}>
                         <Grid item xs={12} container className={classes.inner}>

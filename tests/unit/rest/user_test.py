@@ -38,6 +38,7 @@ class UserTest(BaseTestCase):
                     "user_name": "codalab",
                     "affiliation": "",
                     "avatar_id": None,
+                    'is_root_user': True,
                 },
                 "id": "0",
             },

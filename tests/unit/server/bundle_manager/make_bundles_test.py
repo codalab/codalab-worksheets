@@ -1,11 +1,17 @@
-from codalab.worker.bundle_state import State
-from codalab.objects.dependency import Dependency
-from codalab.bundles.make_bundle import MakeBundle
-from codalab.bundles.dataset_bundle import DatasetBundle
-from codalab.lib.spec_util import generate_uuid
-from unittest.mock import Mock
+import tests.unit.azure_blob_mock  # noqa: F401
+
 import os
 import tempfile
+
+from io import BytesIO
+
+from unittest.mock import Mock
+
+from codalab.bundles.dataset_bundle import DatasetBundle
+from codalab.bundles.make_bundle import MakeBundle
+from codalab.lib.spec_util import generate_uuid
+from codalab.objects.dependency import Dependency
+from codalab.worker.bundle_state import State
 from tests.unit.server.bundle_manager import (
     BaseBundleManagerTest,
     BASE_METADATA_DATASET_BUNDLE,
@@ -134,3 +140,37 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
 
         self.assertEqual(self.read_bundle(bundle, "src"), FILE_CONTENTS_1)
         os.remove(tempfile_name)
+
+    def test_blob_storage_dependency(self):
+        """A MakeBundle with a dependency stored on Blob Storage should be made."""
+        parent = DatasetBundle.construct(
+            metadata=BASE_METADATA_DATASET_BUNDLE, owner_id=self.user_id, uuid=generate_uuid(),
+        )
+        bundle = self.create_make_bundle(state=State.STAGED)
+        bundle.dependencies = [
+            Dependency(
+                {
+                    "parent_uuid": parent.uuid,
+                    "parent_path": "",
+                    "child_uuid": bundle.uuid,
+                    "child_path": "src",
+                }
+            )
+        ]
+        self.save_bundle(parent)
+        self.save_bundle(bundle)
+
+        self.upload_manager.upload_to_bundle_store(
+            parent,
+            ("contents", BytesIO(FILE_CONTENTS_1.encode())),
+            git=False,
+            unpack=True,
+            use_azure_blob_beta=True,
+        )
+
+        self.make_bundles_and_wait()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.READY)
+
+        self.assertEqual(self.read_bundle(bundle, "src"), FILE_CONTENTS_1)

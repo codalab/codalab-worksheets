@@ -1,11 +1,18 @@
+import tests.unit.azure_blob_mock  # noqa: F401
+
+import gzip
+import os
+import tarfile
+import tempfile
+import unittest
+
+from io import BytesIO
+
+from codalab.common import NotFoundError, StorageType
 from codalab.lib.spec_util import generate_uuid
 from codalab.worker.download_util import BundleTarget
-from codalab.common import NotFoundError, StorageType
+from codalab.worker.file_util import tar_gzip_directory
 from tests.unit.server.bundle_manager import TestBase
-from io import BytesIO
-import gzip
-import tarfile
-import unittest
 
 
 class BaseUploadDownloadBundleTest(TestBase):
@@ -14,13 +21,46 @@ class BaseUploadDownloadBundleTest(TestBase):
     and upload_file methods.
     """
 
-    DEFAULT_PERM = 420
+    DEFAULT_PERM_FILE = 0  # Should be overridden by subclasses
+
+    DEFAULT_PERM_DIR = 0o777
+
+    @property
+    def use_azure_blob_beta(self):
+        """Whether to use Azure Blob Storage for uploads."""
+        raise NotImplementedError
+
+    @property
+    def storage_type(self):
+        """Returns storage type. Must be one of the values of the StorageType enum."""
+        raise NotImplementedError
 
     def upload_folder(self, bundle, contents):
-        raise NotImplementedError
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for item in contents:
+                path, contents = item
+                file_path = os.path.join(tmpdir, path)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, "wb+") as f:
+                    f.write(contents)
+                os.chmod(file_path, self.DEFAULT_PERM_FILE)
+                os.chmod(os.path.dirname(file_path), self.DEFAULT_PERM_DIR)
+            self.upload_manager.upload_to_bundle_store(
+                bundle,
+                source=["contents.tar.gz", tar_gzip_directory(tmpdir)],
+                git=False,
+                unpack=True,
+                use_azure_blob_beta=self.use_azure_blob_beta,
+            )
 
     def upload_file(self, bundle, contents):
-        raise NotImplementedError
+        self.upload_manager.upload_to_bundle_store(
+            bundle,
+            source=["contents", BytesIO(contents)],
+            git=False,
+            unpack=False,
+            use_azure_blob_beta=self.use_azure_blob_beta,
+        )
 
     def test_not_found(self):
         """Running get_target_info for a nonexistent bundle should raise an error."""
@@ -35,12 +75,6 @@ class BaseUploadDownloadBundleTest(TestBase):
 
         with gzip.GzipFile(fileobj=self.download_manager.stream_file(target, gzipped=True)) as f:
             self.assertEqual(f.read(), b"hello world")
-
-        with self.assertRaises(tarfile.ReadError):
-            with tarfile.open(
-                fileobj=self.download_manager.stream_tarred_gzipped_directory(target), mode='r:gz'
-            ) as f:
-                pass
 
         with BytesIO(
             self.download_manager.read_file_section(target, offset=3, length=4, gzipped=False)
@@ -66,19 +100,37 @@ class BaseUploadDownloadBundleTest(TestBase):
         ) as f:
             self.assertEqual(f.read(), b"....")
 
+        with BytesIO(
+            self.download_manager.summarize_file(
+                target,
+                num_head_lines=50,
+                num_tail_lines=0,
+                max_line_length=128,
+                truncation_text="....",
+                gzipped=False,
+            )
+        ) as f:
+            self.assertEqual(f.read(), b"hello world\n")
+
+        with BytesIO(
+            self.download_manager.summarize_file(
+                target,
+                num_head_lines=50,
+                num_tail_lines=0,
+                max_line_length=128,
+                truncation_text="....",
+                gzipped=True,
+            )
+        ) as f:
+            self.assertEqual(gzip.decompress(f.read()), b"hello world\n")
+
     def check_folder_target_contents(self, target, expected_members=[]):
         """Checks to make sure that the specified folder has the expected contents and can be streamed, etc."""
-        with self.assertRaises(IsADirectoryError):
+        with self.assertRaises(IOError):
             with self.download_manager.stream_file(target, gzipped=False) as f:
                 pass
 
-        with self.assertRaises(IsADirectoryError):
-            self.download_manager.read_file_section(target, offset=3, length=4, gzipped=False)
-
-        with self.assertRaises(IsADirectoryError):
-            self.download_manager.read_file_section(target, offset=3, length=4, gzipped=True)
-
-        with self.assertRaises(IsADirectoryError):
+        with self.assertRaises(IOError):
             self.download_manager.summarize_file(
                 target,
                 num_head_lines=1,
@@ -100,12 +152,12 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.upload_file(bundle, b"hello world")
         target = BundleTarget(bundle.uuid, "")
         self.assertEqual(bundle.is_dir, False)
-        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle.storage_type, self.storage_type)
 
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
         self.assertEqual(info["size"], 11)
-        self.assertEqual(info["perm"], self.DEFAULT_PERM)
+        self.assertEqual(info["perm"], self.DEFAULT_PERM_FILE)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         self.check_file_target_contents(target)
@@ -118,12 +170,11 @@ class BaseUploadDownloadBundleTest(TestBase):
             bundle, [("item.txt", b"hello world"), ("src/item2.txt", b"hello world")]
         )
         self.assertEqual(bundle.is_dir, True)
-        self.assertEqual(bundle.storage_type, StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle.storage_type, self.storage_type)
 
         target = BundleTarget(bundle.uuid, "")
         info = self.download_manager.get_target_info(target, 2)
         self.assertEqual(info["name"], bundle.uuid)
-        self.assertEqual(info["perm"], 493)
         self.assertEqual(info["type"], "directory")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
         # Directory size can vary based on platform, so removing it before checking equality.
@@ -133,16 +184,16 @@ class BaseUploadDownloadBundleTest(TestBase):
             sorted(info["contents"], key=lambda x: x["name"]),
             sorted(
                 [
-                    {'name': 'item.txt', 'perm': self.DEFAULT_PERM, 'type': 'file'},
+                    {'name': 'item.txt', 'perm': self.DEFAULT_PERM_FILE, 'type': 'file'},
                     {
                         'name': 'src',
-                        'perm': 493,
+                        'perm': self.DEFAULT_PERM_DIR,
                         'type': 'directory',
                         'contents': [
                             {
                                 'name': 'item2.txt',
                                 'size': 11,
-                                'perm': self.DEFAULT_PERM,
+                                'perm': self.DEFAULT_PERM_FILE,
                                 'type': 'file',
                             }
                         ],
@@ -169,7 +220,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:src")
         self.assertEqual(
             info["contents"],
-            [{'name': 'item2.txt', 'size': 11, 'perm': self.DEFAULT_PERM, 'type': 'file'}],
+            [{'name': 'item2.txt', 'size': 11, 'perm': self.DEFAULT_PERM_FILE, 'type': 'file'}],
         )
         self.check_folder_target_contents(target, expected_members=['.', './item2.txt'])
 
@@ -184,32 +235,26 @@ class BaseUploadDownloadBundleTest(TestBase):
 class RegularBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
     """Test uploading and downloading from / to a regular, file-based bundle store."""
 
-    def upload_folder(self, bundle, contents):
-        f = BytesIO()
-        with tarfile.open(fileobj=f, mode='w:gz') as tf:
-            for item in contents:
-                tinfo = tarfile.TarInfo(name=item[0])
-                tinfo.size = len(item[1])
-                tf.addfile(tinfo, BytesIO(item[1]))
-        f.seek(0)
-        self.upload_manager.upload_to_bundle_store(
-            bundle,
-            source=["contents.tar.gz", f],
-            git=False,
-            unpack=True,
-            use_azure_blob_beta=False,
-        )
+    DEFAULT_PERM_FILE = 0o644
 
-    def upload_file(self, bundle, contents):
-        self.upload_manager.upload_to_bundle_store(
-            bundle,
-            source=["contents", BytesIO(contents)],
-            git=False,
-            unpack=False,
-            use_azure_blob_beta=False,
-        )
+    @property
+    def use_azure_blob_beta(self):
+        return False
+
+    @property
+    def storage_type(self):
+        return StorageType.DISK_STORAGE.value
 
 
-# This test will be added in https://github.com/codalab/codalab-worksheets/pull/2769.
-# class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
-#     """Test uploading and downloading from / to Azure Blob storage."""
+class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
+    """Test uploading and downloading from / to Azure Blob storage."""
+
+    DEFAULT_PERM_FILE = 0o755
+
+    @property
+    def use_azure_blob_beta(self):
+        return True
+
+    @property
+    def storage_type(self):
+        return StorageType.AZURE_BLOB_STORAGE.value

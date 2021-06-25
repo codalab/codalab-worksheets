@@ -2,7 +2,13 @@ import logging
 import os
 from contextlib import closing
 
-from codalab.common import http_error_to_exception, precondition, UsageError, NotFoundError
+from codalab.common import (
+    http_error_to_exception,
+    precondition,
+    UsageError,
+    NotFoundError,
+    parse_linked_bundle_url,
+)
 from codalab.worker import download_util
 from codalab.worker.bundle_state import State
 from codalab.worker.un_gzip_stream import un_gzip_stream
@@ -167,7 +173,8 @@ class DownloadManager(object):
             )
         elif bundle_state != State.RUNNING:
             directory_path = self._get_target_path(target)
-            return self.file_util.tar_gzip_directory(directory_path)
+            with self.file_util.OpenFile(directory_path, gzipped=True) as f:
+                return f
         else:
             # stream_tarred_gzipped_directory calls are sent to the worker even
             # on a shared filesystem since
@@ -199,7 +206,8 @@ class DownloadManager(object):
             if gzipped:
                 return self.file_util.gzip_file(file_path)
             else:
-                return open(file_path, 'rb')
+                with self.file_util.OpenFile(file_path, gzipped=False) as f:
+                    return f
         else:
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
@@ -305,6 +313,13 @@ class DownloadManager(object):
         return bytestring
 
     def _is_available_locally(self, target):
+        """Returns whether the target is accessible from the current machine. Returns True
+        if the target is on an accessible disk or if the target is on Azure Blob Storage.
+        """
+        file_path = self._get_target_path(target)
+        if parse_linked_bundle_url(file_path).uses_beam:
+            # Return True if the URL is in Azure Blob Storage.
+            return True
         if self._bundle_model.get_bundle_state(target.bundle_uuid) in [
             State.RUNNING,
             State.PREPARING,
@@ -324,6 +339,8 @@ class DownloadManager(object):
             [target.bundle_uuid], "link_url"
         ).get(target.bundle_uuid)
         if bundle_link_url:
+            # If bundle_link_url points to a locally mounted volume, call _transform_link_path
+            # to get the actual path where it can be accessed.
             bundle_link_url = self._transform_link_path(bundle_link_url)
         bundle_path = bundle_link_url or self._bundle_store.get_bundle_location(target.bundle_uuid)
         try:

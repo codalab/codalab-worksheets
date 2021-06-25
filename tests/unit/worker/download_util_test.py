@@ -1,4 +1,5 @@
 import tests.unit.azure_blob_mock  # noqa: F401
+from codalab.common import parse_linked_bundle_url
 from codalab.worker.download_util import (
     get_target_info,
     BundleTarget,
@@ -34,20 +35,20 @@ class AzureBlobTestBase:
         bundle_uuid = str(random.random())
         bundle_path = f"azfs://storageclwsdev0/bundles/{bundle_uuid}/contents.gz"
         compressed_file = BytesIO(gzip.compress(contents))
-        # TODO: Unify this code with code in UploadManager.upload_to_bundle_store().
+        # TODO: Unify this code with code in BlobStorageUploader.write_fileobj().
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as f:
             shutil.copyfileobj(compressed_file, f)
         compressed_file.seek(0)
         with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
             SQLiteIndexedTar(
                 fileObject=compressed_file,
-                tarFileName="contents",  # Later, this file can be accessed by the "/contents" entry in the index.
+                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
                 indexFileName=tmp_index_file.name,
             )
             with FileSystems.create(
-                bundle_path.replace("/contents.gz", "/index.sqlite"),
+                parse_linked_bundle_url(bundle_path).index_path,
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
@@ -96,7 +97,7 @@ class AzureBlobTestBase:
                     indexFileName=tmp_index_file.name,
                 )
             with FileSystems.create(
-                bundle_path.replace("/contents.tar.gz", "/index.sqlite"),
+                parse_linked_bundle_url(bundle_path).index_path,
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)

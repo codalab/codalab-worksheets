@@ -537,7 +537,7 @@ class Competition(object):
 
     @staticmethod
     def _is_publicly_readable(bundle):
-        for perm in bundle['group_permissions']:
+        for perm in bundle.get('group_permissions', []):
             if perm['group_name'] == 'public':
                 return perm['permission'] >= GROUP_OBJECT_PERMISSION_READ
         # No permissions on public group

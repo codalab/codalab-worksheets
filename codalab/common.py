@@ -4,7 +4,9 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 """
+import logging
 import os
+import re
 import http.client
 import urllib.request
 import urllib.error
@@ -15,9 +17,13 @@ from enum import Enum
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '0.5.50'
+CODALAB_VERSION = '0.5.55'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
+
+# Silence verbose HTTP output from Azure Blob
+logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
+logger.setLevel(logging.WARNING)
 
 
 class IntegrityError(ValueError):
@@ -179,6 +185,8 @@ class LinkedBundlePath:
         is_archive_dir (bool): Whether this bundle is stored as a contents.tar.gz file (which represents a directory) or
         a contents.gz file (which represents a single file). Only applicable if is_archive is True.
 
+        index_path (str): Path to index.sqlite file that is used to index this bundle's contents. Only applicable if is_archive is True.
+
         uses_beam (bool): Whether this bundle's storage type requires using Apache Beam to interact with it.
 
         archive_subpath (str): If is_archive is True, returns the subpath within the archive file for the file that this BundlePath points to.
@@ -190,6 +198,7 @@ class LinkedBundlePath:
     bundle_path: str
     is_archive: bool
     is_archive_dir: bool
+    index_path: str
     uses_beam: bool
     archive_subpath: str
     bundle_uuid: str
@@ -210,12 +219,17 @@ def parse_linked_bundle_url(url):
         bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
         is_archive = contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
         is_archive_dir = contents_file.endswith(".tar.gz")
+        index_path = None
+        if is_archive:
+            # Archive index is stored as an "index.sqlite" file in the same folder as the archive file.
+            index_path = re.sub(r'/contents(.tar)?.gz$', '/index.sqlite', bundle_path)
         archive_subpath = remainder[0] if is_archive and len(remainder) else None
     else:
         storage_type = StorageType.DISK_STORAGE.value
         bundle_path = url
         is_archive = False
         is_archive_dir = False
+        index_path = None
         uses_beam = False
         archive_subpath = None
         bundle_uuid = None
@@ -224,6 +238,7 @@ def parse_linked_bundle_url(url):
         bundle_path=bundle_path,
         is_archive=is_archive,
         is_archive_dir=is_archive_dir,
+        index_path=index_path,
         uses_beam=uses_beam,
         archive_subpath=archive_subpath,
         bundle_uuid=bundle_uuid,

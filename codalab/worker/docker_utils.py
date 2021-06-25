@@ -119,7 +119,7 @@ def get_nvidia_devices():
     )
     # Get newline delimited gpu-index, gpu-uuid list
     output = output.decode()
-    print(output.split('\n')[:-1])
+    logger.info("GPUs: " + str(output.split('\n')[:-1]))
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
 
 
@@ -173,7 +173,7 @@ def start_bundle_container(
 
     if runtime == NVIDIA_RUNTIME:
         # nvidia-docker runtime uses this env variable to allocate GPUs
-        environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
+        environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else ''
 
     # Name the container with the UUID for readability
     container_name = 'codalab_run_%s' % uuid

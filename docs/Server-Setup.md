@@ -118,6 +118,16 @@ If you want to delete all the data associated with this, then do:
 
     ./codalab_service.py delete
 
+## Azure Blob Storage
+
+To start the server in dev mode with Azurite (an Azure Blob Storage emulator) enabled, run:
+
+    cls start -bds default azurite
+
+To start the server in dev mode and use Azure Blob by default for all uploads, run:
+
+    CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 cls start -bds default azurite
+
 ## Building Docker images
 
 If you just want to build the Docker images without starting the CodaLab service:

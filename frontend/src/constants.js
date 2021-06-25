@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '0.5.50';
+export const CODALAB_VERSION = '0.5.55';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -9,10 +9,10 @@ export const HEADER_HEIGHT = 170;
 
 // Worksheet width
 export const EXPANDED_WORKSHEET_WIDTH = '99%';
-export const DEFAULT_WORKSHEET_WIDTH = '65%';
+export const NARROW_WORKSHEET_WIDTH = '65%';
 export const FILE_SIZE_LIMIT_GB = 2;
 export const FILE_SIZE_LIMIT_B = FILE_SIZE_LIMIT_GB * 1024 * 1024 * 1024;
-export const LOCAL_STORAGE_WORKSHEET_WIDTH = 'worksheetWidth';
+export const LOCAL_STORAGE_WORKSHEET_WIDTH = 'newWorksheetWidth';
 
 // Dialog constants
 export const DIALOG_TYPES = {

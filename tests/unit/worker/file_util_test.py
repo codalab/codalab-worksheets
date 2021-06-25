@@ -6,6 +6,8 @@ import unittest
 import bz2
 import gzip
 
+from io import BytesIO
+
 from codalab.worker.file_util import (
     gzip_file,
     get_file_size,
@@ -18,13 +20,34 @@ from codalab.worker.file_util import (
     zip_directory,
     unzip_directory,
     OpenFile,
+    summarize_file,
 )
-from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_gzip_stream import un_gzip_stream, ZipToTarStream, BytesBuffer
 from codalab.worker.un_tar_directory import un_tar_directory
 from tests.unit.worker.download_util_test import AzureBlobTestBase
 
 FILES_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'cli', 'files')
 IGNORE_TEST_DIR = os.path.join(FILES_DIR, 'ignore_test')
+
+SAMPLE_CONTENTS = b"hello world"
+
+
+class ReadOneByOne(BytesIO):
+    """A wrapper that reads a fileobj one by one. Calls to .read(n) will only
+    return one byte. This simulates, for example, a HTTP request body that is
+    going to the server one byte at a time."""
+
+    def __init__(self, fileobj):
+        self._fileobj = fileobj
+
+    def read(self, num_bytes=None):
+        return self._fileobj.read(min(1, num_bytes or 0))
+
+    def __getattr__(self, name):
+        """
+        Proxy any methods/attributes to the fileobj.
+        """
+        return getattr(self._fileobj, name)
 
 
 class FileUtilTest(unittest.TestCase):
@@ -37,6 +60,73 @@ class FileUtilTest(unittest.TestCase):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(b"hello world")
         self.assertEqual(read_file_section(f.name, 2, 4), b"llo ")
+        self.assertEqual(read_file_section(f.name, 100, 4), b"")
+
+    def test_summarize_file(self):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(("aaa\nbbb\n").encode())
+            f.flush()
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=0,
+                    max_line_length=4,
+                    truncation_text="....",
+                ),
+                "aaa\n",
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=0,
+                    num_tail_lines=1,
+                    max_line_length=4,
+                    truncation_text="....",
+                ),
+                "bbb\n",
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=1,
+                    max_line_length=4,
+                    truncation_text="....",
+                ),
+                "aaa\nbbb\n",
+            )
+            # Should not recognize a line if max_line_length is smaller than the actual line length (4)
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=0,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "",
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=0,
+                    num_tail_lines=1,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "",
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=1,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "....",
+            )
 
     def test_gzip_stream(self):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -63,6 +153,108 @@ class FileUtilTest(unittest.TestCase):
     def test_gzip_bytestring(self):
         self.assertEqual(un_gzip_bytestring(gzip_bytestring(b'contents')), b'contents')
 
+    def create_zip_single_file(self):
+        """Create a simple .zip file with a single file in it."""
+        with tempfile.TemporaryDirectory() as tmpdir, open(
+            os.path.join(tmpdir, "file.txt"), "wb"
+        ) as f:
+            f.write(SAMPLE_CONTENTS)
+            f.flush()
+            zip_contents = zip_directory(tmpdir).read()
+            return zip_contents
+
+    def create_zip_complex(self):
+        """Create a complex .zip file with files / directories / nested directories in it."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "a/b"))
+            os.makedirs(os.path.join(tmpdir, "c/d/e"))
+            with open(os.path.join(tmpdir, "file.txt"), "wb") as f, open(
+                os.path.join(tmpdir, "a", "b", "file.txt"), "wb"
+            ) as f2:
+                f.write(SAMPLE_CONTENTS)
+                f.flush()
+                f2.write(SAMPLE_CONTENTS)
+                f2.flush()
+                zip_contents = zip_directory(tmpdir).read()
+                return zip_contents
+
+    def test_zip_to_tar_single(self):
+        """Test converting a zip to a tar stream with a single file in the tar archive."""
+        zip_contents = self.create_zip_single_file()
+        with tarfile.open(fileobj=ZipToTarStream(BytesIO(zip_contents)), mode="r|") as tf:
+            for tinfo in tf:
+                self.assertEqual(tinfo.name, "file.txt")
+                self.assertEqual(tinfo.size, 11)
+                self.assertEqual(tinfo.type, tarfile.REGTYPE)
+                self.assertEqual(tf.extractfile(tinfo).read(), b"hello world")
+
+    def test_zip_to_tar_single_read_partial(self):
+        """Test converting a zip to a tar stream with a single file in the tar archive,
+        while partially reading the file within the archive."""
+        zip_contents = self.create_zip_single_file()
+        with tarfile.open(fileobj=ZipToTarStream(BytesIO(zip_contents)), mode="r|") as tf:
+            for tinfo in tf:
+                self.assertEqual(tinfo.name, "file.txt")
+                self.assertEqual(tinfo.size, 11)
+                self.assertEqual(tinfo.type, tarfile.REGTYPE)
+                with tf.extractfile(tinfo) as f:
+                    self.assertEqual(f.read(1), b"h")
+                    self.assertEqual(f.read(1), b"e")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"o")
+                    self.assertEqual(f.read(1), b" ")
+                    self.assertEqual(f.read(1), b"w")
+                    self.assertEqual(f.read(1), b"o")
+                    self.assertEqual(f.read(1), b"r")
+                    self.assertEqual(f.read(1), b"l")
+                    self.assertEqual(f.read(1), b"d")
+
+    def test_zip_to_tar_complex(self):
+        """Test converting a zip to a tar stream with a complex set of files in the tar archive."""
+        zip_contents = self.create_zip_complex()
+        expected_tinfos = [
+            ('a', 0, tarfile.DIRTYPE, b''),
+            ('a/b', 0, tarfile.DIRTYPE, b''),
+            ('a/b/file.txt', 11, tarfile.REGTYPE, b'hello world'),
+            ('c', 0, tarfile.DIRTYPE, b''),
+            ('c/d', 0, tarfile.DIRTYPE, b''),
+            ('c/d/e', 0, tarfile.DIRTYPE, b''),
+            ('file.txt', 11, tarfile.REGTYPE, b'hello world'),
+        ]
+        with tarfile.open(fileobj=ZipToTarStream(BytesIO(zip_contents)), mode="r|") as tf:
+            tinfos = [
+                (
+                    tinfo.name,
+                    tinfo.size,
+                    tinfo.type,
+                    tf.extractfile(tinfo).read() if tinfo.type == tarfile.REGTYPE else b"",
+                )
+                for tinfo in tf
+            ]
+            self.assertEqual(sorted(tinfos), expected_tinfos)
+
+    def test_zip_to_tar_read_byte_by_byte(self):
+        """Test converting a zip to a tar stream, while reading the input fileobj
+        and the output ZipToTarStream byte-by-byte (so that the final tar archive
+        is also assembled byte-by-byte)."""
+        for (name, zip_contents) in [
+            ("single file", self.create_zip_single_file()),
+            ("complex file", self.create_zip_complex()),
+        ]:
+            with self.subTest(name=name):
+                expected_tar_contents = ZipToTarStream(BytesIO(zip_contents)).read()
+                buf = BytesBuffer()
+                buf.write(zip_contents)
+                zts = ZipToTarStream(ReadOneByOne(buf))
+                out = BytesBuffer()
+                while True:
+                    chunk = zts.read(1)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                self.assertEqual(out.read(), expected_tar_contents)
+
 
 class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
     """Test file util methods that specifically have different code paths
@@ -70,14 +262,16 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
 
     def test_get_file_size(self):
         _, fname = self.create_file()
-        self.assertEqual(get_file_size(fname), 11)
+        self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
 
         _, dirname = self.create_directory()
+        self.assertEqual(get_file_size(dirname), 249)
         self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
 
     def test_read_file_section(self):
         _, fname = self.create_file()
         self.assertEqual(read_file_section(fname, 2, 4), b"llo ")
+        self.assertEqual(read_file_section(fname, 100, 4), b"")
 
         _, dirname = self.create_directory()
         self.assertEqual(read_file_section(f"{dirname}/README.md", 2, 4), b"llo ")

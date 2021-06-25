@@ -479,7 +479,7 @@ class Worker:
             # Only start saving stats for a new stage when the run has actually transitioned to that stage.
             if prev_state.stage != self.runs[uuid].stage:
                 self.end_stage_stats(uuid, prev_state.stage)
-                if self.runs[uuid].stage != RunStage.FINISHED:
+                if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
                     self.start_stage_stats(uuid, self.runs[uuid].stage)
 
         # 2. filter out finished runs and clean up containers

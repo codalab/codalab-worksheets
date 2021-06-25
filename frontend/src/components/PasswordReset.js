@@ -58,28 +58,28 @@ export class PasswordReset extends React.Component {
                 <SubHeader title='Password Reset' />
                 <ContentWrapper>
                     {this.props.auth.isAuthenticated && (
-                        <p class='user-authenticated'>You're already logged in!</p>
+                        <p className='user-authenticated'>You're already logged in!</p>
                     )}
                     {!this.props.auth.isAuthenticated && (
                         <React.Fragment>
-                            <p class='user-not-authenticated'>
+                            <p className='user-not-authenticated'>
                                 Forgot your password? Enter your e-mail address below, and we'll
                                 send you an e-mail allowing you to reset it.
                             </p>
-                            <div class='user-not-authenticated row'>
-                                <div class='col-md-6'>
-                                    {error && <div class='alert alert-error'>{error}</div>}
+                            <div className='user-not-authenticated row'>
+                                <div className='col-md-6'>
+                                    {error && <div className='alert alert-error'>{error}</div>}
                                     <form method='POST' action='/rest/account/reset'>
-                                        <div class='form-group'>
-                                            <div class='form-group'>
-                                                <label for='id_email'>Email:</label>
+                                        <div className='form-group'>
+                                            <div className='form-group'>
+                                                <label htmlFor='id_email'>Email:</label>
                                                 <input
                                                     id='id_email'
-                                                    class='form-control'
+                                                    className='form-control'
                                                     name='email'
                                                     placeholder='Email address'
                                                     type='email'
-                                                    autofocus
+                                                    autoFocus
                                                     required
                                                     value={this.state.form.email}
                                                     onChange={this.handleInputChange}
@@ -87,7 +87,7 @@ export class PasswordReset extends React.Component {
                                             </div>
                                         </div>
                                         <input
-                                            class='btn btn-primary margin-top'
+                                            className='btn btn-primary margin-top'
                                             type='submit'
                                             value='Request Password Reset'
                                         />
@@ -127,38 +127,38 @@ export class PasswordResetVerified extends React.Component {
                 <SubHeader title='Password Reset' />
                 <ContentWrapper>
                     {code_valid === 'False' && (
-                        <p class='alert alert-error'>
+                        <p className='alert alert-error'>
                             {
                                 'The password reset link was invalid, possibly because it has already been used. Please request a '
                             }
                             <NavLink to='/account/reset'>new password reset</NavLink>.
                         </p>
                     )}
-                    <div class='row'>
-                        <div class='col-sm-6'>
-                            {error && <div class='alert alert-error'>{error}</div>}
+                    <div className='row'>
+                        <div className='col-sm-6'>
+                            {error && <div className='alert alert-error'>{error}</div>}
                             <form method='POST' action='/rest/account/reset/finalize'>
-                                <div class='form-group'>
-                                    <label for='id_password1'>New Password:</label>
+                                <div className='form-group'>
+                                    <label htmlFor='id_password1'>New Password:</label>
                                     <input
                                         id='id_password1'
                                         name='password'
                                         placeholder='Password'
                                         type='password'
-                                        class='form-control'
-                                        autofocus
+                                        className='form-control'
+                                        autoFocus
                                         value={this.state.form.password}
                                         onChange={this.handleInputChange}
                                     />
                                 </div>
-                                <div class='form-group'>
-                                    <label for='id_password2'>Confirm New Password:</label>
+                                <div className='form-group'>
+                                    <label htmlFor='id_password2'>Confirm New Password:</label>
                                     <input
                                         id='id_password2'
                                         name='confirm_password'
                                         placeholder='Password'
                                         type='password'
-                                        class='form-control'
+                                        className='form-control'
                                         value={this.state.form.passwordConfirm}
                                         onChange={this.handleInputChange}
                                     />
@@ -166,7 +166,7 @@ export class PasswordResetVerified extends React.Component {
                                 <input name='code' type='hidden' value={code} />
                                 <input
                                     type='submit'
-                                    class='btn btn-primary margin-top'
+                                    className='btn btn-primary margin-top'
                                     name='action'
                                     value='Set New Password'
                                 />

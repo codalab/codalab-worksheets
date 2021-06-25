@@ -39,7 +39,11 @@ USER_ACCESSIBLE_KEYWORDS = (
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
     """Fetch authenticated user."""
-    return AuthenticatedUserSchema().dump(request.user).data
+    user_info = AuthenticatedUserSchema().dump(request.user).data
+    user_info['data']['attributes']['is_root_user'] = (
+        request.user.user_id == local.model.root_user_id
+    )
+    return user_info
 
 
 @patch('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -101,8 +105,8 @@ def delete_user():
 
     request_user_id = request.user.user_id
 
-    if request_user_id != local.model.root_user_id:
-        abort(http.client.UNAUTHORIZED, 'Only root user can delete other users.')
+    if not (request_user_id == local.model.root_user_id or (user_ids == [request_user_id])):
+        abort(http.client.UNAUTHORIZED, 'As a non-root user, you can only delete your own account.')
 
     for user_id in user_ids:
         if user_id == local.model.root_user_id:
@@ -135,7 +139,7 @@ def delete_user():
 
         groups = local.model.batch_get_groups(owner_id=user_id)
         if groups is not None and len(groups) > 0:
-            group_uuids = [group.uuid for group in groups]
+            group_uuids = [group['uuid'] for group in groups]
             error_messages.append(
                 'User %s owns groups, can\'t delete. UUIDs: %s\n' % (user_id, ','.join(group_uuids))
             )

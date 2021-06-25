@@ -1,6 +1,7 @@
 from contextlib import closing
 from io import BytesIO, TextIOWrapper
 import gzip
+import logging
 import os
 import shutil
 import subprocess
@@ -16,7 +17,6 @@ from apache_beam.io.filesystems import FileSystems
 import tempfile
 import tarfile
 from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
-from codalab.lib.beam.streamingzipfile import StreamingZipFile
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -161,14 +161,33 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
         remove_path(directory_path)
     os.mkdir(directory_path)
 
-    with StreamingZipFile(fileobj) as zf:
-        for member in zf:  # type: ignore
-            # Make sure that there is no trickery going on (see note in
-            # ZipFile.extractall() documentation).
-            member_path = os.path.realpath(os.path.join(directory_path, member.filename))
-            if not member_path.startswith(directory_path):
-                raise UsageError('Archive member extracts outside the directory.')
-            zf.extract(member, directory_path)
+    # TODO (Ashwin): re-enable streaming zip files once this works again. Disabled because of https://github.com/codalab/codalab-worksheets/issues/3579.
+    # with StreamingZipFile(fileobj) as zf:
+    #     for member in zf:  # type: ignore
+    #         # Make sure that there is no trickery going on (see note in
+    #         # ZipFile.extractall() documentation).
+    #         member_path = os.path.realpath(os.path.join(directory_path, member.filename))
+    #         if not member_path.startswith(directory_path):
+    #             raise UsageError('Archive member extracts outside the directory.')
+    #         zf.extract(member, directory_path)
+
+    # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
+    with tempfile.NamedTemporaryFile() as f:
+        shutil.copyfileobj(fileobj, f)
+        f.flush()
+        proc = subprocess.Popen(
+            ['unzip', '-q', f.name, '-d', directory_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        exitcode = proc.wait()
+        if exitcode != 0:
+            logging.error(
+                "Invalid archive upload: failed to unzip .zip file. stderr: <%s>. stdout: <%s>.",
+                proc.stderr.read() if proc.stderr is not None else "",
+                proc.stdout.read() if proc.stdout is not None else "",
+            )
+            raise UsageError('Invalid archive upload: failed to unzip .zip file.')
 
 
 class OpenIndexedArchiveFile(object):
@@ -189,10 +208,7 @@ class OpenIndexedArchiveFile(object):
             self.index_file_name = index_fileobj.name
             shutil.copyfileobj(
                 FileSystems.open(
-                    # path can end in either "contents.tar.gz" (if a directory) or "contents.gz" (if a file).
-                    path.replace("/contents.tar.gz", "/index.sqlite").replace(
-                        "/contents.gz", "/index.sqlite"
-                    ),
+                    parse_linked_bundle_url(self.path).index_path,
                     compression_type=CompressionTypes.UNCOMPRESSED,
                 ),
                 index_fileobj,
@@ -201,7 +217,7 @@ class OpenIndexedArchiveFile(object):
     def __enter__(self) -> SQLiteIndexedTar:
         return SQLiteIndexedTar(
             fileObject=self.f,
-            tarFileName=parse_linked_bundle_url(self.path).bundle_uuid,
+            tarFileName="contents",
             writeIndex=False,
             clearIndexCache=False,
             indexFileName=self.index_file_name,
@@ -229,7 +245,8 @@ class OpenFile(object):
             path (str): Path to open; can be a path on disk or a path on Blob Storage.
             mode (str): Mode with which to open the file. Default is "rb". This is only
             gzipped (bool): Whether the output should be gzipped. Must be True if downloading a directory;
-                can be True or False if downloading a file.
+                can be True or False if downloading a file. Note that as of now, gzipping local files from disk
+                from OpenFile is not yet supported (only from Blob Storage).
         """
         self.path = path
         self.mode = mode
@@ -271,7 +288,15 @@ class OpenFile(object):
                     fs = TarFileStream(tf, finfo)
                     return GzipStream(fs) if self.gzipped else fs
         else:
-            # Stream a file from disk storage.
+            # Stream a directory or file from disk storage.
+            if os.path.isdir(self.path):
+                if not self.gzipped:
+                    raise IOError("Directories must be gzipped.")
+                return tar_gzip_directory(self.path)
+            if self.gzipped:
+                raise IOError(
+                    "Gzipping local files from disk from OpenFile is not yet supported. Please use file_util.gzip_file instead."
+                )
             return open(self.path, self.mode)
 
     def __exit__(self, type, value, traceback):
@@ -367,14 +392,21 @@ def get_file_size(file_path):
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
+        # If no archive subpath is specified for a .tar.gz or .gz file, get the uncompressed size of the entire file,
+        # or the compressed size of the entire directory.
+        if not linked_bundle_path.archive_subpath:
+            if linked_bundle_path.is_archive_dir:
+                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+                return filesystem.size(linked_bundle_path.bundle_path)
+            else:
+                with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
+                    fileobj.seek(0, os.SEEK_END)
+                    return fileobj.tell()
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-            fpath = (
-                "/" + linked_bundle_path.archive_subpath
-                if linked_bundle_path.is_archive_dir
-                else "/contents"
-            )
+            assert linked_bundle_path.is_archive_dir
+            fpath = "/" + linked_bundle_path.archive_subpath
             finfo = tf.getFileInfo(fpath)
             if finfo is None:
                 raise FileNotFoundError(fpath)
@@ -456,7 +488,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 lines = tail_lines
         else:
             try:
-                lines = fileobj.readlines()
+                lines = fileobj.read().splitlines(True)
             except UnicodeDecodeError:
                 return BINARY_PLACEHOLDER
             ensure_ends_with_newline(lines)

@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.50_
+_version 0.5.55_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!

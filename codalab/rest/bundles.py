@@ -836,6 +836,11 @@ def _update_bundle_contents_blob(uuid):
                     'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
                 },
             )
+        else:
+            local.model.update_bundle(
+                bundle,
+                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},},
+            )
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
 
