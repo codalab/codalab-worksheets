@@ -32,7 +32,6 @@ DEFAULT_SERVICES = [
     'rest-server',
     'bundle-manager',
     'worker',
-    # 'worker-singularity',
     'init',
 ]
 
