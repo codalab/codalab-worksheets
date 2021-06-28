@@ -35,7 +35,7 @@ class BlobStorageUploader(Uploader):
     # or modify the implementation of this class to call commit_block_list more often (and not
     # just at the end of the upload). 
     MIN_WRITE_SIZE = 100 * 1024 * 1024
-    MAX_WRITE_SIZE = 2 * 1024 * 1024 * 1024
+    MAX_WRITE_SIZE = 5 * 1024 * 1024 * 1024
 
     self.buffer.write(data.tobytes())
 
