@@ -1,13 +1,4 @@
 try:
-    from google.cloud.container_v1 import ClusterManagerClient  # type: ignore
-    from google.oauth2 import service_account  # type: ignore
-except ModuleNotFoundError:
-    raise ModuleNotFoundError(
-        'Running the worker manager requires the google-cloud-container module.\n'
-        'Please run: pip install google-cloud-container'
-    )
-
-try:
     from kubernetes import client, utils  # type: ignore
     from kubernetes.utils.create_from_yaml import FailToCreateError  # type: ignore
 except ModuleNotFoundError:
@@ -16,12 +7,13 @@ except ModuleNotFoundError:
         'Please run: pip install kubernetes'
     )
 
-import base64
 import logging
 import os
 import uuid
 from argparse import ArgumentParser
 from typing import Any, Dict, List
+
+from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
 from .worker_manager import WorkerManager, WorkerJob
 
@@ -29,26 +21,24 @@ from .worker_manager import WorkerManager, WorkerJob
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class GCPBatchWorkerManager(WorkerManager):
-    NAME: str = 'gcp-batch'
-    DESCRIPTION: str = 'Worker manager for submitting jobs to Google Cloud Platform via Kubernetes'
+class KubernetesWorkerManager(WorkerManager):
+    NAME: str = 'kubernetes'
+    DESCRIPTION: str = 'Worker manager for submitting jobs to a Kubernetes cluster'
 
     @staticmethod
     def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
-        # GCP arguments
-        subparser.add_argument('--project', type=str, help='Name of the GCP project', required=True)
-        subparser.add_argument('--cluster', type=str, help='Name of the GKE cluster', required=True)
+        # Kubernetes arguments
         subparser.add_argument(
-            '--zone', type=str, help='The availability zone of the GKE cluster', required=True
+            '--cluster-host', type=str, help='Host address of the Kubernetes cluster', required=True
         )
         subparser.add_argument(
-            '--credentials-path',
+            '--auth-token', type=str, help='Kubernetes cluster authorization token', required=True,
+        )
+        subparser.add_argument(
+            '--cert-path',
             type=str,
-            help='Path to the GCP service account json file',
+            help='Path to the SSL cert for the Kubernetes cluster',
             required=True,
-        )
-        subparser.add_argument(
-            '--cert-path', type=str, default='.', help='Path to the generated SSL cert.'
         )
 
         # Job-related arguments
@@ -72,28 +62,12 @@ class GCPBatchWorkerManager(WorkerManager):
                 'Valid credentials need to be set as environment variables: CODALAB_USERNAME and CODALAB_PASSWORD'
             )
 
-        # Authenticate via GCP
-        credentials: service_account.Credentials = service_account.Credentials.from_service_account_file(
-            self.args.credentials_path, scopes=['https://www.googleapis.com/auth/cloud-platform']
-        )
-
-        cluster_manager_client: ClusterManagerClient = ClusterManagerClient(credentials=credentials)
-        cluster = cluster_manager_client.get_cluster(
-            name=f'projects/{self.args.project}/locations/{self.args.zone}/clusters/{self.args.cluster}'
-        )
-
-        # Save SSL certificate to connect to the GKE cluster securely
-        cert_path = os.path.join(self.args.cert_path, 'gke.crt')
-        with open(cert_path, 'wb') as f:
-            f.write(base64.b64decode(cluster.master_auth.cluster_ca_certificate))
-
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
-        configuration.host = f'https://{cluster.endpoint}:443'
-        configuration.api_key = {'authorization': f'Bearer {credentials.token}'}
-        configuration.verify_ssl = True
-        configuration.ssl_ca_cert = cert_path
-        client.Configuration.set_default(configuration)
+        configuration.api_key_prefix['authorization'] = 'Bearer'
+        configuration.api_key['authorization'] = args.auth_token
+        configuration.host = args.cluster_host
+        configuration.ssl_ca_cert = args.cert_path
 
         self.k8_client: client.ApiClient = client.ApiClient(configuration)
         self.k8_api: client.CoreV1Api = client.CoreV1Api(self.k8_client)
@@ -106,7 +80,7 @@ class GCPBatchWorkerManager(WorkerManager):
             )
             logger.debug(pods.items)
             return [WorkerJob(True) for _ in pods.items]
-        except client.ApiException as e:
+        except (client.ApiException, MaxRetryError, NewConnectionError) as e:
             logger.error(f'Exception when calling Kubernetes CoreV1Api->list_namespaced_pod: {e}')
             return []
 
@@ -117,7 +91,7 @@ class GCPBatchWorkerManager(WorkerManager):
         )
         worker_id: str = uuid.uuid4().hex
         worker_name: str = f'cl-worker-{worker_id}'
-        work_dir: str = os.path.join(work_dir_prefix, f'{worker_name}_work_dir')
+        work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
@@ -157,9 +131,9 @@ class GCPBatchWorkerManager(WorkerManager):
             },
         }
 
-        # Use Kubernetes to start a worker on GCP
+        # Start a worker pod on the k8s cluster
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
         try:
             utils.create_from_dict(self.k8_client, config)
-        except (client.ApiException, FailToCreateError) as e:
+        except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
             logger.error(f'Exception when calling Kubernetes utils->create_from_dict: {e}')
