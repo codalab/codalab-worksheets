@@ -96,6 +96,9 @@ class DockerImageManager:
             use of images). Calling df gives us an accurate disk use of ALL the images on the machine
             but because of (1) we don't want to use that.
         """
+        # Skip for now
+        return
+
         # Sort the image cache in LRU order
         def last_used(image):
             for tag in image.tags:
