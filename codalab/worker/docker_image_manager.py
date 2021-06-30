@@ -8,7 +8,7 @@ from docker import DockerClient
 
 import codalab.worker.docker_utils as docker_utils
 
-from .docker_utils import DEFAULT_DOCKER_TIMEOUT
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT, URI_PREFIX
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.worker_thread import ThreadDict
@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 ImageCacheEntry = namedtuple(
     'ImageCacheEntry', ['id', 'digest', 'last_used', 'virtual_size', 'marginal_size']
 )
-URI_PREFIX = 'https://hub.docker.com/v2/repositories/'
 
 
 class DockerImageManager(ImageManager):
@@ -39,12 +38,6 @@ class DockerImageManager(ImageManager):
         super().__init__(max_image_size, max_image_cache_size)
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)  # type: DockerClient
-        self._downloading = ThreadDict(
-            fields={'success': False, 'status': 'Download starting'}, lock=True
-        )
-        self._stop = False
-        self._sleep_secs = 10
-        self._cleanup_thread = None
 
     def _get_cache_use(self):
         return sum(
@@ -130,20 +123,19 @@ class DockerImageManager(ImageManager):
         """
 
         if ':' not in image_spec:
-            """
-             Both digests and repo:tag kind of specs include the : character. The only case without it is when
-             a repo is specified without a tag (like 'latest')
-             When this is the case, different images API methods act differently:
-             - pull pulls all tags of the image
-             - get tries to get `latest` by default
-             That means if someone requests a docker image without a tag, and the image does not have a latest
-             tag pushed to Dockerhub, pull will succeed since it will pull all other tags, but later get calls
-             will fail since the `latest` tag won't be found on the system.
-             We don't want to assume what tag the user wanted so we want the pull step to fail if no tag is specified
-             and there's no latest tag on dockerhub.
-             Hence, we append the latest tag to the image spec if there's no tag specified otherwise at the very beginning
+            # Both digests and repo:tag kind of specs include the : character. The only case without it is when
+            # a repo is specified without a tag (like 'latest')
+            # When this is the case, different images API methods act differently:
+            # - pull pulls all tags of the image
+            # - get tries to get `latest` by default
+            # That means if someone requests a docker image without a tag, and the image does not have a latest
+            # tag pushed to Dockerhub, pull will succeed since it will pull all other tags, but later get calls
+            # will fail since the `latest` tag won't be found on the system.
+            # We don't want to assume what tag the user wanted so we want the pull step to fail if no tag is specified
+            # and there's no latest tag on dockerhub.
+            # Hence, we append the latest tag to the image spec
+            # if there's no tag specified otherwise at the very beginning
             image_spec += ':latest'
-            """
         ImageManager.get(self, image_spec)
 
     def _download(self, image_spec) -> None:
@@ -151,7 +143,6 @@ class DockerImageManager(ImageManager):
         Download the container image from DockerHub to the host machine.
         This function will update the _downloading ThreadDict with the status and progress of the
             download.
-        This function usually makes network requests.
         Args:
             image_spec: docker image (just image, no prefix docker://)
 

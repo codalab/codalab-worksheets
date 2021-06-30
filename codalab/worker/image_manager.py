@@ -79,7 +79,14 @@ class ImageManager:
 
     def get(self, image_spec: str) -> ImageAvailabilityState:
         """
-        get will ensure that the image requested exists on the host.
+        Always request the newest image from the cloud if it's not in downloading thread and return the current
+        downloading status(READY, FAILED, or DOWNLOADING).
+        When the requested image in the following states:
+        1. If it's not available on the platform, we download the image and return DOWNLOADING status.
+        2. If another thread is actively downloading it, we return DOWNLOADING status.
+        3. If another thread was downloading it but not active by the time the request was sent, we return the following status:
+            * READY if the image was downloaded successfully.
+            * FAILED if the image wasn't able to be downloaded due to any reason.
         Args:
             image_spec: the image that the requester needs.
                 The caller will need to determine the type of image they need before calling this function.
