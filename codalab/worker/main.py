@@ -256,7 +256,7 @@ def main():
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
             logger.info(
-                'codalab local singularity image location %s doesn\'t exist, creating.',
+                'Local singularity image location %s doesn\'t exist, creating.',
                 singularity_folder,
             )
             os.makedirs(singularity_folder, 0o770)
