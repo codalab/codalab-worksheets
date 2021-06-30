@@ -369,7 +369,7 @@ services:
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
       --id ${HOSTNAME}
-      --container_runtime singularity
+      --container-runtime singularity
       --verbose
     <<: *codalab-base
     depends_on:

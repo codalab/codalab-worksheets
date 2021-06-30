@@ -141,8 +141,6 @@ class DockerImageManager(ImageManager):
     def _download(self, image_spec) -> None:
         """
         Download the container image from DockerHub to the host machine.
-        This function will update the _downloading ThreadDict with the status and progress of the
-            download.
         Args:
             image_spec: docker image (just image, no prefix docker://)
 

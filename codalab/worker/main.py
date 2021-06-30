@@ -93,7 +93,9 @@ def parse_args():
         help='Limit the size of Docker images to download from the Docker Hub'
         '(e.g. 3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
         'the requested image will not be downloaded. '
-        'The bundle depends on this image will fail accordingly.',
+        'The bundle depends on this image will fail accordingly.'
+        'If running an image on the singularity runtime, there is no size'
+        'check because singularity hub does not support the querying of image size',
     )
     parser.add_argument(
         '--max-memory',
@@ -118,7 +120,8 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--container_runtime',
+        '--container-runtime',
+        choices=['docker', 'singularity'],
         default='docker',
         help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
     )

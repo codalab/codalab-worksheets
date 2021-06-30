@@ -21,8 +21,6 @@ class SingularityImageManager(ImageManager):
         super().__init__(max_image_size, max_image_cache_size)
         if not os.path.isdir(image_folder):
             raise ValueError("image_folder %s is not a directory" % image_folder)
-        if not os.path.isabs(image_folder):
-            raise ValueError("image_folder %s needs to be an absolute path" % image_folder)
         self.image_folder = image_folder
 
     def _cleanup(self):
@@ -48,7 +46,7 @@ class SingularityImageManager(ImageManager):
         try:
             # stream=True for singularity doesnt return progress or anything really - for now no progress
             self._downloading[image_spec]['message'] = "Starting Download"
-            img, puller = Client.pull(image_spec, pull_folder=self.image_folder, stream=True)
+            img = Client.pull(image_spec, pull_folder=self.image_folder)
             # maybe add img to a list and in cleanup rm the files in the list
             logger.debug('Download for image %s complete to %s', image_spec, img)
             self._downloading[image_spec]['success'] = True
@@ -76,8 +74,7 @@ class SingularityImageManager(ImageManager):
         if len(image_spec.split(":")) <= 1:
             # error, we should have a version
             raise ValueError
-        img = image_spec.split(":")[0]
-        version = image_spec.split(":")[-1]
+        img, version = image_spec.split(":")
         hypofile = os.path.join(self.image_folder, img + "_" + version)
         if os.path.isfile(hypofile):
             return ImageAvailabilityState(

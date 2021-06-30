@@ -130,8 +130,8 @@ class ImageManager:
                         image_size_bytes = self._image_size_without_pulling(image_spec)
                         if image_size_bytes is None:
                             failure_msg = (
-                                "Unable to find Docker image: {} from Docker HTTP Rest API V2. "
-                                "Skipping Docker image size precheck.".format(image_spec)
+                                "Could not query size of {} from container runtime hub. "
+                                "Skipping size precheck.".format(image_spec)
                             )
                             logger.info(failure_msg)
                         elif image_size_bytes > self._max_image_size:
@@ -203,7 +203,8 @@ class ImageManager:
             - _download's docker image implementation should pull from DockerHub.
             - _downloads's singularity image implementation shoudl pull from the singularity hub or
                 sylab's cloud hub, based on the image scheme.
-        This function usually makes network requests.
+        This function will update the _downloading ThreadDict with the status and progress of the
+            download.
         Args:
             image_spec: container-runtime specific image specification
 
