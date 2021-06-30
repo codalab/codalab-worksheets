@@ -264,7 +264,6 @@ def main():
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
     else:
-        # assume anything else is docker -- no need to error
         image_manager = DockerImageManager(
             os.path.join(args.work_dir, 'images-state.json'),
             args.max_image_cache_size,
