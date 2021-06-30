@@ -136,7 +136,7 @@ class DockerImageManager(ImageManager):
             # Hence, we append the latest tag to the image spec
             # if there's no tag specified otherwise at the very beginning
             image_spec += ':latest'
-        ImageManager.get(self, image_spec)
+        return super().get(image_spec)
 
     def _download(self, image_spec) -> None:
         """
