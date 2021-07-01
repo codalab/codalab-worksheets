@@ -35,7 +35,7 @@ DEFAULT_SERVICES = [
     'init',
 ]
 
-ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
+ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu', 'worker-singularity']
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES

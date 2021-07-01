@@ -13,7 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import requests
-
+from spython.main import Client
 from requests.adapters import HTTPAdapter
 import traceback
 from urllib3.util.retry import Retry
@@ -104,7 +104,7 @@ def get_available_runtime():
 
 
 @wrap_exception('Problem getting NVIDIA devices')
-def get_nvidia_devices():
+def get_nvidia_devices(use_docker=True):
     """
     Returns a Dict[index, UUID] of all NVIDIA devices available to docker
     Raises docker.errors.ContainerError if GPUs are unreachable,
@@ -112,16 +112,21 @@ def get_nvidia_devices():
            docker.errors.APIError if another server error occurs
     """
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
-    client.images.pull(cuda_image)
     nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
-    output = client.containers.run(
-        cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
-    )
+    if use_docker:
+        client.images.pull(cuda_image)
+        output = client.containers.run(
+            cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
+        )
+    else:
+        # we don't really care where the image is because we are just using
+        # it for nvidia-smi
+        img = Client.pull('docker://' + cuda_image)
+        output = Client.execute(img, nvidia_command, options=['--nv'])
     # Get newline delimited gpu-index, gpu-uuid list
     output = output.decode()
     logger.info("GPUs: " + str(output.split('\n')[:-1]))
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
-
 
 @wrap_exception('Unable to fetch Docker container ip')
 def get_container_ip(network_name, container):
