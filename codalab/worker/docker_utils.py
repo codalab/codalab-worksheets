@@ -107,6 +107,10 @@ def get_available_runtime():
 def get_nvidia_devices(use_docker=True):
     """
     Returns a Dict[index, UUID] of all NVIDIA devices available to docker
+
+    Arguments:
+        use_docker: whether or not to use a docker container to run nvidia-smi. if not, use singularity
+
     Raises docker.errors.ContainerError if GPUs are unreachable,
            docker.errors.ImageNotFound if the CUDA image cannot be pulled
            docker.errors.APIError if another server error occurs

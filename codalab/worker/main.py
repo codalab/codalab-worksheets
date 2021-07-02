@@ -356,6 +356,10 @@ def parse_cpuset_args(arg):
 def parse_gpuset_args(arg):
     """
     Parse given arg into a set of strings representing gpu UUIDs
+    By default, we will try to start a docker container with nvidia-smi to get the GPUs
+    If we get an exception that the docker socket does not exist, which will be the case
+    on singularity workers, because they do not have root access, and therefore, access to
+    the docker socket, we should try to get the GPUs with singularity.
 
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
@@ -366,7 +370,9 @@ def parse_gpuset_args(arg):
 
     try:
         all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except docker_utils.DockerException:
+    except Exception:
+    #     all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+    # except docker_utils.DockerException:
         all_gpus = {}
 
     if arg == 'ALL':
