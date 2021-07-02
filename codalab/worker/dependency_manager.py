@@ -486,7 +486,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                             f'due to {str(e)}. Retrying up to {self._download_dependencies_max_retries} times...'
                         )
                 else:
-                    # Break out of the retry loop if no exceptions are thrown
+                    # Break out of the retry loop if no exceptions were thrown
                     break
 
         self._downloading.add_if_new(

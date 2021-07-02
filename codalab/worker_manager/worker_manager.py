@@ -132,7 +132,7 @@ class WorkerManager(object):
             command.extend(
                 [
                     '--download-dependencies-max-retries',
-                    self.args.worker_download_dependencies_max_retries,
+                    str(self.args.worker_download_dependencies_max_retries),
                 ]
             )
         if self.args.worker_max_work_dir_size:
