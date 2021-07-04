@@ -607,9 +607,11 @@ class RunStateMachine(StateTransitioner):
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
         # Clean up dependencies paths
-        for path in self.paths_to_remove:
-            remove_path_no_fail(path)
-        self.paths_to_remove = []
+        # TODO: This is commented out as a temporary fix for https://github.com/codalab/codalab-worksheets/issues/3627.
+        # Let's find a better solution in the future.
+        # for path in self.paths_to_remove:
+        #     remove_path_no_fail(path)
+        # self.paths_to_remove = []
 
         if run_state.is_restaged:
             log_bundle_transition(
