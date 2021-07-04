@@ -167,6 +167,12 @@ def parse_args():
         action='store_true',
         help="Exit the worker if it encounters an exception (rather than sleeping).",
     )
+    parser.add_argument(
+        '--download-dependencies-max-retries',
+        type=int,
+        default=3,
+        help='The number of times to retry downloading dependencies after a failure (defaults to 3).',
+    )
     return parser.parse_args()
 
 
@@ -244,6 +250,7 @@ def main():
             bundle_service,
             args.work_dir,
             args.max_work_dir_size,
+            args.download_dependencies_max_retries,
         )
     # Set up local directories
     if not os.path.exists(args.work_dir):

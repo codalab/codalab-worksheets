@@ -1,18 +1,19 @@
-from contextlib import closing
-from collections import namedtuple
 import logging
 import os
 import threading
 import traceback
 import time
 import shutil
-from typing import Dict
+from contextlib import closing
+from collections import namedtuple
+from typing import Dict, Set
 
+import codalab.worker.pyjson
+from .bundle_service_client import BundleServiceClient
 from codalab.lib.formatting import size_str
 from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
-import codalab.worker.pyjson
 from codalab.worker.worker_thread import ThreadDict
 from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.bundle_state import DependencyKey
@@ -52,7 +53,14 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
     # the data format of how we store this)
     MAX_SERIALIZED_LEN = 60000
 
-    def __init__(self, commit_file, bundle_service, worker_dir, max_cache_size_bytes):
+    def __init__(
+        self,
+        commit_file: str,
+        bundle_service: BundleServiceClient,
+        worker_dir: str,
+        max_cache_size_bytes: int,
+        download_dependencies_max_retries: int,
+    ):
         super(DependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
         self.add_terminal(DependencyStage.READY)
@@ -62,6 +70,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         self._bundle_service = bundle_service
         self._max_cache_size_bytes = max_cache_size_bytes
         self.dependencies_dir = os.path.join(worker_dir, DependencyManager.DEPENDENCIES_DIR_NAME)
+        self._download_dependencies_max_retries = download_dependencies_max_retries
         if not os.path.exists(self.dependencies_dir):
             logger.info('{} doesn\'t exist, creating.'.format(self.dependencies_dir))
             os.makedirs(self.dependencies_dir, 0o770)
@@ -72,9 +81,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         self._paths_lock = threading.RLock()  # Used for path name computations
 
         # File paths that are currently being used to store dependencies. Used to prevent conflicts
-        self._paths = set()
-        # DependencyKey -> DependencyState
-        self._dependencies = dict()
+        self._paths: Set[str] = set()
+        self._dependencies: Dict[DependencyKey, DependencyState] = dict()
         # DependencyKey -> WorkerThread(thread, success, failure_message)
         self._downloading = ThreadDict(fields={'success': False, 'failure_message': None})
         self._load_state()
@@ -429,44 +437,57 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             # TODO(Ashwin): make this not fs-specific.
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
-            try:
-                # Start async download to the fileobj
-                fileobj, target_type = self._bundle_service.get_bundle_contents(
-                    dependency_state.dependency_key.parent_uuid,
-                    dependency_state.dependency_key.parent_path,
-                )
-                with closing(fileobj):
-                    # "Bug" the fileobj's read function so that we can keep
-                    # track of the number of bytes downloaded so far.
-                    old_read_method = fileobj.read
-                    bytes_downloaded = [0]
 
-                    def interruptable_read(*args, **kwargs):
-                        data = old_read_method(*args, **kwargs)
-                        bytes_downloaded[0] += len(data)
-                        update_state_and_check_killed(bytes_downloaded[0])
-                        return data
+            attempt = 0
+            while attempt < self._download_dependencies_max_retries:
+                try:
+                    # Start async download to the fileobj
+                    fileobj, target_type = self._bundle_service.get_bundle_contents(
+                        dependency_state.dependency_key.parent_uuid,
+                        dependency_state.dependency_key.parent_path,
+                    )
+                    with closing(fileobj):
+                        # "Bug" the fileobj's read function so that we can keep
+                        # track of the number of bytes downloaded so far.
+                        old_read_method = fileobj.read
+                        bytes_downloaded = [0]
 
-                    fileobj.read = interruptable_read
+                        def interruptable_read(*args, **kwargs):
+                            data = old_read_method(*args, **kwargs)
+                            bytes_downloaded[0] += len(data)
+                            update_state_and_check_killed(bytes_downloaded[0])
+                            return data
 
-                    # Start copying the fileobj to filesystem dependency path
-                    self._store_dependency(dependency_path, fileobj, target_type)
+                        fileobj.read = interruptable_read
 
-                logger.debug(
-                    'Finished downloading %s dependency %s to %s',
-                    target_type,
-                    dependency_state.dependency_key,
-                    dependency_path,
-                )
-                with self._dependency_locks[dependency_state.dependency_key]:
-                    self._downloading[dependency_state.dependency_key]['success'] = True
+                        # Start copying the fileobj to filesystem dependency path
+                        self._store_dependency(dependency_path, fileobj, target_type)
 
-            except Exception as e:
-                with self._dependency_locks[dependency_state.dependency_key]:
-                    self._downloading[dependency_state.dependency_key]['success'] = False
-                    self._downloading[dependency_state.dependency_key][
-                        'failure_message'
-                    ] = "Dependency download failed: %s " % str(e)
+                    logger.debug(
+                        'Finished downloading %s dependency %s to %s',
+                        target_type,
+                        dependency_state.dependency_key,
+                        dependency_path,
+                    )
+                    with self._dependency_locks[dependency_state.dependency_key]:
+                        self._downloading[dependency_state.dependency_key]['success'] = True
+
+                except Exception as e:
+                    attempt += 1
+                    if attempt >= self._download_dependencies_max_retries:
+                        with self._dependency_locks[dependency_state.dependency_key]:
+                            self._downloading[dependency_state.dependency_key]['success'] = False
+                            self._downloading[dependency_state.dependency_key][
+                                'failure_message'
+                            ] = "Dependency download failed: %s " % str(e)
+                    else:
+                        logger.warning(
+                            f'Failed to download {dependency_state.dependency_key} after {attempt} attempt(s) '
+                            f'due to {str(e)}. Retrying up to {self._download_dependencies_max_retries} times...'
+                        )
+                else:
+                    # Break out of the retry loop if no exceptions were thrown
+                    break
 
         self._downloading.add_if_new(
             dependency_state.dependency_key, threading.Thread(target=download, args=[])

@@ -32,6 +32,7 @@ x-codalab-env: &codalab-env
   - CODALAB_LINK_MOUNTS=${CODALAB_LINK_MOUNTS}
   - CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=${CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS}
   - CODALAB_WORKER_MANAGER_TYPE=${CODALAB_WORKER_MANAGER_TYPE}
+  - CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES=${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
   - CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX=${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
   - CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE=${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
   - CODALAB_WORKER_MANAGER_IDLE_SECONDS=${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
@@ -142,6 +143,7 @@ services:
       --server ${CODALAB_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
       --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
       --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
       --search request_gpus=0
@@ -167,6 +169,7 @@ services:
       --server ${CODALAB_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
       --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
       --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
       --search request_gpus=1
@@ -193,6 +196,7 @@ services:
       --server ${CODALAB_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
       --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
       --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
       --search request_gpus=0
@@ -220,6 +224,7 @@ services:
       --server ${CODALAB_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
       --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
       --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
       --search request_gpus=1
@@ -248,6 +253,7 @@ services:
       --server ${CODALAB_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
       --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
       --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
       --search request_gpus=0
@@ -277,6 +283,7 @@ services:
       --server ${CODALAB_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
       --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
       --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
       --search request_gpus=1

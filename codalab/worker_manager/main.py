@@ -71,6 +71,12 @@ def main():
         type=int,
     )
     parser.add_argument(
+        '--worker-download-dependencies-max-retries',
+        type=int,
+        default=3,
+        help='The number of times a CodaLab worker will retry downloading dependencies after a failure (defaults to 3).',
+    )
+    parser.add_argument(
         '--worker-checkin-frequency-seconds',
         type=int,
         help='If specified, the CodaLab worker will wait this many seconds between check-ins',
