@@ -1507,6 +1507,18 @@ def test_link(ctx):
 
 @TestModule.register('run2')
 def test_run2(ctx):
+    # Test that finishing a bundle (uuid2) with a dependency doesn't delete the dependency for another running bundle (uuid1) dependent on that same dependency; this is the scenario reported in https://github.com/codalab/codalab-worksheets/issues/3627.
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    uuid1 = _run_command(
+        [cl, 'run', 'dir3:%s' % dir3, 'for x in {1..100}; do ls dir3 && sleep 1; done']
+    )
+    uuid2 = _run_command(
+        [cl, 'run', 'dir3:%s' % dir3, 'for x in {1..10}; do ls dir3 && sleep 1; done']
+    )
+    wait(uuid2)
+    check_equals(State.RUNNING, get_info(uuid1, 'state'))
+    wait(uuid1)
+
     # Test that content of dependency is mounted at the top when . is specified as the dependency key
     dir3 = _run_command([cl, 'upload', test_path('dir3')])
     uuid = _run_command([cl, 'run', '.:%s' % dir3, 'cat f1'])
