@@ -106,6 +106,7 @@ RunState = namedtuple(
         'cpu_usage',  # float
         'memory_usage',  # float
         'bundle_profile_stats',  # dict
+        'paths_to_remove',  # list[str]. Stores paths to be removed after the worker run.
     ],
 )
 
@@ -193,7 +194,6 @@ class RunStateMachine(StateTransitioner):
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
-        self.paths_to_remove = []
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -354,8 +354,9 @@ class RunStateMachine(StateTransitioner):
                             parent_path=os.path.join(dependency_path, child),
                         )
                     )
-                    self.paths_to_remove.append(child_path)
-                    logging.info("ADDING PATHS TO REMOVE 1: %s", child_path)
+                    run_state = run_state._replace(
+                        paths_to_remove=(run_state.paths_to_remove or []) + [child_path]
+                    )
             else:
                 to_mount.append(
                     DependencyToMount(
@@ -367,14 +368,15 @@ class RunStateMachine(StateTransitioner):
 
                 first_element_of_path = Path(dep.child_path).parts[0]
                 if first_element_of_path == RunStateMachine._ROOT:
-                    self.paths_to_remove.append(full_child_path)
-                    logging.info("ADDING PATHS TO REMOVE 2: %s", full_child_path)
+                    run_state = run_state._replace(
+                        paths_to_remove=(run_state.paths_to_remove or []) + [full_child_path]
+                    )
                 else:
                     # child_path can be a nested path, so later remove everything from the first element of the path
-                    self.paths_to_remove.append(
-                        os.path.join(run_state.bundle_path, first_element_of_path)
+                    path_to_remove = os.path.join(run_state.bundle_path, first_element_of_path)
+                    run_state = run_state._replace(
+                        paths_to_remove=(run_state.paths_to_remove or []) + [path_to_remove]
                     )
-                    logging.info("ADDING PATHS TO REMOVE 3: %s", os.path.join(run_state.bundle_path, first_element_of_path))
             for dependency in to_mount:
                 try:
                     mount_dependency(dependency, self.shared_file_system)
@@ -610,12 +612,9 @@ class RunStateMachine(StateTransitioner):
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
         # Clean up dependencies paths
-        # TODO: This is commented out as a temporary fix for https://github.com/codalab/codalab-worksheets/issues/3627.
-        # Let's find a better solution in the future.
-        logger.info("PATHS TO REMOVE: %s", self.paths_to_remove)
-        for path in self.paths_to_remove:
+        for path in run_state.paths_to_remove or []:
             remove_path_no_fail(path)
-        self.paths_to_remove = []
+        run_state = run_state._replace(paths_to_remove=[])
 
         if run_state.is_restaged:
             log_bundle_transition(
