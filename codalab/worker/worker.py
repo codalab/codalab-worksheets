@@ -659,6 +659,7 @@ class Worker:
                 is_restaged=False,
                 cpu_usage=0.0,
                 memory_usage=0.0,
+                paths_to_remove=[],
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
