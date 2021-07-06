@@ -4,10 +4,8 @@ FROM golang:1.15 as ecr-login-installation
 
 ENV GOPATH /root/go
 RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/docker-credential-ecr-login
-RUN go version
 WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
-RUN which go
 
 FROM ubuntu:16.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
@@ -24,22 +22,35 @@ RUN apt-get update && \
     python3.6-dev \
     python3-pip \
     python3-setuptools \
+    libssl-dev \
+    uuid-dev \
+    libgpgme11-dev \
+    squashfs-tools \
+    libseccomp-dev \
+    pkg-config \
     zip \ 
     git \
     wget \
-    golang \
     unzip && \
     rm -rf /var/lib/apt/lists/*;
 
-RUN export VERSION=3.8.0 && \
-  mkdir -p $GOPATH/src/github.com/sylabs && \
-  cd $GOPATH/src/github.com/sylabs && \
-  wget https://github.com/sylabs/singularity/releases/download/v${VERSION}/singularity-ce-${VERSION}.tar.gz && \
-  tar -xzf singularity-ce-${VERSION}.tar.gz;
+RUN wget https://golang.org/dl/go1.16.5.linux-amd64.tar.gz && \
+  rm -rf /usr/local/go && \
+  tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz;
 
-RUN sh singularity-ce-${VERS
-  cd ./singularity-ce-${VERSION} && \
-  sh mconfig;
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV SINGULARITY_VERSION=3.7.4
+ENV USER=codalab
+
+RUN mkdir -p /usr/local/var/singularity/mnt && \
+    mkdir -p $GOPATH/src/github.com/sylabs && \
+    cd $GOPATH/src/github.com/sylabs && \
+    wget https://github.com/sylabs/singularity/releases/download/v${SINGULARITY_VERSION}/singularity-${SINGULARITY_VERSION}.tar.gz && \
+    tar -xzvf singularity-${SINGULARITY_VERSION}.tar.gz && \
+    cd singularity && \
+    ./mconfig -p /usr/local && \
+    make -C builddir && \
+    make -C builddir install;
 
 # Set Python3.6 as the default python3 version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1

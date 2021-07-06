@@ -126,8 +126,10 @@ def get_nvidia_devices(use_docker=True):
         # we don't really care where the image is because we are just using
         # it for nvidia-smi
         img = Client.pull('docker://' + cuda_image)
-        output = Client.execute(img, nvidia_command, options=['--nv'])
+        # output = Client.execute(img, nvidia_command, options=['--nv'])
+        print(os.stat(img))
     # Get newline delimited gpu-index, gpu-uuid list
+    print(output)
     output = output.decode()
     logger.info("GPUs: " + str(output.split('\n')[:-1]))
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}

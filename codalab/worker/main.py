@@ -370,10 +370,10 @@ def parse_gpuset_args(arg):
 
     try:
         all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except Exception:
+        all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
     except docker_utils.DockerException:
         all_gpus = {}
-    except FileNotFoundError:
-        all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
 
     if arg == 'ALL':
         return set(all_gpus.values())
