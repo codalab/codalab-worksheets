@@ -35,9 +35,11 @@ RUN export VERSION=3.8.0 && \
   mkdir -p $GOPATH/src/github.com/sylabs && \
   cd $GOPATH/src/github.com/sylabs && \
   wget https://github.com/sylabs/singularity/releases/download/v${VERSION}/singularity-ce-${VERSION}.tar.gz && \
-  tar -xzf singularity-ce-${VERSION}.tar.gz && \
+  tar -xzf singularity-ce-${VERSION}.tar.gz;
+
+RUN sh singularity-ce-${VERS
   cd ./singularity-ce-${VERSION} && \
-  ./mconfig;
+  sh mconfig;
 
 # Set Python3.6 as the default python3 version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
