@@ -51,8 +51,6 @@ class BlobStorageUploader(Uploader):
     self.block_number = self.block_number + 1
 
   def finish(self):
-    while len(self.buffer) > 0:
-      # Take the first chunk off the buffer and write it to Blob Storage
-      chunk = self.buffer.read(BlobStorageUploader.MAX_WRITE_SIZE)
-      self._write_to_blob(chunk)
+    # The buffer will have a size smaller than MIN_WRITE_SIZE, so its contents can fit into memory.
+    self._write_to_blob(self.buffer.read())
     self._blob_to_upload.commit_block_list(self.block_list, content_settings=self._content_settings)
