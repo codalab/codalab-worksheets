@@ -15,6 +15,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             partition='some_partition',
             worker_executable='cl-worker',
             worker_idle_seconds='888',
+            worker_download_dependencies_max_retries=5,
             worker_tag='some_tag',
             worker_group='some_group',
             worker_exit_after_num_runs=8,
@@ -40,8 +41,8 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             "cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 "
             "--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/some_worker_id "
             "--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag "
-            "--group some_group --exit-after-num-runs 8 --max-work-dir-size 88g --checkin-frequency-seconds 30 "
-            "--pass-down-termination"
+            "--group some_group --exit-after-num-runs 8 --download-dependencies-max-retries 5"
+            " --max-work-dir-size 88g --checkin-frequency-seconds 30 --pass-down-termination"
         )
         self.assertEqual(' '.join(command), expected_command_str)
 
@@ -53,6 +54,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             partition='some_partition',
             worker_executable='cl-worker',
             worker_idle_seconds='888',
+            worker_download_dependencies_max_retries=5,
             worker_tag='some_tag',
             worker_group='some_group',
             worker_exit_after_num_runs=8,

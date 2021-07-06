@@ -279,8 +279,14 @@ CODALAB_ARGUMENTS = [
     # Worker manager
     CodalabArg(
         name='worker_manager_type',
-        help='Type of worker manager (azure-batch or aws-batch)',
+        help='Type of worker manager (azure-batch, aws-batch or kubernetes-batch)',
         default='azure-batch',
+    ),
+    CodalabArg(
+        name='worker_manager_worker_download_dependencies_max_retries',
+        help='The number of times a CodaLab worker stated by the worker manager '
+        'will retry downloading dependencies after a failure (defaults to 3).',
+        default=3,
     ),
     CodalabArg(
         name='worker_manager_worker_work_dir_prefix',
