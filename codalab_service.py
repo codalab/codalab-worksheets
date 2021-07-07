@@ -279,7 +279,7 @@ CODALAB_ARGUMENTS = [
     # Worker manager
     CodalabArg(
         name='worker_manager_type',
-        help='Type of worker manager (azure-batch, aws-batch or kubernetes-batch)',
+        help='Type of worker manager (azure-batch, aws-batch or kubernetes)',
         default='azure-batch',
     ),
     CodalabArg(
