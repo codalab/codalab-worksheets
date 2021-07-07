@@ -128,6 +128,13 @@ class WorkerManager(object):
             command.extend(['--group', self.args.worker_group])
         if self.args.worker_exit_after_num_runs and self.args.worker_exit_after_num_runs > 0:
             command.extend(['--exit-after-num-runs', str(self.args.worker_exit_after_num_runs)])
+        if self.args.worker_download_dependencies_max_retries:
+            command.extend(
+                [
+                    '--download-dependencies-max-retries',
+                    str(self.args.worker_download_dependencies_max_retries),
+                ]
+            )
         if self.args.worker_max_work_dir_size:
             command.extend(['--max-work-dir-size', self.args.worker_max_work_dir_size])
         if self.args.worker_delete_work_dir_on_exit:
