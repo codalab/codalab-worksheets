@@ -122,17 +122,23 @@ def get_nvidia_devices(use_docker=True):
         output = client.containers.run(
             cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
         )
+        output = output.decode()
+        # Get newline delimited gpu-index, gpu-uuid list
+        logger.info("GPUs: " + str(output.split('\n')[:-1]))
+        return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
     else:
         # we don't really care where the image is because we are just using
         # it for nvidia-smi
-        img = Client.pull('docker://' + cuda_image)
-        # output = Client.execute(img, nvidia_command, options=['--nv'])
-        print(os.stat(img))
-    # Get newline delimited gpu-index, gpu-uuid list
-    print(output)
-    output = output.decode()
-    logger.info("GPUs: " + str(output.split('\n')[:-1]))
-    return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
+        img, puller = Client.pull('docker://' + cuda_image, pull_folder='/tmp', stream=True)
+        for l in puller:
+            logger.error(l)
+        logger.error(img)
+        output = Client.execute(img, nvidia_command, options=['--nv'])
+        if output['return_code'] != 0:
+            return {}
+        logger.info("GPUs: " + str(output['message'].split('\n')[:-1]))
+        return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output['message'].split('\n')[:-1]}
+
 
 @wrap_exception('Unable to fetch Docker container ip')
 def get_container_ip(network_name, container):

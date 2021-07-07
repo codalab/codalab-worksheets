@@ -8,7 +8,9 @@ WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
 
 FROM ubuntu:16.04
+ARG default_user=codalab
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
+RUN useradd -ms /bin/bash $default_user
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -40,7 +42,7 @@ RUN wget https://golang.org/dl/go1.16.5.linux-amd64.tar.gz && \
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 ENV SINGULARITY_VERSION=3.7.4
-ENV USER=codalab
+ENV USER=$default_user
 
 RUN mkdir -p /usr/local/var/singularity/mnt && \
     mkdir -p $GOPATH/src/github.com/sylabs && \

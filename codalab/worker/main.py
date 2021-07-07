@@ -266,12 +266,14 @@ def main():
         image_manager = SingularityImageManager(
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
+        docker_runtime = None
     else:
         image_manager = DockerImageManager(
             os.path.join(args.work_dir, 'images-state.json'),
             args.max_image_cache_size,
             args.max_image_size,
         )
+        docker_runtime = docker_utils.get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -279,8 +281,6 @@ def main():
     if local_bundles_dir and not os.path.exists(local_bundles_dir):
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
-
-    docker_runtime = docker_utils.get_available_runtime()
 
     worker = Worker(
         image_manager,
@@ -306,6 +306,7 @@ def main():
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
+        runtime_docker=docker_runtime is not None
     )
 
     # Register a signal handler to ensure safe shutdown.

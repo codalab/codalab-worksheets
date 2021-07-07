@@ -183,6 +183,7 @@ class RunStateMachine(StateTransitioner):
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
+        # todo aditya: docker_runtime will be None if the worker is a singularity worker. handle this.
         self.docker_runtime = docker_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
