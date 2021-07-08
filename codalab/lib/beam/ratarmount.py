@@ -135,7 +135,7 @@ def stripSuffixFromTarFile(path: str) -> str:
     return path
 
 
-printDebug = 1
+printDebug = 0
 
 
 class RatarmountError(Exception):

@@ -107,7 +107,7 @@ def unpack_to_archive(ext: str, source: IO[bytes]) -> IO[bytes]:
             raise UsageError('Not an archive.')
     except (tarfile.TarError, IOError) as e:
         logging.error("Invalid archive upload: failed to unpack archive: %s", e)
-        raise UsageError('Invalid archive upload: failed to unpack archive.')
+        raise UsageError('Invalid archive upload: failed to unpack archive: %s' % e)
 
 
 def pack_files_for_upload(
