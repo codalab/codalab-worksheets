@@ -2,7 +2,7 @@
 Login and signup views.
 Handles create new user accounts and authenticating users.
 """
-from bottle import request, response, template, local, redirect, default_app, get, post
+from bottle import request, response, template, local, redirect, get, post
 import requests
 import os
 from codalab.lib import crypt_util, spec_util
