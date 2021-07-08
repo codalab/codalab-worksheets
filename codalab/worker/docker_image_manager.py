@@ -168,7 +168,6 @@ class DockerImageManager(ImageManager):
             logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
             self._downloading[image_spec]['success'] = False
             self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
-        raise NotImplementedError
 
     @docker_utils.wrap_exception('Unable to get image size without pulling from Docker Hub')
     def _image_size_without_pulling(self, image_spec):

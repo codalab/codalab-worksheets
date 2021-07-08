@@ -156,7 +156,7 @@ class ImageManager:
                         )
 
             self._downloading.add_if_new(
-                image_spec, threading.Thread(target=self._download, args=[])
+                image_spec, threading.Thread(target=self._download, args=[image_spec])
             )
             return ImageAvailabilityState(
                 digest=None,
