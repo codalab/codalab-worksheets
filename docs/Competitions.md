@@ -155,6 +155,9 @@ competition organizers, tagging the bundle appropriately, then waiting for the n
 new submissions. The [submission tutorial for the SQuAD competition](https://worksheets.codalab.org/worksheets/0x8403d867f9a3444685c344f4f0bc8d34/) 
 provides a good example.
 
+When submitting a bundle, please ensure none of your submission bundle's dependencies have been deleted. Otherwise,
+your submission bundle will be disregarded as an invalid submission.
+
 ## FAQ / Known issues
 
 * Q: How do I reset the quota for a participant?
