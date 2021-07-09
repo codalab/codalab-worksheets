@@ -467,14 +467,22 @@ class Competition(object):
             'skip_prelude': True,
         }
 
-        # Do dry run to check if the submission has the right dependencies.
+        # Do dry run to check if the submission bundle has the right dependencies
+        # and all of its ancestors exists.
         # If the submission bundle is not mimicked (i.e. not in the mimic plan),
         # that means that none of its ancestors are in the set of bundles that
         # we are trying to replace.
-        if find_mimicked(mimic_bundles(dry_run=True, **mimic_args)) is None:
+        try:
+            if find_mimicked(mimic_bundles(dry_run=True, **mimic_args)) is None:
+                logger.info(
+                    "Submission {uuid} by {owner[user_name]} is missing "
+                    "expected dependencies.".format(**submit_bundle)
+                )
+                return None
+        except NotFoundError:
             logger.info(
-                "Submission {uuid} by {owner[user_name]} is missing "
-                "expected dependencies.".format(**submit_bundle)
+                "Submission {uuid} by {owner[user_name]} has dependencies "
+                "that has been deleted.".format(**submit_bundle)
             )
             return None
 
