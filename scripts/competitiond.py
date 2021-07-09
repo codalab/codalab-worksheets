@@ -468,7 +468,7 @@ class Competition(object):
         }
 
         # Do dry run to check if the submission bundle has the right dependencies
-        # and all of its ancestors exists.
+        # and all of its ancestors exist.
         # If the submission bundle is not mimicked (i.e. not in the mimic plan),
         # that means that none of its ancestors are in the set of bundles that
         # we are trying to replace.
