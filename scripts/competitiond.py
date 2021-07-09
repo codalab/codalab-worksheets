@@ -482,7 +482,7 @@ class Competition(object):
         except NotFoundError:
             logger.info(
                 "Submission {uuid} by {owner[user_name]} has dependencies "
-                "that has been deleted.".format(**submit_bundle)
+                "that have been deleted.".format(**submit_bundle)
             )
             return None
 
