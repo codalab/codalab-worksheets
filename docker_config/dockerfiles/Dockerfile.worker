@@ -10,6 +10,7 @@ RUN make
 FROM ubuntu:16.04
 ARG default_user=codalab
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
+# the singularity container runtime needs to be able to lookup the uid of the default user
 RUN useradd -ms /bin/bash $default_user
 
 ENV DEBIAN_FRONTEND noninteractive

@@ -127,14 +127,16 @@ class ImageManager:
             else:
                 if self._max_image_size:
                     try:
-                        image_size_bytes = self._image_size_without_pulling(image_spec)
-                        if image_size_bytes is None:
+                        try:
+                            image_size_bytes = self._image_size_without_pulling(image_spec)
+                        except NotImplementedError:
                             failure_msg = (
                                 "Could not query size of {} from container runtime hub. "
                                 "Skipping size precheck.".format(image_spec)
                             )
                             logger.info(failure_msg)
-                        elif image_size_bytes > self._max_image_size:
+                            image_size_bytes = 0
+                        if image_size_bytes > self._max_image_size:
                             failure_msg = (
                                 "The size of "
                                 + image_spec
@@ -171,14 +173,14 @@ class ImageManager:
 
     def _cleanup(self):
         """
-        _cleanup should prune and clean up images in accordance with the image cache and
+        Prune and clean up images in accordance with the image cache and
             how much space the images take up. The logic will vary per container runtime.
             Therefore, this function should be implemented in the subclasses.
         """
         raise NotImplementedError
 
     def _image_availability_state(
-        self, image_spec, success_message, failure_message
+        self, image_spec: str, success_message: str, failure_message: str
     ) -> ImageAvailabilityState:
         """
         Try to get the image specified by image_spec from host machine.
@@ -195,7 +197,7 @@ class ImageManager:
         """
         raise NotImplementedError
 
-    def _download(self, image_spec) -> None:
+    def _download(self, image_spec: str) -> None:
         """
         Download the container image from the cloud to the host machine.
         This function needs to be implemented specific to the container runtime.
@@ -213,7 +215,7 @@ class ImageManager:
         """
         raise NotImplementedError
 
-    def _image_size_without_pulling(self, image_spec):
+    def _image_size_without_pulling(self, image_spec: str):
         """
         Attempt to query the requested image's size, based on the container runtime.
         Args:

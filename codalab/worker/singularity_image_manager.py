@@ -1,6 +1,7 @@
 import logging
 import os
 
+from codalab.worker.file_util import sha256
 from codalab.worker.image_manager import ImageAvailabilityState
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.image_manager import ImageManager
@@ -28,7 +29,7 @@ class SingularityImageManager(ImageManager):
         for f in files:
             os.remove(os.path.join(self.image_folder, f))
 
-    def get(self, image_spec):
+    def get(self, image_spec: str):
         """
         image_spec is in singularity format:
         - Docker: 'docker://<image>'
@@ -39,15 +40,16 @@ class SingularityImageManager(ImageManager):
         if len(image_spec.split("://")) <= 1:
             # prefix docker, no scheme exists
             image_spec = "docker://" + image_spec
-        ImageManager.get(image_spec)
+        if len(image_spec.split(":")) <= 2:
+            image_spec += ":latest"
+        return super().get(image_spec)
 
-    def _download(self, image_spec):
+    def _download(self, image_spec: str):
         logger.debug('Downloading image %s', image_spec)
         try:
             # stream=True for singularity doesnt return progress or anything really - for now no progress
-            self._downloading[image_spec]['message'] = "Starting Download"
+            self._downloading[image_spec]['message'] = "Starting download"
             img = Client.pull(image_spec, pull_folder=self.image_folder)
-            # maybe add img to a list and in cleanup rm the files in the list
             logger.debug('Download for image %s complete to %s', image_spec, img)
             self._downloading[image_spec]['success'] = True
             self._downloading[image_spec]['message'] = "Downloaded image"
@@ -57,10 +59,10 @@ class SingularityImageManager(ImageManager):
             self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
 
     def _image_availability_state(
-        self, image_spec, success_message, failure_message
+        self, image_spec: str, success_message: str, failure_message: str
     ) -> ImageAvailabilityState:
         """
-        Returns the state of a said image on the codalab singularity image folder.
+        Returns the state of a specified image on the codalab singularity image folder.
         Should be called after the image is said to be downloaded.
         Assumes image_spec has a version associated (in format image:version).
         Args:
@@ -71,22 +73,20 @@ class SingularityImageManager(ImageManager):
         Returns:
 
         """
-        if len(image_spec.split(":")) <= 1:
-            # error, we should have a version
-            raise ValueError
-        img, version = image_spec.split(":")
-        hypofile = os.path.join(self.image_folder, img + "_" + version)
-        if os.path.isfile(hypofile):
+        # the singularity image is stored in the format of <image name>_<version>,sif
+        image_path = os.path.join(self.image_folder, "{}.sif".format(image_spec.split(":")))
+        if os.path.isfile(image_path):
+            # for singularity, the digest of an image is just the sha256 hash of the image file.
             return ImageAvailabilityState(
-                digest=None, stage=DependencyStage.READY, message=success_message
+                digest=sha256(image_path), stage=DependencyStage.READY, message=success_message
             )
         return ImageAvailabilityState(
             digest=None,
             stage=DependencyStage.FAILED,
-            message=failure_message % "image file {} should exist but does not".format(hypofile),
+            message=failure_message % "image file {} should exist but does not".format(image_path),
         )
 
-    def _image_size_without_pulling(self, image_spec):
+    def _image_size_without_pulling(self, image_spec: str):
         """
         no-op.
         As of right now, neither singularity hub or sylabs cloud hub support the querying of image

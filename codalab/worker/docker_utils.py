@@ -18,6 +18,7 @@ from requests.adapters import HTTPAdapter
 import traceback
 from urllib3.util.retry import Retry
 
+from codalab.common import SingularityError
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
@@ -120,25 +121,31 @@ def get_nvidia_devices(use_docker=True):
     if use_docker:
         client.images.pull(cuda_image)
         output = client.containers.run(
-            cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
+            cuda_image,
+            nvidia_command,
+            runtime=NVIDIA_RUNTIME,
+            detach=False,
+            stdout=True,
+            remove=True,
         )
-        output = output.decode()
-        # Get newline delimited gpu-index, gpu-uuid list
-        logger.info("GPUs: " + str(output.split('\n')[:-1]))
-        return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
+        gpus = output.decode()
     else:
-        # we don't really care where the image is because we are just using
-        # it for nvidia-smi
-        img, puller = Client.pull('docker://' + cuda_image, pull_folder='/tmp', stream=True)
-        for l in puller:
+        # use the singularity runtime to run nvidia-smi
+        img, p = Client.pull('docker://' + cuda_image, pull_folder='/tmp', stream=True)
+        for l in p:
             logger.error(l)
-        logger.error(img)
+        logger.error("EIFONQWEIOFIOQW#NFIOENFIOWO")
         output = Client.execute(img, nvidia_command, options=['--nv'])
+        logger.error(output)
         if output['return_code'] != 0:
-            return {}
-        logger.info("GPUs: " + str(output['message'].split('\n')[:-1]))
-        return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output['message'].split('\n')[:-1]}
-
+            raise SingularityError
+        gpus = output['message']
+    # Get newline delimited gpu-index, gpu-uuid list
+    logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
+    return {
+        gpu.split(',')[0].strip(): gpu.split(',')[1].strip()
+        for gpu in gpus.split('\n')[:-1]
+    }
 
 @wrap_exception('Unable to fetch Docker container ip')
 def get_container_ip(network_name, container):

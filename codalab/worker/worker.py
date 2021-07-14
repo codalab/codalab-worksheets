@@ -78,8 +78,6 @@ class Worker:
         delete_work_dir_on_exit=False,  # type: bool
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
-        # mainly to avoid trying to use the docker socket which we may not have permissions to.
-        runtime_docker=True,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -122,8 +120,7 @@ class Worker:
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
-        self.init_docker_networks(docker_network_prefix, use_docker=runtime_docker)
-        self.runtime_docker = runtime_docker
+        self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             image_manager=self.image_manager,
             dependency_manager=self.dependency_manager,
@@ -136,15 +133,10 @@ class Worker:
             shared_file_system=self.shared_file_system,
         )
 
-    def init_docker_networks(self, docker_network_prefix, verbose=True, use_docker=True):
+    def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
         Set up docker networks for runs: one with external network access and one without
         """
-        if not use_docker:
-            self.worker_docker_network = None
-            self.docker_network_external = None
-            self.docker_network_internal = None
-            return
 
         def create_or_get_network(name, internal, verbose):
             try:
@@ -474,7 +466,9 @@ class Worker:
         """ Transition each run then filter out finished runs """
         # We (re-)initialize the Docker networks here, in case they've been removed.
         # For any networks that exist, this is essentially a no-op.
-        self.init_docker_networks(self.docker_network_prefix, verbose=False, use_docker=self.runtime_docker)
+        self.init_docker_networks(
+            self.docker_network_prefix, verbose=False
+        )
         # In case the docker networks have changed, we also update them in the RunStateMachine
         self.run_state_manager.worker_docker_network = self.worker_docker_network
         self.run_state_manager.docker_network_external = self.docker_network_external

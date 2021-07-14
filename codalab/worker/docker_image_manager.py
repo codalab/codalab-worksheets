@@ -28,7 +28,7 @@ class DockerImageManager(ImageManager):
 
     CACHE_TAG = 'codalab-image-cache/last-used'
 
-    def __init__(self, commit_file, max_image_cache_size, max_image_size):
+    def __init__(self, commit_file: str, max_image_cache_size: int, max_image_size: int):
         """
         Initializes a DockerImageManager
         :param commit_file: String path to where the state file should be committed
@@ -108,20 +108,7 @@ class DockerImageManager(ImageManager):
                         )
             logger.debug("Stopping docker image manager cleanup")
 
-    def get(self, image_spec):
-        """
-        Always request the newest docker image from Dockerhub if it's not in downloading thread and return the current
-        downloading status(READY, FAILED, or DOWNLOADING).
-        When the requested image in the following states:
-        1. If it's not available on the platform, we download the image and return DOWNLOADING status.
-        2. If another thread is actively downloading it, we return DOWNLOADING status.
-        3. If another thread was downloading it but not active by the time the request was sent, we return the following status:
-            * READY if the image was downloaded successfully.
-            * FAILED if the image wasn't able to be downloaded due to any reason.
-        :param image_spec: Repo image_spec of docker image being requested
-        :returns: An ImageAvailabilityState object with the state of the docker image
-        """
-
+    def get(self, image_spec: str):
         if ':' not in image_spec:
             # Both digests and repo:tag kind of specs include the : character. The only case without it is when
             # a repo is specified without a tag (like 'latest')
@@ -138,13 +125,13 @@ class DockerImageManager(ImageManager):
             image_spec += ':latest'
         return super().get(image_spec)
 
-    def _download(self, image_spec) -> None:
+    def _download(self, image_spec: str) -> None:
         """
         Download the container image from DockerHub to the host machine.
         Args:
             image_spec: docker image (just image, no prefix docker://)
 
-        Returns: None; all status is set in the _downloading ThreadDict
+        Returns: None
 
         """
         logger.debug('Downloading Docker image %s', image_spec)
@@ -170,7 +157,7 @@ class DockerImageManager(ImageManager):
             self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
 
     @docker_utils.wrap_exception('Unable to get image size without pulling from Docker Hub')
-    def _image_size_without_pulling(self, image_spec):
+    def _image_size_without_pulling(self, image_spec: str):
         """
         Get the compressed size of a docker image without pulling it from Docker Hub. Note that since docker-py doesn't
         report the accurate compressed image size, e.g. the size reported from the RegistryData object, we then switch
@@ -232,7 +219,7 @@ class DockerImageManager(ImageManager):
         return image_size_bytes
 
     def _image_availability_state(
-        self, image_spec, success_message, failure_message
+        self, image_spec: str, success_message: str, failure_message: str
     ) -> ImageAvailabilityState:
         """
         Try to get the image specified by image_spec from host machine.

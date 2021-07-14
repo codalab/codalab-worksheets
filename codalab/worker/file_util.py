@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import bz2
+import hashlib
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
@@ -576,3 +577,12 @@ def path_is_parent(parent_path, child_path):
     # the parent path will regularize the path name in the same way as the
     # comparison that deals with both paths, removing any trailing path separator.
     return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
+
+
+def sha256(file: str) -> str:
+    sha256_hash = hashlib.sha256()
+    with open(file, "rb") as f:
+        # Read and update hash string value in blocks of 4K -- good for large files
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()

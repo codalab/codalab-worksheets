@@ -12,7 +12,9 @@ import socket
 import stat
 import sys
 import psutil
+import requests
 
+from codalab.common import SingularityError
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
@@ -93,8 +95,8 @@ def parse_args():
         help='Limit the size of Docker images to download from the Docker Hub'
         '(e.g. 3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
         'the requested image will not be downloaded. '
-        'The bundle depends on this image will fail accordingly.'
-        'If running an image on the singularity runtime, there is no size'
+        'The bundle depends on this image will fail accordingly. '
+        'If running an image on the singularity runtime, there is no size '
         'check because singularity hub does not support the querying of image size',
     )
     parser.add_argument(
@@ -266,8 +268,7 @@ def main():
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
             logger.info(
-                'Local singularity image location %s doesn\'t exist, creating.',
-                singularity_folder,
+                'Local singularity image location %s doesn\'t exist, creating.', singularity_folder,
             )
             os.makedirs(singularity_folder, 0o770)
         image_manager = SingularityImageManager(
@@ -313,7 +314,6 @@ def main():
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
-        runtime_docker=docker_runtime is not None
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -380,9 +380,14 @@ def parse_gpuset_args(arg):
         all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
     except docker_utils.DockerException:
         all_gpus = {}
-    except Exception:
-        all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+    # docker socket cant be used
+    except requests.exceptions.ConnectionError:
+        try:
+            all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+        except SingularityError:
+            all_gpus = {}
 
+    logger.error(all_gpus, arg)
     if arg == 'ALL':
         return set(all_gpus.values())
     else:
