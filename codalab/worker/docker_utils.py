@@ -12,9 +12,7 @@ import docker
 from dateutil import parser, tz
 import datetime
 import re
-import requests
 from spython.main import Client
-from requests.adapters import HTTPAdapter
 import traceback
 from urllib3.util.retry import Retry
 
@@ -131,21 +129,15 @@ def get_nvidia_devices(use_docker=True):
         gpus = output.decode()
     else:
         # use the singularity runtime to run nvidia-smi
-        img, p = Client.pull('docker://' + cuda_image, pull_folder='/tmp', stream=True)
-        for l in p:
-            logger.error(l)
-        logger.error("EIFONQWEIOFIOQW#NFIOENFIOWO")
+        img = Client.pull('docker://' + cuda_image, pull_folder='/tmp')
         output = Client.execute(img, nvidia_command, options=['--nv'])
-        logger.error(output)
         if output['return_code'] != 0:
             raise SingularityError
         gpus = output['message']
     # Get newline delimited gpu-index, gpu-uuid list
     logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
-    return {
-        gpu.split(',')[0].strip(): gpu.split(',')[1].strip()
-        for gpu in gpus.split('\n')[:-1]
-    }
+    return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus.split('\n')[:-1]}
+
 
 @wrap_exception('Unable to fetch Docker container ip')
 def get_container_ip(network_name, container):

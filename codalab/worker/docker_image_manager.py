@@ -11,7 +11,6 @@ import codalab.worker.docker_utils as docker_utils
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT, URI_PREFIX
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.state_committer import JsonStateCommitter
-from codalab.worker.worker_thread import ThreadDict
 from .image_manager import ImageManager, ImageAvailabilityState
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
