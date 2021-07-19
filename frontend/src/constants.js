@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '1.0.0';
+export const CODALAB_VERSION = '1.0.1';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
