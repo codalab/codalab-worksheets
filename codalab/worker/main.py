@@ -274,6 +274,7 @@ def main():
         image_manager = SingularityImageManager(
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
+        # todo workers with singularity don't work because this is set to none -- handle this
         docker_runtime = None
     else:
         image_manager = DockerImageManager(
@@ -364,10 +365,10 @@ def parse_cpuset_args(arg):
 def parse_gpuset_args(arg):
     """
     Parse given arg into a set of strings representing gpu UUIDs
-    By default, we will try to start a docker container with nvidia-smi to get the GPUs
-    If we get an exception that the docker socket does not exist, which will be the case
-    on singularity workers, because they do not have root access, and therefore, access to
-    the docker socket, we should try to get the GPUs with singularity.
+    By default, we will try to start a Docker container with nvidia-smi to get the GPUs.
+    If we get an exception that the Docker socket does not exist, which will be the case
+    on Singularity workers, because they do not have root access, and therefore, access to
+    the Docker socket, we should try to get the GPUs with Singularity.
 
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
@@ -380,14 +381,13 @@ def parse_gpuset_args(arg):
         all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
     except docker_utils.DockerException:
         all_gpus = {}
-    # docker socket cant be used
+    # Docker socket can't be used
     except requests.exceptions.ConnectionError:
         try:
             all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
         except SingularityError:
             all_gpus = {}
 
-    logger.error(all_gpus, arg)
     if arg == 'ALL':
         return set(all_gpus.values())
     else:

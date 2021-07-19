@@ -580,6 +580,9 @@ def path_is_parent(parent_path, child_path):
 
 
 def sha256(file: str) -> str:
+    """
+    Return the sha256 of the contents of the given file.
+    """
     sha256_hash = hashlib.sha256()
     with open(file, "rb") as f:
         # Read and update hash string value in blocks of 4K -- good for large files

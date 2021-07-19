@@ -86,9 +86,6 @@ x-codalab-base: &codalab-base
   user: ${CODALAB_UID}
   networks:
     - service
-  volumes:
-    - "/etc/passwd:/etc/passwd"
-    - "/etc/group:/etc/group"
 
 # We mostly want to run in user mode when we need to save files to disk.
 # But if we don't, easier to run as root.

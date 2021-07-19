@@ -37,10 +37,11 @@ class SingularityImageManager(ImageManager):
         - Singularity Hub (deprecated): 'shub://<image>'
         Images will be assumed to be docker if no prefix is included.
         """
-        if len(image_spec.split("://")) <= 1:
+        if "://" not in image_spec:
             # prefix docker, no scheme exists
             image_spec = "docker://" + image_spec
-        if len(image_spec.split(":")) <= 2:
+        _, rest = image_spec.split("://")
+        if ":" not in rest:
             image_spec += ":latest"
         return super().get(image_spec)
 

@@ -222,6 +222,10 @@ class DockerImageManager(ImageManager):
     ) -> ImageAvailabilityState:
         """
         Try to get the image specified by image_spec from host machine.
+        Args:
+            image_spec of the image
+            success_message to be returned if the image is available
+            failure_message to be returned if the image is not available (needs to be formatted with %s).
         Return ImageAvailabilityState.
         """
         try:
