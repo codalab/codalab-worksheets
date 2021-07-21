@@ -21,9 +21,6 @@ RUN make
 
 FROM ubuntu:16.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
-# the singularity container runtime needs to be able to lookup the uid of the default user
-ARG default_user=adiprerepa
-RUN useradd -ms /bin/bash $default_user
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
@@ -53,7 +50,8 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 COPY --from=ecr-login-installation /root/go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local /usr/local/bin
 COPY --from=ecr-login-installation /usr/local/bin/singularity /usr/local/bin
-RUN which singularity
+# the singularity container runtime needs to be able to lookup the uid of the default user
+#RUN useradd -ms /bin/bash $default_user
 
 RUN mkdir $HOME/.docker
 RUN echo "{\"credsStore\": \"ecr-login\"}" >> ~/.docker/config.json
@@ -79,3 +77,7 @@ RUN python3 -m pip install --no-cache-dir -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
+# when the worker docker container is run, the uid is the same as the uid that is used to run
+# the container, but we need to map to a default username. The underlying user is the same, just with
+# different names.
+RUN useradd codalab
