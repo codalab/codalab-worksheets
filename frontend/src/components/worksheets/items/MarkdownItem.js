@@ -2,6 +2,8 @@ import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged, getAfterSortKey } from '../../../util/worksheet_utils';
 import marked from 'marked';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github.css';
 import ReactDOM from 'react-dom';
 import { withStyles } from '@material-ui/core/styles';
 import IconButton from '@material-ui/core/IconButton';
@@ -12,6 +14,14 @@ import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 import Tooltip from '@material-ui/core/Tooltip';
 import { addItems } from '../../../util/apiWrapper';
+
+marked.setOptions({
+    highlight: function (code, selectedLanguage) {
+        if (!selectedLanguage) selectedLanguage = 'plaintext';
+        return hljs.highlight(code, { language: selectedLanguage }).value;
+    },
+});
+
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
