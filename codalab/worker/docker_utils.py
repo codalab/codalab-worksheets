@@ -12,12 +12,10 @@ import docker
 from dateutil import parser, tz
 import datetime
 import re
-import requests
-
-from requests.adapters import HTTPAdapter
+from spython.main import Client
 import traceback
-from urllib3.util.retry import Retry
 
+from codalab.common import SingularityError
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
@@ -104,23 +102,40 @@ def get_available_runtime():
 
 
 @wrap_exception('Problem getting NVIDIA devices')
-def get_nvidia_devices():
+def get_nvidia_devices(use_docker=True):
     """
     Returns a Dict[index, UUID] of all NVIDIA devices available to docker
+
+    Arguments:
+        use_docker: whether or not to use a docker container to run nvidia-smi. if not, use singularity
+
     Raises docker.errors.ContainerError if GPUs are unreachable,
            docker.errors.ImageNotFound if the CUDA image cannot be pulled
            docker.errors.APIError if another server error occurs
     """
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
-    client.images.pull(cuda_image)
     nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
-    output = client.containers.run(
-        cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
-    )
+    if use_docker:
+        client.images.pull(cuda_image)
+        output = client.containers.run(
+            cuda_image,
+            nvidia_command,
+            runtime=NVIDIA_RUNTIME,
+            detach=False,
+            stdout=True,
+            remove=True,
+        )
+        gpus = output.decode()
+    else:
+        # use the singularity runtime to run nvidia-smi
+        img = Client.pull('docker://' + cuda_image, pull_folder='/tmp')
+        output = Client.execute(img, nvidia_command, options=['--nv'])
+        if output['return_code'] != 0:
+            raise SingularityError
+        gpus = output['message']
     # Get newline delimited gpu-index, gpu-uuid list
-    output = output.decode()
-    logger.info("GPUs: " + str(output.split('\n')[:-1]))
-    return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
+    logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
+    return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus.split('\n')[:-1]}
 
 
 @wrap_exception('Unable to fetch Docker container ip')
@@ -281,17 +296,19 @@ def get_container_stats_with_docker_stats(container: docker.models.containers.Co
 
 def get_cpu_usage(container_stats: dict) -> float:
     """Calculates CPU usage from container stats returned from the Docker Stats API.
-       The way of calculation comes from here:
-       https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
-       That method is also based on how the docker client calculates it:
-       https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309"""
+    The way of calculation comes from here:
+    https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
+    That method is also based on how the docker client calculates it:
+    https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309"""
     try:
-        cpu_delta: int = container_stats['cpu_stats']['cpu_usage']['total_usage'] - container_stats[
-            'precpu_stats'
-        ]['cpu_usage']['total_usage']
-        system_delta: int = container_stats['cpu_stats']['system_cpu_usage'] - container_stats[
-            'precpu_stats'
-        ]['system_cpu_usage']
+        cpu_delta: int = (
+            container_stats['cpu_stats']['cpu_usage']['total_usage']
+            - container_stats['precpu_stats']['cpu_usage']['total_usage']
+        )
+        system_delta: int = (
+            container_stats['cpu_stats']['system_cpu_usage']
+            - container_stats['precpu_stats']['system_cpu_usage']
+        )
         if system_delta > 0 and cpu_delta > 0:
             cpu_usage: float = float(cpu_delta / system_delta) * float(
                 len(container_stats['cpu_stats']['cpu_usage']['percpu_usage'])
@@ -371,64 +388,3 @@ def get_container_running_time(container):
     # formatted datetime string directly.
     container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
     return container_running_time.total_seconds()
-
-
-@wrap_exception('Unable to get image size without pulling from Docker Hub')
-def get_image_size_without_pulling(image_spec):
-    """
-    Get the compressed size of a docker image without pulling it from Docker Hub. Note that since docker-py doesn't
-    report the accurate compressed image size, e.g. the size reported from the RegistryData object, we then switch
-    to use Docker Registry HTTP API V2
-    :param image_spec: image_spec can have two formats as follows:
-            1. "repo:tag": 'codalab/default-cpu:latest'
-            2. "repo@digest": studyfang/hotpotqa@sha256:f0ee6bc3b8deefa6bdcbb56e42ec97b498befbbca405a630b9ad80125dc65857
-    :return: 1. when fetching from Docker rest API V2 succeeded, return the compressed image size in bytes
-             2. when fetching from Docker rest API V2 failed, return None
-    """
-    logger.info("Downloading tag information for {}".format(image_spec))
-
-    # Both types of image_spec have the ':' character. The '@' character is unique in the type 1.
-    image_tag = None
-    image_digest = None
-    if '@' in image_spec:
-        image_name, image_digest = image_spec.split('@')
-    else:
-        image_name, image_tag = image_spec.split(":")
-    # Example URL:
-    # 1. image with namespace: https://hub.docker.com/v2/repositories/<namespace>/<image_name>/tags/?page=<page_number>
-    #       e.g. https://hub.docker.com/v2/repositories/codalab/default-cpu/tags/?page=1
-    # 2. image without namespace: https://hub.docker.com/v2/repositories/library/<image_name>/tags/?page=<page_number>
-    #       e.g. https://hub.docker.com/v2/repositories/library/ubuntu/tags/?page=1
-    # Each page will return at most 10 tags
-    # URI prefix of an image without namespace will be adjusted to https://hub.docker.com/v2/repositories/library
-    uri_prefix_adjusted = URI_PREFIX + '/library/' if '/' not in image_name else URI_PREFIX
-    request = uri_prefix_adjusted + image_name + '/tags/?page='
-    image_size_bytes = None
-    page_number = 1
-
-    requests_session = requests.Session()
-    # Retry 5 times, sleeping for [0.1s, 0.2s, 0.4s, ...] between retries.
-    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[413, 429, 500, 502, 503, 504])
-    requests_session.mount('https://', HTTPAdapter(max_retries=retries))
-
-    while True:
-        response = requests_session.get(url=request + str(page_number))
-        data = response.json()
-        if len(data['results']) == 0:
-            break
-        # Get the size information from the matched image
-        if image_tag:
-            for result in data['results']:
-                if result['name'] == image_tag:
-                    image_size_bytes = result['full_size']
-                    return image_size_bytes
-        if image_digest:
-            for result in data['results']:
-                for image in result['images']:
-                    if image_digest in image['digest']:
-                        image_size_bytes = result['full_size']
-                        return image_size_bytes
-
-        page_number += 1
-
-    return image_size_bytes

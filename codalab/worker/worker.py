@@ -20,7 +20,7 @@ import requests
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT
-from .docker_image_manager import DockerImageManager
+from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
@@ -52,7 +52,7 @@ class Worker:
 
     def __init__(
         self,
-        image_manager,  # type: DockerImageManager
+        image_manager,  # type: ImageManager
         dependency_manager,  # type: Optional[DependencyManager]
         commit_file,  # type: str
         cpuset,  # type: Set[str]
@@ -122,7 +122,7 @@ class Worker:
         self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
-            docker_image_manager=self.image_manager,
+            image_manager=self.image_manager,
             dependency_manager=self.dependency_manager,
             worker_docker_network=self.worker_docker_network,
             docker_network_internal=self.docker_network_internal,
