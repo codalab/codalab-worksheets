@@ -14,7 +14,6 @@ import datetime
 import re
 from spython.main import Client
 import traceback
-from urllib3.util.retry import Retry
 
 from codalab.common import SingularityError
 
