@@ -77,7 +77,9 @@ RUN python3 -m pip install --no-cache-dir -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
-# when the worker docker container is run, the uid is the same as the uid that is used to run
+# When running the worker container as a non-root user on the host,
+# we need to create a user `codalab` in the Docker container that corresponds to the specified uid / gid.
+# See https://medium.com/@mccode/understanding-how-uid-and-gid-work-in-docker-containers-c37a01d01cf
 # the container, but we need to map to a default username. The underlying user is the same, just with
 # different names.
 RUN useradd codalab
