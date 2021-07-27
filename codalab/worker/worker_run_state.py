@@ -160,12 +160,13 @@ class RunStateMachine(StateTransitioner):
 
     def __init__(
         self,
-        image_manager,  # Component to request docker images from
+        image_manager,  # Component to request images from
+        bundle_runner,  # Component to run images from
         dependency_manager,  # Component to request dependency downloads from
         worker_docker_network,  # Docker network to add all bundles to
         docker_network_internal,  # Docker network to add non-net connected bundles to
         docker_network_external,  # Docker network to add internet connected bundles to
-        docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
+        container_runtime,  # Docker runtime to use for containers (nvidia or runc)
         upload_bundle_callback,  # Function to call to upload bundle results to the server
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
@@ -181,11 +182,11 @@ class RunStateMachine(StateTransitioner):
 
         self.dependency_manager = dependency_manager
         self.image_manager = image_manager
+        self.bundle_runner = bundle_runner
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
-        # todo aditya: docker_runtime will be None if the worker is a singularity worker. handle this.
-        self.docker_runtime = docker_runtime
+        self.container_runtime = container_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
         # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
@@ -343,11 +344,12 @@ class RunStateMachine(StateTransitioner):
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             to_mount = []
             dependency_path = self._get_dependency_path(run_state, dep)
-
+            logger.info("adi: dep: {} dep path: {}".format(dep, dependency_path))
             if dep.child_path == RunStateMachine._CURRENT_DIRECTORY:
                 # Mount all the content of the dependency_path to the top-level of the bundle
                 for child in os.listdir(dependency_path):
                     child_path = os.path.normpath(os.path.join(run_state.bundle_path, child))
+                    logger.info("child path: {}".format(child_path))
                     to_mount.append(
                         DependencyToMount(
                             docker_path=os.path.join(docker_dependencies_path, child),
@@ -378,6 +380,7 @@ class RunStateMachine(StateTransitioner):
                     run_state = run_state._replace(
                         paths_to_remove=(run_state.paths_to_remove or []) + [path_to_remove]
                     )
+            logger.info("TO MOUNT: {}".format(to_mount))
             for dependency in to_mount:
                 try:
                     mount_dependency(dependency, self.shared_file_system)
@@ -408,7 +411,7 @@ class RunStateMachine(StateTransitioner):
                 cpuset=cpuset,
                 gpuset=gpuset,
                 memory_bytes=run_state.resources.memory,
-                runtime=self.docker_runtime,
+                runtime=self.container_runtime,
             )
             self.worker_docker_network.connect(container)
         except docker_utils.DockerUserErrorException as e:

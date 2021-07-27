@@ -17,6 +17,9 @@ import requests
 from codalab.common import SingularityError
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
+from codalab.worker.bundle_runner import BundleRunner
+from codalab.worker.docker_bundle_runner import DockerBundleRunner
+from codalab.worker.singularity_bundle_runner import SingularityBundleRunner
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
@@ -274,15 +277,18 @@ def main():
         image_manager = SingularityImageManager(
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
+        bundle_runner = SingularityBundleRunner()
         # todo workers with singularity don't work because this is set to none -- handle this
-        docker_runtime = None
+        # runtime = None
     else:
         image_manager = DockerImageManager(
             os.path.join(args.work_dir, 'images-state.json'),
             args.max_image_cache_size,
             args.max_image_size,
         )
-        docker_runtime = docker_utils.get_available_runtime()
+        bundle_runner = DockerBundleRunner()
+        # runtime = docker_utils.get_available_runtime()
+    runtime = docker_utils.get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -293,6 +299,7 @@ def main():
 
     worker = Worker(
         image_manager,
+        bundle_runner,
         dependency_manager,
         os.path.join(args.work_dir, 'worker-state.json'),
         args.cpuset,
@@ -310,7 +317,7 @@ def main():
         args.shared_file_system,
         args.tag_exclusive,
         args.group,
-        docker_runtime=docker_runtime,
+        container_runtime=runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,

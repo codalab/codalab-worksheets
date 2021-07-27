@@ -17,6 +17,7 @@ from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 import requests
 
+from .bundle_runner import BundleRunner
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT
@@ -53,6 +54,7 @@ class Worker:
     def __init__(
         self,
         image_manager,  # type: ImageManager
+        bundle_runner,  # type: BundleRunner
         dependency_manager,  # type: Optional[DependencyManager]
         commit_file,  # type: str
         cpuset,  # type: Set[str]
@@ -70,7 +72,8 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
-        docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
+        # todo aditya change DEFAULT_RUNTIME location
+        container_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
         pass_down_termination=False,  # type: bool
@@ -127,7 +130,7 @@ class Worker:
             worker_docker_network=self.worker_docker_network,
             docker_network_internal=self.docker_network_internal,
             docker_network_external=self.docker_network_external,
-            docker_runtime=docker_runtime,
+            container_runtime=container_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
