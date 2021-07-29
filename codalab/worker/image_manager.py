@@ -37,6 +37,7 @@ class ImageManager:
         self._downloading = ThreadDict(
             fields={'success': False, 'status': 'Download starting'}, lock=True
         )
+        self._cleanup_thread = None
 
     def start(self) -> None:
         """
