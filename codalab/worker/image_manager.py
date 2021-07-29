@@ -3,6 +3,7 @@ import threading
 import time
 import traceback
 from collections import namedtuple
+from typing import Optional
 
 from codalab.lib.formatting import size_str
 from codalab.worker.fsm import DependencyStage
@@ -37,7 +38,7 @@ class ImageManager:
         self._downloading = ThreadDict(
             fields={'success': False, 'status': 'Download starting'}, lock=True
         )
-        self._cleanup_thread = None
+        self._cleanup_thread = None  # type: Optional[threading.Thread]
 
     def start(self) -> None:
         """
