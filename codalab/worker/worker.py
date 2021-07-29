@@ -83,6 +83,7 @@ class Worker:
         exit_on_exception=False,  # type: bool
     ):
         self.image_manager = image_manager
+        self.bundle_runner = bundle_runner
         self.dependency_manager = dependency_manager
         self.reader = Reader()
         self.state_committer = JsonStateCommitter(commit_file)
@@ -126,13 +127,14 @@ class Worker:
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
             image_manager=self.image_manager,
+            bundle_runner=self.bundle_runner,
             dependency_manager=self.dependency_manager,
             worker_docker_network=self.worker_docker_network,
             docker_network_internal=self.docker_network_internal,
             docker_network_external=self.docker_network_external,
-            container_runtime=container_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
+            container_runtime=container_runtime,
             shared_file_system=self.shared_file_system,
         )
 

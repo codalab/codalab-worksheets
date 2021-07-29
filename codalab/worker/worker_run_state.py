@@ -401,7 +401,7 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Start container
         try:
-            container = docker_utils.start_bundle_container(
+            container = self.bundle_runner.run(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
