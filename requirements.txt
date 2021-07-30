@@ -17,8 +17,8 @@ python-dateutil==2.8.1
 diffimg==0.2.3
 selenium==3.141.0
 requests==2.25.0
-azure-storage-blob==12.4.0
-azure-core==1.8.0
+azure-storage-blob==12.8.1
+azure-core==1.10.0
 sentry-sdk==0.18.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
