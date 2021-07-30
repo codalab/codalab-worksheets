@@ -89,6 +89,13 @@ class BundleManager(object):
 
         self._default_cpu_image = config.get('default_cpu_image')
         self._default_gpu_image = config.get('default_gpu_image')
+        self.tmp_iteration_stats = {
+            "_stage_bundles": 0.0,
+            "_make_bundles": 0.0,
+            "_schedule_run_bundles": 0.0,
+            "_fail_unresponsive_bundles": 0.0,
+            "runs": 0,
+        }
 
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
@@ -114,10 +121,30 @@ class BundleManager(object):
             return self._exiting
 
     def _run_iteration(self):
-        self._stage_bundles()
-        self._make_bundles()
-        self._schedule_run_bundles()
-        self._fail_unresponsive_bundles()
+        self.timefn(self._stage_bundles)
+        self.timefn(self._make_bundles)
+        self.timefn(self._schedule_run_bundles)
+        self.timefn(self._fail_unresponsive_bundles)
+        self.tmp_iteration_stats["runs"] = self.tmp_iteration_stats["runs"] + 1
+        if self.tmp_iteration_stats["runs"] == 25:
+            s = "adiprerepa AGGREGATE STATS:\n"
+            for k, v in self.tmp_iteration_stats.items():
+                s = s + "\t{} average: {}".format(k, v/self.tmp_iteration_stats["runs"]) + "\n"
+            logger.info(s)
+            self.tmp_iteration_stats = {
+                "_stage_bundles": 0.0,
+                "_make_bundles": 0.0,
+                "_schedule_run_bundles": 0.0,
+                "_fail_unresponsive_bundles": 0.0,
+                "runs": 0,
+            }
+
+    def timefn(self, fn):
+        start = time.time()
+        fn()
+        end = time.time()
+        logger.info("function {} took {}".format(fn.__name__, end-start))
+        self.tmp_iteration_stats[fn.__name__] = self.tmp_iteration_stats[fn.__name__] + (end - start)
 
     def _stage_bundles(self):
         """
