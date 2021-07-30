@@ -9,10 +9,10 @@ import time
 from io import BytesIO
 from http.client import HTTPResponse
 
-from bottle import abort, get, post, put, delete, local, request, response
+from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.common import precondition, UsageError, NotFoundError
+from codalab.common import StorageType, precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.server_util import (
     bottle_patch as patch,
@@ -631,6 +631,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     target = BundleTarget(uuid, path)
+    fileobj = None
 
     try:
         target_info = local.download_manager.get_target_info(target, 0)
@@ -645,11 +646,20 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         abort(http.client.BAD_REQUEST, str(e))
 
     # Figure out the file name.
-    bundle_name = local.model.get_bundle(target.bundle_uuid).metadata.name
+    bundle = local.model.get_bundle(target.bundle_uuid)
+    bundle_name = bundle.metadata.name
     if not path and bundle_name:
         filename = bundle_name
     else:
         filename = target_info['name']
+    
+    # We should redirect to the Blob Storage URL if the following conditions are met:
+    should_redirect_url = (
+        bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value and  # On Blob Storage
+        path == '' and  # No subpath
+        request_accepts_gzip_encoding() and  # Client accepts gzip encoding
+        not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
+    )
 
     if target_info['type'] == 'directory':
         if byte_range:
@@ -660,7 +670,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         gzipped_stream = False  # but don't set the encoding to 'gzip'
         mimetype = "application/gzip"
         filename += ".tar.gz"
-        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
+        if not should_redirect_url:
+            fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
@@ -678,19 +689,20 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         if encoding is not None:
             mimetype = 'application/octet-stream'
 
-        if byte_range and (head_lines or tail_lines):
-            abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
-        elif byte_range:
-            start, end = byte_range
-            fileobj = local.download_manager.read_file_section(
-                target, start, end - start + 1, gzipped_stream
-            )
-        elif head_lines or tail_lines:
-            fileobj = local.download_manager.summarize_file(
-                target, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
-            )
-        else:
-            fileobj = local.download_manager.stream_file(target, gzipped_stream)
+        if not should_redirect_url:
+            if byte_range and (head_lines or tail_lines):
+                abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
+            elif byte_range:
+                start, end = byte_range
+                fileobj = local.download_manager.read_file_section(
+                    target, start, end - start + 1, gzipped_stream
+                )
+            elif head_lines or tail_lines:
+                fileobj = local.download_manager.summarize_file(
+                    target, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
+                )
+            else:
+                fileobj = local.download_manager.stream_file(target, gzipped_stream)
     else:
         # Symlinks.
         abort(
@@ -716,6 +728,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         # if request is for a subdir in a bundle then return 0
         size = 0
     response.set_header('X-Codalab-Target-Size', size)
+
+    if should_redirect_url:
+        # Redirect to SAS URL on Blob Storage.
+        assert fileobj is None  # We should not be returning any other contents.
+        return redirect(local.download_manager.get_target_sas_url(target))
     return fileobj
 
 

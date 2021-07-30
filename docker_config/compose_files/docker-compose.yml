@@ -133,6 +133,8 @@ services:
       - rest-server
     expose:
       - 10000
+    ports:
+      - 10000:10000
     volumes:
       - ${CODALAB_HOME}/azurite:/data
 

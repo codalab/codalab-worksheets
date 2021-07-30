@@ -15,6 +15,10 @@ from dataclasses import dataclass
 from retry import retry
 from enum import Enum
 
+from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+import datetime
+from codalab.lib.beam.filesystems import AZURE_BLOB_ACCOUNT_NAME, AZURE_BLOB_ACCOUNT_KEY, AZURE_BLOB_CONTAINER_NAME, AZURE_BLOB_HTTP_ENDPOINT
+
 # Increment this on master when ready to cut a release.
 # http://semver.org/
 CODALAB_VERSION = '1.0.2'
@@ -208,6 +212,30 @@ class LinkedBundlePath:
     uses_beam: bool
     archive_subpath: str
     bundle_uuid: str
+
+    def _get_sas_url(self, path):
+        """Generates a SAS URL that can be used to read the given blob for one hour."""
+        if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
+            raise ValueError(f"SAS URLs can only be retrieved for bundles on Blob Storage. Storage type is: {self.storage_type}.")
+        blob_name = path.replace(f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", "")  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
+        sas_token = generate_blob_sas(
+            account_name = AZURE_BLOB_ACCOUNT_NAME,
+            container_name = AZURE_BLOB_CONTAINER_NAME,
+            account_key = AZURE_BLOB_ACCOUNT_KEY,
+            permission = BlobSasPermissions(read=True),
+            expiry = datetime.datetime.now() + datetime.timedelta(hours=1),
+            blob_name = blob_name
+        )
+        return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
+    
+    @property
+    def bundle_path_sas_url(self):
+        return self._get_sas_url(self.bundle_path)
+    
+    @property
+    def index_path_sas_url(self):
+        return self._get_sas_url(self.index_path)
+        
 
 
 def parse_linked_bundle_url(url):
