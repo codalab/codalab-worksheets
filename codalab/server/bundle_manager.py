@@ -89,13 +89,7 @@ class BundleManager(object):
 
         self._default_cpu_image = config.get('default_cpu_image')
         self._default_gpu_image = config.get('default_gpu_image')
-        self.tmp_iteration_stats = {
-            "_stage_bundles": 0.0,
-            "_make_bundles": 0.0,
-            "_schedule_run_bundles": 0.0,
-            "_fail_unresponsive_bundles": 0.0,
-            "runs": 0,
-        }
+        self.tmp_iteration_stats = {}
 
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
@@ -121,30 +115,27 @@ class BundleManager(object):
             return self._exiting
 
     def _run_iteration(self):
-        self.timefn(self._stage_bundles)
-        self.timefn(self._make_bundles)
-        self.timefn(self._schedule_run_bundles)
-        self.timefn(self._fail_unresponsive_bundles)
-        self.tmp_iteration_stats["runs"] = self.tmp_iteration_stats["runs"] + 1
+        self.timefn(self._stage_bundles, [])
+        self.timefn(self._make_bundles, [])
+        self.timefn(self._schedule_run_bundles, [])
+        self.timefn(self._fail_unresponsive_bundles, [])
+        self.tmp_iteration_stats["runs"] = self.tmp_iteration_stats.get("runs", 0) + 1
         if self.tmp_iteration_stats["runs"] == 25:
+            self.tmp_iteration_stats = {k: v for k, v in sorted(self.tmp_iteration_stats.items(), key=lambda item: item[1])}
             s = "adiprerepa AGGREGATE STATS:\n"
             for k, v in self.tmp_iteration_stats.items():
-                s = s + "\t{} average: {}".format(k, v/self.tmp_iteration_stats["runs"]) + "\n"
+                s = s + "\t{} average: {}".format(k, v/self.tmp_iteration_stats.get("runs", 0)) + "\n"
             logger.info(s)
-            self.tmp_iteration_stats = {
-                "_stage_bundles": 0.0,
-                "_make_bundles": 0.0,
-                "_schedule_run_bundles": 0.0,
-                "_fail_unresponsive_bundles": 0.0,
-                "runs": 0,
-            }
+            self.tmp_iteration_stats = {}
 
-    def timefn(self, fn):
+    def timefn(self, fn, arg_list):
         start = time.time()
-        fn()
+        res = fn(*arg_list)
         end = time.time()
         logger.info("function {} took {}".format(fn.__name__, end-start))
-        self.tmp_iteration_stats[fn.__name__] = self.tmp_iteration_stats[fn.__name__] + (end - start)
+        self.tmp_iteration_stats[fn.__name__] = self.tmp_iteration_stats.get(fn.__name__, 9) + (end - start)
+        return res
+
 
     def _stage_bundles(self):
         """
@@ -857,16 +848,16 @@ class BundleManager(object):
         )
 
         # Handle some exceptional cases.
-        self._cleanup_dead_workers(workers)
-        self._restage_stuck_starting_bundles(workers)
-        self._bring_offline_stuck_running_bundles(workers)
-        self._acknowledge_recently_finished_bundles(workers)
+        self.timefn(self._cleanup_dead_workers, arg_list=[workers])
+        self.timefn(self._restage_stuck_starting_bundles, arg_list=[workers])
+        self.timefn(self._bring_offline_stuck_running_bundles, arg_list=[workers])
+        self.timefn(self._acknowledge_recently_finished_bundles, arg_list=[workers])
         # A dictionary structured as {user id : user information} to track those visited user information
         user_info_cache = {}
-        staged_bundles_to_run = self._get_staged_bundles_to_run(workers, user_info_cache)
+        staged_bundles_to_run = self.timefn(self._get_staged_bundles_to_run, arg_list=[workers, user_info_cache])
 
         # Schedule, preferring user-owned workers.
-        self._schedule_run_bundles_on_workers(workers, staged_bundles_to_run, user_info_cache)
+        self.timefn(self._schedule_run_bundles_on_workers, arg_list=[workers, staged_bundles_to_run, user_info_cache])
 
     @staticmethod
     def _check_resource_failure(
