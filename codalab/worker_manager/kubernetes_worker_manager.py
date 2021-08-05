@@ -93,7 +93,9 @@ class KubernetesWorkerManager(WorkerManager):
         worker_name: str = f'cl-worker-{worker_id}'
         work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
-        worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
+        # worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
+        worker_image: str = 'codalab/worker:shm'
+        print(f"Using worker image: {worker_image}...")
 
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
