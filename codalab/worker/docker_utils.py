@@ -200,7 +200,7 @@ def start_bundle_container(
             network=network,
             mem_limit=memory_bytes,
             # TODO: make this a config we can set in the worker manager -Tony
-            shm_size='4G',
+            shm_size='8G',
             cpuset_cpus=cpuset_str,
             environment=environment,
             working_dir=working_dir,
