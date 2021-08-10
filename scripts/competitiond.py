@@ -684,18 +684,23 @@ class Competition(object):
             meta = self._get_competition_metadata(eval_bundle)
             if eval_bundle['id'] in eval2submit:
                 submit_bundle = eval2submit[eval_bundle['id']]
-                submission_info = {
-                    # Can include any information we want from the submission
-                    # within bounds of reason (since submitter may want to
-                    # keep some of the metadata private).
-                    'description': meta.get('description', None)
-                    or submit_bundle['metadata']['description'],  # Allow description override
-                    'public': self._is_publicly_readable(submit_bundle),
-                    'user_name': submit_bundle['owner']['user_name'],
-                    'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
-                    'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
-                    'created': submit_bundle['metadata']['created'],
-                }
+                try:
+                    submission_info = {
+                        # Can include any information we want from the submission
+                        # within bounds of reason (since submitter may want to
+                        # keep some of the metadata private).
+                        'description': meta.get('description', None)
+                        or submit_bundle['metadata']['description'],  # Allow description override
+                        'public': self._is_publicly_readable(submit_bundle),
+                        'user_name': submit_bundle['owner']['user_name'],
+                        'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
+                        'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
+                        'created': submit_bundle['metadata']['created'],
+                    }
+                except KeyError as e:
+                    print('Error when processing bundle {}'.format(eval_bundle['id']))
+                    traceback.print_exc()
+
             else:
                 # If there isn't a corresponding submit bundle, use some sane
                 # defaults based on just the eval bundle.
@@ -738,10 +743,19 @@ class Competition(object):
 
         if not self.leaderboard_only:
             for submit_bundle in submissions:
-                logger.info(
-                    "Mimicking submission for " "{owner[user_name]}".format(**submit_bundle)
-                )
-                predict_bundle = self.run_prediction(submit_bundle)
+                if 'user_name' in submit_bundle['owner']:
+                    logger.info(
+                        "Mimicking submission for " "{owner[user_name]}".format(**submit_bundle)
+                    )
+                else:
+                    logger.info(
+                        "Mimicking submission for " "{metadata[description]} (no username)".format(**submit_bundle)
+                    )
+                try:
+                    predict_bundle = self.run_prediction(submit_bundle)
+                except Exception as e:
+                    traceback.print_exc()
+                    continue
                 if predict_bundle is None:
                     logger.info(
                         "Aborting submission for " "{owner[user_name]}".format(**submit_bundle)
