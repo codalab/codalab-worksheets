@@ -163,6 +163,7 @@ def start_bundle_container(
     detach=True,
     tty=False,
     runtime=DEFAULT_RUNTIME,
+    shared_memory_size_gb=1,
 ):
     if not command.endswith(';'):
         command = '{};'.format(command)
@@ -199,8 +200,7 @@ def start_bundle_container(
             name=container_name,
             network=network,
             mem_limit=memory_bytes,
-            # TODO: make this a config we can set in the worker manager -Tony
-            shm_size='8G',
+            shm_size=f"{shared_memory_size_gb}G",
             cpuset_cpus=cpuset_str,
             environment=environment,
             working_dir=working_dir,
