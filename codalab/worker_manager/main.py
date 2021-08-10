@@ -109,6 +109,11 @@ def main():
     parser.add_argument(
         '--worker-executable', default="cl-worker", help="The CodaLab worker executable to run."
     )
+    parser.add_argument(
+        '--worker-shared-memory-size-gb',
+        type=int,
+        help="The shared memory size in GB of the run container started by the CodaLab Workers.",
+    )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
         description='Which worker manager to run (AWS Batch etc.)',

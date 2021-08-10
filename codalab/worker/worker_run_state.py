@@ -169,6 +169,7 @@ class RunStateMachine(StateTransitioner):
         upload_bundle_callback,  # Function to call to upload bundle results to the server
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
+        shared_memory_size_gb,  # Shared memory size for the run container (in GB)
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -195,6 +196,7 @@ class RunStateMachine(StateTransitioner):
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
+        self.shared_memory_size_gb = shared_memory_size_gb
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -409,6 +411,7 @@ class RunStateMachine(StateTransitioner):
                 gpuset=gpuset,
                 memory_bytes=run_state.resources.memory,
                 runtime=self.docker_runtime,
+                shared_memory_size_gb=self.shared_memory_size_gb,
             )
             self.worker_docker_network.connect(container)
         except docker_utils.DockerUserErrorException as e:
