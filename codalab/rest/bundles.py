@@ -652,13 +652,15 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         filename = bundle_name
     else:
         filename = target_info['name']
-    
+
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
-        bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value and  # On Blob Storage
-        path == '' and  # No subpath
-        request_accepts_gzip_encoding() and  # Client accepts gzip encoding
-        not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
+        bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value
+        and path == ''  # On Blob Storage
+        and request_accepts_gzip_encoding()  # No subpath
+        and not (  # Client accepts gzip encoding
+            byte_range or head_lines or tail_lines
+        )  # We're requesting the entire file
     )
 
     if target_info['type'] == 'directory':

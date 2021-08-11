@@ -39,7 +39,7 @@ class Uploader:
         raise NotImplementedError
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool, mime_type: str="application/octet-stream"
+        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
         """Writes fileobj indicated, unpacks if specified, and uploads it to the path at bundle_path.
         Args:
@@ -47,7 +47,6 @@ class Uploader:
             source_fileobj (str): Fileobj of the source to write.
             bundle_path (str): Output bundle path.
             unpack_archive (bool): Whether fileobj is an archive that should be unpacked.
-            mime_type (str): Mime type of the file, when it is served through HTTP. Set to enable transparent decompression of single files from the browser.
         """
         raise NotImplementedError
 
@@ -78,7 +77,7 @@ class Uploader:
                     bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
                     mimetype, encoding = mimetypes.guess_type(filename, strict=False)
                     self.write_fileobj(
-                        source_ext, source_fileobj, bundle_path, unpack_archive=False, mime_type=encoding
+                        source_ext, source_fileobj, bundle_path, unpack_archive=False
                     )
 
         except UsageError:
@@ -136,7 +135,7 @@ class DiskStorageUploader(Uploader):
         file_util.git_clone(source, bundle_path)
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool, mime_type: str="application/octet-stream"
+        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
         if unpack_archive:
             zip_util.unpack(source_ext, source_fileobj, bundle_path)
@@ -161,14 +160,14 @@ class BlobStorageUploader(Uploader):
             )
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool, mime_type: str="application/octet-stream"
+        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
         if unpack_archive:
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
         else:
             output_fileobj = GzipStream(source_fileobj)
         # Write archive file.
-        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED, mime_type=mime_type) as out:
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
             shutil.copyfileobj(output_fileobj, out)
         # Write index file to a temporary file, then write that file to Blob Storage.
         with FileSystems.open(
