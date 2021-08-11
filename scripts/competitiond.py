@@ -682,6 +682,18 @@ class Competition(object):
         leaderboard = []
         for eval_bundle in eval_bundles.values():
             meta = self._get_competition_metadata(eval_bundle)
+
+            # In case there isn't a corresponding submit bundle, use some sane
+            # defaults based on just the eval bundle.
+            submission_info = {
+                'description': eval_bundle['metadata']['description'],
+                'public': None,
+                'user_name': None,
+                'num_total_submissions': 0,
+                'num_period_submissions': 0,
+                'created': eval_bundle['metadata']['created'],
+            }
+
             if eval_bundle['id'] in eval2submit:
                 submit_bundle = eval2submit[eval_bundle['id']]
                 try:
@@ -693,25 +705,18 @@ class Competition(object):
                         or submit_bundle['metadata']['description'],  # Allow description override
                         'public': self._is_publicly_readable(submit_bundle),
                         'user_name': submit_bundle['owner']['user_name'],
-                        'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
-                        'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
+                        'num_total_submissions': num_total_submissions[
+                            submit_bundle['owner']['id']
+                        ],
+                        'num_period_submissions': num_period_submissions[
+                            submit_bundle['owner']['id']
+                        ],
                         'created': submit_bundle['metadata']['created'],
                     }
                 except KeyError as e:
                     print('Error when processing bundle {}'.format(eval_bundle['id']))
                     traceback.print_exc()
 
-            else:
-                # If there isn't a corresponding submit bundle, use some sane
-                # defaults based on just the eval bundle.
-                submission_info = {
-                    'description': eval_bundle['metadata']['description'],
-                    'public': None,
-                    'user_name': None,
-                    'num_total_submissions': 0,
-                    'num_period_submissions': 0,
-                    'created': eval_bundle['metadata']['created'],
-                }
             leaderboard.append(
                 {
                     'bundle': eval_bundle,
@@ -743,14 +748,9 @@ class Competition(object):
 
         if not self.leaderboard_only:
             for submit_bundle in submissions:
-                if 'user_name' in submit_bundle['owner']:
-                    logger.info(
-                        "Mimicking submission for " "{owner[user_name]}".format(**submit_bundle)
-                    )
-                else:
-                    logger.info(
-                        "Mimicking submission for " "{metadata[description]} (no username)".format(**submit_bundle)
-                    )
+                logger.info(
+                    "Mimicking submission for " "{owner[user_name]}".format(**submit_bundle)
+                )
                 try:
                     predict_bundle = self.run_prediction(submit_bundle)
                 except Exception as e:
