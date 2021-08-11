@@ -713,8 +713,13 @@ class Competition(object):
                         ],
                         'created': submit_bundle['metadata']['created'],
                     }
-                except KeyError as e:
-                    print('Error when processing bundle {}'.format(eval_bundle['id']))
+                except KeyError:
+                    logger.error(
+                        "Aborting submission {id} for "
+                        "{owner[user_name]}: Error when processing eval bundle".format(
+                            **eval_bundle
+                        )
+                    )
                     traceback.print_exc()
 
             leaderboard.append(
@@ -753,12 +758,15 @@ class Competition(object):
                 )
                 try:
                     predict_bundle = self.run_prediction(submit_bundle)
-                except Exception as e:
+                except Exception:
+                    logger.error(
+                        "Aborting submission {id} for " "{owner[user_name]}".format(**submit_bundle)
+                    )
                     traceback.print_exc()
                     continue
                 if predict_bundle is None:
-                    logger.info(
-                        "Aborting submission for " "{owner[user_name]}".format(**submit_bundle)
+                    logger.error(
+                        "Aborting submission {id} for " "{owner[user_name]}".format(**submit_bundle)
                     )
                     continue
                 self.run_evaluation(submit_bundle, predict_bundle)
