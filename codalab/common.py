@@ -218,7 +218,7 @@ class LinkedBundlePath:
     archive_subpath: str
     bundle_uuid: str
 
-    def _get_sas_url(self, path):
+    def _get_sas_url(self, path, **kwargs):
         """Generates a SAS URL that can be used to read the given blob for one hour."""
         if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
             raise ValueError(
@@ -228,6 +228,7 @@ class LinkedBundlePath:
             f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
         sas_token = generate_blob_sas(
+            **kwargs,
             account_name=AZURE_BLOB_ACCOUNT_NAME,
             container_name=AZURE_BLOB_CONTAINER_NAME,
             account_key=AZURE_BLOB_ACCOUNT_KEY,
@@ -237,13 +238,11 @@ class LinkedBundlePath:
         )
         return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
 
-    @property
-    def bundle_path_sas_url(self):
-        return self._get_sas_url(self.bundle_path)
+    def bundle_path_sas_url(self, **kwargs):
+        return self._get_sas_url(self.bundle_path, **kwargs)
 
-    @property
-    def index_path_sas_url(self):
-        return self._get_sas_url(self.index_path)
+    def index_path_sas_url(self, **kwargs):
+        return self._get_sas_url(self.index_path, **kwargs)
 
 
 def parse_linked_bundle_url(url):

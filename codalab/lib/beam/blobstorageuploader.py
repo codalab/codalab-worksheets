@@ -27,10 +27,6 @@ class BlobStorageUploader(Uploader):
     self._path = path
     self._container, self._blob = parse_azfs_path(path)
     self._content_settings = ContentSettings(mime_type)
-    
-    if path.endswith(".gz") and not path.endswith(".tar.gz"):
-      self._content_settings = ContentSettings("text/plain", content_encoding='gzip')
-
     self._blob_to_upload = self._client.get_blob_client(
         self._container, self._blob)
 

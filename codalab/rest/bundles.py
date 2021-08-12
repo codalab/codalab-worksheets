@@ -734,7 +734,16 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if should_redirect_url:
         # Redirect to SAS URL on Blob Storage.
         assert fileobj is None  # We should not be returning any other contents.
-        return redirect(local.download_manager.get_target_sas_url(target))
+        return redirect(
+            local.download_manager.get_target_sas_url(
+                target,
+                # We pass these parameters to set the Content-Type, Content-Encoding, and
+                # Content-Disposition headers that are sent from Blob Storage.
+                content_type=response.get_header('Content-Type'),
+                content_encoding="gzip",
+                content_disposition=response.get_header('Content-Disposition'),
+            )
+        )
     return fileobj
 
 
