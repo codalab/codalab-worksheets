@@ -127,7 +127,11 @@ services:
       - rest-server
 
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:3.8.0
+    # Use a temporary fork of Azurite that implements rscc, rscd, rsce, rscl, rsct query parameter support
+    # in SAS tokens (https://github.com/Azure/Azurite/pull/998).
+    # TODO (Ashwin): Once this PR is merged and release, use the upstream Microsoft Azurite image again.
+    image: llightex/azurite@sha256:e89a564fde7cb4506b6138bb62e97bce7a305d6493e9899ce6dd227205b72e28
+    # image: mcr.microsoft.com/azure-storage/azurite:3.14.0
     command: "azurite --blobHost 0.0.0.0"
     networks:
       - rest-server

@@ -740,7 +740,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
                 # We pass these parameters to set the Content-Type, Content-Encoding, and
                 # Content-Disposition headers that are sent from Blob Storage.
                 content_type=response.get_header('Content-Type'),
-                content_encoding="gzip",
+                content_encoding=response.get_header('Content-Encoding'),
                 content_disposition=response.get_header('Content-Disposition'),
             )
         )
