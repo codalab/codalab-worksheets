@@ -1,11 +1,14 @@
+import datetime
 import logging
 import os
 import traceback
-
 import docker
+from docker.models.containers import Container
+from dateutil import parser, tz
 
 from codalab.worker.bundle_runner import BundleRunner
-from codalab.worker.docker_utils import NVIDIA_RUNTIME, DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME
+from codalab.worker.docker_utils import NVIDIA_RUNTIME, DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME, wrap_exception, \
+    DEFAULT_CONTAINER_RUNNING_TIME
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,7 @@ class DockerBundleRunner(BundleRunner):
                 tty=tty,
                 stdin_open=tty,
             )
+            logger.info(container)
             logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
         except docker.errors.APIError:
             # The container failed to start, so it's in the CREATED state
@@ -101,3 +105,150 @@ class DockerBundleRunner(BundleRunner):
         }
         binds[bundle_path] = {'bind': docker_bundle_path, 'mode': 'rw'}
         return binds
+
+    @wrap_exception('Unable to check Docker container status')
+    def check_finished(self, container: Container):
+        # Unfortunately docker SDK doesn't update the status of Container objects
+        # so we re-fetch them from the API again to get the most recent state
+        if container is None:
+            return True, None, 'Docker container not found'
+        container = self.client.containers.get(container.id)
+        if container.status != 'running':
+            # If the logs are nonempty, then something might have gone
+            # wrong with the commands run before the user command,
+            # such as bash or cd.
+            stderr = container.logs(stderr=True, stdout=False)
+            # Strip non-ASCII chars since failure_message is not Unicode
+            # TODO: don't need to strip since we can support unicode?
+            if len(stderr) > 0:
+                failure_msg = stderr.decode('ascii', errors='ignore')
+            else:
+                failure_msg = None
+            exitcode = container.attrs['State']['ExitCode']
+            if exitcode == '137':
+                failure_msg = 'Memory limit exceeded.'
+            return True, exitcode, failure_msg
+        return False, None, None
+
+    @wrap_exception('Unable to check Docker API for container')
+    def get_container_stats_with_stats_api(self, container: Container):
+        """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
+        if self.container_exists(container):
+            try:
+                container_stats: dict = self.client.containers.get(container.name).stats(stream=False)
+
+                cpu_usage: float = self.get_cpu_usage(container_stats)
+                memory_usage: float = self.get_memory_usage(container_stats)
+
+                return cpu_usage, memory_usage
+            except docker.errors.NotFound:
+                raise
+        else:
+            return 0.0, 0
+
+    @wrap_exception("Can't get container stats")
+    def get_container_stats_native(self, container: Container):
+        # We don't use the stats API since it doesn't seem to be reliable, and
+        # is definitely slow. This doesn't work on Mac.
+        cgroup = None
+        for path in ['/sys/fs/cgroup', '/cgroup']:
+            if os.path.exists(path):
+                cgroup = path
+                break
+        if cgroup is None:
+            return {}
+
+        stats = {}
+
+        # Get CPU usage
+        try:
+            cpu_path = os.path.join(cgroup, 'cpuacct/docker', container.id, 'cpuacct.stat')
+            with open(cpu_path) as f:
+                for line in f:
+                    key, value = line.split(' ')
+                    # Convert jiffies to seconds
+                    if key == 'user':
+                        stats['time_user'] = int(value) / 100.0
+                    elif key == 'system':
+                        stats['time_system'] = int(value) / 100.0
+        except Exception:
+            pass
+
+        # Get memory usage
+        try:
+            memory_path = os.path.join(cgroup, 'memory/docker', container.id, 'memory.usage_in_bytes')
+            with open(memory_path) as f:
+                stats['memory'] = int(f.read())
+        except Exception:
+            pass
+
+        return stats
+
+
+    # todo put these on bundle_runner.py and singularity impls
+    def get_cpu_usage(self, container_stats: dict) -> float:
+        """Calculates CPU usage from container stats returned from the Docker Stats API.
+        The way of calculation comes from here:
+        https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
+        That method is also based on how the docker client calculates it:
+        https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309"""
+        try:
+            cpu_delta: int = (
+                    container_stats['cpu_stats']['cpu_usage']['total_usage']
+                    - container_stats['precpu_stats']['cpu_usage']['total_usage']
+            )
+            system_delta: int = (
+                    container_stats['cpu_stats']['system_cpu_usage']
+                    - container_stats['precpu_stats']['system_cpu_usage']
+            )
+            if system_delta > 0 and cpu_delta > 0:
+                cpu_usage: float = float(cpu_delta / system_delta) * float(
+                    len(container_stats['cpu_stats']['cpu_usage']['percpu_usage'])
+                )
+                return cpu_usage
+            return 0.0
+        except KeyError:
+            # The stats returned may be missing some keys if the bundle is not fully ready or has exited.
+            # We can just skip for now and wait until this function is called the next time.
+            return 0.0
+
+    def get_memory_usage(self, container_stats: dict) -> float:
+        """Takes a dictionary of container stats returned by docker stats, returns memory usage"""
+        try:
+            memory_limit: float = container_stats['memory_stats']['limit']
+            current_memory_usage: float = container_stats['memory_stats']['usage']
+            return current_memory_usage / memory_limit
+        except KeyError:
+            return 0
+
+    @wrap_exception('Unable to check Docker API for container')
+    def container_exists(self, container: Container):
+        try:
+            self.client.containers.get(container.id)
+            return True
+        except docker.errors.NotFound:
+            return False
+
+    @wrap_exception('Unable to check Docker container running time')
+    def get_container_running_time(self, container: Container):
+        # This usually happens when container gets accidentally removed or deleted
+        if container is None:
+            return DEFAULT_CONTAINER_RUNNING_TIME
+        # Get the current container
+        container = self.client.containers.get(container.id)
+        # Load this container from the server again and update attributes with the new data.
+        container.reload()
+        # Calculate the start_time of the current container
+        start_time = container.attrs['State']['StartedAt']
+        # Calculate the end_time of the current container. If 'Status' of the current container is not 'exited',
+        # then using the current time as end_time
+        end_time = (
+            container.attrs['State']['FinishedAt']
+            if container.attrs['State']['Status'] == 'exited'
+            else str(datetime.datetime.now(tz.tzutc()))
+        )
+        # Docker reports both the start_time and the end_time in ISO format. We currently use dateutil.parser.isoparse to
+        # parse them. In Python3.7 or above, the built-in function datetime.fromisoformat() can be used to parse ISO
+        # formatted datetime string directly.
+        container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
+        return container_running_time.total_seconds()

@@ -1,9 +1,48 @@
+import logging
 import os
+import datetime
 
 from codalab.worker.bundle_runner import BundleRunner, DEFAULT_RUNTIME
-from codalab.worker.docker_utils import NVIDIA_RUNTIME
+from codalab.worker.docker_utils import NVIDIA_RUNTIME, DEFAULT_CONTAINER_RUNNING_TIME
 from spython.main import Client
+from docker.models.containers import Container
 
+logger = logging.getLogger(__name__)
+
+class SingularityContainer(Container):
+    # todo aditya implement kill, remove
+    def __init__(self, instance_name: str, image_spec: str, output_executor, path: str):
+        self.instance_name = instance_name
+        self.image_spec = image_spec
+        self.output_executor = output_executor
+        self.start_time = None
+        self.end_time = None
+        self.path = path
+
+    @property
+    def id(self):
+        return self.instance_name
+
+    def start(self) -> None:
+        self.start_time = datetime.datetime.now()
+
+    def end(self) -> None:
+        self.end_time = datetime.datetime.now()
+
+    def elapsed(self) -> float:
+        if self.start_time is None:
+            return 0.0
+        if self.end_time is None:
+            self.end_time = datetime.datetime.now()
+        return (self.end_time - self.start_time).total_seconds()
+
+    def kill(self, signal=None) -> None:
+        instance = Client.instances(name=self.instance_name).pop(0)
+        os.kill(instance.pid, signal)
+
+    # we should maybe return status from this
+    def remove(self):
+        os.remove(os.path.join(self.path, self.image_spec))
 
 class SingularityBundleRunner(BundleRunner):
 
@@ -22,7 +61,7 @@ class SingularityBundleRunner(BundleRunner):
             memory_bytes=0,
             detach=True,
             tty=False,
-            runtime=DEFAULT_RUNTIME):
+            runtime=DEFAULT_RUNTIME) -> SingularityContainer:
         if not command.endswith(';'):
             command = '{};'.format(command)
         # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
@@ -52,8 +91,10 @@ class SingularityBundleRunner(BundleRunner):
             # nvidia-docker runtime uses this env variable to allocate GPUs
             environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else ''
 
-        output = Client.execute(image_spec, singularity_command, bind=volumes)
-
+        instance = Client.instance(image_spec)
+        output_executor = Client.execute(instance, singularity_command, bind=volumes, stream=True)
+        logger.debug('Started singularity container for UUID %s, container ID %s,', uuid, instance)
+        return SingularityContainer(instance, image_spec, output_executor, path)
 
     def get_bundle_container_volume_binds(self, bundle_path, singularity_bundle_path, dependencies):
         """
@@ -66,5 +107,32 @@ class SingularityBundleRunner(BundleRunner):
         binds.append("{}:{}".format(bundle_path, singularity_bundle_path))
         return binds
 
-    class SingularityContainer:
-        
+    def check_finished(self, container: SingularityContainer):
+        instances = Client.instances(name=container.id)
+        # with singularity, if the instance exists, it is not finished
+        if len(instances) > 0:
+            return False, None, None
+        # if the run finished, we can't get the exit code for now, singularity does not support when you stream
+        # potential future solutions:
+        #  - open PR for singularity supporting this (shouldn't be too much work)
+        #  - have the exec run in a subprocess that tracks the exit code separately and does not use stream=True
+        # todo get stderr -- https://singularityhub.github.io/singularity-cli/commands-instances#logs
+        #  for now we just return raw logs
+        return True, 0, None
+
+    def get_container_stats_with_stats_api(self, container: SingularityContainer):
+        return 0.0, 0
+
+    def get_container_stats_native(self, container: SingularityContainer):
+        return {}
+
+    def container_exists(self, container: SingularityContainer):
+        if len(Client.instances(name=container.id)) > 0:
+            return True
+        return False
+
+    def get_container_running_time(self, container: SingularityContainer):
+        if container is None:
+            return DEFAULT_CONTAINER_RUNNING_TIME
+
+
