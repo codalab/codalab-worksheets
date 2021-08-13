@@ -6,7 +6,6 @@ from azure.storage.blob import (
 from apache_beam.io.azure.blobstorageio import parse_azfs_path
 import base64
 from codalab.worker.un_gzip_stream import BytesBuffer
-import mimetypes
 
 class BlobStorageUploader(Uploader):
   """An improved version of apache_beam.io.azure.blobstorageio.BlobStorageUploader
@@ -27,6 +26,7 @@ class BlobStorageUploader(Uploader):
     self._path = path
     self._container, self._blob = parse_azfs_path(path)
     self._content_settings = ContentSettings(mime_type)
+
     self._blob_to_upload = self._client.get_blob_client(
         self._container, self._blob)
 
