@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import mimetypes
 
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
@@ -75,7 +74,6 @@ class Uploader:
                     self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
                 else:
                     bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
-                    mimetype, encoding = mimetypes.guess_type(filename, strict=False)
                     self.write_fileobj(
                         source_ext, source_fileobj, bundle_path, unpack_archive=False
                     )
