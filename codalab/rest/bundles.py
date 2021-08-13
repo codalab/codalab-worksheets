@@ -14,6 +14,7 @@ from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import StorageType, precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
+from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
@@ -743,7 +744,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         # Quirk when running CodaLab locally -- if this endpoint was called within a Docker container
         # such as the REST server or the worker, we need to redirect to http://azurite, as local
         # Docker containers doesn't have access to Azurite through http://localhost.
-        if "localhost" in sas_url:
+        if LOCAL_USING_AZURITE:
             # If this endpoint was called from a web browser, the X-Forwarded-Host URL would have "localhost"
             # in it. We're checking to see if this endpoint was *not* called by a web browser (i.e. called
             # from a bundle CLI within a Docker container).
