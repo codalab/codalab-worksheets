@@ -740,11 +740,15 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             content_encoding=response.get_header('Content-Encoding'),
             content_disposition=response.get_header('Content-Disposition'),
         )
-        # Quirk when running CodaLab locally -- if this endpoint was called within the codalab_rest-server_1
-        # Docker container, we need to redirect to http://azurite, as the codalab_rest-server_1 Docker
-        # container doesn't have access to Azurite through http://localhost.
-        if "rest-server" in request.get_header('Host') and "localhost" in sas_url:
-            sas_url = sas_url.replace("localhost", "azurite", 1)
+        # Quirk when running CodaLab locally -- if this endpoint was called within a Docker container
+        # such as the REST server or the worker, we need to redirect to http://azurite, as local
+        # Docker containers doesn't have access to Azurite through http://localhost.
+        if "localhost" in sas_url:
+            # If this endpoint was called from a web browser, the X-Forwarded-Host URL would have "localhost"
+            # in it. We're checking to see if this endpoint was *not* called by a web browser (i.e. called
+            # from a bundle CLI within a Docker container).
+            if "localhost" not in (request.get_header('X-Forwarded-Host') or ""):
+                sas_url = sas_url.replace("localhost", "azurite", 1)
         return redirect(sas_url)
     return fileobj
 
