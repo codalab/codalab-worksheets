@@ -850,7 +850,7 @@ def test_upload2(ctx):
         check_equals(test_path_contents(archive_path, binary=True), response.read())
 
         # Force compression
-        uuid = _run_command([cl, 'upload', test_path('echo'), '--force-compression', '-a'])
+        uuid = _run_command([cl, 'upload', test_path('echo'), '--force-compression'])
         check_equals('echo', get_info(uuid, 'name'))
         check_equals(
             test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
