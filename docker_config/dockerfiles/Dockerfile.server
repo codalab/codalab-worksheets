@@ -20,7 +20,7 @@ RUN apt-get update && \
     python3.6-dev \
     python3-pip \
     python3-setuptools \
-    python-virtualenv \
+    python3-virtualenv \
     python3-software-properties \
     zip \
     unzip \
