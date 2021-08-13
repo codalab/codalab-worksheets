@@ -825,7 +825,7 @@ def test_upload2(ctx):
         response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
         check_equals("text/plain", response.headers.get("Content-Type"))
         check_equals("gzip", response.headers.get("Content-Encoding"))
-        check_equals(f'inline; filename="f1"', response.headers.get("Content-Disposition"))
+        check_equals('inline; filename="f1"', response.headers.get("Content-Disposition"))
         check_equals(test_path_contents('dir1/f1', binary=True), response.read().rstrip())
 
         # Upload it but don't unpack
@@ -858,7 +858,7 @@ def test_upload2(ctx):
         response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
         check_equals("text/plain", response.headers.get("Content-Type"))
         check_equals("gzip", response.headers.get("Content-Encoding"))
-        check_equals(f'inline; filename="echo"', response.headers.get("Content-Disposition"))
+        check_equals('inline; filename="echo"', response.headers.get("Content-Disposition"))
         check_equals(test_path_contents('echo', binary=True), response.read().rstrip())
 
         os.unlink(archive_path)
@@ -2283,7 +2283,7 @@ def test_rest1(ctx):
     response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
     check_equals("image/png", response.headers.get("Content-Type"))
     check_equals("gzip", response.headers.get("Content-Encoding"))
-    check_equals(f'inline; filename="codalab.png"', response.headers.get("Content-Disposition"))
+    check_equals('inline; filename="codalab.png"', response.headers.get("Content-Disposition"))
     check_equals(test_path_contents('codalab.png', binary=True), response.read().rstrip())
 
 
