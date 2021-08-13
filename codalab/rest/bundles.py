@@ -655,12 +655,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
-        bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value
-        and path == ''  # On Blob Storage
-        and request_accepts_gzip_encoding()  # No subpath
-        and not (  # Client accepts gzip encoding
-            byte_range or head_lines or tail_lines
-        )  # We're requesting the entire file
+        bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        and path == ''  # No subpath
+        and request_accepts_gzip_encoding()  # Client accepts gzip encoding
+        and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
 
     if target_info['type'] == 'directory':
@@ -734,16 +732,20 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if should_redirect_url:
         # Redirect to SAS URL on Blob Storage.
         assert fileobj is None  # We should not be returning any other contents.
-        return redirect(
-            local.download_manager.get_target_sas_url(
-                target,
-                # We pass these parameters to set the Content-Type, Content-Encoding, and
-                # Content-Disposition headers that are sent from Blob Storage.
-                content_type=response.get_header('Content-Type'),
-                content_encoding=response.get_header('Content-Encoding'),
-                content_disposition=response.get_header('Content-Disposition'),
-            )
+        sas_url = local.download_manager.get_target_sas_url(
+            target,
+            # We pass these parameters to set the Content-Type, Content-Encoding, and
+            # Content-Disposition headers that are sent from Blob Storage.
+            content_type=response.get_header('Content-Type'),
+            content_encoding=response.get_header('Content-Encoding'),
+            content_disposition=response.get_header('Content-Disposition'),
         )
+        # Quirk when running CodaLab locally -- if this endpoint was called within the codalab_rest-server_1
+        # Docker container, we need to redirect to http://azurite, as the codalab_rest-server_1 Docker
+        # container doesn't have access to Azurite through http://localhost.
+        if "rest-server" in request.get_header('Host') and "localhost" in sas_url:
+            sas_url = sas_url.replace("localhost", "azurite", 1)
+        return redirect(sas_url)
     return fileobj
 
 

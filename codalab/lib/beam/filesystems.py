@@ -38,4 +38,4 @@ AZURE_BLOB_CONTAINER_NAME = "bundles"
 LOCAL_USING_AZURITE = "http://azurite" in AZURE_BLOB_CONNECTION_STRING
 
 # HTTP endpoint used to directly access Blob Storage. Used to generate SAS URLs.
-AZURE_BLOB_HTTP_ENDPOINT = f"http://{AZURE_BLOB_ACCOUNT_NAME}.localhost:10000" if LOCAL_USING_AZURITE else f"https://{AZURE_BLOB_ACCOUNT_NAME}.blob.core.windows.net"
+AZURE_BLOB_HTTP_ENDPOINT = f"http://localhost:10000/{AZURE_BLOB_ACCOUNT_NAME}" if LOCAL_USING_AZURITE else f"https://{AZURE_BLOB_ACCOUNT_NAME}.blob.core.windows.net"

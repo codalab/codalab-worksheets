@@ -809,8 +809,22 @@ def test_upload2(ctx):
 
         # Upload it and unpack
         uuid = _run_command([cl, 'upload', archive_path])
-        check_equals(os.path.basename(archive_path).replace(suffix, ''), get_info(uuid, 'name'))
+        name = get_info(uuid, 'name')
+        check_equals(os.path.basename(archive_path).replace(suffix, ''), name)
         check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1']))
+
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals("application/gzip", response.headers.get("Content-Type"))
+        check_equals("identity", response.headers.get("Content-Encoding"))
+        check_equals(
+            f'attachment; filename="{name}.tar.gz"', response.headers.get("Content-Disposition")
+        )
+
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
+        check_equals("text/plain", response.headers.get("Content-Type"))
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals(f'inline; filename="f1"', response.headers.get("Content-Disposition"))
+        check_equals(test_path_contents('dir1/f1', binary=True), response.read().rstrip())
 
         # Upload it but don't unpack
         uuid = _run_command([cl, 'upload', archive_path, '--pack'])
@@ -820,8 +834,21 @@ def test_upload2(ctx):
             _run_command([cl, 'cat', uuid], binary=True),
         )
 
+        # Bundle should be streamed as a gzipped archive file, so it should be transparently decoded by the browser.
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals(
+            "application/zip" if suffix == ".zip" else "application/octet-stream",
+            response.headers.get("Content-Type"),
+        )
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals(
+            f'inline; filename="{os.path.basename(archive_path)}"',
+            response.headers.get("Content-Disposition"),
+        )
+        check_equals(test_path_contents(archive_path, binary=True), response.read())
+
         # Force compression
-        uuid = _run_command([cl, 'upload', test_path('echo'), '--force-compression'])
+        uuid = _run_command([cl, 'upload', test_path('echo'), '--force-compression', '-a'])
         check_equals('echo', get_info(uuid, 'name'))
         check_equals(
             test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
