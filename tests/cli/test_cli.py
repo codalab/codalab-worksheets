@@ -777,6 +777,8 @@ def test_upload1(ctx):
 
 @TestModule.register('upload2')
 def test_upload2(ctx):
+    """Additional upload tests. Also checks to make sure the REST API /contents/blob/ endpoint
+    has the right headers, so that the browser can properly transparently decompress the data if needed."""
     # Upload tar.gz and zip.
     for suffix in ['.tar.gz', '.zip']:
         # Pack it up
@@ -853,6 +855,11 @@ def test_upload2(ctx):
         check_equals(
             test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
         )
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals("text/plain", response.headers.get("Content-Type"))
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals(f'inline; filename="echo"', response.headers.get("Content-Disposition"))
+        check_equals(test_path_contents('echo', binary=True), response.read().rstrip())
 
         os.unlink(archive_path)
 
@@ -2271,6 +2278,13 @@ def test_rest1(ctx):
     _run_command([cl, 'add', 'bundle', uuid])
     response = ctx.client.fetch_interpreted_worksheet(wuuid)
     check_equals(response['uuid'], wuuid)
+
+    # Ensure right MIME type and other headers are set when getting this image bundle's contents
+    response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+    check_equals("image/png", response.headers.get("Content-Type"))
+    check_equals("gzip", response.headers.get("Content-Encoding"))
+    check_equals(f'inline; filename="codalab.png"', response.headers.get("Content-Disposition"))
+    check_equals(test_path_contents('codalab.png', binary=True), response.read().rstrip())
 
 
 @TestModule.register('worksheets')
