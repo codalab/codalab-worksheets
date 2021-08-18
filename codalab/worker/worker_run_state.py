@@ -565,7 +565,7 @@ class RunStateMachine(StateTransitioner):
             return run_state._replace(stage=RunStage.CLEANING_UP)
         if run_state.finished:
             logger.debug(
-                'Finished run with UUID %s, exitcode %s, failure_message %s',
+                'DEBUG: Finished run with UUID %s, exitcode %s, failure_message %s',
                 run_state.bundle.uuid,
                 run_state.exitcode,
                 run_state.failure_message,
