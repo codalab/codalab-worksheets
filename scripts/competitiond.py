@@ -682,31 +682,46 @@ class Competition(object):
         leaderboard = []
         for eval_bundle in eval_bundles.values():
             meta = self._get_competition_metadata(eval_bundle)
+
+            # In case there isn't a corresponding submit bundle, use some sane
+            # defaults based on just the eval bundle.
+            submission_info = {
+                'description': eval_bundle['metadata']['description'],
+                'public': None,
+                'user_name': None,
+                'num_total_submissions': 0,
+                'num_period_submissions': 0,
+                'created': eval_bundle['metadata']['created'],
+            }
+
             if eval_bundle['id'] in eval2submit:
                 submit_bundle = eval2submit[eval_bundle['id']]
-                submission_info = {
-                    # Can include any information we want from the submission
-                    # within bounds of reason (since submitter may want to
-                    # keep some of the metadata private).
-                    'description': meta.get('description', None)
-                    or submit_bundle['metadata']['description'],  # Allow description override
-                    'public': self._is_publicly_readable(submit_bundle),
-                    'user_name': submit_bundle['owner']['user_name'],
-                    'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
-                    'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
-                    'created': submit_bundle['metadata']['created'],
-                }
-            else:
-                # If there isn't a corresponding submit bundle, use some sane
-                # defaults based on just the eval bundle.
-                submission_info = {
-                    'description': eval_bundle['metadata']['description'],
-                    'public': None,
-                    'user_name': None,
-                    'num_total_submissions': 0,
-                    'num_period_submissions': 0,
-                    'created': eval_bundle['metadata']['created'],
-                }
+                try:
+                    submission_info = {
+                        # Can include any information we want from the submission
+                        # within bounds of reason (since submitter may want to
+                        # keep some of the metadata private).
+                        'description': meta.get('description', None)
+                        or submit_bundle['metadata']['description'],  # Allow description override
+                        'public': self._is_publicly_readable(submit_bundle),
+                        'user_name': submit_bundle['owner']['user_name'],
+                        'num_total_submissions': num_total_submissions[
+                            submit_bundle['owner']['id']
+                        ],
+                        'num_period_submissions': num_period_submissions[
+                            submit_bundle['owner']['id']
+                        ],
+                        'created': submit_bundle['metadata']['created'],
+                    }
+                except KeyError:
+                    logger.error(
+                        "Aborting submission {id} for "
+                        "{owner[user_name]}: Error when processing eval bundle".format(
+                            **eval_bundle
+                        )
+                    )
+                    traceback.print_exc()
+
             leaderboard.append(
                 {
                     'bundle': eval_bundle,
@@ -741,10 +756,17 @@ class Competition(object):
                 logger.info(
                     "Mimicking submission for " "{owner[user_name]}".format(**submit_bundle)
                 )
-                predict_bundle = self.run_prediction(submit_bundle)
+                try:
+                    predict_bundle = self.run_prediction(submit_bundle)
+                except Exception:
+                    logger.error(
+                        "Aborting submission {id} for " "{owner[user_name]}".format(**submit_bundle)
+                    )
+                    traceback.print_exc()
+                    continue
                 if predict_bundle is None:
-                    logger.info(
-                        "Aborting submission for " "{owner[user_name]}".format(**submit_bundle)
+                    logger.error(
+                        "Aborting submission {id} for " "{owner[user_name]}".format(**submit_bundle)
                     )
                     continue
                 self.run_evaluation(submit_bundle, predict_bundle)
