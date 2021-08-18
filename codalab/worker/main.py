@@ -184,6 +184,12 @@ def parse_args():
         default=3,
         help='The number of times to retry downloading dependencies after a failure (defaults to 3).',
     )
+    parser.add_argument(
+        '--shared-memory-size-gb',
+        type=int,
+        default=1,
+        help='The shared memory size of the run container in GB (defaults to 1).',
+    )
     return parser.parse_args()
 
 
@@ -315,6 +321,7 @@ def main():
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
+        shared_memory_size_gb=args.shared_memory_size_gb,
     )
 
     # Register a signal handler to ensure safe shutdown.
