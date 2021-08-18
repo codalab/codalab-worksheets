@@ -95,7 +95,7 @@ class KubernetesWorkerManager(WorkerManager):
         command: List[str] = self.build_command(worker_id, work_dir)
         # worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_image: str = 'codalab/worker:shm'
-        print(f"Using worker image: {worker_image}...")
+        print(f"Using worker image: {worker_image} and pvc's at {work_dir}...")
 
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
@@ -122,12 +122,14 @@ class KubernetesWorkerManager(WorkerManager):
                         'volumeMounts': [
                             {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
                             {'name': 'workdir', 'mountPath': work_dir},
+                            {"name": "nfs", "mountPath": work_dir},
                         ],
                     }
                 ],
                 'volumes': [
                     {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
                     {'name': 'workdir', 'hostPath': {'path': work_dir}},
+                    {"name": "nfs", "persistentVolumeClaim": {"claimName": "nfs-claim"},},
                 ],
                 'restartPolicy': 'Never',  # Only run a job once
             },

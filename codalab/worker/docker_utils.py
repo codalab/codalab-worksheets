@@ -352,7 +352,7 @@ def check_finished(container):
         # If the logs are nonempty, then something might have gone
         # wrong with the commands run before the user command,
         # such as bash or cd.
-        stderr = container.logs(stderr=True, stdout=False)
+        stderr = container.logs(stderr=True, stdout=True)
         # Strip non-ASCII chars since failure_message is not Unicode
         # TODO: don't need to strip since we can support unicode?
         if len(stderr) > 0:
