@@ -121,15 +121,15 @@ class KubernetesWorkerManager(WorkerManager):
                         },
                         'volumeMounts': [
                             {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
-                            {'name': 'workdir', 'mountPath': work_dir},
+                            # {'name': 'workdir', 'mountPath': work_dir},
                             {"name": "nfs", "mountPath": work_dir},
                         ],
                     }
                 ],
                 'volumes': [
                     {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
-                    {'name': 'workdir', 'hostPath': {'path': work_dir}},
-                    {"name": "nfs", "persistentVolumeClaim": {"claimName": "nfs-claim"},},
+                    # {'name': 'workdir', 'hostPath': {'path': work_dir}},
+                    {"name": "nfs", "persistentVolumeClaim": {"claimName": "nfs-claim"}},
                 ],
                 'restartPolicy': 'Never',  # Only run a job once
             },

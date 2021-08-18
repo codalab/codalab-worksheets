@@ -360,6 +360,7 @@ def check_finished(container):
         else:
             failure_msg = None
         exitcode = container.attrs['State']['ExitCode']
+        logger.warning(f"exit code={exitcode}, stderr={stderr}, container attrs={container.attrs}")
         if exitcode == '137':
             failure_msg = 'Memory limit exceeded.'
         return (True, exitcode, failure_msg)
