@@ -187,7 +187,7 @@ def parse_args():
     parser.add_argument(
         '--shared-memory-size-gb',
         type=int,
-        default=1,
+        default=8,
         help='The shared memory size of the run container in GB (defaults to 1).',
     )
     return parser.parse_args()
