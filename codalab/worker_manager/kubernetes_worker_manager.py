@@ -95,6 +95,12 @@ class KubernetesWorkerManager(WorkerManager):
 
         from_work_dir = "/mnt/scratch/bundles/codalab-worker-scratch"
         to_work_dir = "/home/scratch"
+
+        # First time
+        # work_dir = from_work_dir
+        # command: List[str] = self.build_command(worker_id, work_dir)
+
+        # Every time after
         work_dir = to_work_dir
         command: List[str] = self.build_command(worker_id, work_dir)
         cp_command = f"cp -an {from_work_dir}/. {to_work_dir};"
