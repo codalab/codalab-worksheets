@@ -50,6 +50,7 @@ class SingularityImageManager(ImageManager):
         try:
             # stream=True for singularity doesnt return progress or anything really - for now no progress
             self._downloading[image_spec]['message'] = "Starting download"
+            # set name_by_hash=True to name the file after the hash
             img = Client.pull(image_spec, pull_folder=self.image_folder)
             logger.debug('Download for image %s complete to %s', image_spec, img)
             self._downloading[image_spec]['success'] = True

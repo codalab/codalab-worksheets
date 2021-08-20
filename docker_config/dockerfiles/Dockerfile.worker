@@ -15,6 +15,7 @@ RUN mkdir -p /usr/local/var/singularity/mnt && \
     make -C builddir && \
     make -C builddir install;
 
+RUN stat /usr/local/etc/singularity/singularity.conf
 RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/docker-credential-ecr-login
 WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
@@ -50,7 +51,9 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 COPY --from=ecr-login-installation /root/go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local /usr/local/bin
 COPY --from=ecr-login-installation /usr/local/bin/singularity /usr/local/bin
+COPY --from=ecr-login-installation /usr/local/etc/singularity /usr/local/etc/singularity
 # the singularity container runtime needs to be able to lookup the uid of the default user
+RUN stat /usr/local/etc/singularity
 #RUN useradd -ms /bin/bash $default_user
 
 RUN mkdir $HOME/.docker
