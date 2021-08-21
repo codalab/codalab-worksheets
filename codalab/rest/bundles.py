@@ -641,7 +641,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     tail_lines = query_get_type(int, 'tail', default=0)
     truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
-    support_redirect = query_get_type(int, 'support_redirect', default=0)
+    support_redirect = query_get_type(
+        int,
+        'support_redirect',
+        default=1 if get_request_source() == RequestSource.WEB_BROWSER else 0,
+    )
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     target = BundleTarget(uuid, path)
     fileobj = None
@@ -668,9 +672,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
-        (
-            get_request_source() == RequestSource.WEB_BROWSER or support_redirect == 1
-        )  # Client supports bypassing server (see documentation of `support_redirect` above).
+        support_redirect == 1
         and bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
