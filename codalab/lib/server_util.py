@@ -182,6 +182,25 @@ def redirect_with_query(redirect_uri, params):
     return redirect(safe_uri(redirect_uri) + '?' + urllib.parse.urlencode(params))
 
 
+def request_called_from_local_docker_container():
+    """
+    Returns True if the current request was called directly from a local Docker container when CodaLab is
+    running locally. This means that the REST API was called directly through the "http://rest-server"
+    endpoint through Docker networking rather than through nginx.
+
+    For that, we check the values of the (Host, X-Forwarded-Host) headers. Here are the possible
+    values for these headers and what they mean for the request:
+
+    (rest, localhost) - Called from a CLI on another machine / the host machine
+    (rest-server:[codalab_rest_port], None) - Called from within a CodaLab Docker container
+    (rest, localhost:[codalab_frontend_port]) - Called from web browser
+    """
+    return (
+        request.get_header('Host').startswith('rest-server')
+        and request.get_header('X-Forwarded-Host') is None
+    )
+
+
 """
 The following functions are adapted from flask_oauthlib.utils and are
 :copyright: (c) 2013 - 2014 by Hsiaoming Yang.

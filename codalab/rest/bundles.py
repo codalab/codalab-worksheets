@@ -23,6 +23,7 @@ from codalab.lib.server_util import (
     query_get_bool,
     query_get_list,
     query_get_type,
+    request_called_from_local_docker_container,
 )
 from codalab.objects.permission import (
     check_bundles_have_all_permission,
@@ -606,6 +607,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
       Default is 0, meaning to fetch the entire file.
     - `max_line_length`: maximum number of characters to fetch from each line,
       if either `head` or `tail` is specified. Default is 128.
+    - `support_redirect`: Set to 1 if the client supports bypassing the server
+      and redirecting to another URL (such as Blob Storage). Maintained for compatibility
+      with older clients / CLI versions that depend on the Target-Type or X-CodaLab-Target-Size
+      headers, which will not be present if the server is bypassed with a redirect.
+      In a future release, this will default to 1.
 
     HTTP Response headers (for single-file targets):
     - `Content-Disposition: inline; filename=<bundle name or target filename>`
@@ -630,6 +636,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     tail_lines = query_get_type(int, 'tail', default=0)
     truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
+    support_redirect = query_get_type(int, 'support_redirect', default=0)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     target = BundleTarget(uuid, path)
     fileobj = None
@@ -656,10 +663,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
+        support_redirect == 1,  # Client supports bypassing server
         bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
-        and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
+        and not (byte_range or head_lines or tail_lines),  # We're requesting the entire file
     )
 
     if target_info['type'] == 'directory':
@@ -736,20 +744,20 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         sas_url = local.download_manager.get_target_sas_url(
             target,
             # We pass these parameters to set the Content-Type, Content-Encoding, and
-            # Content-Disposition headers that are sent from Blob Storage.
+            # Content-Disposition headers that are set on the Blob Storage response.
             content_type=response.get_header('Content-Type'),
             content_encoding=response.get_header('Content-Encoding'),
             content_disposition=response.get_header('Content-Disposition'),
         )
-        # Quirk when running CodaLab locally -- if this endpoint was called within a Docker container
-        # such as the REST server or the worker, we need to redirect to http://azurite, as local
-        # Docker containers doesn't have access to Azurite through http://localhost.
+        # Quirk when running CodaLab locally -- if this endpoint was called from within a Docker container
+        # such as the REST server or the worker, we need to redirect to http://azurite. This is because
+        # of the way Docker networking is set up, as local Docker containers doesn't have access to
+        # Azurite through http://localhost, but rather only through http://azurite.
         if LOCAL_USING_AZURITE:
-            # If this endpoint was called from a web browser, the X-Forwarded-Host URL would have "localhost"
-            # in it. We're checking to see if this endpoint was *not* called by a web browser (i.e. called
-            # from a bundle CLI within a Docker container).
-            if "localhost" not in (request.get_header('X-Forwarded-Host') or ""):
+            if request_called_from_local_docker_container():
                 sas_url = sas_url.replace("localhost", "azurite", 1)
+            raise Exception((request.get_header('Host'), request.get_header('X-Forwarded-Host')))
+
         return redirect(sas_url)
     return fileobj
 
