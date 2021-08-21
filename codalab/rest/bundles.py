@@ -609,10 +609,14 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `max_line_length`: maximum number of characters to fetch from each line,
       if either `head` or `tail` is specified. Default is 128.
     - `support_redirect`: Set to 1 if the client supports bypassing the server
-      and redirecting to another URL (such as Blob Storage). Maintained for compatibility
-      with older clients / CLI versions that depend on the Target-Type or X-CodaLab-Target-Size
-      headers, which will not be present if the server is bypassed with a redirect.
-      In a future release, this will default to 1.
+      and redirecting to another URL (such as Blob Storage). If so, the Target-Type and
+      X-CodaLab-Target-Size headers will not be present in the response.
+      
+      If this endpoint is called from a web browser (`Referer` header is set), this parameter
+      defaults to 1. Otherwise, it defaults to 0, meant for compatibility
+      with older clients / CLI versions that depend on the Target-Type and
+      X-CodaLab-Target-Size headers. In a future release, this parameter will always
+      be set to 1.
 
     HTTP Response headers (for single-file targets):
     - `Content-Disposition: inline; filename=<bundle name or target filename>`
@@ -664,8 +668,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
-        support_redirect == 1,  # Client supports bypassing server
-        bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        (
+            get_request_source() == RequestSource.WEB_BROWSER or support_redirect == 1
+        )  # Client supports bypassing server (see documentation of `support_redirect` above).
+        and bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
         and not (byte_range or head_lines or tail_lines),  # We're requesting the entire file
