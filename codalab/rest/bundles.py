@@ -676,7 +676,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         and bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
-        and not (byte_range or head_lines or tail_lines),  # We're requesting the entire file
+        and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
 
     if target_info['type'] == 'directory':
