@@ -16,14 +16,15 @@ from codalab.common import StorageType, precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
 from codalab.lib.server_util import (
+    RequestSource,
     bottle_patch as patch,
+    get_request_source,
     json_api_include,
     query_get_json_api_include_set,
     json_api_meta,
     query_get_bool,
     query_get_list,
     query_get_type,
-    request_called_from_local_docker_container,
 )
 from codalab.objects.permission import (
     check_bundles_have_all_permission,
@@ -754,10 +755,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         # of the way Docker networking is set up, as local Docker containers doesn't have access to
         # Azurite through http://localhost, but rather only through http://azurite.
         if LOCAL_USING_AZURITE:
-            if request_called_from_local_docker_container():
+            if get_request_source() == RequestSource.LOCAL_DOCKER:
                 sas_url = sas_url.replace("localhost", "azurite", 1)
-            raise Exception((request.get_header('Host'), request.get_header('X-Forwarded-Host')))
-
         return redirect(sas_url)
     return fileobj
 

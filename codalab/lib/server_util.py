@@ -2,6 +2,7 @@
 Utility functions used by the server applications.
 Don't import from non-REST API code, since this file imports bottle.
 """
+from enum import Enum
 from functools import wraps
 import base64
 import http.client
@@ -182,23 +183,43 @@ def redirect_with_query(redirect_uri, params):
     return redirect(safe_uri(redirect_uri) + '?' + urllib.parse.urlencode(params))
 
 
-def request_called_from_local_docker_container():
-    """
-    Returns True if the current request was called directly from a local Docker container when CodaLab is
-    running locally. This means that the REST API was called directly through the "http://rest-server"
-    endpoint through Docker networking rather than through nginx.
+class RequestSource(Enum):
+    """Possible request sources for the REST API."""
 
-    For that, we check the values of the (Host, X-Forwarded-Host) headers. Here are the possible
+    # The request was called directly from a local Docker container when CodaLab is
+    # running locally.
+    LOCAL_DOCKER = "local_docker"
+
+    # The request was called from a CLI or another programmatic script.
+    CLI = "cli"
+
+    # The request was called from a web browser.
+    WEB_BROWSER = "web_browser"
+
+
+def get_request_source():
+    """
+    Returns the request source (a RequestSource enum).
+
+    For that, we check the values of the (Host, X-Forwarded-Host, Referer) headers. Here are the possible
     values for these headers and what they mean for the request:
 
-    (rest, localhost) - Called from a CLI on another machine / the host machine
-    (rest-server:[codalab_rest_port], None) - Called from within a CodaLab Docker container
-    (rest, localhost:[codalab_frontend_port]) - Called from web browser
+    (rest-server:[codalab_rest_port], None, None) - Called from within a CodaLab Docker container
+    (rest, [codalab host], None) - Called from a CLI on another machine / the host machine
+    (rest, [codalab host], [URL of codalab webpage that called this]) - Called from web browser
     """
-    return (
-        request.get_header('Host').startswith('rest-server')
-        and request.get_header('X-Forwarded-Host') is None
-    )
+    x_fwd_host = request.get_header('X-Forwarded-Host')
+    referer = request.get_header('Referer')
+    if x_fwd_host is None:
+        # This means that the REST API was called directly from a local Docker container, through
+        # the "http://rest-server" endpoint that uses Docker networking rather than through nginx.
+        return RequestSource.LOCAL_DOCKER
+    if referer is not None:
+        # Referer is usually only set on web browsers. It could be manually set programmatically,
+        # but for our use case we are fine to assume it's from a web browser.
+        return RequestSource.WEB_BROWSER
+    # Otherwise, when Referer is not set, we're calling from the CLI or some other programmatic script.
+    return RequestSource.CLI
 
 
 """
