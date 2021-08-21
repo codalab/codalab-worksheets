@@ -90,8 +90,8 @@ def run_command(
         # Don't print out binary.
         if isinstance(string, bytes):
             string = '<binary>'
-        if len(string) > max_chars:
-            string = string[:max_chars] + ' (...more...)'
+        # if len(string) > max_chars:
+        #     string = string[:max_chars] + ' (...more...)'
         return string
 
     # If we don't care about the exit code, set `expected_exit_code` to None.
