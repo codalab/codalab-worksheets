@@ -38,6 +38,7 @@ import sys
 import tempfile
 import time
 import traceback
+import requests
 
 
 global cl
@@ -931,6 +932,27 @@ def test_blob(ctx):
             return_response=True,
         )
 
+    def fetch_contents_blob_from_web_browser(uuid):
+        """Fetch blob contents by simulating a web browser, which means that the
+        "Referer" / "Host" / "X-Forwarded-Host" headers are set
+        (see codalab/lib/server_util.py:get_request_source). This means that
+        we will redirect to Blob Storage by default if `support_redirect` is not specified.
+
+        We use requests to make this request in order to not follow redirects
+        (so we can check to ensure it properly redirects to http://localhost).
+        """
+        return requests.get(
+            ctx.client._base_url + f'/bundles/{uuid}/contents/blob/',
+            allow_redirects=False,
+            headers={
+                'Accept-Encoding': 'gzip',
+                'Host': 'rest',
+                'X-Forwarded-Host': 'localhost',
+                'Referer': 'localhost',
+                'Authorization': 'Bearer ' + ctx.client._get_access_token(),
+            },
+        )
+
     # Upload file and directory
     for (uuid, target_type) in [
         (_run_command([cl, 'upload', '-a', test_path('echo')]), "file"),
@@ -955,6 +977,10 @@ def test_blob(ctx):
         assert response.url.startswith("http://rest-server")
         assert response.headers.get("Target-Type") == "file"
         assert "X-CodaLab-Target-Size" in response.headers
+
+        # When client is from a web browser, should redirect
+        response = fetch_contents_blob_from_web_browser(uuid)
+        assert response.headers['Location'].startswith("http://localhost")
 
 
 @TestModule.register('download')
