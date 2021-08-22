@@ -822,18 +822,6 @@ def test_upload2(ctx):
             f'attachment; filename="{name}.tar.gz"', response.headers.get("Content-Disposition")
         )
 
-        # Target-Type and X-CodaLab-Target-Size should always be present on the response if we don't
-        # pass in the `support_redirect` parameter. In a future version, we will change this so that
-        # this guarantee no longer exists (see comment at bundles.py:_fetch_bundle_contents_blob).
-        response = ctx.client._make_request(
-            'GET',
-            f'/bundles/{uuid}/contents/blob/',
-            headers={'Accept-Encoding': 'gzip'},
-            return_response=True,
-        )
-        check_equals("directory", response.headers.get("Target-Type"))
-        check_equals(True, response.headers.get("X-CodaLab-Target-Size") is not None)
-
         response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
         check_equals("text/plain", response.headers.get("Content-Type"))
         check_equals("gzip", response.headers.get("Content-Encoding"))
@@ -922,6 +910,51 @@ def test_upload4(ctx):
     # Cleanup
     for archive in archive_exts:
         os.unlink(archive)
+
+
+@TestModule.register('blob')
+def test_blob(ctx):
+    """Certain Blob Storage tests. Should only be called when
+    CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set to 1."""
+
+    def fetch_contents_blob_no_redirect(uuid):
+        """Fetch blob contents without redirecting to Blob Storage.
+        We don't redirect to Blob Storage, and Target-Type and X-CodaLab-Target-Size
+        should always be present on the response, if we don't pass in the
+        `support_redirect` parameter. In a future version, we will change this so that
+        this guarantee no longer exists (see comment at bundles.py:_fetch_bundle_contents_blob).
+        """
+        return ctx.client._make_request(
+            'GET',
+            f'/bundles/{uuid}/contents/blob/',
+            headers={'Accept-Encoding': 'gzip'},
+            return_response=True,
+        )
+
+    # Upload file and directory
+    for (uuid, target_type) in [
+        (_run_command([cl, 'upload', '-a', test_path('echo')]), "file"),
+        (_run_command([cl, 'upload', test_path('dir1')]), "directory"),
+    ]:
+        # Should redirect by default
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        assert response.url.startswith("http://azurite")
+
+        # When client does not support redirect, should not redirect
+        response = fetch_contents_blob_no_redirect(uuid)
+        assert response.url.startswith("http://rest-server")
+        assert response.headers.get("Target-Type") == target_type
+        assert "X-CodaLab-Target-Size" in response.headers
+
+        # When retrieving part of a file / directory, it should not redirect
+        response = (
+            ctx.client.fetch_contents_blob(BundleTarget(uuid, ''), head=1)
+            if target_type == "file"
+            else ctx.client.fetch_contents_blob(BundleTarget(uuid, 'f1'))
+        )
+        assert response.url.startswith("http://rest-server")
+        assert response.headers.get("Target-Type") == "file"
+        assert "X-CodaLab-Target-Size" in response.headers
 
 
 @TestModule.register('download')
