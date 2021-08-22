@@ -421,6 +421,9 @@ class UploadDownloadBundleTest(UITester):
         self.browser.get(self.get_url(f'rest/bundles/{uuid_image}/contents/blob/'))
         self.screenshot("uuid_image")
 
+        self.browser.get(self.get_url(f'rest/bundles/{uuid_archive}/contents/blob/'))
+        self.browser.get(self.get_url(f'rest/bundles/{uuid_archive_packed}/contents/blob/'))
+
 
 class EditWorksheetTest(UITester):
     def __init__(self):
