@@ -29,6 +29,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             password_file=None,
             slurm_work_dir=None,
             exit_after_num_failed=None,
+            worker_shared_memory_size_gb=10,
         )
 
         worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
@@ -41,8 +42,9 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             "cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 "
             "--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/some_worker_id "
             "--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag "
-            "--group some_group --exit-after-num-runs 8 --download-dependencies-max-retries 5"
-            " --max-work-dir-size 88g --checkin-frequency-seconds 30 --pass-down-termination"
+            "--group some_group --exit-after-num-runs 8 --download-dependencies-max-retries 5 "
+            "--max-work-dir-size 88g --checkin-frequency-seconds 30 --shared-memory-size-gb 10 "
+            "--pass-down-termination"
         )
         self.assertEqual(' '.join(command), expected_command_str)
 
@@ -69,6 +71,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             memory_mb=1024,
             cpus=3,
             gpus=1,
+            worker_shared_memory_size_gb=None,
         )
 
         worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)

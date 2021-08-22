@@ -2158,32 +2158,33 @@ def test_docker(ctx):
 @TestModule.register('competition')
 def test_competition(ctx):
     """Sanity-check the competition script."""
-    submit_tag = 'submit'
-    eval_tag = 'eval'
+
+    # We run cl-competitiond as a non-root user so that bundle permission errors can be checked.
+    competitiond_user = f'competitiond-{random_name()}'
+    create_user(ctx, competitiond_user)
+
+    competitiond_group_uuid = get_uuid(_run_command([cl, 'gnew', random_name()]))
+    _run_command([cl, 'uadd', competitiond_user, competitiond_group_uuid])
+
+    submit_tag = f'submit-{random_name()}'
+    eval_tag = f'eval-{random_name()}'
     log_worksheet_uuid = _run_command([cl, 'work', '-u'])
     devset_uuid = _run_command([cl, 'upload', test_path('a.txt')])
     testset_uuid = _run_command([cl, 'upload', test_path('b.txt')])
     script_uuid = _run_command([cl, 'upload', test_path('evaluate.sh')])
-    _run_command(
-        [
-            cl,
-            'run',
-            'dataset.txt:' + devset_uuid,
-            'echo dataset.txt > predictions.txt',
-            '--tags',
-            submit_tag,
-        ]
-    )
+
+    _run_command([cl, 'wperm', log_worksheet_uuid, competitiond_group_uuid, 'all'])
 
     config_file = temp_path('-competition-config.json')
     with open(config_file, 'w') as fp:
         json.dump(
             {
                 "host": ctx.instance,
-                "username": 'codalab',
+                "username": competitiond_user,
                 "password": 'codalab',
                 "log_worksheet_uuid": log_worksheet_uuid,
                 "submission_tag": submit_tag,
+                "max_submissions_per_period": 2,
                 "predict": {"mimic": [{"old": devset_uuid, "new": testset_uuid}], "tag": "predict"},
                 "evaluate": {
                     "dependencies": [
@@ -2205,11 +2206,59 @@ def test_competition(ctx):
 
     out_file = temp_path('-competition-out.json')
     try:
-        _run_command(['cl-competitiond', config_file, out_file, '--verbose'])
-
         # Check that eval bundle gets created
+        bundle_uuid = _run_command(
+            [
+                cl,
+                'run',
+                'dataset.txt:' + devset_uuid,
+                'echo dataset.txt > predictions.txt',
+                '--tags',
+                submit_tag,
+            ]
+        )
+        wait(bundle_uuid)
+        _run_command(['cl-competitiond', config_file, out_file, '--verbose'])
         results = _run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
-        check_equals(1, len(results.splitlines()))
+        check_equals(1, len(results.splitlines()))  # 1 eval bundle
+
+        # If the submit bundle becomes private after it's evaluated,
+        # cl-competitiond should not crash (#3705)
+        _run_command([cl, 'perm', bundle_uuid, 'public', 'none'])
+        _run_command(['cl-competitiond', config_file, out_file, '--verbose'])
+        check_equals(1, len(results.splitlines()))  # 1 eval bundle
+
+        # Add a new bundle -- should be evaluated and replace existing eval bundle.
+        bundle_uuid = _run_command(
+            [
+                cl,
+                'run',
+                'dataset.txt:' + devset_uuid,
+                'echo dataset.txt > predictions.txt',
+                '--tags',
+                submit_tag,
+            ]
+        )
+        wait(bundle_uuid)
+        _run_command(['cl-competitiond', config_file, out_file, '--verbose'])
+        check_equals(1, len(results.splitlines()))  # 1 eval bundle
+
+        # Add a third bundle -- should not be evaluated because
+        # it exceeds the quota of 2 per user per 24 hours.
+        bundle_uuid = _run_command(
+            [
+                cl,
+                'run',
+                'dataset.txt:' + devset_uuid,
+                'echo dataset.txt > predictions.txt',
+                '--tags',
+                submit_tag,
+            ]
+        )
+        wait(bundle_uuid)
+        _run_command(['cl-competitiond', config_file, out_file, '--verbose'])
+        check_equals(1, len(results.splitlines()))  # 1 eval bundle
+
     finally:
         os.remove(config_file)
         os.remove(out_file)
