@@ -832,7 +832,7 @@ def test_upload2(ctx):
             return_response=True,
         )
         check_equals("directory", response.headers.get("Target-Type"))
-        check_equals("8232", response.headers.get("X-CodaLab-Target-Size"))
+        check_equals(True, response.headers.get("X-CodaLab-Target-Size") is not None)
 
         response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
         check_equals("text/plain", response.headers.get("Content-Type"))
