@@ -401,7 +401,7 @@ class UploadDownloadBundleTest(UITester):
 
         # Create a new worksheet
         self.create_new_worksheet(self.make_name_unique('test-worksheet'))
-        self.screenshot()
+
         self.click(By.XPATH, "//span[.='SHOW TERMINAL']")
 
         uuid_plaintext = self.run_web_cli_command("cl upload -c 'Hello world'")
