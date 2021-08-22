@@ -8,7 +8,8 @@
 
 ### Screenshots
 
-<!-- Add screenshots, if necessary -->
+<!-- Add screenshots, if necessary. If this is a substantial frontend / user flow change, consider recording
+a user flow GIF using a tool such as [LICEcap](https://www.cockos.com/licecap/). -->
 
 ### Checklist
 
