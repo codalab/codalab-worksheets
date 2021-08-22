@@ -12,6 +12,21 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.expected_conditions import _find_element
+
+
+class text_to_change(object):
+    """Waits for text in an element to change.
+    From: https://stackoverflow.com/questions/30964922/selenium-wait-until-text-in-webelement-changes
+    """
+
+    def __init__(self, locator, text):
+        self.locator = locator
+        self.text = text
+
+    def __call__(self, driver):
+        actual_text = _find_element(driver, self.locator).text
+        return actual_text != self.text
 
 
 class UITester(ABC):
@@ -44,17 +59,55 @@ class UITester(ABC):
         self.browser.close()
 
         # Test Firefox
-        options = FirefoxOptions()
-        add_headless(options)
-        self.browser = webdriver.Firefox(log_path='', firefox_options=options)
-        self.test()
-        self.browser.close()
+        # options = FirefoxOptions()
+        # add_headless(options)
+        # self.browser = webdriver.Firefox(log_path='', firefox_options=options)
+        # self.test()
+        # self.browser.close()
 
     def login(self, username='codalab', password='codalab'):
         self.browser.get(self.get_url('home'))
         self.click(By.LINK_TEXT, 'LOGIN')
         self.fill_field(By.ID, 'id_login', username)
         self.fill_field(By.ID, 'id_password', password, press_enter=True)
+
+    def create_new_worksheet(self, worksheet_name):
+        """Create a new worksheet with the specified name."""
+        self.click(By.XPATH, '//*[@title="New Worksheet"]')
+        self.wait_until_page_loads(By.XPATH, "//*[text()='New Worksheet']")
+        self.fill_field(By.ID, 'name', worksheet_name, press_enter=True)
+        WebDriverWait(self.browser, 20).until(
+            EC.invisibility_of_element_located((By.XPATH, "//*[text()='New Worksheet']"))
+        )
+        self.wait_until_page_loads(By.XPATH, f"//*[text()[contains(.,'{worksheet_name}')]]")
+
+    def run_web_cli_command(self, command):
+        """
+        Run the specified web CLI command. Before calling this function, ensure that the
+        "SHOW TERMINAL" button is clicked so the web CLI is visible.
+
+        We extract output from text, which looks like the following:
+            Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.).
+            CodaLab> cl upload -c 'Hello world'
+            0xf3844f88b43a43fcbd9212208cf10987
+            CodaLab> 
+            
+        """
+        self.click(By.ID, 'command_line')
+        for c in command:
+            self.browser.switch_to.active_element.send_keys(c)
+        self.browser.switch_to.active_element.send_keys(Keys.ENTER)
+        WebDriverWait(self.browser, 20).until(
+            text_to_change(
+                (By.ID, 'command_line'), self.browser.find_element(By.ID, 'command_line').text
+            )
+        )
+        return (
+            self.browser.find_element(By.ID, 'command_line')
+            .text.split("CodaLab>")[-2]
+            .split("\n", 1)[1]
+            .strip()
+        )
 
     def add_run_to_worksheet(self, command, use_keyboard_shortcut=False):
         if use_keyboard_shortcut:
@@ -181,7 +234,7 @@ class UITester(ABC):
         self.browser.set_window_size(width, height)
 
     def click(self, by, selector):
-        self.browser.find_element(by, selector).click()
+        WebDriverWait(self.browser, 5).until(EC.element_to_be_clickable((by, selector))).click()
 
     def focus_and_send_keys(self, element, keys):
         webdriver.ActionChains(self.browser).move_to_element(element).send_keys(keys).perform()
@@ -196,7 +249,7 @@ class UITester(ABC):
             textbox.send_keys(Keys.ENTER)
 
     def wait_until_worksheet_content_loads(self):
-        self.wait_until_page_loads('ws-item')
+        self.wait_until_page_loads(By.CLASS_NAME, 'ws-item')
         # Wait until placeholder items have been resolved.
         by = By.CLASS_NAME
         selector = "codalab-item-placeholder"
@@ -205,7 +258,7 @@ class UITester(ABC):
             EC.invisibility_of_element_located((by, selector)), message=timeout_message
         )
 
-    def wait_until_page_loads(self, selector, by=By.CLASS_NAME):
+    def wait_until_page_loads(self, by, selector):
         timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
         return WebDriverWait(self.browser, 15).until(
             EC.presence_of_element_located((by, selector)), message=timeout_message
@@ -227,6 +280,12 @@ class UITester(ABC):
     def constructPartialSelector(self, by, partial_selector):
         return '//*[contains(@{}, "{}")]'.format(by, partial_selector)
 
+    def screenshot(self, name="test"):
+        """Create a single screenshot with the specified name
+        and save it to the output directory."""
+        path = os.path.join(self._get_output_dir('out'), f'{name}.png')
+        self.browser.save_screenshot(path)
+
     def output_images(self, selector, num_of_screenshots=10):
         output_dir = self._get_output_dir('out')
         element = "document.getElementById('{}')".format(selector)
@@ -237,13 +296,12 @@ class UITester(ABC):
             path = os.path.join(output_dir, '{}{}.png'.format(self._test_name, i + 1))
             self.browser.save_screenshot(path)
 
-    def compare_to_baselines(self, num_of_screenshots=10):
+    def compare_to_baselines(self):
         out_dir = self._get_output_dir('out')
         baselines_dir = self._get_output_dir('baselines')
         diff_dir = self._get_output_dir('diff')
         has_failed = False
-        for i in range(num_of_screenshots):
-            screenshot_filename = '{}{}.png'.format(self._test_name, i + 1)
+        for screenshot_filename in os.listdir(baselines_dir):
             out_img = os.path.join(out_dir, screenshot_filename)
             baseline_img = os.path.join(baselines_dir, screenshot_filename)
             diff_img = os.path.join(diff_dir, screenshot_filename)
@@ -315,7 +373,6 @@ class WorksheetTest(UITester):
 
     def test(self):
         self.login()
-        self.longer_pause()
         self.browser.get(self.get_url('worksheets?name=dashboard'))
         self.wait_until_worksheet_content_loads()
         # wait for small worksheet to be resolved from place holder item
@@ -330,6 +387,39 @@ class WorksheetTest(UITester):
         self.wait_until_worksheet_content_loads()
         self.output_images('worksheet_container')
         self.compare_to_baselines()
+
+
+class UploadDownloadBundleTest(UITester):
+    """Tests uploading and downloading of bundles, as well as viewing them in the browser."""
+
+    def __init__(self):
+        super().__init__('download_bundle')
+
+    def test(self):
+        self.set_browser_size()
+        self.login()
+
+        # Create a new worksheet
+        self.create_new_worksheet(self.make_name_unique('test-worksheet'))
+        self.screenshot()
+        self.click(By.XPATH, "//span[.='SHOW TERMINAL']")
+
+        uuid_plaintext = self.run_web_cli_command("cl upload -c 'Hello world'")
+        uuid_image = self.run_web_cli_command(
+            "cl upload https://upload.wikimedia.org/wikipedia/commons/0/0c/USDCSDNY.png"
+        )
+        uuid_archive = self.run_web_cli_command(
+            "cl upload http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2"
+        )
+        uuid_archive_packed = self.run_web_cli_command(
+            "cl upload --pack http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2"
+        )
+
+        self.browser.get(self.get_url(f'rest/bundles/{uuid_plaintext}/contents/blob/'))
+        self.screenshot("uuid_plaintext")
+
+        self.browser.get(self.get_url(f'rest/bundles/{uuid_image}/contents/blob/'))
+        self.screenshot("uuid_image")
 
 
 class EditWorksheetTest(UITester):
@@ -395,15 +485,16 @@ class EditWorksheetTest(UITester):
         self.refresh_worksheet()
 
         # Take screenshots and compare to the existing baseline images
-        num_of_screenshots = 1
-        self.output_images('worksheet_container', num_of_screenshots)
-        self.compare_to_baselines(num_of_screenshots)
+        # num_of_screenshots = 1
+        # self.output_images('worksheet_container', num_of_screenshots)
+        # self.compare_to_baselines(num_of_screenshots)
 
 
 def main():
     # Add UI tests to the list to run them
     all_tests = [
         WorksheetTest(),
+        UploadDownloadBundleTest(),
         # TODO: this test is failing intermittently in GHA. Disabling for now.
         # EditWorksheetTest()
     ]
