@@ -59,11 +59,11 @@ class UITester(ABC):
         self.browser.close()
 
         # Test Firefox
-        # options = FirefoxOptions()
-        # add_headless(options)
-        # self.browser = webdriver.Firefox(log_path='', firefox_options=options)
-        # self.test()
-        # self.browser.close()
+        options = FirefoxOptions()
+        add_headless(options)
+        self.browser = webdriver.Firefox(log_path='', firefox_options=options)
+        self.test()
+        self.browser.close()
 
     def login(self, username='codalab', password='codalab'):
         self.browser.get(self.get_url('home'))
