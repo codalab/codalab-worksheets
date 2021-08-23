@@ -90,8 +90,8 @@ class UITester(ABC):
             Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.).
             CodaLab> cl upload -c 'Hello world'
             0xf3844f88b43a43fcbd9212208cf10987
-            CodaLab> 
-            
+            CodaLab>
+
         """
         self.click(By.ID, 'command_line')
         for c in command:
