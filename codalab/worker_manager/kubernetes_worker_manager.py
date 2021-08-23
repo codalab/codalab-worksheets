@@ -40,6 +40,9 @@ class KubernetesWorkerManager(WorkerManager):
             help='Path to the SSL cert for the Kubernetes cluster',
             required=True,
         )
+        subparser.add_argument(
+            '--cache', action='store_true', help='Whether to print out extra information'
+        )
 
         # Job-related arguments
         subparser.add_argument(
@@ -72,6 +75,8 @@ class KubernetesWorkerManager(WorkerManager):
         self.k8_client: client.ApiClient = client.ApiClient(configuration)
         self.k8_api: client.CoreV1Api = client.CoreV1Api(self.k8_client)
 
+        self.cache = args.cache
+
     def get_worker_jobs(self) -> List[WorkerJob]:
         try:
             # Fetch the running pods
@@ -97,16 +102,18 @@ class KubernetesWorkerManager(WorkerManager):
         to_work_dir = "/home/scratch"
 
         # First time
-        # work_dir = from_work_dir
-        # command: List[str] = self.build_command(worker_id, work_dir)
-
-        # Every time after
-        work_dir = to_work_dir
-        command: List[str] = self.build_command(worker_id, work_dir)
-        cp_command = f"cp -an {from_work_dir}/. {to_work_dir};"
-        command.insert(0, cp_command)
-        mkdir_command = f"mkdir -p {to_work_dir};"
-        command.insert(0, mkdir_command)
+        if self.cache:
+            print("=============== Caching...=============== ")
+            work_dir = from_work_dir
+            command: List[str] = self.build_command(worker_id, work_dir)
+        else:
+            # Every time after
+            work_dir = to_work_dir
+            command: List[str] = self.build_command(worker_id, work_dir)
+            cp_command = f"cp -an {from_work_dir}/. {to_work_dir};"
+            command.insert(0, cp_command)
+            mkdir_command = f"mkdir -p {to_work_dir};"
+            command.insert(0, mkdir_command)
 
         # worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_image: str = 'codalab/worker:shm'
