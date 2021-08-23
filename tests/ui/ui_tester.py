@@ -379,7 +379,7 @@ class WorksheetTest(UITester):
         by = By.XPATH
         selector = '//button[text()="Small Worksheet [cl_small_worksheet]"]'
         timeout_message = 'Timed out while waiting for {}: {}.'.format(by, selector)
-        WebDriverWait(self.browser, 10).until(
+        WebDriverWait(self.browser, 20).until(
             EC.presence_of_element_located((by, selector)), message=timeout_message
         )
         self.click(by, selector)
