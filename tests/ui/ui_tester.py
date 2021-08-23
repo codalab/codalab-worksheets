@@ -373,6 +373,7 @@ class WorksheetTest(UITester):
 
     def test(self):
         self.login()
+        self.longer_pause()
         self.browser.get(self.get_url('worksheets?name=dashboard'))
         self.wait_until_worksheet_content_loads()
         # wait for small worksheet to be resolved from place holder item
