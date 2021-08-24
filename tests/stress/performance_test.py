@@ -7,6 +7,7 @@ import json
 from scripts.test_util import cleanup, run_command
 from test_runner import TestRunner, TestFile
 
+
 class PerformanceTestRunner(TestRunner):
     """
     This runner tests the performance of upload / download of files of varying sizes.
@@ -15,6 +16,7 @@ class PerformanceTestRunner(TestRunner):
         cl: cl instance used to run CodaLab commands
         args: command line arguments
     """
+
     _TAG = 'codalab-performance-test'
 
     def cleanup(self):
@@ -74,12 +76,14 @@ class PerformanceTestRunner(TestRunner):
             json.dump(stats, f, indent=4)
         self.cleanup()
 
+
 def main():
     runner = PerformanceTestRunner(cl, args)
     start_time = time.time()
     runner.run()
     duration_seconds = time.time() - start_time
     print("--- Completion Time: {} minutes---".format(duration_seconds / 60))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

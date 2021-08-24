@@ -1,8 +1,10 @@
 import os
 import subprocess
 
+
 class TestRunner:
     """Base class for test runners."""
+
     def __init__(self, cl, args):
         self._cl = cl
         self._args = args
@@ -10,6 +12,7 @@ class TestRunner:
         # Connect to the instance the tests will run on
         print('Connecting to instance %s...' % args.instance)
         subprocess.call([self._cl, 'work', '%s::' % args.instance])
+
 
 class TestFile:
     """
