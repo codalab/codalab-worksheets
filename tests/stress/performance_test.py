@@ -59,6 +59,10 @@ class PerformanceTestRunner(TestRunner):
         stats["rm"] = time.time() - start
         return stats
 
+    def write_stats(self, stats):
+        with open("perf-output.json", "w+") as f:
+            json.dump(stats, f, indent=4)
+
     def run(self):
         print('Cleaning up performance test files from other runs...')
         self.cleanup()
@@ -76,11 +80,11 @@ class PerformanceTestRunner(TestRunner):
                     result = self.upload_download_file(file.name())
                     stats[storage_type][file_size_mb].append(result)
                     print(storage_type, file_size_mb, i, result)
+                    self.write_stats()
             file.delete()
         print('test finished')
         print(stats)
-        with open("perf-output.json", "w+") as f:
-            json.dump(stats, f, indent=4)
+        self.write_stats()
         self.cleanup()
 
 
