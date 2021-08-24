@@ -43,14 +43,13 @@ class PerformanceTestRunner(TestRunner):
         args.append('--tags=%s' % PerformanceTestRunner._TAG)
         return run_command(args, expected_exit_code)
 
-    def upload_download_file(self, size_mb, storage_type="disk"):
+    def upload_download_file(self, file_name, storage_type="disk"):
         stats = {}
-        large_file: TestFile = TestFile('large_file', size_mb)
         start = time.time()
         if storage_type == "blob":
-            uuid: str = self._run_bundle([self._cl, 'upload', '-a', large_file.name()])
+            uuid: str = self._run_bundle([self._cl, 'upload', '-a', file_name])
         else:
-            uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
+            uuid: str = self._run_bundle([self._cl, 'upload', file_name])
         stats["upload"] = time.time() - start
         start = time.time()
         with tempfile.TemporaryDirectory() as dir:
@@ -71,11 +70,13 @@ class PerformanceTestRunner(TestRunner):
         file_sizes_mb = [100, 1000, 10000, 100000, 200000]
         stats = defaultdict(lambda: defaultdict(list))
         for file_size_mb in file_sizes_mb:
+            file: TestFile = TestFile('large_file', file_size_mb)
             for storage_type in ("disk", "blob"):
                 for i in (1, 2, 3):
-                    result = self.upload_download_file(file_size_mb)
+                    result = self.upload_download_file(file.name())
                     stats[storage_type][file_size_mb].append(result)
                     print(storage_type, file_size_mb, i, result)
+            file.delete()
         print('test finished')
         print(stats)
         with open("perf-output.json", "w+") as f:
