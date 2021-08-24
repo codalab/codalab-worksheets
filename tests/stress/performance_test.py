@@ -82,7 +82,7 @@ class PerformanceTestRunner(TestRunner):
         print('Running performance tests...')
 
         file_sizes_mb = [10, 100, 1000, 10000, 100000, 200000]
-        stats = defaultdict(lambda: defaultdict(list))
+        stats = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         for file_size_mb in file_sizes_mb:
             for is_archive in (True, False):
                 archive_label = "archive" if is_archive else "single_file"
