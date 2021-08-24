@@ -69,7 +69,7 @@ class PerformanceTestRunner(TestRunner):
         stats = defaultdict(dict)
         for file_size_mb in file_sizes_mb:
             for storage_type in ("disk", "blob"):
-                stats[storage_type][file_size_mb] = self.upload_download_file(file_sizes_mb)
+                stats[storage_type][file_size_mb] = self.upload_download_file(file_size_mb)
                 print(storage_type, file_size_mb, stats[storage_type][file_size_mb])
         print('test finished')
         print(stats)
