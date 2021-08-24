@@ -275,3 +275,9 @@ python3 test_runner.py frontend
 ```
 python3 tests/stress/stress_test.py --instance https://worksheets-dev.codalab.org --heavy
 ```
+
+- Performance tests in [tests/stress/performance_test.py](https://github.com/codalab/codalab-worksheets/blob/master/tests/stress/performance_test.py)
+
+```
+python3 tests/stress/performance_test.py --instance https://worksheets-dev.codalab.org
+```
