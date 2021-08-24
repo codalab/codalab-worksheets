@@ -77,7 +77,7 @@ class PerformanceTestRunner(TestRunner):
             file: TestFile = TestFile('large_file', file_size_mb)
             for storage_type in ("disk", "blob"):
                 for i in (1, 2, 3):
-                    result = self.upload_download_file(file.name())
+                    result = self.upload_download_file(file.name(), storage_type)
                     stats[storage_type][file_size_mb].append(result)
                     print(storage_type, file_size_mb, i, result)
                     self.write_stats(stats)
