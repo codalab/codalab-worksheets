@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 import random
 import string
 import tempfile
@@ -65,7 +66,7 @@ class PerformanceTestRunner(TestRunner):
         print('Running performance tests...')
 
         file_sizes_mb = [100, 1000, 10000, 100000, 200000]
-        stats = {}
+        stats = defaultdict(dict)
         for file_size_mb in file_sizes_mb:
             for storage_type in ("disk", "blob"):
                 stats[storage_type][file_size_mb] = self.upload_download_file(file_sizes_mb)
