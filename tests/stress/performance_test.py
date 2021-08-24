@@ -53,7 +53,7 @@ class PerformanceTestRunner(TestRunner):
         stats["upload"] = time.time() - start
         start = time.time()
         with tempfile.NamedTemporaryFile() as f:
-            self._run_bundle([self._cl, 'download', uuid, '-o', f.name])
+            run_command([self._cl, 'download', uuid, '-o', f.name])
             stats["download"] = time.time() - start
         return stats
 
