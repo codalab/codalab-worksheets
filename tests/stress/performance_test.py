@@ -3,6 +3,7 @@ import random
 import string
 import tempfile
 import time
+import json
 from scripts.test_util import cleanup, run_command
 from test_runner import TestRunner, TestFile
 
@@ -38,11 +39,14 @@ class PerformanceTestRunner(TestRunner):
         args.append('--tags=%s' % PerformanceTestRunner._TAG)
         return run_command(args, expected_exit_code)
 
-    def upload_download_file(self, size_mb):
+    def upload_download_file(self, size_mb, storage_type="disk"):
         stats = {}
         large_file: TestFile = TestFile('large_file', size_mb)
         start = time.time()
-        uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
+        if storage_type == "blob":
+            uuid: str = self._run_bundle([self._cl, 'upload', '-a', large_file.name()])
+        else:
+            uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
         stats["upload"] = time.time() - start
         start = time.time()
         with tempfile.NamedTemporaryFile() as f:
@@ -61,9 +65,13 @@ class PerformanceTestRunner(TestRunner):
         file_sizes_mb = [100, 1000, 10000, 100000, 200000]
         stats = {}
         for file_size_mb in file_sizes_mb:
-            stats[file_size_mb] = self.upload_download_file(file_sizes_mb)
-            print(stats)
+            for storage_type in ("disk", "blob"):
+                stats[storage_type][file_size_mb] = self.upload_download_file(file_sizes_mb)
+                print(storage_type, file_size_mb, stats[storage_type][file_size_mb])
         print('test finished')
+        print(stats)
+        with open("perf-output.json", "w+") as f:
+            json.dump(stats, f, indent=4)
         self.cleanup()
 
 def main():
