@@ -56,6 +56,8 @@ class PerformanceTestRunner(TestRunner):
         with tempfile.TemporaryDirectory() as dir:
             run_command([self._cl, 'download', uuid, '-o', os.path.join(dir, "output")])
             stats["download"] = time.time() - start
+        run_command([self._cl, 'rm', uuid])
+        stats["rm"] = time.time() - start
         return stats
 
     def run(self):
@@ -67,11 +69,13 @@ class PerformanceTestRunner(TestRunner):
         print('Running performance tests...')
 
         file_sizes_mb = [100, 1000, 10000, 100000, 200000]
-        stats = defaultdict(dict)
+        stats = defaultdict(lambda: defaultdict(list))
         for file_size_mb in file_sizes_mb:
             for storage_type in ("disk", "blob"):
-                stats[storage_type][file_size_mb] = self.upload_download_file(file_size_mb)
-                print(storage_type, file_size_mb, stats[storage_type][file_size_mb])
+                for i in (1, 2, 3):
+                    result = self.upload_download_file(file_size_mb)
+                    stats[storage_type][file_size_mb].append(result)
+                    print(storage_type, file_size_mb, i, self.upload_download_file(file_size_mb))
         print('test finished')
         print(stats)
         with open("perf-output.json", "w+") as f:
