@@ -71,7 +71,7 @@ class PerformanceTestRunner(TestRunner):
 
         print('Running performance tests...')
 
-        file_sizes_mb = [100, 1000, 10000, 100000, 200000]
+        file_sizes_mb = [10, 100, 1000, 10000, 100000, 200000]
         stats = defaultdict(lambda: defaultdict(list))
         for file_size_mb in file_sizes_mb:
             file: TestFile = TestFile('large_file', file_size_mb)
@@ -80,11 +80,11 @@ class PerformanceTestRunner(TestRunner):
                     result = self.upload_download_file(file.name())
                     stats[storage_type][file_size_mb].append(result)
                     print(storage_type, file_size_mb, i, result)
-                    self.write_stats()
+                    self.write_stats(stats)
             file.delete()
         print('test finished')
         print(stats)
-        self.write_stats()
+        self.write_stats(stats)
         self.cleanup()
 
 
