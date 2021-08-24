@@ -105,7 +105,7 @@ class PerformanceTestRunner(TestRunner):
                     for storage_type in ("disk", "blob"):
                         for i in (1, 2, 3):
                             result = self.upload_download_file(file_name, storage_type, is_archive)
-                            stats[storage_type][file_size_mb].append(result)
+                            stats["archive" if is_archive else "single_file"][storage_type][file_size_mb].append(result)
                             print(storage_type, file_size_mb, i, result)
                             self.write_stats(stats)
         print('test finished')
