@@ -1,6 +1,7 @@
 import argparse
 from collections import defaultdict
 import random
+import os
 import string
 import tempfile
 import time
@@ -52,8 +53,8 @@ class PerformanceTestRunner(TestRunner):
             uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
         stats["upload"] = time.time() - start
         start = time.time()
-        with tempfile.NamedTemporaryFile() as f:
-            run_command([self._cl, 'download', uuid, '-o', f.name])
+        with tempfile.TemporaryDirectory() as dir:
+            run_command([self._cl, 'download', uuid, '-o', os.path.join(dir, "output")])
             stats["download"] = time.time() - start
         return stats
 
