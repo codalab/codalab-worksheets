@@ -8,6 +8,7 @@ import time
 import json
 from scripts.test_util import cleanup, run_command
 from test_runner import TestRunner, TestFile
+import tarfile
 
 
 class PerformanceTestRunner(TestRunner):
@@ -43,7 +44,7 @@ class PerformanceTestRunner(TestRunner):
         args.append('--tags=%s' % PerformanceTestRunner._TAG)
         return run_command(args, expected_exit_code)
 
-    def upload_download_file(self, file_name, storage_type="disk"):
+    def upload_download_file(self, file_name, storage_type="disk", is_archive=True):
         stats = {}
         start = time.time()
         if storage_type == "blob":
@@ -55,6 +56,15 @@ class PerformanceTestRunner(TestRunner):
         with tempfile.TemporaryDirectory() as dir:
             run_command([self._cl, 'download', uuid, '-o', os.path.join(dir, "output")])
             stats["download"] = time.time() - start
+        if is_archive:
+            start = time.time()
+            with tempfile.TemporaryDirectory() as dir:
+                run_command([self._cl, 'download', f'{uuid}/README.md', '-o', os.path.join(dir, "output")])
+                stats["download_small_file"] = time.time() - start
+            start = time.time()
+            with tempfile.TemporaryDirectory() as dir:
+                run_command([self._cl, 'download', f'{uuid}/blob', '-o', os.path.join(dir, "output")])
+                stats["download_large_file"] = time.time() - start
         run_command([self._cl, 'rm', uuid])
         stats["rm"] = time.time() - start
         return stats
@@ -74,14 +84,30 @@ class PerformanceTestRunner(TestRunner):
         file_sizes_mb = [10, 100, 1000, 10000, 100000, 200000]
         stats = defaultdict(lambda: defaultdict(list))
         for file_size_mb in file_sizes_mb:
-            file: TestFile = TestFile('large_file', file_size_mb)
-            for storage_type in ("disk", "blob"):
-                for i in (1, 2, 3):
-                    result = self.upload_download_file(file.name(), storage_type)
-                    stats[storage_type][file_size_mb].append(result)
-                    print(storage_type, file_size_mb, i, result)
-                    self.write_stats(stats)
-            file.delete()
+            for is_archive in (True, False):
+                with tempfile.TemporaryDirectory() as tempdir:
+                    file_name = os.path.join(tempdir, "blob")
+                    with open(file_name, 'wb') as file:
+                        file.seek(file_size_mb * 1024 * 1024)  # Seek takes in file size in terms of bytes
+                        file.write(b'0')
+                    if is_archive:
+                        small_file_name = os.path.join(tempdir, "README.md")
+                        with open(small_file_name, "w") as f:
+                            f.write("Hello world\n" * 1000)
+                        tar_file_name = os.path.join(tempdir, "archive.tar.gz")
+                        with tarfile.open(tar_file_name, "w:gz") as tar:
+                            tar.add(file_name, arcname="./blob")
+                            tar.add(small_file_name, arcname="./README.md")
+                        os.remove(small_file_name)
+                        os.remove(file_name)
+                        file_name = tar_file_name
+                        stats[storage_type]["archive_size_mb"].append(os.path.getsize(file_name) / 1024 / 1024)
+                    for storage_type in ("disk", "blob"):
+                        for i in (1, 2, 3):
+                            result = self.upload_download_file(file_name, storage_type, is_archive)
+                            stats[storage_type][file_size_mb].append(result)
+                            print(storage_type, file_size_mb, i, result)
+                            self.write_stats(stats)
         print('test finished')
         print(stats)
         self.write_stats(stats)
