@@ -16,6 +16,7 @@ STORAGE_TYPES = ["blob", "disk"]
 cmap = plt.get_cmap('tab20')
 colors = cmap(np.linspace(0, 1, len(STORAGE_TYPES)))
 
+
 def main(args):
     """Analyze results of performance test file.
     
@@ -47,12 +48,17 @@ def main(args):
             plt.xlabel("Uncompressed size (MB)")
             plt.ylabel("Time (s)")
             for storage_type in STORAGE_TYPES:
-                file_sizes = list(stats[archive_label][storage_type].keys())#[:2]
-                times = list(stats[archive_label][storage_type].values())#[:2]
+                file_sizes = list(stats[archive_label][storage_type].keys())  # [:2]
+                times = list(stats[archive_label][storage_type].values())  # [:2]
                 # print(archive_label, storage_type, stat_names, STAT_NAMES_BOTH)
                 times = [mean(s[stat_name] for s in stat_list) for stat_list in times]
-                plt.plot(file_sizes, times, label=storage_type, color=colors[STORAGE_TYPES.index(storage_type)])
-            
+                plt.plot(
+                    file_sizes,
+                    times,
+                    label=storage_type,
+                    color=colors[STORAGE_TYPES.index(storage_type)],
+                )
+
             filename = f"{archive_label}-{stat_name}"
             plt.legend()
             plt.savefig(os.path.join(args.output_directory, filename + ".png"))
@@ -61,9 +67,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Analyzes and graphs performance test results.'
-    )
+    parser = argparse.ArgumentParser(description='Analyzes and graphs performance test results.')
     parser.add_argument(
         '--input_file',
         type=str,

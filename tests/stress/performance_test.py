@@ -59,11 +59,15 @@ class PerformanceTestRunner(TestRunner):
         if is_archive:
             start = time.time()
             with tempfile.TemporaryDirectory() as dir:
-                run_command([self._cl, 'download', f'{uuid}/README.md', '-o', os.path.join(dir, "output")])
+                run_command(
+                    [self._cl, 'download', f'{uuid}/README.md', '-o', os.path.join(dir, "output")]
+                )
                 stats["download_small_file"] = time.time() - start
             start = time.time()
             with tempfile.TemporaryDirectory() as dir:
-                run_command([self._cl, 'download', f'{uuid}/blob', '-o', os.path.join(dir, "output")])
+                run_command(
+                    [self._cl, 'download', f'{uuid}/blob', '-o', os.path.join(dir, "output")]
+                )
                 stats["download_large_file"] = time.time() - start
         run_command([self._cl, 'rm', uuid])
         stats["rm"] = time.time() - start
@@ -89,7 +93,9 @@ class PerformanceTestRunner(TestRunner):
                 with tempfile.TemporaryDirectory() as tempdir:
                     file_name = os.path.join(tempdir, "blob")
                     with open(file_name, 'wb') as file:
-                        file.seek(file_size_mb * 1024 * 1024)  # Seek takes in file size in terms of bytes
+                        file.seek(
+                            file_size_mb * 1024 * 1024
+                        )  # Seek takes in file size in terms of bytes
                         file.write(b'0')
                     if is_archive:
                         small_file_name = os.path.join(tempdir, "README.md")

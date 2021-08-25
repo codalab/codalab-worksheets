@@ -281,3 +281,5 @@ python3 tests/stress/stress_test.py --instance https://worksheets-dev.codalab.or
 ```
 python3 tests/stress/performance_test.py --instance https://worksheets-dev.codalab.org
 ```
+
+You can then run `perf_analyze_results.py` to analyze the performance test results.
