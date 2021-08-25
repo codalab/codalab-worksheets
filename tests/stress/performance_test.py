@@ -7,7 +7,7 @@ import tempfile
 import time
 import json
 from scripts.test_util import cleanup, run_command
-from test_runner import TestRunner, TestFile
+from test_runner import TestRunner
 import tarfile
 
 

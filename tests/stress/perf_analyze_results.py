@@ -18,10 +18,9 @@ colors = cmap(np.linspace(0, 1, len(STORAGE_TYPES)))
 
 
 def main(args):
-    """Analyze results of performance test file.
-    
-    cat perf-output.json | curl -F 'sprunge=<-' http://sprunge.us 
-    wget http://sprunge.us/QQI92v -O perf-output.json
+    """Analyze results of performance test file. To run, you should make sure
+    "perf-output.json" (created from performance_test.py) is in the current working
+    directory, then run:
 
     python perf_analyze_results.py
     """
