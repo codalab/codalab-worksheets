@@ -100,7 +100,6 @@ def get_available_runtime():
     except requests.exceptions.ConnectionError or FileNotFoundError as e:
         # couldn't connect to the docker socket, we are either running a singularity worker or docker doesn't exist.
         # either way, we should get available nvidia devices through singularity
-        logger.info("adiprerepa here {}".format(e))
         use_docker = False
         # print("Exception type {} and of {}".format(type(e), e))
     try:
@@ -128,7 +127,6 @@ def get_nvidia_devices(use_docker=True):
     """
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
     nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
-    logger.error("fuck you")
     if use_docker:
         client.images.pull(cuda_image)
         output = client.containers.run(
@@ -183,9 +181,6 @@ def start_bundle_container(
         command = '{};'.format(command)
     # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
     # the program can't find the symbolic link (default is "/bin/bash") of bash in the environment
-    logger.info("adiprerepa: dependencies: {}".format(dependencies))
-    logger.info("adiprerepa cpuset {} gpuset {}".format(cpuset, gpuset))
-    logger.info("adiprerepa: bundle path {}".format(bundle_path))
     docker_command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
