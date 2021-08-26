@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Called by Travis CI at the end of a successful build to do necessary
+# Called by CI at the end of a successful build to do necessary
 # deployment actions like building and pushing docker images and PyPI
 # packages.  The two possibilities are:
 #
-#   travis-deploy.sh master
-#   travis-deploy.sh 0.3.3   (for releases)
+#   ci-deploy.sh master
+#   ci-deploy.sh 0.3.3   (for releases)
 
 set -e
 
