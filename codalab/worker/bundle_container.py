@@ -22,3 +22,20 @@ class BundleContainer:
 
     def get_container_running_time(self):
         raise NotImplementedError
+
+class BundleRunner:
+
+    def run(self,
+            path,
+            uuid,
+            dependencies,
+            command,
+            image,
+            network=None,
+            cpuset=None,
+            gpuset=None,
+            memory_bytes=0,
+            detach=True,
+            tty=False,
+            runtime=DEFAULT_RUNTIME):
+        raise NotImplementedError

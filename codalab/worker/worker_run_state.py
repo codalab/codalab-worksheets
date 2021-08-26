@@ -473,15 +473,13 @@ class RunStateMachine(StateTransitioner):
 
         def check_resource_utilization(run_state: RunState):
             logger.info(f'Checking resource utilization for bundle. uuid: {run_state.bundle.uuid} container {run_state.container}')
-            cpu_usage, memory_usage = self.bundle_runner.get_container_stats_with_stats_api(
-                run_state.container
-            )
+            cpu_usage, memory_usage = run_state.container.get_container_stats_with_stats_api()
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
             run_state = run_state._replace(memory_usage=memory_usage)
 
             kill_messages = []
 
-            run_stats = self.bundle_runner.get_container_stats_native(run_state.container)
+            run_stats = run_state.container.get_container_stats_native()
 
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
@@ -490,7 +488,7 @@ class RunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
             )
 
-            container_time_total = self.bundle_runner.get_container_running_time(run_state.container)
+            container_time_total = run_state.container.get_container_running_time()
             run_state = run_state._replace(
                 container_time_total=container_time_total,
                 container_time_user=run_stats.get(
@@ -553,11 +551,11 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.CLEANING_UP,
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
-            if self.bundle_runner.container_exists(run_state.container):
+            if run_state.container.container_exists():
                 try:
                     run_state.container.kill()
                 except docker.errors.APIError:
-                    finished, _, _ = self.bundle_runner.check_finished(run_state.container)
+                    finished, _, _ = run_state.container.check_finished()
                     if not finished:
                         logger.error(traceback.format_exc())
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
@@ -593,9 +591,9 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.container_id is not None:
-            while self.bundle_runner.container_exists(run_state.container):
+            while run_state.container.container_exists():
                 try:
-                    finished, _, _ = self.bundle_runner.check_finished(run_state.container)
+                    finished, _, _ = run_state.container.check_finished(run_state.container)
                     if finished:
                         run_state.container.remove(force=True)
                         run_state = run_state._replace(container=None, container_id=None)
