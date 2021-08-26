@@ -81,6 +81,7 @@ class Worker:
         delete_work_dir_on_exit=False,  # type: bool
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
+        shared_memory_size_gb=1,  # type: int
     ):
         self.image_manager = image_manager
         self.bundle_runner = bundle_runner
@@ -136,6 +137,7 @@ class Worker:
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             container_runtime=container_runtime,
             shared_file_system=self.shared_file_system,
+            shared_memory_size_gb=shared_memory_size_gb,
         )
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
