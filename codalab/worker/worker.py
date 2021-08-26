@@ -17,7 +17,7 @@ from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 import requests
 
-from .bundle_runner import BundleRunner
+from .bundle_container import BundleRunner
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT

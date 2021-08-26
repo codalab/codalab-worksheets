@@ -17,7 +17,7 @@ import requests
 from codalab.common import SingularityError
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
-from codalab.worker.bundle_runner import BundleRunner
+from codalab.worker.bundle_container import BundleRunner
 from codalab.worker.docker_bundle_runner import DockerBundleRunner
 from codalab.worker.singularity_bundle_runner import SingularityBundleRunner
 from .bundle_service_client import BundleServiceClient, BundleAuthException

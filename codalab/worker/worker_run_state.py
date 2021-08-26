@@ -463,7 +463,7 @@ class RunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = self.bundle_runner.check_finished(run_state.container)
+                finished, exitcode, failure_msg = run_state.container()
             except docker_utils.DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None

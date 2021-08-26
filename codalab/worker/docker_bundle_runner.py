@@ -6,19 +6,21 @@ import docker
 from docker.models.containers import Container
 from dateutil import parser, tz
 
-from codalab.worker.bundle_runner import BundleRunner
+from codalab.worker.bundle_container import BundleContainer
 from codalab.worker.docker_utils import NVIDIA_RUNTIME, DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME, wrap_exception, \
     DEFAULT_CONTAINER_RUNNING_TIME
 
 logger = logging.getLogger(__name__)
+client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
 
-class DockerBundleRunner(BundleRunner):
 
-    def __init__(self):
-        self.client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
+class DockerBundleContainer(BundleContainer):
 
-    def run(self,
-            path,
+    def __init__(self, container: Container):
+        self.docker_container = container
+
+    @staticmethod
+    def run(path,
             uuid,
             dependencies,
             command,
@@ -39,7 +41,7 @@ class DockerBundleRunner(BundleRunner):
         # logger.info("adiprerepa: bundle path {}".format(bundle_path))
         docker_command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
         docker_bundle_path = '/' + uuid
-        volumes = self.get_bundle_container_volume_binds(path, docker_bundle_path, dependencies)
+        volumes = DockerBundleContainer.get_bundle_container_volume_binds(path, docker_bundle_path, dependencies)
         environment = {'HOME': docker_bundle_path, 'CODALAB': 'true'}
         working_dir = docker_bundle_path
         # Unset entrypoint regardless of image
@@ -62,7 +64,7 @@ class DockerBundleRunner(BundleRunner):
         # Name the container with the UUID for readability
         container_name = 'codalab_run_%s' % uuid
         try:
-            container = self.client.containers.run(
+            container = client.containers.run(
                 image=image,
                 command=docker_command,
                 name=container_name,
@@ -88,14 +90,15 @@ class DockerBundleRunner(BundleRunner):
             # because a container with the same name already exists. So, we try to remove
             # the container here.
             try:
-                self.client.api.remove_container(container_name, force=True)
+                client.api.remove_container(container_name, force=True)
             except Exception:
                 logger.warning("Failed to clean up Docker container after failed launch.")
                 traceback.print_exc()
             raise
-        return container
+        return DockerBundleContainer(container)
 
-    def get_bundle_container_volume_binds(self, bundle_path, docker_bundle_path, dependencies):
+    @staticmethod
+    def get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies):
         """
             Returns a volume bindings dict for the bundle path and dependencies given
             """
@@ -106,14 +109,13 @@ class DockerBundleRunner(BundleRunner):
         binds[bundle_path] = {'bind': docker_bundle_path, 'mode': 'rw'}
         return binds
 
-    @wrap_exception('Unable to check Docker container status')
-    def check_finished(self, container: Container):
+    def check_finished(self):
         # Unfortunately docker SDK doesn't update the status of Container objects
         # so we re-fetch them from the API again to get the most recent state
-        if container is None:
+        if self.docker_container is None:
             return True, None, 'Docker container not found'
-        container = self.client.containers.get(container.id)
-        if container.status != 'running':
+        container = self.client.containers.get(self.docker_container.id)
+        if self.docker_container.status != 'running':
             # If the logs are nonempty, then something might have gone
             # wrong with the commands run before the user command,
             # such as bash or cd.
@@ -130,12 +132,11 @@ class DockerBundleRunner(BundleRunner):
             return True, exitcode, failure_msg
         return False, None, None
 
-    @wrap_exception('Unable to check Docker API for container')
-    def get_container_stats_with_stats_api(self, container: Container):
+    def get_container_stats_with_stats_api(self):
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
-        if self.container_exists(container):
+        if self.container_exists(self.docker_container):
             try:
-                container_stats: dict = self.client.containers.get(container.name).stats(stream=False)
+                container_stats: dict = self.client.containers.get(self.docker_container.name).stats(stream=False)
 
                 cpu_usage: float = self.get_cpu_usage(container_stats)
                 memory_usage: float = self.get_memory_usage(container_stats)
@@ -146,8 +147,7 @@ class DockerBundleRunner(BundleRunner):
         else:
             return 0.0, 0
 
-    @wrap_exception("Can't get container stats")
-    def get_container_stats_native(self, container: Container):
+    def get_container_stats_native(self):
         # We don't use the stats API since it doesn't seem to be reliable, and
         # is definitely slow. This doesn't work on Mac.
         cgroup = None
@@ -162,7 +162,7 @@ class DockerBundleRunner(BundleRunner):
 
         # Get CPU usage
         try:
-            cpu_path = os.path.join(cgroup, 'cpuacct/docker', container.id, 'cpuacct.stat')
+            cpu_path = os.path.join(cgroup, 'cpuacct/docker', self.docker_container.id, 'cpuacct.stat')
             with open(cpu_path) as f:
                 for line in f:
                     key, value = line.split(' ')
@@ -176,7 +176,7 @@ class DockerBundleRunner(BundleRunner):
 
         # Get memory usage
         try:
-            memory_path = os.path.join(cgroup, 'memory/docker', container.id, 'memory.usage_in_bytes')
+            memory_path = os.path.join(cgroup, 'memory/docker', self.docker_container.id, 'memory.usage_in_bytes')
             with open(memory_path) as f:
                 stats['memory'] = int(f.read())
         except Exception:
@@ -184,58 +184,15 @@ class DockerBundleRunner(BundleRunner):
 
         return stats
 
+    def container_exists(self):
+        raise NotImplementedError
 
-    # todo put these on bundle_runner.py and singularity impls
-    def get_cpu_usage(self, container_stats: dict) -> float:
-        """Calculates CPU usage from container stats returned from the Docker Stats API.
-        The way of calculation comes from here:
-        https://www.jcham.com/2016/02/09/calculating-cpu-percent-and-memory-percentage-for-containers/
-        That method is also based on how the docker client calculates it:
-        https://github.com/moby/moby/blob/131e2bf12b2e1b3ee31b628a501f96bbb901f479/api/client/stats.go#L309"""
-        try:
-            cpu_delta: int = (
-                    container_stats['cpu_stats']['cpu_usage']['total_usage']
-                    - container_stats['precpu_stats']['cpu_usage']['total_usage']
-            )
-            system_delta: int = (
-                    container_stats['cpu_stats']['system_cpu_usage']
-                    - container_stats['precpu_stats']['system_cpu_usage']
-            )
-            if system_delta > 0 and cpu_delta > 0:
-                cpu_usage: float = float(cpu_delta / system_delta) * float(
-                    len(container_stats['cpu_stats']['cpu_usage']['percpu_usage'])
-                )
-                return cpu_usage
-            return 0.0
-        except KeyError:
-            # The stats returned may be missing some keys if the bundle is not fully ready or has exited.
-            # We can just skip for now and wait until this function is called the next time.
-            return 0.0
-
-    def get_memory_usage(self, container_stats: dict) -> float:
-        """Takes a dictionary of container stats returned by docker stats, returns memory usage"""
-        try:
-            memory_limit: float = container_stats['memory_stats']['limit']
-            current_memory_usage: float = container_stats['memory_stats']['usage']
-            return current_memory_usage / memory_limit
-        except KeyError:
-            return 0
-
-    @wrap_exception('Unable to check Docker API for container')
-    def container_exists(self, container: Container):
-        try:
-            self.client.containers.get(container.id)
-            return True
-        except docker.errors.NotFound:
-            return False
-
-    @wrap_exception('Unable to check Docker container running time')
-    def get_container_running_time(self, container: Container):
+    def get_container_running_time(self):
         # This usually happens when container gets accidentally removed or deleted
-        if container is None:
+        if self.docker_container is None:
             return DEFAULT_CONTAINER_RUNNING_TIME
         # Get the current container
-        container = self.client.containers.get(container.id)
+        container = self.client.containers.get(self.docker_container.id)
         # Load this container from the server again and update attributes with the new data.
         container.reload()
         # Calculate the start_time of the current container
