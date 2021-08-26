@@ -23,7 +23,7 @@ tests and their respective browsers.
 2. Populate your local machine with a comprehensive sample worksheet by running 
 `docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"`. 
 3. Start the UI tests by running `python tests/ui/ui_tester.py`. You can also pass in an additional argument 
-`--headless`, which will run the tests in headless mode. 
+`--headless`, which will run the tests in headless mode.
 
 ### Maintaining the baseline images
 
@@ -31,11 +31,6 @@ If the screenshot tests are failing, check the `diff` folder for the diff images
 comparisons fail. If the output images is as expected, accept them as the new baselines by replacing the stale baseline 
 images, located in `baselines`, with the newly generated images in `out`. If the failures are not expected, look into 
 your code changes, as they may have cause the tests to fail.
-
-#### Travis failures
-
-If the screenshot tests are failing in Travis, run the tests locally in order to see the diff images. Then, go through 
-the instructions mentioned above.
 
 ### Adding new tests
    
