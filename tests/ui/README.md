@@ -24,7 +24,7 @@ tests and their respective browsers.
 `docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"`. 
 3. Start the UI tests by running `python tests/ui/ui_tester.py`. You can also pass in an additional argument 
 `--headless`, which will run the tests in headless mode.
-4. If you want to run the UI tests directly within the CodaLab Docker container instead, you should run `python test_runner.py frontend`.
+4. If you want to run the UI tests directly within the CodaLab Docker container instead, you should run `docker exec codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py --test-print" && python test_runner.py frontend`.
 
 ### Maintaining the baseline images
 
