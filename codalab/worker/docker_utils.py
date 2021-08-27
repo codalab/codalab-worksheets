@@ -95,6 +95,7 @@ def test_version():
 @wrap_exception('Problem establishing NVIDIA support')
 def get_available_runtime():
     use_docker = True
+    logger.info("yo")
     try:
         test_version()
     except requests.exceptions.ConnectionError or FileNotFoundError as e:
@@ -127,6 +128,8 @@ def get_nvidia_devices(use_docker=True):
     """
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
     nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
+    logger.info("getting nvidia devices")
+    logger.error("getting nvidia devices")
     if use_docker:
         client.images.pull(cuda_image)
         output = client.containers.run(
@@ -140,9 +143,14 @@ def get_nvidia_devices(use_docker=True):
         gpus = output.decode()
     else:
         # use the singularity runtime to run nvidia-smi
+        logger.error("pulling singularity image")
+        # todo starting a worker is really, really slow with singularity because the image
+        #  is pulled every time the worker is started. Maybe it would be wise to store this in the location
+        #  we store all the other images instead of /tmp? We can check if it exists (through the hash of the filename),
+        #  and if it doesn't, only then we pull. Otherwise, we use the previously saved image.
         img = Client.pull('docker://' + cuda_image, pull_folder='/tmp', force=True)
         output = Client.execute(img, nvidia_command, options=['--nv'])
-        logger.info(output)
+        logger.error(output)
         if output['return_code'] != 0:
             raise SingularityError
         gpus = output['message']
