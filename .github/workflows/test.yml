@@ -312,7 +312,7 @@ jobs:
           - resources
           - memoize
           - copy netcat netcurl
-          - edit
+          - edit blob
           - open wopen
     steps:
       - name: Clear free space

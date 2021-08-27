@@ -442,7 +442,11 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             while attempt < self._download_dependencies_max_retries:
                 try:
                     # Start async download to the fileobj
-                    fileobj, target_type = self._bundle_service.get_bundle_contents(
+                    target_type = self._bundle_service.get_bundle_info(
+                        dependency_state.dependency_key.parent_uuid,
+                        dependency_state.dependency_key.parent_path,
+                    )["type"]
+                    fileobj = self._bundle_service.get_bundle_contents(
                         dependency_state.dependency_key.parent_uuid,
                         dependency_state.dependency_key.parent_path,
                     )

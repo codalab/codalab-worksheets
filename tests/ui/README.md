@@ -10,11 +10,10 @@ automation only runs in Chrome and Firefox. We hope to support more browsers in 
 
 1. If you haven't already, install the Python dependencies specified in `requirements.txt`, located in the root of the 
 repository, by running `pip install -r requirements.txt`.
-2. Next, install [ChromeDriver](https://chromedriver.chromium.org/getting-started) (for Chrome) and 
+2. Next, use one of the two below options to install [ChromeDriver](https://chromedriver.chromium.org/getting-started) (for Chrome) and 
 [GeckoDriver](https://github.com/mozilla/geckodriver) (for Firefox). These drivers are the links between the Selenium 
 tests and their respective browsers.
-    1. Run `sudo ./scripts/test-setup.sh` and place the installed GeckoDriver on your path by running 
-    `export PATH=$PATH:/usr/bin/geckodriver`. This is not needed for ChromeDriver.
+    1. If on Linux, run `./scripts/test-setup.sh`.
     2. An alternative is to simply use [Homebrew](https://brew.sh/) and run `brew install geckodriver && brew install 
     --cask chromedriver`. 
 
@@ -24,7 +23,7 @@ tests and their respective browsers.
 2. Populate your local machine with a comprehensive sample worksheet by running 
 `docker exec -it codalab_rest-server_1 /bin/bash -c "python3 scripts/create_sample_worksheet.py"`. 
 3. Start the UI tests by running `python tests/ui/ui_tester.py`. You can also pass in an additional argument 
-`--headless`, which will run the tests in headless mode. 
+`--headless`, which will run the tests in headless mode.
 
 ### Maintaining the baseline images
 
@@ -32,11 +31,6 @@ If the screenshot tests are failing, check the `diff` folder for the diff images
 comparisons fail. If the output images is as expected, accept them as the new baselines by replacing the stale baseline 
 images, located in `baselines`, with the newly generated images in `out`. If the failures are not expected, look into 
 your code changes, as they may have cause the tests to fail.
-
-#### Travis failures
-
-If the screenshot tests are failing in Travis, run the tests locally in order to see the diff images. Then, go through 
-the instructions mentioned above.
 
 ### Adding new tests
    
