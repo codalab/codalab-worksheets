@@ -40,6 +40,10 @@ If you have used up your disk quota and want to reduce your disk usage, here are
 - If you have intermediate bundles whose contents you don't need, you can use `cl rm -d <bundle>` to delete only the contents of the bundle but keep the metadata.  This way, you keep the provenance and can regenerate this bundle in the future.
 - If there are selected files that you wish to keep in a bundle, you can use `cl make <bundle>/<important-file>` to make a new bundle that only has a copy of the desired file and then you can do `cl rm -d <bundle>` to remove all the other files in that bundle.
 
+### How do I request more disk quota?
+
+If you have tried the steps above and still need more disk quota, please fill out this [form](https://docs.google.com/forms/d/e/1FAIpQLSdS22MaLyE1kx0JL-w2a8f8IasDyc36H_ZuidNBVAE_afMCpw/viewform).
+
 ### How do I upload large bundles?
 
 Using `cl upload` is your best bet.  If you can't use the CLI (e.g., because you're behind a proxy), you can use the web interface (for directories, upload a zip file).  If this fails, then you can put your bundle at a public URL, and then use `cl upload http://...` from the web terminal in the web interface to "upload" that location to CodaLab.
