@@ -4,8 +4,8 @@ name: Build default worker images
 # This workflow ensures the worker images are up-to-date on Docker Hub.
 on:
   push:
-    branches: [master, build]
-#     paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
+    branches: [master]
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
   release:
     types: [published]
     paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
@@ -40,8 +40,8 @@ jobs:
           df -h
       - run: python3 codalab_service.py build --version ${VERSION} ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
         env:
-          # CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
-          # CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
+          CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
+          CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
           # Set tag to latest if triggered by release,
           # use the branch name of the PR if triggered by pull request,
           # "master" if on a push-triggered build
