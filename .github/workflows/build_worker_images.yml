@@ -5,7 +5,7 @@ name: Build default worker images
 on:
   push:
     branches: [master, build]
-    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
+#     paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
   release:
     types: [published]
     paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
