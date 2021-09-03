@@ -1,4 +1,4 @@
-apache-beam[azure]==2.27.0
+apache-beam[azure]==2.32.0
 bottle==0.12.19
 dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
