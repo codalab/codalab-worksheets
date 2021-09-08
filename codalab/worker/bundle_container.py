@@ -54,7 +54,8 @@ class BundleRunner:
             memory_bytes=0,
             detach=True,
             tty=False,
-            runtime=DEFAULT_RUNTIME):
+            runtime=DEFAULT_RUNTIME,
+            shared_memory_size_gb=1):
         """
         run will run a bundle given these run parameters.
         """

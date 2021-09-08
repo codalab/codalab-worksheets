@@ -145,12 +145,13 @@ def get_nvidia_devices(use_docker=True):
         #  we store all the other images instead of /tmp? We can check if it exists (through the hash of the filename),
         #  and if it doesn't, only then we pull. Otherwise, we use the previously saved image.
         #   aditya: you can probably remove force=True to verify if the image exists locally.
-        img = Client.pull('docker://' + cuda_image, name='codalab_nvidia_cuda_device_accessor.sif')
-        output = Client.execute(img, nvidia_command, options=['--nv'])
-        logger.error(output)
-        if output['return_code'] != 0:
-            return {}
-        gpus = output['message']
+        # img = Client.pull('docker://' + cuda_image, name='codalab_nvidia_cuda_device_accessor.sif')
+        # output = Client.execute(img, nvidia_command, options=['--nv'])
+        # logger.error(output)
+        # if output['return_code'] != 0:
+        #     return {}
+        # gpus = output['message']
+        return {}
     # Get newline delimited gpu-index, gpu-uuid list
     logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
     return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus.split('\n')[:-1]}

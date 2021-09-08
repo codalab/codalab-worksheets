@@ -84,7 +84,8 @@ class SingularityBundleRunner(BundleRunner):
             memory_bytes=0,
             detach=True,
             tty=False,
-            runtime=DEFAULT_RUNTIME):
+            runtime=DEFAULT_RUNTIME,
+            shared_memory_size_gb=1):
         if not command.endswith(';'):
             command = '{};'.format(command)
         # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
@@ -114,7 +115,8 @@ class SingularityBundleRunner(BundleRunner):
             # nvidia-docker runtime uses this env variable to allocate GPUs
             environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else ''
 
-        instance = Client.instance(image_spec)
+        instance = Client.instance("codalab_singularity_images/" + image_spec + ".sif")
+        logger.error("adi: spec {}".format(instance))
         output_executor = Client.execute(instance, singularity_command, bind=volumes, stream=True)
         logger.debug('Started singularity container for UUID %s, container ID %s,', uuid, instance)
         return SingularityContainer(instance, image_spec, output_executor, path)

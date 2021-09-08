@@ -396,10 +396,12 @@ class RunStateMachine(StateTransitioner):
                     )
                     return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=str(e))
 
-        if run_state.resources.network:
+        docker_network = ""
+        if run_state.resources.network and self.docker_network_external is not None:
             docker_network = self.docker_network_external.name
         else:
-            docker_network = self.docker_network_internal.name
+            if self.docker_network_internal:
+                docker_network = self.docker_network_internal.name
 
         # 3) Start container
         try:
@@ -416,7 +418,8 @@ class RunStateMachine(StateTransitioner):
                 shared_memory_size_gb=self.shared_memory_size_gb,
                 runtime=self.container_runtime,
             )
-            self.worker_docker_network.connect(container)
+            if self.worker_docker_network is not None:
+                self.worker_docker_network.connect(container)
         except docker_utils.DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             log_bundle_transition(

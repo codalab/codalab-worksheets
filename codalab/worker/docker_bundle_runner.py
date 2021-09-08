@@ -138,7 +138,8 @@ class DockerBundleRunner(BundleRunner):
             memory_bytes=0,
             detach=True,
             tty=False,
-            runtime=DEFAULT_RUNTIME) -> DockerBundleContainer:
+            runtime=DEFAULT_RUNTIME,
+            shared_memory_size_gb=1) -> DockerBundleContainer:
         if not command.endswith(';'):
             command = '{};'.format(command)
         # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
