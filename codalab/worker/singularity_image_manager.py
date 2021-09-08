@@ -37,6 +37,7 @@ class SingularityImageManager(ImageManager):
         - Singularity Hub (deprecated): 'shub://<image>'
         Images will be assumed to be docker if no prefix is included.
         """
+        logger.error("aditya: {}".format(image_spec))
         if "://" not in image_spec:
             # prefix docker, no scheme exists
             image_spec = "docker://" + image_spec
@@ -76,7 +77,13 @@ class SingularityImageManager(ImageManager):
 
         """
         # the singularity image is stored in the format of <image name>_<version>,sif
-        image_path = os.path.join(self.image_folder, "{}.sif".format(image_spec.split(":")))
+        namever = image_spec.split("//")[1].split("/")[1].split(":")
+        imgname = namever[0]
+        if len(namever) > 1:
+            imgver = namever[1]
+        else:
+            imgver = ""
+        image_path = os.path.join(self.image_folder, "{}.sif".format(imgname + ":" + imgver))
         if os.path.isfile(image_path):
             # for singularity, the digest of an image is just the sha256 hash of the image file.
             return ImageAvailabilityState(

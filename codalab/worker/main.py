@@ -273,6 +273,7 @@ def main():
             args.download_dependencies_max_retries,
         )
 
+    use_docker = True
     if args.container_runtime == "singularity":
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
@@ -284,6 +285,7 @@ def main():
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
         bundle_runner = SingularityBundleRunner()
+        use_docker = False
         # todo workers with singularity don't work because this is set to none -- handle this
         # runtime = None
     else:
@@ -329,6 +331,7 @@ def main():
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
+        use_docker=use_docker
     )
 
     # Register a signal handler to ensure safe shutdown.

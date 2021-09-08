@@ -82,20 +82,16 @@ class DockerUserErrorException(Exception):
 
 @wrap_exception('Unable to use Docker')
 def test_version():
-    # try:
     version_info = client.version()
-    # except requests.exceptions.ConnectionError:
-    #     # means no docker, its singularity
-    #     return
     if list(map(int, version_info['ApiVersion'].split('.'))) < list(
         map(int, MIN_API_VERSION.split('.'))
     ):
         raise DockerException('Please upgrade your version of Docker')
 
-@wrap_exception('Problem establishing NVIDIA support')
+# @wrap_exception('Problem establishing NVIDIA support')
 def get_available_runtime():
     use_docker = True
-    logger.info("yo")
+    logger.error("yo")
     try:
         test_version()
     except requests.exceptions.ConnectionError or FileNotFoundError as e:
@@ -108,7 +104,7 @@ def get_available_runtime():
         if len(nvidia_devices) == 0:
             raise DockerException("nvidia-docker runtime available but no NVIDIA devices detected")
         return NVIDIA_RUNTIME
-    except DockerException as e:
+    except DockerException or SingularityError as e:
         logger.warning("Cannot initialize NVIDIA runtime, no GPU support: %s", e)
         return DEFAULT_RUNTIME
 
@@ -148,11 +144,12 @@ def get_nvidia_devices(use_docker=True):
         #  is pulled every time the worker is started. Maybe it would be wise to store this in the location
         #  we store all the other images instead of /tmp? We can check if it exists (through the hash of the filename),
         #  and if it doesn't, only then we pull. Otherwise, we use the previously saved image.
-        img = Client.pull('docker://' + cuda_image, pull_folder='/tmp', force=True)
+        #   aditya: you can probably remove force=True to verify if the image exists locally.
+        img = Client.pull('docker://' + cuda_image, name='codalab_nvidia_cuda_device_accessor.sif')
         output = Client.execute(img, nvidia_command, options=['--nv'])
         logger.error(output)
         if output['return_code'] != 0:
-            raise SingularityError
+            return {}
         gpus = output['message']
     # Get newline delimited gpu-index, gpu-uuid list
     logger.info("GPUs: " + str(gpus.split('\n')[:-1]))

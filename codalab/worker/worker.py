@@ -82,6 +82,7 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
+        use_docker=True,  #  type: bool
     ):
         self.image_manager = image_manager
         self.bundle_runner = bundle_runner
@@ -108,6 +109,7 @@ class Worker:
         self.local_bundles_dir = local_bundles_dir
         self.shared_file_system = shared_file_system
         self.delete_work_dir_on_exit = delete_work_dir_on_exit
+        self.use_docker = use_docker
 
         self.exit_when_idle = exit_when_idle
         self.exit_after_num_runs = exit_after_num_runs
@@ -130,9 +132,9 @@ class Worker:
             image_manager=self.image_manager,
             bundle_runner=self.bundle_runner,
             dependency_manager=self.dependency_manager,
-            worker_docker_network=self.worker_docker_network,
-            docker_network_internal=self.docker_network_internal,
-            docker_network_external=self.docker_network_external,
+            worker_docker_network=self.worker_docker_network if self.use_docker else None,
+            docker_network_internal=self.docker_network_internal if self.use_docker else None,
+            docker_network_external=self.docker_network_external if self.use_docker else None,
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             container_runtime=container_runtime,
@@ -144,6 +146,8 @@ class Worker:
         """
         Set up docker networks for runs: one with external network access and one without
         """
+        if not self.use_docker:
+            return
 
         def create_or_get_network(name, internal, verbose):
             try:
@@ -474,10 +478,11 @@ class Worker:
         # We (re-)initialize the Docker networks here, in case they've been removed.
         # For any networks that exist, this is essentially a no-op.
         self.init_docker_networks(self.docker_network_prefix, verbose=False)
-        # In case the docker networks have changed, we also update them in the RunStateMachine
-        self.run_state_manager.worker_docker_network = self.worker_docker_network
-        self.run_state_manager.docker_network_external = self.docker_network_external
-        self.run_state_manager.docker_network_internal = self.docker_network_internal
+        if self.use_docker:
+            # In case the docker networks have changed, we also update them in the RunStateMachine
+            self.run_state_manager.worker_docker_network = self.worker_docker_network
+            self.run_state_manager.docker_network_external = self.docker_network_external
+            self.run_state_manager.docker_network_internal = self.docker_network_internal
 
         # 1. transition all runs
         for uuid in self.runs:
