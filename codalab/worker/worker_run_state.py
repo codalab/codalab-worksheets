@@ -439,7 +439,7 @@ class RunStateMachine(StateTransitioner):
         return run_state._replace(
             stage=RunStage.RUNNING,
             run_status='Running job in container',
-            container_id=container.id,
+            container_id=str(container.id),
             container=container,
             docker_image=image_state.digest,
             has_contents=True,
@@ -469,7 +469,7 @@ class RunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = run_state.container()
+                finished, exitcode, failure_msg = run_state.container.check_finished()
             except docker_utils.DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None

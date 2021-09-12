@@ -275,6 +275,7 @@ def main():
 
     use_docker = True
     if args.container_runtime == "singularity":
+        logger.error(args.work_dir)
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
             logger.info(
