@@ -19,7 +19,10 @@ class SingularityContainer(BundleContainer):
         self.path = path
 
     def check_finished(self):
-        instances = Client.instances(name=self.instance_name)
+
+        logger.error(type(self.instance_name))
+        instances = Client.instances(name=self.instance_name, quiet=True)
+        logger.error(instances)
         # with singularity, if the instance exists, it is not finished
         if len(instances) > 0:
             return False, None, None
@@ -95,9 +98,11 @@ class SingularityBundleRunner(BundleRunner):
         # logger.info("adiprerepa: bundle path {}".format(bundle_path))
         singularity_command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
         singularity_bundle_path = '/' + uuid
+        logger.error("ADI: " + path)
         volumes = self.get_bundle_container_volume_binds(path, singularity_bundle_path, dependencies)
         environment = {'HOME': singularity_bundle_path, 'CODALAB': 'true'}
-        working_dir = singularity_bundle_path
+        # the working directory is 2 parent directories above the bundle path.
+        working_dir = os.path.dirname(os.path.dirname(path))
         # Unset entrypoint regardless of image
         entrypoint = ''
         cpuset_str = ','.join(cpuset) if cpuset else ''
@@ -112,10 +117,10 @@ class SingularityBundleRunner(BundleRunner):
         user = '%s:%s' % (uid, gid)
 
         if runtime == NVIDIA_RUNTIME:
-            # nvidia-docker runtime uses this env variable to allocate GPUs
+            # nvidia-docker runtimfe uses this env variable to allocate GPUs
             environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else ''
 
-        instance = Client.instance("codalab_singularity_images/" + image_spec + ".sif")
+        instance = Client.instance(os.path.join(working_dir, "codalab_singularity_images/") + self.get_raw_image_spec(image_spec) + ".sif")
         logger.error("adi: spec {}".format(instance))
         output_executor = Client.execute(instance, singularity_command, bind=volumes, stream=True)
         logger.debug('Started singularity container for UUID %s, container ID %s,', uuid, instance)
@@ -131,3 +136,9 @@ class SingularityBundleRunner(BundleRunner):
         ]
         binds.append("{}:{}".format(bundle_path, singularity_bundle_path))
         return binds
+
+    def get_raw_image_spec(self, image_spec):
+        s = image_spec.split("/")
+        if len(s) == 1:
+            return image_spec
+        return s[-1]

@@ -13,11 +13,14 @@ from typing import Optional, Set, Dict
 import psutil
 
 import docker
+from spython.main import Client
+
 from codalab.lib.telemetry_util import capture_exception, using_sentry
 import codalab.worker.docker_utils as docker_utils
 import requests
 
 from .bundle_container import BundleRunner
+from .docker_bundle_runner import DockerBundleContainer
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT
@@ -92,6 +95,7 @@ class Worker:
         self.bundle_service = bundle_service
 
         self.docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
+        self.singularity = Client
         self.cpuset = cpuset
         self.gpuset = gpuset
         self.max_memory = (
@@ -200,6 +204,7 @@ class Worker:
             )
             for uuid, state in self.runs.items()
         }
+        logger.error(runs)
         self.state_committer.commit(runs)
 
     def load_state(self):
@@ -207,13 +212,21 @@ class Worker:
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
             if run_state.container_id:
+                logger.error(run_state.container_id)
+                # if self.use_docker:
+                # name=run_state.container_id.split("://")[-1],
+                c = Client.instances(return_json=False, quiet=True)
+                logger.error(c)
                 try:
                     run_state = run_state._replace(
-                        container=self.docker.containers.get(run_state.container_id)
+                        container=DockerBundleContainer(self.docker.containers.get(run_state.container_id))
                     )
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
                     run_state = run_state._replace(container_id=None)
+                # else:
+
+
             self.runs[uuid] = run_state._replace(
                 bundle=BundleInfo.from_dict(run_state.bundle),
                 resources=RunResources.from_dict(run_state.resources),
