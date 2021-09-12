@@ -20,8 +20,8 @@ class SingularityContainer(BundleContainer):
 
     def check_finished(self):
 
-        logger.error(type(self.instance_name))
-        instances = Client.instances(name=self.instance_name, quiet=True)
+        logger.error(self.instance_name)
+        instances = Client.instances(name=str(self.instance_name), quiet=True)
         logger.error(instances)
         # with singularity, if the instance exists, it is not finished
         if len(instances) > 0:
@@ -38,10 +38,10 @@ class SingularityContainer(BundleContainer):
         return 0.0, 0
 
     def get_container_stats_native(self):
-        return 0
+        return {}
 
     def container_exists(self):
-        if len(Client.instances(name=self.instance_name)) > 0:
+        if len(Client.instances(name=str(self.instance_name))) > 0:
             return True
         return False
 

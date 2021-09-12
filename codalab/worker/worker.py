@@ -213,24 +213,21 @@ class Worker:
         for uuid, run_state in runs.items():
             if run_state.container_id:
                 logger.error(run_state.container_id)
-                # if self.use_docker:
-                # name=run_state.container_id.split("://")[-1],
-                c = Client.instances(return_json=False, quiet=True)
-                logger.error(c)
-                try:
-                    run_state = run_state._replace(
-                        container=DockerBundleContainer(self.docker.containers.get(run_state.container_id))
+                if self.use_docker:
+                    try:
+                        run_state = run_state._replace(
+                            container=DockerBundleContainer(self.docker.containers.get(run_state.container_id))
+                        )
+                    except docker.errors.NotFound as ex:
+                        logger.debug('Error getting the container for the run: %s', ex)
+                        run_state = run_state._replace(container_id=None)
+                    self.runs[uuid] = run_state._replace(
+                        bundle=BundleInfo.from_dict(run_state.bundle),
+                        resources=RunResources.from_dict(run_state.resources),
                     )
-                except docker.errors.NotFound as ex:
-                    logger.debug('Error getting the container for the run: %s', ex)
-                    run_state = run_state._replace(container_id=None)
-                # else:
-
-
-            self.runs[uuid] = run_state._replace(
-                bundle=BundleInfo.from_dict(run_state.bundle),
-                resources=RunResources.from_dict(run_state.resources),
-            )
+                else:
+                    # run_state = run_state._replace(container_id=None)
+                    self.runs.pop(uuid, None)
 
     def sync_state(self):
         """
