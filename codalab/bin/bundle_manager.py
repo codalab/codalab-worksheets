@@ -2,6 +2,7 @@
 import signal
 import argparse
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.lib.telemetry_util import initialize_sentry
 from codalab.server.bundle_manager import BundleManager
 
 
@@ -20,6 +21,7 @@ def main():
         default=60,
     )
     args = parser.parse_args()
+    initialize_sentry()
 
     manager = BundleManager(CodaLabManager(), args.worker_timeout_seconds)
     # Register a signal handler to ensure safe shutdown.

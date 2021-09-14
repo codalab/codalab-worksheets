@@ -145,10 +145,11 @@ class BundleManager(object):
         stats = yappi.get_func_stats(
             filter_callback=lambda x: x.name in ['BundleManager._stage_bundles', 'BundleManager._make_bundles', 'BundleManager._schedule_run_bundles', 'BundleManager._fail_unresponsive_bundles']
         )
-        dets = ""
+        dets = "BENCHMARKING: \n"
         for x in range(len(stats._as_dict.keys())):
-            dets += "{} avg: {}".format(stats._as_dict.keys()[x][0], stats._as_dict.keys()[x][14])
-        capture_message(dets)
+            dets += "{} avg: {}\n".format(list(stats._as_dict.keys())[x][0], list(stats._as_dict.keys())[x][14])
+        logger.error(dets)
+        # capture_message(dets)
 
 
 

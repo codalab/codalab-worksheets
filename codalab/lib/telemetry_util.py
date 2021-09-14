@@ -26,6 +26,7 @@ def initialize_sentry():
     """
     Initialize the Sentry SDK if it hasn't already been initialized.
     """
+    logger.error("INITIALIZING SENTRY: {}: {}", CODALAB_SENTRY_INGEST, CODALAB_SENTRY_ENVIRONMENT)
     if sentry_sdk.Hub.current.client is None:
         sentry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT)
         print_sentry_warning()
