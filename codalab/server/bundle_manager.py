@@ -10,10 +10,12 @@ import tempfile
 import threading
 import time
 import traceback
+import yappi
 
 from apache_beam.io.filesystems import FileSystems
 from collections import defaultdict
 from typing import List
+from sentry_sdk import capture_message
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -95,6 +97,7 @@ class BundleManager(object):
 
     def run(self, sleep_time):
         logger.info('Bundle manager running!')
+        yappi.start()
         while not self._is_exiting():
             try:
                 self._run_iteration()
@@ -120,13 +123,15 @@ class BundleManager(object):
         self.timefn(self._schedule_run_bundles, [])
         self.timefn(self._fail_unresponsive_bundles, [])
         self.tmp_iteration_stats["runs"] = self.tmp_iteration_stats.get("runs", 0) + 1
-        if self.tmp_iteration_stats["runs"] == 25:
+        if self.tmp_iteration_stats["runs"] == 50:
             self.tmp_iteration_stats = {k: v for k, v in sorted(self.tmp_iteration_stats.items(), key=lambda item: item[1])}
             s = "adiprerepa AGGREGATE STATS:\n"
             for k, v in self.tmp_iteration_stats.items():
                 s = s + "\t{} average: {}".format(k, v/self.tmp_iteration_stats.get("runs", 0)) + "\n"
             logger.info(s)
             self.tmp_iteration_stats = {}
+            self.gather_schedule_bench()
+
 
     def timefn(self, fn, arg_list):
         start = time.time()
@@ -135,6 +140,16 @@ class BundleManager(object):
         logger.info("function {} took {}".format(fn.__name__, end-start))
         self.tmp_iteration_stats[fn.__name__] = self.tmp_iteration_stats.get(fn.__name__, 9) + (end - start)
         return res
+
+    def gather_schedule_bench(self):
+        stats = yappi.get_func_stats(
+            filter_callback=lambda x: x.name in ['BundleManager._stage_bundles', 'BundleManager._make_bundles', 'BundleManager._schedule_run_bundles', 'BundleManager._fail_unresponsive_bundles']
+        )
+        dets = ""
+        for x in range(len(stats._as_dict.keys())):
+            dets += "{} avg: {}".format(stats._as_dict.keys()[x][0], stats._as_dict.keys()[x][14])
+        capture_message(dets)
+
 
 
     def _stage_bundles(self):
