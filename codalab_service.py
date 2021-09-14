@@ -35,7 +35,13 @@ DEFAULT_SERVICES = [
     'init',
 ]
 
-ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
+ALL_SERVICES = DEFAULT_SERVICES + [
+    'azurite',
+    'monitor',
+    'worker-manager-cpu',
+    'worker-manager-gpu',
+    'worker-singularity',
+]
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -52,6 +58,7 @@ SERVICE_TO_IMAGE = {
     'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
+    'worker-singularity': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
@@ -465,6 +472,12 @@ for worker_manager_type in ['cpu', 'gpu']:
             name='worker_manager_{}_aws_batch_queue'.format(worker_manager_type),
             help='Name of queue to submit {} jobs'.format(worker_manager_type),
             default='codalab-{}'.format(worker_manager_type),
+        ),
+        CodalabArg(
+            name='worker_manager_{}_worker_shared_memory_size_gb'.format(worker_manager_type),
+            help='The shared memory size in GB of the run container started by the CodaLab Workers.',
+            type=int,
+            default=1,
         ),
     ]
 
@@ -929,6 +942,7 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker-shared-file-system')
         else:
             self.bring_up_service('worker')
+        self.bring_up_service('worker-singularity')
 
         self.bring_up_service('monitor')
 

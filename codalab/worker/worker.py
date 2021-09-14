@@ -20,7 +20,7 @@ import requests
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT
-from .docker_image_manager import DockerImageManager
+from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
@@ -52,7 +52,7 @@ class Worker:
 
     def __init__(
         self,
-        image_manager,  # type: DockerImageManager
+        image_manager,  # type: ImageManager
         dependency_manager,  # type: Optional[DependencyManager]
         commit_file,  # type: str
         cpuset,  # type: Set[str]
@@ -78,6 +78,7 @@ class Worker:
         delete_work_dir_on_exit=False,  # type: bool
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
+        shared_memory_size_gb=1,  # type: int
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -122,7 +123,7 @@ class Worker:
         self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
         self.run_state_manager = RunStateMachine(
-            docker_image_manager=self.image_manager,
+            image_manager=self.image_manager,
             dependency_manager=self.dependency_manager,
             worker_docker_network=self.worker_docker_network,
             docker_network_internal=self.docker_network_internal,
@@ -131,6 +132,7 @@ class Worker:
             upload_bundle_callback=self.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
+            shared_memory_size_gb=shared_memory_size_gb,
         )
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):

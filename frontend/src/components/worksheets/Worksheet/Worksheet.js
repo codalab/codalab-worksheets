@@ -289,7 +289,7 @@ class Worksheet extends React.Component {
         const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
         let toastMsg =
             (command in cmdMsgMap
-                ? count + ' bundles ' + cmdMsgMap[command][state]
+                ? count + (count === 1 ? ' bundle ' : ' bundles ') + cmdMsgMap[command][state]
                 : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
             (state === 0 ? '...' : '!');
         return toastMsg;

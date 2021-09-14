@@ -160,7 +160,7 @@ class RunStateMachine(StateTransitioner):
 
     def __init__(
         self,
-        docker_image_manager,  # Component to request docker images from
+        image_manager,  # Component to request docker images from
         dependency_manager,  # Component to request dependency downloads from
         worker_docker_network,  # Docker network to add all bundles to
         docker_network_internal,  # Docker network to add non-net connected bundles to
@@ -169,6 +169,7 @@ class RunStateMachine(StateTransitioner):
         upload_bundle_callback,  # Function to call to upload bundle results to the server
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
+        shared_memory_size_gb,  # Shared memory size for the run container (in GB)
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -180,10 +181,11 @@ class RunStateMachine(StateTransitioner):
         self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
-        self.docker_image_manager = docker_image_manager
+        self.image_manager = image_manager
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
+        # todo aditya: docker_runtime will be None if the worker is a singularity worker. handle this.
         self.docker_runtime = docker_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
@@ -194,6 +196,7 @@ class RunStateMachine(StateTransitioner):
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
+        self.shared_memory_size_gb = shared_memory_size_gb
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -277,7 +280,7 @@ class RunStateMachine(StateTransitioner):
 
         # get the docker image
         docker_image = run_state.resources.docker_image
-        image_state = self.docker_image_manager.get(docker_image)
+        image_state = self.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image %s %s' % (docker_image, image_state.message)
@@ -408,6 +411,7 @@ class RunStateMachine(StateTransitioner):
                 gpuset=gpuset,
                 memory_bytes=run_state.resources.memory,
                 runtime=self.docker_runtime,
+                shared_memory_size_gb=self.shared_memory_size_gb,
             )
             self.worker_docker_network.connect(container)
         except docker_utils.DockerUserErrorException as e:
@@ -421,14 +425,14 @@ class RunStateMachine(StateTransitioner):
             )
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
-            message = 'Cannot start Docker container: {}'.format(e)
+            message = 'Cannot start container: {}'.format(e)
             logger.error(message)
             logger.error(traceback.format_exc())
             raise
 
         return run_state._replace(
             stage=RunStage.RUNNING,
-            run_status='Running job in Docker container',
+            run_status='Running job in container',
             container_id=container.id,
             container=container,
             docker_image=image_state.digest,

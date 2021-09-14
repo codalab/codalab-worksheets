@@ -12,7 +12,9 @@ import socket
 import stat
 import sys
 import psutil
+import requests
 
+from codalab.common import SingularityError
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
@@ -20,6 +22,7 @@ from . import docker_utils
 from .worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
+from codalab.worker.singularity_image_manager import SingularityImageManager
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +95,9 @@ def parse_args():
         help='Limit the size of Docker images to download from the Docker Hub'
         '(e.g. 3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
         'the requested image will not be downloaded. '
-        'The bundle depends on this image will fail accordingly.',
+        'The bundle depends on this image will fail accordingly. '
+        'If running an image on the singularity runtime, there is no size '
+        'check because singularity hub does not support the querying of image size',
     )
     parser.add_argument(
         '--max-memory',
@@ -115,6 +120,12 @@ def parse_args():
         '--exit-when-idle',
         action='store_true',
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
+    )
+    parser.add_argument(
+        '--container-runtime',
+        choices=['docker', 'singularity'],
+        default='docker',
+        help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -172,6 +183,12 @@ def parse_args():
         type=int,
         default=3,
         help='The number of times to retry downloading dependencies after a failure (defaults to 3).',
+    )
+    parser.add_argument(
+        '--shared-memory-size-gb',
+        type=int,
+        default=1,
+        help='The shared memory size of the run container in GB (defaults to 1).',
     )
     return parser.parse_args()
 
@@ -252,6 +269,26 @@ def main():
             args.max_work_dir_size,
             args.download_dependencies_max_retries,
         )
+
+    if args.container_runtime == "singularity":
+        singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
+        if not os.path.exists(singularity_folder):
+            logger.info(
+                'Local singularity image location %s doesn\'t exist, creating.', singularity_folder,
+            )
+            os.makedirs(singularity_folder, 0o770)
+        image_manager = SingularityImageManager(
+            args.max_image_size, args.max_image_cache_size, singularity_folder,
+        )
+        # todo workers with singularity don't work because this is set to none -- handle this
+        docker_runtime = None
+    else:
+        image_manager = DockerImageManager(
+            os.path.join(args.work_dir, 'images-state.json'),
+            args.max_image_cache_size,
+            args.max_image_size,
+        )
+        docker_runtime = docker_utils.get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -259,13 +296,6 @@ def main():
     if local_bundles_dir and not os.path.exists(local_bundles_dir):
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
-
-    docker_runtime = docker_utils.get_available_runtime()
-    image_manager = DockerImageManager(
-        os.path.join(args.work_dir, 'images-state.json'),
-        args.max_image_cache_size,
-        args.max_image_size,
-    )
 
     worker = Worker(
         image_manager,
@@ -291,6 +321,7 @@ def main():
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
+        shared_memory_size_gb=args.shared_memory_size_gb,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -341,6 +372,10 @@ def parse_cpuset_args(arg):
 def parse_gpuset_args(arg):
     """
     Parse given arg into a set of strings representing gpu UUIDs
+    By default, we will try to start a Docker container with nvidia-smi to get the GPUs.
+    If we get an exception that the Docker socket does not exist, which will be the case
+    on Singularity workers, because they do not have root access, and therefore, access to
+    the Docker socket, we should try to get the GPUs with Singularity.
 
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
@@ -353,6 +388,12 @@ def parse_gpuset_args(arg):
         all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
     except docker_utils.DockerException:
         all_gpus = {}
+    # Docker socket can't be used
+    except requests.exceptions.ConnectionError:
+        try:
+            all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+        except SingularityError:
+            all_gpus = {}
 
     if arg == 'ALL':
         return set(all_gpus.values())

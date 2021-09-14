@@ -168,6 +168,19 @@ class BundleServiceClient(RestClient):
             'GET', '/workers/code.tar.gz', return_response=True, authorized=False
         )
 
+    @wrap_exception('Unable to get bundle info from bundle service')
+    def get_bundle_info(self, uuid, path):
+        """
+        Returns the target info of the specified bundle target.
+        """
+        response = self._make_request(
+            'GET',
+            '/bundles/' + uuid + '/contents/info/' + path,
+            headers={'Accept-Encoding': 'gzip'},
+            timeout_seconds=URLOPEN_TIMEOUT_SECONDS * 2,
+        )
+        return response["data"]
+
     @wrap_exception('Unable to get bundle contents from bundle service')
     def get_bundle_contents(self, uuid, path):
         """
@@ -176,8 +189,9 @@ class BundleServiceClient(RestClient):
         response = self._make_request(
             'GET',
             '/bundles/' + uuid + '/contents/blob/' + path,
+            query_params={'support_redirect': 1},
             headers={'Accept-Encoding': 'gzip'},
             return_response=True,
             timeout_seconds=URLOPEN_TIMEOUT_SECONDS * 2,
         )
-        return response, response.headers.get('Target-Type')
+        return response
