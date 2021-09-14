@@ -125,12 +125,11 @@ class BundleManager(object):
         self.tmp_iteration_stats["runs"] = self.tmp_iteration_stats.get("runs", 0) + 1
         if self.tmp_iteration_stats["runs"] == 50:
             self.tmp_iteration_stats = {k: v for k, v in sorted(self.tmp_iteration_stats.items(), key=lambda item: item[1])}
-            s = "adiprerepa AGGREGATE STATS:\n"
+            s = "BENCHMARKING:\n"
             for k, v in self.tmp_iteration_stats.items():
                 s = s + "\t{} average: {}".format(k, v/self.tmp_iteration_stats.get("runs", 0)) + "\n"
-            logger.info(s)
             self.tmp_iteration_stats = {}
-            self.gather_schedule_bench()
+            self.gather_schedule_bench(s)
 
 
     def timefn(self, fn, arg_list):
@@ -141,15 +140,15 @@ class BundleManager(object):
         self.tmp_iteration_stats[fn.__name__] = self.tmp_iteration_stats.get(fn.__name__, 9) + (end - start)
         return res
 
-    def gather_schedule_bench(self):
-        stats = yappi.get_func_stats(
-            filter_callback=lambda x: x.name in ['BundleManager._stage_bundles', 'BundleManager._make_bundles', 'BundleManager._schedule_run_bundles', 'BundleManager._fail_unresponsive_bundles']
-        )
-        dets = "BENCHMARKING: \n"
-        for x in range(len(stats._as_dict.keys())):
-            dets += "{} avg: {}\n".format(list(stats._as_dict.keys())[x][0], list(stats._as_dict.keys())[x][14])
-        logger.error(dets)
-        # capture_message(dets)
+    def gather_schedule_bench(self, det):
+        # stats = yappi.get_func_stats(
+        #     filter_callback=lambda x: x.name in ['BundleManager._stage_bundles', 'BundleManager._make_bundles', 'BundleManager._schedule_run_bundles', 'BundleManager._fail_unresponsive_bundles']
+        # )
+        # dets = "BENCHMARKING: \n"
+        # for x in range(len(stats._as_dict.keys())):
+        #     dets += "{} avg: {}\n".format(list(stats._as_dict.keys())[x][0], list(stats._as_dict.keys())[x][14])
+        logger.error(det)
+        capture_message(det)
 
 
 
@@ -864,10 +863,10 @@ class BundleManager(object):
         )
 
         # Handle some exceptional cases.
-        self.timefn(self._cleanup_dead_workers, arg_list=[workers])
-        self.timefn(self._restage_stuck_starting_bundles, arg_list=[workers])
+        self._cleanup_dead_workers(workers)
+        self._restage_stuck_starting_bundles(workers)
         self.timefn(self._bring_offline_stuck_running_bundles, arg_list=[workers])
-        self.timefn(self._acknowledge_recently_finished_bundles, arg_list=[workers])
+        self._acknowledge_recently_finished_bundles(workers)
         # A dictionary structured as {user id : user information} to track those visited user information
         user_info_cache = {}
         staged_bundles_to_run = self.timefn(self._get_staged_bundles_to_run, arg_list=[workers, user_info_cache])
