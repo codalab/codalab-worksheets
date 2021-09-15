@@ -2041,9 +2041,9 @@ def test_groups(ctx):
     # Add a member
     member_user = random_name()
     create_user(ctx, member_user)
-    _run_command([cl, 'uadd', user_name, group_name])
+    _run_command([cl, 'uadd', member_user, group_name])
     group_info = _run_command([cl, 'ginfo', group_name])
-    check_contains(user_name, group_info)
+    check_contains(member_user, group_info)
 
     # When member is removed, ginfo should not crash
     _run_command([cl, 'ufarewell', member_user])
