@@ -424,13 +424,8 @@ class Commands(object):
             # Register arguments for the subcommand
             for argument in command.arguments:
                 argument_kwargs = argument.kwargs.copy()
-
                 completer = argument_kwargs.pop('completer', None)
-                arg = argument
                 argument = subparser.add_argument(*argument.args, **argument_kwargs)
-                if arg.args[0] == '--request-network':
-                    argument_kwargs['action'] = 'store_false'
-                    subparser.add_argument(*('--no-request-network',), **argument_kwargs)
 
                 if completer is not None:
                     # If the completer is subclass of CodaLabCompleter, give it the BundleCLI instance
@@ -951,6 +946,7 @@ class BundleCLI(object):
 
         # Bind self (BundleCLI instance) and args to command function
         command_fn = lambda: args.function(self, args)
+
         if self.verbose >= 2:
             structured_result = command_fn()
         else:

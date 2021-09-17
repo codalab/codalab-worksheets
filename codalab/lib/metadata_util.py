@@ -39,6 +39,7 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
         )
         if is_unicode_string or is_unicode_list:
             raise UsageError('Metadata cannot contain unicode: %s = %s' % (spec.key, final_value))
+
     return new_initial_metadata
 
 

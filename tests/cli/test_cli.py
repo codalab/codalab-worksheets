@@ -1954,10 +1954,6 @@ def test_resources(ctx):
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above
     wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
-    # Should fail if network access not granted
-    wait(
-        _run_command([cl, 'run', '--no-request-network', REQUEST_CMD], request_memory="10m"), 1,
-    )
 
 
 @TestModule.register('copy')
