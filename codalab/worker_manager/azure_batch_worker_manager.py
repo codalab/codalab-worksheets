@@ -98,12 +98,9 @@ class AzureBatchWorkerManager(WorkerManager):
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         worker_id: str = uuid.uuid4().hex
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
-        work_dir_prefix: str = (
+        work_dir: str = (
             self.args.worker_work_dir_prefix if self.args.worker_work_dir_prefix else "/tmp/"
         )
-
-        # This needs to be a unique directory since Batch jobs may share a host
-        work_dir: str = os.path.join(work_dir_prefix, 'cl_worker_{}_work_dir'.format(worker_id))
         command: List[str] = self.build_command(worker_id, work_dir)
 
         task_container_run_options: List[str] = [

@@ -21,7 +21,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install twine
         # remove first character (v) from tag name
-      - run: ./scripts/travis-deploy.sh ${TAG#?}
+      - run: ./scripts/ci-deploy.sh ${TAG#?}
         env:
           TAG: ${{ github.event.release.tag_name }}
           CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}

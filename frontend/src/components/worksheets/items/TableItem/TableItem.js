@@ -16,6 +16,7 @@ import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
 import classNames from 'classnames';
 import { fetchAsyncBundleContents } from '../../../../util/apiWrapper';
+import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
 class TableItem extends React.Component<{
     worksheetUUID: string,
@@ -259,10 +260,21 @@ class TableItem extends React.Component<{
                 />
             );
         });
+        if (this.state.openSchemaTextBox) {
+            Mousetrap.bindGlobal(['ctrl+enter'], () => {
+                this.setState({ openSchemaTextBox: false });
+                this.props.updateBundleBlockSchema(
+                    this.state.curSchemaNames,
+                    'table',
+                    this.props.item.first_bundle_source_index,
+                );
+                Mousetrap.unbindGlobal(['ctrl+enter']);
+            });
+        }
         return (
             <div className='ws-item'>
-                <TableContainer style={{ overflowX: 'auto' }}>
-                    <Table className={tableClassName} style={{ marginBottom: '0' }}>
+                <TableContainer style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+                    <Table className={tableClassName} style={{ marginBottom: '0.5px' }}>
                         <TableHead>
                             <TableRow
                                 style={{
@@ -391,7 +403,6 @@ const TableWrapper = (props) => {
             }
         })();
         // TODO: see how we can add onAsyncItemLoad as a dependency, if needed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item, item.rows, item.status, onAsyncItemLoad]);
     return <TableItem {...props} />;
 };

@@ -30,15 +30,28 @@ jobs:
           restore-keys: |
             pip-
       - run: ./pre-commit.sh && git diff --exit-code
+
+  install:
+    name: Install
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
-          key: pip-${{ hashFiles('requirements.txt') }}
+          key: pip-${{ hashFiles('requirements.txt') }}-${{ matrix.python-version }}
           restore-keys: |
             pip-
-      - name: Ensure the "cl" command can be properly installed.
-        run: pip install -e . && cl
-
+      - run: pip install -e .
+      - run: cl
+  
   test_frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
@@ -248,7 +261,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - basic status batch anonymous competition unicode rest1 upload1 download
+          - basic status batch anonymous unicode rest1 upload1 download
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - run
           - search read kill write mimic workers
@@ -302,17 +315,18 @@ jobs:
     strategy:
       matrix:
         test:
-          - upload1 upload2 upload3 upload4 download
-          # TODO(Ashwin): enable more tests below when we add support for downloading bundle dependencies from Blob Storage.
-          # - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download refs binary rm make worksheet_search worksheet_tags freeze detach perm search_time groups
-          # - run
-          # - run2
-          # - search link read kill write mimic workers edit_user sharing_workers
-          # - resources
-          # - memoize
-          # - copy netcat netcurl
-          # - edit
-          # - open wopen
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
+          - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
+          - worker_manager service
+          - run
+          - run2
+          - search read kill write mimic workers edit_user sharing_workers
+#           - search link read kill write mimic workers edit_user sharing_workers
+          - resources
+          - memoize
+          - copy netcat netcurl
+          - edit blob
+          - open wopen
     steps:
       - name: Clear free space
         run: |
@@ -381,12 +395,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Setup tests
         run: |
-          sudo ./scripts/test-setup.sh
-          export PATH=$PATH:$PWD/geckodriver
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
-          pip install --upgrade diffimg==0.2.3
-          pip install --upgrade selenium==3.141.0
         env:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
@@ -418,7 +428,7 @@ jobs:
   ci:
     name: All CI tasks complete
     runs-on: ubuntu-latest
-    needs: [format, test_frontend, build, test_backend, test_backend_on_worker_restart, test_backend_sharedfs, test_backend_protected_mode, test_ui]
+    needs: [format, install, test_frontend, build, test_backend, test_backend_on_worker_restart, test_backend_sharedfs, test_backend_protected_mode, test_ui]
     steps:
       - uses: actions/checkout@v2
       - run: echo Done

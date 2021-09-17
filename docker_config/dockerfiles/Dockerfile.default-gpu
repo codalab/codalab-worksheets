@@ -28,27 +28,14 @@ RUN apt-get update && apt-get install -y \
     openjdk-8-jdk && \
     rm -rf /var/lib/apt/lists/*
 
-# Set Python3.6 as the default python3 version
+# Set Python3.6 as the default python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
 
 RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
-
-## Scala
-ENV SCALA_VERSION 2.12.6
-RUN wget http://scala-lang.org/files/archive/scala-$SCALA_VERSION.deb && \
-    dpkg -i scala-$SCALA_VERSION.deb && \
-    echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list && \
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \
-    apt-get -y update && \
-    apt-get -y install sbt && \
-    apt-get clean && \
-    apt-get autoremove && \
-    rm -rf /var/lib/apt/lists/*
-
-ENV SCALA_HOME /usr/share/java
 
 ## Python packages
 RUN pip3 install -U pip
@@ -78,7 +65,10 @@ RUN python3 -m pip install --no-cache-dir \
 
 # Install apex
 WORKDIR /tmp/apex_install
-RUN git clone https://github.com/NVIDIA/apex.git
+RUN git clone https://github.com/NVIDIA/apex.git && cd apex && git checkout 0c2c6eea6556b208d1a8711197efc94899e754e1
 WORKDIR /tmp/apex_install/apex
 RUN python3 -m pip install --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 WORKDIR /
+
+# Check to make sure python works from the command line
+RUN python

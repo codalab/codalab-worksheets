@@ -106,6 +106,7 @@ RunState = namedtuple(
         'cpu_usage',  # float
         'memory_usage',  # float
         'bundle_profile_stats',  # dict
+        'paths_to_remove',  # list[str]. Stores paths to be removed after the worker run.
     ],
 )
 
@@ -159,7 +160,7 @@ class RunStateMachine(StateTransitioner):
 
     def __init__(
         self,
-        docker_image_manager,  # Component to request docker images from
+        image_manager,  # Component to request docker images from
         dependency_manager,  # Component to request dependency downloads from
         worker_docker_network,  # Docker network to add all bundles to
         docker_network_internal,  # Docker network to add non-net connected bundles to
@@ -168,6 +169,7 @@ class RunStateMachine(StateTransitioner):
         upload_bundle_callback,  # Function to call to upload bundle results to the server
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
+        shared_memory_size_gb,  # Shared memory size for the run container (in GB)
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -179,10 +181,11 @@ class RunStateMachine(StateTransitioner):
         self.add_terminal(RunStage.RESTAGED)
 
         self.dependency_manager = dependency_manager
-        self.docker_image_manager = docker_image_manager
+        self.image_manager = image_manager
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
+        # todo aditya: docker_runtime will be None if the worker is a singularity worker. handle this.
         self.docker_runtime = docker_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
@@ -193,7 +196,7 @@ class RunStateMachine(StateTransitioner):
         self.upload_bundle_callback = upload_bundle_callback
         self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
-        self.paths_to_remove = []
+        self.shared_memory_size_gb = shared_memory_size_gb
 
     def stop(self):
         for uuid in self.disk_utilization.keys():
@@ -277,7 +280,7 @@ class RunStateMachine(StateTransitioner):
 
         # get the docker image
         docker_image = run_state.resources.docker_image
-        image_state = self.docker_image_manager.get(docker_image)
+        image_state = self.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image %s %s' % (docker_image, image_state.message)
@@ -354,7 +357,9 @@ class RunStateMachine(StateTransitioner):
                             parent_path=os.path.join(dependency_path, child),
                         )
                     )
-                    self.paths_to_remove.append(child_path)
+                    run_state = run_state._replace(
+                        paths_to_remove=(run_state.paths_to_remove or []) + [child_path]
+                    )
             else:
                 to_mount.append(
                     DependencyToMount(
@@ -366,11 +371,14 @@ class RunStateMachine(StateTransitioner):
 
                 first_element_of_path = Path(dep.child_path).parts[0]
                 if first_element_of_path == RunStateMachine._ROOT:
-                    self.paths_to_remove.append(full_child_path)
+                    run_state = run_state._replace(
+                        paths_to_remove=(run_state.paths_to_remove or []) + [full_child_path]
+                    )
                 else:
                     # child_path can be a nested path, so later remove everything from the first element of the path
-                    self.paths_to_remove.append(
-                        os.path.join(run_state.bundle_path, first_element_of_path)
+                    path_to_remove = os.path.join(run_state.bundle_path, first_element_of_path)
+                    run_state = run_state._replace(
+                        paths_to_remove=(run_state.paths_to_remove or []) + [path_to_remove]
                     )
             for dependency in to_mount:
                 try:
@@ -403,6 +411,7 @@ class RunStateMachine(StateTransitioner):
                 gpuset=gpuset,
                 memory_bytes=run_state.resources.memory,
                 runtime=self.docker_runtime,
+                shared_memory_size_gb=self.shared_memory_size_gb,
             )
             self.worker_docker_network.connect(container)
         except docker_utils.DockerUserErrorException as e:
@@ -416,14 +425,14 @@ class RunStateMachine(StateTransitioner):
             )
             return run_state._replace(stage=RunStage.CLEANING_UP, failure_message=message)
         except Exception as e:
-            message = 'Cannot start Docker container: {}'.format(e)
+            message = 'Cannot start container: {}'.format(e)
             logger.error(message)
             logger.error(traceback.format_exc())
             raise
 
         return run_state._replace(
             stage=RunStage.RUNNING,
-            run_status='Running job in Docker container',
+            run_status='Running job in container',
             container_id=container.id,
             container=container,
             docker_image=image_state.digest,
@@ -607,9 +616,9 @@ class RunStateMachine(StateTransitioner):
                 self.dependency_manager.release(run_state.bundle.uuid, dep_key)
 
         # Clean up dependencies paths
-        for path in self.paths_to_remove:
+        for path in run_state.paths_to_remove or []:
             remove_path_no_fail(path)
-        self.paths_to_remove = []
+        run_state = run_state._replace(paths_to_remove=[])
 
         if run_state.is_restaged:
             log_bundle_transition(

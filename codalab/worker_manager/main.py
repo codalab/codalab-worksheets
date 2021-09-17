@@ -6,7 +6,7 @@ import argparse
 import logging
 from .aws_batch_worker_manager import AWSBatchWorkerManager
 from .azure_batch_worker_manager import AzureBatchWorkerManager
-from .gcp_batch_worker_manager import GCPBatchWorkerManager
+from .kubernetes_worker_manager import KubernetesWorkerManager
 from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 
 
@@ -71,6 +71,12 @@ def main():
         type=int,
     )
     parser.add_argument(
+        '--worker-download-dependencies-max-retries',
+        type=int,
+        default=3,
+        help='The number of times a CodaLab worker will retry downloading dependencies after a failure (defaults to 3).',
+    )
+    parser.add_argument(
         '--worker-checkin-frequency-seconds',
         type=int,
         help='If specified, the CodaLab worker will wait this many seconds between check-ins',
@@ -103,6 +109,11 @@ def main():
     parser.add_argument(
         '--worker-executable', default="cl-worker", help="The CodaLab worker executable to run."
     )
+    parser.add_argument(
+        '--worker-shared-memory-size-gb',
+        type=int,
+        help="The shared memory size in GB of the run container started by the CodaLab Workers.",
+    )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
         description='Which worker manager to run (AWS Batch etc.)',
@@ -119,7 +130,7 @@ def main():
     worker_manager_types = {
         AWSBatchWorkerManager.NAME: AWSBatchWorkerManager,
         AzureBatchWorkerManager.NAME: AzureBatchWorkerManager,
-        GCPBatchWorkerManager.NAME: GCPBatchWorkerManager,
+        KubernetesWorkerManager.NAME: KubernetesWorkerManager,
         SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
     }
     for worker_manager_name, worker_manager_type in worker_manager_types.items():

@@ -1,10 +1,12 @@
 from contextlib import closing
 from io import BytesIO, TextIOWrapper
 import gzip
+import logging
 import os
 import shutil
 import subprocess
 import bz2
+import hashlib
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
@@ -170,16 +172,23 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     #             raise UsageError('Archive member extracts outside the directory.')
     #         zf.extract(member, directory_path)
 
-    def do_unzip(filename):
-        exitcode = subprocess.call(['unzip', '-q', filename, '-d', directory_path])
-        if exitcode != 0:
-            raise UsageError('Invalid archive upload. ')
-
     # We have to save fileobj to a temporary file, because unzip doesn't accept input from standard input.
     with tempfile.NamedTemporaryFile() as f:
         shutil.copyfileobj(fileobj, f)
-        f.seek(0)
-        do_unzip(f.name)
+        f.flush()
+        proc = subprocess.Popen(
+            ['unzip', '-q', f.name, '-d', directory_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        exitcode = proc.wait()
+        if exitcode != 0:
+            logging.error(
+                "Invalid archive upload: failed to unzip .zip file. stderr: <%s>. stdout: <%s>.",
+                proc.stderr.read() if proc.stderr is not None else "",
+                proc.stdout.read() if proc.stdout is not None else "",
+            )
+            raise UsageError('Invalid archive upload: failed to unzip .zip file.')
 
 
 class OpenIndexedArchiveFile(object):
@@ -384,10 +393,16 @@ def get_file_size(file_path):
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
     if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
-        # If no archive subpath is specified for a .tar.gz or .gz file, get the compressed size of the entire file.
+        # If no archive subpath is specified for a .tar.gz or .gz file, get the uncompressed size of the entire file,
+        # or the compressed size of the entire directory.
         if not linked_bundle_path.archive_subpath:
-            filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-            return filesystem.size(linked_bundle_path.bundle_path)
+            if linked_bundle_path.is_archive_dir:
+                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+                return filesystem.size(linked_bundle_path.bundle_path)
+            else:
+                with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
+                    fileobj.seek(0, os.SEEK_END)
+                    return fileobj.tell()
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
@@ -474,7 +489,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 lines = tail_lines
         else:
             try:
-                lines = fileobj.readlines()
+                lines = fileobj.read().splitlines(True)
             except UnicodeDecodeError:
                 return BINARY_PLACEHOLDER
             ensure_ends_with_newline(lines)
@@ -562,3 +577,15 @@ def path_is_parent(parent_path, child_path):
     # the parent path will regularize the path name in the same way as the
     # comparison that deals with both paths, removing any trailing path separator.
     return os.path.commonpath([parent_path]) == os.path.commonpath([parent_path, child_path])
+
+
+def sha256(file: str) -> str:
+    """
+    Return the sha256 of the contents of the given file.
+    """
+    sha256_hash = hashlib.sha256()
+    with open(file, "rb") as f:
+        # Read and update hash string value in blocks of 4K -- good for large files
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()

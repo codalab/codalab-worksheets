@@ -289,7 +289,7 @@ class Worksheet extends React.Component {
         const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
         let toastMsg =
             (command in cmdMsgMap
-                ? count + ' bundles ' + cmdMsgMap[command][state]
+                ? count + (count === 1 ? ' bundle ' : ' bundles ') + cmdMsgMap[command][state]
                 : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
             (state === 0 ? '...' : '!');
         return toastMsg;
@@ -309,6 +309,7 @@ class Worksheet extends React.Component {
             closeOnClick: true,
             pauseOnHover: false,
             draggable: true,
+            autoClose: false,
         });
         executeCommand(
             buildTerminalCommand([
@@ -520,8 +521,8 @@ class Worksheet extends React.Component {
             actualData['after_sort_key'] = after_sort_key;
         } else {
             // If no location for the insertion is specified,
-            // insert the new item at the top of the worksheet in default.
-            actualData['after_sort_key'] = -1;
+            // insert the new item at the top of the worksheet by default.
+            actualData['after_sort_key'] = 0;
         }
         actualData['item_type'] = 'bundle';
         const callback = () => {
@@ -690,26 +691,25 @@ class Worksheet extends React.Component {
 
         // Make sure that the screen doesn't scroll when the user normally press j / k,
         // until the target element is completely not on the screen
+        function isOnScreen(element) {
+            if (element.offset() === undefined) return false;
+            let elementOffsetTop = element.offset().top;
+            let elementHeight = element.height();
+            let screenScrollTop = $(window).scrollTop();
+            let screenHeight = $(window).height();
+            // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
+            // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
+            let scrollIsAboveElement =
+                elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
+            let elementIsVisibleOnScreen = screenScrollTop + screenHeight - elementOffsetTop >= 0;
+            return scrollIsAboveElement && elementIsVisibleOnScreen;
+        }
         if (shouldScroll) {
             const element =
                 $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
                     ? $(`#codalab-worksheet-item-${index}`)
                     : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
 
-            function isOnScreen(element) {
-                if (element.offset() === undefined) return false;
-                let elementOffsetTop = element.offset().top;
-                let elementHeight = element.height();
-                let screenScrollTop = $(window).scrollTop();
-                let screenHeight = $(window).height();
-                // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
-                // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
-                let scrollIsAboveElement =
-                    elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
-                let elementIsVisibleOnScreen =
-                    screenScrollTop + screenHeight - elementOffsetTop >= 0;
-                return scrollIsAboveElement && elementIsVisibleOnScreen;
-            }
             shouldScroll = !isOnScreen(element);
         }
 
@@ -752,9 +752,7 @@ class Worksheet extends React.Component {
         // A protection mechanism to avoid possible error
         if (index >= info.blocks.length) {
             index = info.blocks.length - 1;
-            if (subIndex >= info.blocks[index].length || 1) {
-                subIndex = 0;
-            }
+            subIndex = 0;
         }
 
         // Change the focus - triggers updating of all descendants.

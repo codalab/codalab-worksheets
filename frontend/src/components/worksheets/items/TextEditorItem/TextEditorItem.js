@@ -86,7 +86,7 @@ class TextEditorItem extends React.Component<{
             data['ids'] = ids;
         }
         const callback = () => {
-            const moveIndex = true ? mode === 'create' : false;
+            const moveIndex = mode === 'create';
             const param = { moveIndex };
             closeEditor();
             reloadWorksheet(undefined, undefined, param);

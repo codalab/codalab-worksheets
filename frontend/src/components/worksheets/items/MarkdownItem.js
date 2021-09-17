@@ -185,7 +185,7 @@ class MarkdownItem extends React.Component {
         // Replace math (e.g., $x^2$ or $$x^2$$) with placeholder so that it
         // doesn't interfere with Markdown.
         var newText = '';
-        while (true) {
+        for (;;) {
             // Figure out next block of math from current position.
             // Example:
             //   0123456 [indices]

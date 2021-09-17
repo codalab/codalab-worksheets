@@ -334,7 +334,7 @@ export class FileBrowserItem extends React.Component<{
                     onClick={() => this.props.updateFileBrowser(file_location)}
                 >
                     <span className='glyphicon-folder-open glyphicon' alt='More' />
-                    <button class='link' target='_blank' rel='noopener noreferrer'>
+                    <button className='link' target='_blank' rel='noopener noreferrer'>
                         {this.props.index}
                     </button>
                     <span className='pull-right'>{size}</span>
@@ -421,7 +421,7 @@ class FileBrowserItemLite extends React.Component<{
                     <TableCell>
                         <div style={rowCenter}>
                             <FolderIcon style={iconStyle} />
-                            <button class='link' target='_blank' rel='noopener noreferrer'>
+                            <button className='link' target='_blank' rel='noopener noreferrer'>
                                 {this.props.index}
                             </button>
                         </div>

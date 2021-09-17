@@ -45,7 +45,7 @@ class Login extends React.Component {
                 <SubHeader title='Sign In' />
                 <ContentWrapper>
                     {from !== '/' && <p>You must log in to view the page at {from}</p>}
-                    {error && <div class='alert alert-error'>{error}</div>}
+                    {error && <div className='alert alert-error'>{error}</div>}
                     <form className='login' method='POST' action='/rest/account/login'>
                         <div className='form-group'>
                             <label htmlFor='id_login'>Login:</label>
@@ -88,7 +88,7 @@ class Login extends React.Component {
                         <NavLink to='/account/reset'>Forgot your password?</NavLink>
                     </p>
                     <button
-                        class='link'
+                        className='link'
                         onClick={(event) => {
                             alert(
                                 'Please log in and navigate to your dashboard to resend confirmation email.',

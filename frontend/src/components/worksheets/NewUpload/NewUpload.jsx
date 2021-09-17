@@ -23,8 +23,7 @@ class NewUpload extends React.Component<{
     state = {
         /* Whether the upload is in progress */
         uploading: false,
-        numeratorComplete: 0,
-        denominatorComplete: 0,
+        percentComplete: 0,
     };
 
     inputFolder = React.createRef();
@@ -79,7 +78,7 @@ class NewUpload extends React.Component<{
     }
 
     asyncUploadFiles = async (files) => {
-        const { worksheetUUID, after_sort_key,focusedItem } = this.props;
+        const { worksheetUUID, after_sort_key, focusedItem } = this.props;
         const { name, description } = this.state;
         this.setState({
             uploading: true,
@@ -94,7 +93,7 @@ class NewUpload extends React.Component<{
             }
             // current focused item is an image block
             // pass after_image to the backend to make the backend add a blank line after the image block in the worksheet source to separate the newly uploaded files from the image block
-            if(focusedItem && focusedItem.mode==='image_block'){
+            if (focusedItem && focusedItem.mode === 'image_block') {
                 url += `&after_image=1`;
             }
             const errorHandler = (error) => {
@@ -166,10 +165,10 @@ class NewUpload extends React.Component<{
         let url = `/rest/bundles?worksheet=${worksheetUUID}`;
         url += `&after_sort_key=${isNaN(after_sort_key) ? -1 : after_sort_key}`;
 
-        if(focusedItem.mode==='image_block'){
+        if (focusedItem && focusedItem.mode === 'image_block') {
             url += `&after_image=1`;
         }
-        
+
         let zip = new JSZip();
         [...files].map((file) => {
             zip.file(file.webkitRelativePath, file);
@@ -217,8 +216,7 @@ class NewUpload extends React.Component<{
 
     render() {
         const { classes } = this.props;
-        const { numeratorComplete, denominatorComplete, uploading } = this.state;
-        const progressbarVal = parseInt((numeratorComplete / denominatorComplete) * 100) || 0;
+        const { percentComplete, uploading } = this.state;
 
         return (
             <React.Fragment>
@@ -245,8 +243,8 @@ class NewUpload extends React.Component<{
                     <CircularProgressbar
                         className={classes.progress}
                         variant='determinate'
-                        value={progressbarVal}
-                        text={`${progressbarVal}% uploaded`}
+                        value={percentComplete}
+                        text={`${percentComplete}% uploaded`}
                         styles={buildStyles({
                             textSize: '12px',
                         })}

@@ -800,17 +800,7 @@ Object {
           <li
             class="MuiButtonBase-root-141 MuiListItem-root-225 MuiListItem-default-228 MuiListItem-gutters-233 MuiListItem-button-234 MuiMenuItem-root-222 WithStyles-MenuItem--root-221 MuiMenuItem-gutters-223"
             role="menuitem"
-            style="position: absolute; overflow: hidden; height: 1px; width: 1px; margin: -1px; padding: 0px; border: 0px;"
             tabindex="0"
-          >
-            <span
-              class="MuiTouchRipple-root-237"
-            />
-          </li>
-          <li
-            class="MuiButtonBase-root-141 MuiListItem-root-225 MuiListItem-default-228 MuiListItem-gutters-233 MuiListItem-button-234 MuiMenuItem-root-222 WithStyles-MenuItem--root-221 MuiMenuItem-gutters-223"
-            role="menuitem"
-            tabindex="-1"
           >
             <label
               class="ActionButtons-uploadLabel-114"
