@@ -4,6 +4,8 @@ import tempfile
 import shutil
 from . import pyjson
 
+from filelock import Timeout, SoftFileLock
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,30 @@ class JsonStateCommitter(BaseStateCommitter):
                 f.write(pyjson.dumps(state).encode())
                 f.flush()
                 shutil.copyfile(self.temp_file, self._state_file)
+            finally:
+                try:
+                    os.unlink(self.temp_file)
+                except FileNotFoundError:
+                    logger.error(
+                        "Problem occurred in deleting temp file {} via os.unlink".format(
+                            self.temp_file
+                        )
+                    )
+
+
+class JsonStateCommitterWithFileLock(JsonStateCommitter):
+    def __init__(self, json_path):
+        super().__init__(json_path)
+        self._file_lock = SoftFileLock(f"{json_path}.lock", timeout=1)
+
+    def commit(self, state):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            try:
+                self.temp_file = f.name
+                f.write(pyjson.dumps(state).encode())
+                f.flush()
+                with self._file_lock:
+                    shutil.copyfile(self.temp_file, self._state_file)
             finally:
                 try:
                     os.unlink(self.temp_file)
