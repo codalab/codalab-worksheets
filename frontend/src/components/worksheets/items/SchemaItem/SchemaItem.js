@@ -128,11 +128,36 @@ class SchemaItem extends React.Component<{
         const { rows } = this.state;
         let copiedRows = [...rows];
         // replace new line with space, remove single quotes since we use that to quote fields with space when saving
-        copiedRows.splice(idx, 1, {
-            ...rows[idx],
-            [key]: e.target.value.replace(/\n/g, ' ').replace("'", ''),
-        });
+        copiedRows.splice(
+            idx,
+            1,
+            this.autofillTypes({
+                ...rows[idx],
+                [key]: e.target.value.replace(/\n/g, ' ').replace("'", ''),
+            }),
+        );
         this.setState({ rows: [...copiedRows] });
+    };
+
+    autofillTypes = (row) => {
+        // Do not fill if how to render is defined.
+        if (row['post-processor'] !== null) {
+            return row;
+        }
+
+        switch (row['generalized-path'].toLowerCase()) {
+            case 'time':
+                row['post-processor'] = 'duration';
+                break;
+            case 'size':
+                row['post-processor'] = 'size';
+                break;
+            case 'date':
+                row['post-processor'] = 'date';
+                break;
+        }
+
+        return row;
     };
 
     changeSchemaName = (e) => {
