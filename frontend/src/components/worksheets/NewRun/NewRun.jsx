@@ -506,20 +506,6 @@ class NewRun extends React.Component<
                             />
                             <Grid item xs={12}>
                                 <ConfigSwitchInput
-                                    value={this.state.networkAccess}
-                                    onValueChange={(value) =>
-                                        this.setState({ networkAccess: value })
-                                    }
-                                />
-                                <ConfigLabel
-                                    label='Network Access'
-                                    tooltip='Whether the bundle can open any external
-                                    network ports.'
-                                    inline
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <ConfigSwitchInput
                                     value={this.state.failedDependencies}
                                     onValueChange={(value) =>
                                         this.setState({ failedDependencies: value })
