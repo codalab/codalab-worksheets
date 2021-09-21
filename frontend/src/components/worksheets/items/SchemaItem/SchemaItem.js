@@ -25,6 +25,7 @@ import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { getAfterSortKey } from '../../../../util/worksheet_utils';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import Grid from '@material-ui/core/Grid';
+import { DEFAULT_POST_PROCESSOR } from '../../../../constants';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -147,17 +148,8 @@ class SchemaItem extends React.Component<{
             return row;
         }
 
-        switch (row['generalized-path'].toLowerCase()) {
-            case 'time':
-                row['post-processor'] = 'duration';
-                break;
-            case 'size':
-                row['post-processor'] = 'size';
-                break;
-            case 'date':
-                row['post-processor'] = 'date';
-                break;
-        }
+        row['post-processor'] =
+            DEFAULT_POST_PROCESSOR[row['generalized-path'].toLowerCase()] ?? row['post-processor'];
 
         return row;
     };
