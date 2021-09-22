@@ -117,7 +117,7 @@ class SchemaItem extends React.Component<{
         const schemaHeaders = schemaItem.header;
         let newRow = { from_schema_name: schemaItem.schema_name };
         schemaHeaders.forEach((header) => {
-            // Set post-processor to null for new rows so we can tell if a row has been autofilled.
+            // Set post-processor to null for new, unedited rows to indicate that the row can be autofilled.
             // This also makes new row default values consistent with the first row.
             newRow[header] = header === 'post-processor' ? null : '';
         });
