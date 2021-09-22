@@ -129,11 +129,7 @@ services:
       - rest-server
 
   azurite:
-    # Use a temporary fork of Azurite that implements rscc, rscd, rsce, rscl, rsct query parameter support
-    # in SAS tokens (https://github.com/Azure/Azurite/pull/998).
-    # TODO (Ashwin): Once this PR is merged and release, use the upstream Microsoft Azurite image again.
-    image: llightex/azurite@sha256:e89a564fde7cb4506b6138bb62e97bce7a305d6493e9899ce6dd227205b72e28
-    # image: mcr.microsoft.com/azure-storage/azurite:3.14.0
+    image: mcr.microsoft.com/azure-storage/azurite:3.14.2
     command: "azurite --blobHost 0.0.0.0"
     networks:
       - rest-server
@@ -159,13 +155,13 @@ services:
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --job-queue ${CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE}
       --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
       --job-definition-name ${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
       --cpus ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
-      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
     <<: *codalab-base
     <<: *codalab-server
     networks:
@@ -186,6 +182,7 @@ services:
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --job-queue ${CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE}
       --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
@@ -193,7 +190,6 @@ services:
       --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
       --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
-      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB}
     <<: *codalab-base
     <<: *codalab-server
     networks:
@@ -214,6 +210,7 @@ services:
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
       --account-key ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
@@ -222,7 +219,6 @@ services:
       --log-container-url ${CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL}
       --cpus ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
-      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
     <<: *codalab-base
     <<: *codalab-server
     networks:
@@ -243,6 +239,7 @@ services:
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
       --account-key ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
@@ -252,7 +249,6 @@ services:
       --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
       --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
-      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB}
     <<: *codalab-base
     <<: *codalab-server
     networks:
@@ -275,13 +271,13 @@ services:
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
       --worker-tag ${CODALAB_WORKER_MANAGER_CPU_TAG}
       --worker-tag-exclusive
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
       ${CODALAB_WORKER_MANAGER_TYPE}
       --cluster-host ${CODALAB_WORKER_MANAGER_KUBERNETES_CLUSTER_HOST}
       --auth-token ${CODALAB_WORKER_MANAGER_KUBERNETES_AUTH_TOKEN}
       --cert-path ${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}
       --cpus ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
-      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
     <<: *codalab-base
     <<: *codalab-server
     volumes:
@@ -305,6 +301,7 @@ services:
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
       --worker-tag ${CODALAB_WORKER_MANAGER_GPU_TAG}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
       --worker-tag-exclusive
       ${CODALAB_WORKER_MANAGER_TYPE}
       --cluster-host ${CODALAB_WORKER_MANAGER_KUBERNETES_CLUSTER_HOST}
@@ -313,7 +310,6 @@ services:
       --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
       --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
-      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB}
     <<: *codalab-base
     <<: *codalab-server
     volumes:

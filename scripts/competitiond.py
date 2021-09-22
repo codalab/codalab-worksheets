@@ -702,9 +702,11 @@ class Competition(object):
                         # within bounds of reason (since submitter may want to
                         # keep some of the metadata private).
                         'description': meta.get('description', None)
-                        or submit_bundle['metadata']['description'],  # Allow description override
+                        or submit_bundle['metadata'].get(
+                            'description', ''
+                        ),  # Allow description override
                         'public': self._is_publicly_readable(submit_bundle),
-                        'user_name': submit_bundle['owner']['user_name'],
+                        'user_name': submit_bundle['owner'].get('user_name', ''),
                         'num_total_submissions': num_total_submissions[
                             submit_bundle['owner']['id']
                         ],
