@@ -73,6 +73,9 @@ class Worksheet extends React.Component {
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
+            newTextIndex: -1, // Which index new text to be on (-1 is at the beginning).
+            newSchemaIndex: -1, // Which index new schema to be on (-1 is at the beginning).
+            newRunIndex: -1, // Which index new run to be on (-1 is at the beginning).
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
             focusedBundleUuidList: [], // Uuid of the focused bundle and that of all bundles after it
@@ -760,9 +763,6 @@ class Worksheet extends React.Component {
             focusIndex: index,
             subFocusIndex: subIndex,
             focusedBundleUuidList: focusedBundleUuidList,
-            showNewRun: false,
-            showNewText: false,
-            showNewSchema: false,
             uploadAnchor: null,
             showNewRerun: false,
         });
@@ -987,7 +987,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: 0 }, 'fast');
                         }
-                        this.setState({ showNewText: true });
+                        this.setState({ showNewText: true, newTextIndex: this.state.focusIndex });
                     }.bind(this),
                     'keyup',
                 );
@@ -1012,7 +1012,7 @@ class Worksheet extends React.Component {
                         if (this.state.focusIndex < 0) {
                             $('html, body').animate({ scrollTop: 0 }, 'fast');
                         }
-                        this.setState({ showNewRun: true });
+                        this.setState({ showNewRun: true, newRunIndex: this.state.focusIndex });
                     }.bind(this),
                     'keyup',
                 );
@@ -1884,6 +1884,9 @@ class Worksheet extends React.Component {
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
                 showNewSchema={this.state.showNewSchema}
+                newRunIndex={this.state.newRunIndex}
+                newTextIndex={this.state.newTextIndex}
+                newSchemaIndex={this.state.newSchemaIndex}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
@@ -1923,9 +1926,18 @@ class Worksheet extends React.Component {
                     editButtons={editButtons}
                     anchorEl={anchorEl}
                     setAnchorEl={(e) => this.setState({ anchorEl: e })}
-                    onShowNewRun={() => this.setState({ showNewRun: true })}
-                    onShowNewText={() => this.setState({ showNewText: true })}
-                    onShowNewSchema={() => this.setState({ showNewSchema: true })}
+                    onShowNewRun={() =>
+                        this.setState({ showNewRun: true, newRunIndex: this.state.focusIndex })
+                    }
+                    onShowNewText={() =>
+                        this.setState({ showNewText: true, newTextIndex: this.state.focusIndex })
+                    }
+                    onShowNewSchema={() =>
+                        this.setState({
+                            showNewSchema: true,
+                            newSchemaIndex: this.state.focusIndex,
+                        })
+                    }
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {
