@@ -274,10 +274,11 @@ class WorksheetItemList extends React.Component {
                     );
                 }.bind(this),
             );
+
             items_display = (
                 <>
-                    {/* Show new runs/text at the top of worksheet when no blocks are focused
-                    {this.props.showNewText && !focusedItem && (
+                    {/* Show new runs/text at the top of worksheet when no blocks are focused */}
+                    {this.props.showNewText && this.props.newTextIndex === -1 && (
                         <TextEditorItem
                             mode='create'
                             after_sort_key={-1}
@@ -288,7 +289,7 @@ class WorksheetItemList extends React.Component {
                             }}
                         />
                     )}
-                    {this.props.showNewRun && !focusedItem && (
+                    {this.props.showNewRun && this.props.newRunIndex === -1 && (
                         <div className={this.props.classes.insertBox}>
                             <NewRun
                                 after_sort_key={-1}
@@ -300,7 +301,7 @@ class WorksheetItemList extends React.Component {
                             />
                         </div>
                     )}
-                    {this.props.showNewSchema && !focusedItem && (
+                    {this.props.showNewSchema && this.props.newSchemaIndex === -1 && !focusedItem && (
                         <SchemaItem
                             after_sort_key={-1}
                             ws={this.props.ws}
@@ -326,7 +327,7 @@ class WorksheetItemList extends React.Component {
                             focusIndex={this.props.focusIndex}
                             subFocusIndex={this.props.subFocusIndex}
                         />
-                    )} */}
+                    )}
                     {worksheet_items}
                     <NewUpload
                         key={this.state.newUploadKey}
