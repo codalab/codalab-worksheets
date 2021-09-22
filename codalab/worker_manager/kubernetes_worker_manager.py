@@ -40,6 +40,9 @@ class KubernetesWorkerManager(WorkerManager):
             help='Path to the SSL cert for the Kubernetes cluster',
             required=True,
         )
+        subparser.add_argument(
+            '--cache', action='store_true', help='Whether to print out extra information'
+        )
 
         # Job-related arguments
         subparser.add_argument(
@@ -72,6 +75,8 @@ class KubernetesWorkerManager(WorkerManager):
         self.k8_client: client.ApiClient = client.ApiClient(configuration)
         self.k8_api: client.CoreV1Api = client.CoreV1Api(self.k8_client)
 
+        self.cache = args.cache
+
     def get_worker_jobs(self) -> List[WorkerJob]:
         try:
             # Fetch the running pods
@@ -92,8 +97,27 @@ class KubernetesWorkerManager(WorkerManager):
         worker_id: str = uuid.uuid4().hex
         worker_name: str = f'cl-worker-{worker_id}'
         work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
-        command: List[str] = self.build_command(worker_id, work_dir)
-        worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
+
+        from_work_dir = "/exports"
+        to_work_dir = "/mnt/scratch/bundles/codalab-worker-scratch"
+
+        # First time
+        if self.cache:
+            print("=============== Caching...=============== ")
+            work_dir = from_work_dir
+            command: List[str] = self.build_command(worker_id, work_dir)
+        else:
+            # Every time after
+            work_dir = to_work_dir
+            command: List[str] = self.build_command(worker_id, work_dir)
+            cp_command = f"cp -an {from_work_dir}/. {to_work_dir};"
+            command.insert(0, cp_command)
+            mkdir_command = f"mkdir -p {to_work_dir};"
+            command.insert(0, mkdir_command)
+
+        # worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
+        worker_image: str = 'codalab/worker:shm'
+        print(f"Using worker image: {worker_image} and pvc's at {work_dir}...")
 
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
@@ -104,7 +128,8 @@ class KubernetesWorkerManager(WorkerManager):
                     {
                         'name': f'{worker_name}-container',
                         'image': worker_image,
-                        'command': command,
+                        'command': ["/bin/sh", "-c"],
+                        'args': [' '.join(command)],
                         'securityContext': {'runAsUser': 0},  # Run as root
                         'env': [
                             {'name': 'CODALAB_USERNAME', 'value': self.codalab_username},
@@ -119,13 +144,15 @@ class KubernetesWorkerManager(WorkerManager):
                         },
                         'volumeMounts': [
                             {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
-                            {'name': 'workdir', 'mountPath': work_dir},
+                            {'name': 'workdir', 'mountPath': to_work_dir},
+                            {"name": "nfs", "mountPath": from_work_dir},
                         ],
                     }
                 ],
                 'volumes': [
                     {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
-                    {'name': 'workdir', 'hostPath': {'path': work_dir}},
+                    {'name': 'workdir', 'hostPath': {'path': to_work_dir}},
+                    {"name": "nfs", "persistentVolumeClaim": {"claimName": "nfs-claim"}},
                 ],
                 'restartPolicy': 'Never',  # Only run a job once
             },
