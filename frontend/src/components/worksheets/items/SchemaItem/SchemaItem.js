@@ -143,7 +143,8 @@ class SchemaItem extends React.Component<{
     };
 
     autofillTypes = (row) => {
-        // Do not fill if how to render is defined.
+        // Only autofill if how to render is null.
+        // Null means the post-processor has never been manually changed or autofilled.
         if (row['post-processor'] !== null) {
             return row;
         }
