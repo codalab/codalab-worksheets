@@ -69,7 +69,7 @@ class Bundle extends React.Component<
         };
 
         let errorHandler = (error) => {
-            if (error.response.status === 404) {
+            if (error.response && error.response.status === 404) {
                 this.setState({
                     fileContents: null,
                     stdout: null,
