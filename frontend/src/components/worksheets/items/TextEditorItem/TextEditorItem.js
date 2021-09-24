@@ -121,6 +121,9 @@ class TextEditorItem extends React.Component<{
                     autoFocus={true}
                     multiline
                 />
+                <Button variant='text' color='primary' onClick={this.props.closeEditor}>
+                    Cancel
+                </Button>
                 <Button variant='text' color='primary' onClick={this.saveText}>
                     Save
                 </Button>
