@@ -1,3 +1,4 @@
+from collections import defaultdict
 import copy
 import datetime
 import logging
@@ -11,8 +12,6 @@ import traceback
 from typing import List, Sequence
 
 from apache_beam.io.filesystems import FileSystems
-from collections import defaultdict
-from typing import List
 
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
