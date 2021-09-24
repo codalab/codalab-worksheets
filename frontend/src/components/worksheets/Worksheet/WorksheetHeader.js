@@ -46,7 +46,7 @@ export default ({
     toggleWorksheetSize,
     showBundleContent,
 }) => (
-    <Sticky top={6} innerZ={1059}>
+    <Sticky top='#codalab-app-bar' innerZ={1059}>
         <div className='worksheet_content' style={styles}>
             <div className='header-row'>
                 <Grid container direction='column'>

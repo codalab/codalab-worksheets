@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.5.50_
+_version 1.1.2_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -543,6 +543,15 @@ Query parameters:
   Default is 0, meaning to fetch the entire file.
 - `max_line_length`: maximum number of characters to fetch from each line,
   if either `head` or `tail` is specified. Default is 128.
+- `support_redirect`: Set to 1 if the client supports bypassing the server
+  and redirecting to another URL (such as Blob Storage). If so, the Target-Type and
+  X-CodaLab-Target-Size headers will not be present in the response.
+
+  If this endpoint is called from a web browser (`Referer` header is set), this parameter
+  defaults to 1. Otherwise, it defaults to 0, meant for compatibility
+  with older clients / CLI versions that depend on the Target-Type and
+  X-CodaLab-Target-Size headers. In a future release, this parameter will always
+  be set to 1.
 
 HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
@@ -585,6 +594,15 @@ Query parameters:
   Default is 0, meaning to fetch the entire file.
 - `max_line_length`: maximum number of characters to fetch from each line,
   if either `head` or `tail` is specified. Default is 128.
+- `support_redirect`: Set to 1 if the client supports bypassing the server
+  and redirecting to another URL (such as Blob Storage). If so, the Target-Type and
+  X-CodaLab-Target-Size headers will not be present in the response.
+
+  If this endpoint is called from a web browser (`Referer` header is set), this parameter
+  defaults to 1. Otherwise, it defaults to 0, meant for compatibility
+  with older clients / CLI versions that depend on the Target-Type and
+  X-CodaLab-Target-Size headers. In a future release, this parameter will always
+  be set to 1.
 
 HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`

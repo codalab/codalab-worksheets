@@ -35,7 +35,13 @@ DEFAULT_SERVICES = [
     'init',
 ]
 
-ALL_SERVICES = DEFAULT_SERVICES + ['azurite', 'monitor', 'worker-manager-cpu', 'worker-manager-gpu']
+ALL_SERVICES = DEFAULT_SERVICES + [
+    'azurite',
+    'monitor',
+    'worker-manager-cpu',
+    'worker-manager-gpu',
+    'worker-singularity',
+]
 
 ALL_NO_SERVICES = [
     'no-' + service for service in ALL_SERVICES
@@ -52,6 +58,7 @@ SERVICE_TO_IMAGE = {
     'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
+    'worker-singularity': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
@@ -279,8 +286,14 @@ CODALAB_ARGUMENTS = [
     # Worker manager
     CodalabArg(
         name='worker_manager_type',
-        help='Type of worker manager (azure-batch or aws-batch)',
+        help='Type of worker manager (azure-batch, aws-batch or kubernetes)',
         default='azure-batch',
+    ),
+    CodalabArg(
+        name='worker_manager_worker_download_dependencies_max_retries',
+        help='The number of times a CodaLab worker stated by the worker manager '
+        'will retry downloading dependencies after a failure (defaults to 3).',
+        default=3,
     ),
     CodalabArg(
         name='worker_manager_worker_work_dir_prefix',
@@ -338,29 +351,19 @@ CODALAB_ARGUMENTS = [
         help='Azure Batch service url for the Azure Batch worker manager',
     ),
     CodalabArg(
-        name='worker_manager_gcp_project',
+        name='worker_manager_kubernetes_cluster_host',
         type=str,
-        help='GCP project for the GCP Batch worker manager',
+        help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
     ),
     CodalabArg(
-        name='worker_manager_gcp_gke_cluster',
+        name='worker_manager_kubernetes_auth_token',
         type=str,
-        help='Name of the GKE cluster for the GCP Batch worker manager',
+        help='Kubernetes cluster authorization token for the Kubernetes worker manager',
     ),
     CodalabArg(
-        name='worker_manager_gcp_gke_zone',
+        name='worker_manager_kubernetes_cert_path',
         type=str,
-        help='Availability zone of the GKE cluster for the GCP Batch worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_gcp_credentials_path',
-        type=str,
-        help='Path to the GCP service account json file for the GCP Batch worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_gcp_cert_path',
-        type=str,
-        help='Path to the generated SSL cert for the GCP Batch worker manager',
+        help='Path to the generated SSL cert for the Kubernetes worker manager',
     ),
     CodalabArg(
         name='worker_manager_aws_region',
@@ -469,6 +472,12 @@ for worker_manager_type in ['cpu', 'gpu']:
             name='worker_manager_{}_aws_batch_queue'.format(worker_manager_type),
             help='Name of queue to submit {} jobs'.format(worker_manager_type),
             default='codalab-{}'.format(worker_manager_type),
+        ),
+        CodalabArg(
+            name='worker_manager_{}_worker_shared_memory_size_gb'.format(worker_manager_type),
+            help='The shared memory size in GB of the run container started by the CodaLab Workers.',
+            type=int,
+            default=1,
         ),
     ]
 
@@ -933,6 +942,7 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker-shared-file-system')
         else:
             self.bring_up_service('worker')
+        self.bring_up_service('worker-singularity')
 
         self.bring_up_service('monitor')
 
@@ -940,9 +950,9 @@ class CodalabServiceManager(object):
         if self.args.worker_manager_type == 'azure-batch':
             self.bring_up_service('azure-batch-worker-manager-cpu')
             self.bring_up_service('azure-batch-worker-manager-gpu')
-        elif self.args.worker_manager_type == 'gcp-batch':
-            self.bring_up_service('gcp-batch-worker-manager-cpu')
-            self.bring_up_service('gcp-batch-worker-manager-gpu')
+        elif self.args.worker_manager_type == 'kubernetes':
+            self.bring_up_service('kubernetes-worker-manager-cpu')
+            self.bring_up_service('kubernetes-worker-manager-gpu')
         elif self.args.worker_manager_type == 'aws-batch':
             self.bring_up_service('aws-batch-worker-manager-cpu')
             self.bring_up_service('aws-batch-worker-manager-gpu')

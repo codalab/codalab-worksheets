@@ -2,7 +2,7 @@
 Login and signup views.
 Handles create new user accounts and authenticating users.
 """
-from bottle import request, response, template, local, redirect, default_app, get, post
+from bottle import request, response, template, local, redirect, get, post
 import requests
 import os
 from codalab.lib import crypt_util, spec_util
@@ -63,11 +63,6 @@ def do_login():
 
 @post('/account/signup')
 def do_signup():
-    if request.user.is_authenticated:
-        return redirect(
-            default_app().get_url('success', message="You are already logged into your account.")
-        )
-
     success_uri = request.forms.get('success_uri')
     error_uri = request.forms.get('error_uri')
     username = request.forms.get('username')

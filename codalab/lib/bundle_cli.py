@@ -3705,11 +3705,17 @@ class BundleCLI(object):
             )
         for member in group['admins']:
             members.append(
-                {'role': 'admin', 'user': '%s(%s)' % (member['user_name'], member['id'])}
+                {
+                    'role': 'admin',
+                    'user': '%s(%s)' % (member.get('user_name', '[deleted user]'), member['id']),
+                }
             )
         for member in group['members']:
             members.append(
-                {'role': 'member', 'user': '%s(%s)' % (member['user_name'], member['id'])}
+                {
+                    'role': 'member',
+                    'user': '%s(%s)' % (member.get('user_name', '[deleted user]'), member['id']),
+                }
             )
 
         print('Members of group %s(%s):' % (group['name'], group['id']), file=self.stdout)

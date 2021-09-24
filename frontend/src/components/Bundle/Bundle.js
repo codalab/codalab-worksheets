@@ -69,7 +69,7 @@ class Bundle extends React.Component<
         };
 
         let errorHandler = (error) => {
-            if (error.response.status === 404) {
+            if (error.response && error.response.status === 404) {
                 this.setState({
                     fileContents: null,
                     stdout: null,
@@ -355,8 +355,18 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             ),
         );
     }
+
+    rows.push(
+        createRow(
+            bundleInfo,
+            bundleMetadataChanged,
+            'state',
+            <span className={bundleStateClass}>{bundleInfo.state}</span>,
+        ),
+    );
+
     if (bundleInfo.bundle_type === 'run') {
-        if (bundleInfo.state === 'running' && bundleInfo.metadata.run_status !== 'Running')
+        if (bundleInfo.metadata.run_status)
             rows.push(
                 createRow(
                     bundleInfo,
@@ -368,14 +378,6 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
         rows.push(createRow(bundleInfo, bundleMetadataChanged, 'time', bundleInfo.metadata.time));
     }
 
-    rows.push(
-        createRow(
-            bundleInfo,
-            bundleMetadataChanged,
-            'state',
-            <span className={bundleStateClass}>{bundleInfo.state}</span>,
-        ),
-    );
     let bundleHeader;
     // TODO: don't use the fact that there is a bundle-content element in lgoic
     if (document.getElementById('bundle-content')) {

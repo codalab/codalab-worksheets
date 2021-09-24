@@ -106,23 +106,6 @@ class ActionButtons extends React.Component<{
                             open={Boolean(uploadAnchor)}
                             onClose={closeUploadMenu}
                         >
-                            {/* we need to hide the first menuItem
-                            but make it available for accessibility
-                            reference: https://snook.ca/archives/
-                            html_and_css/hiding-content-for-accessibility */}
-                            <StyledMenuItem
-                                key='placeholder'
-                                style={{
-                                    position: 'absolute',
-                                    overflow: 'hidden',
-                                    clip: 'rect(0 0 0 0)',
-                                    height: '1px',
-                                    width: '1px',
-                                    margin: '-1px',
-                                    padding: 0,
-                                    border: 0,
-                                }}
-                            />
                             <StyledMenuItem key='file-upload-item' onClick={closeUploadMenu}>
                                 <label
                                     className={classes.uploadLabel}

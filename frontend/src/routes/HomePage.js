@@ -86,7 +86,7 @@ class HomePage extends React.Component<{
                         content='A collaborative platform for reproducible research.'
                     />
                 </Helmet>
-                 {/** Splash w/ tagline, primary buttons, and video.*/}
+                {/** Splash w/ tagline, primary buttons, and video.*/}
                 <Grid item xs={12} container className={classes.splash}>
                     <Grid item xs={12} container className={classes.outer}>
                         <Grid item xs={12} container className={classes.inner}>
@@ -270,7 +270,7 @@ class HomePage extends React.Component<{
                                         {this.renderTableItem(
                                             'REST API Reference',
                                             'Develop your own application against our REST API.',
-                                            'https://github.com/codalab/codalab-worksheets/blob/master/docs/rest.md',
+                                            'https://codalab-worksheets.readthedocs.io/en/latest/REST-API-Reference',
                                         )}
                                         {this.renderTableItem(
                                             'Execution',

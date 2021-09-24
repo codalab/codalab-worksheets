@@ -53,6 +53,7 @@ class Uploader:
         """Uploads the given source to the bundle store.
         Given arguments are the same as UploadManager.upload_to_bundle_store()"""
         try:
+            # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
             if is_url:
                 assert isinstance(source, str)
@@ -78,7 +79,7 @@ class Uploader:
                     )
 
         except UsageError:
-            if os.path.exists(bundle_path):
+            if FileSystems.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
 

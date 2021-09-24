@@ -1,0 +1,49 @@
+name: Build default worker images
+# Default images are built and pushed when pushed to master, release, and pull request, 
+# and only when the corresponding dockerfiles are changed.
+# This workflow ensures the worker images are up-to-date on Docker Hub.
+on:
+  push:
+    branches: [master]
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
+  release:
+    types: [published]
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
+  pull_request:
+    paths: ["docker_config/dockerfiles/Dockerfile.default-*"]
+
+jobs:
+  build_default:
+    name: Build and push default worker images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [default-cpu, default-gpu]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
+      - run: | 
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo rm -rf /opt/ghc
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - run: python3 codalab_service.py build --version ${VERSION} ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
+        env:
+          CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
+          CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
+          # Set tag to latest if triggered by release,
+          # use the branch name of the PR if triggered by pull request,
+          # "master" if on a push-triggered build
+          VERSION: ${{ (github.event_name == 'release' && 'latest') || github.head_ref || 'master' }}
+          SERVICE: ${{ matrix.service }}
