@@ -135,7 +135,7 @@ bundle_store = Table(
     # Name of environment variable through which the authentication variable from above can be passed to codalab-service to access the bundle store.
     Column('authentication_env', String(255), nullable=True),
 
-    UniqueConstraint('uuid', 'owner_id', name='uix_1'),
+    UniqueConstraint('uuid', name='uix_1'),
 )
 
 
