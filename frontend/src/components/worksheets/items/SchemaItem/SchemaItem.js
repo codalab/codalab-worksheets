@@ -25,6 +25,7 @@ import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { getAfterSortKey } from '../../../../util/worksheet_utils';
 import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
 import Grid from '@material-ui/core/Grid';
+import { DEFAULT_POST_PROCESSOR } from '../../../../constants';
 
 class SchemaItem extends React.Component<{
     worksheetUUID: string,
@@ -116,7 +117,8 @@ class SchemaItem extends React.Component<{
         const schemaHeaders = schemaItem.header;
         let newRow = { from_schema_name: schemaItem.schema_name };
         schemaHeaders.forEach((header) => {
-            newRow[header] = '';
+            // Set post-processor to null for new, unedited rows to indicate that the row can be autofilled.
+            newRow[header] = header === 'post-processor' ? null : '';
         });
         let curRow = [...this.state.rows];
         curRow.splice(idx + 1, 0, newRow);
@@ -128,11 +130,28 @@ class SchemaItem extends React.Component<{
         const { rows } = this.state;
         let copiedRows = [...rows];
         // replace new line with space, remove single quotes since we use that to quote fields with space when saving
-        copiedRows.splice(idx, 1, {
-            ...rows[idx],
-            [key]: e.target.value.replace(/\n/g, ' ').replace("'", ''),
-        });
+        copiedRows.splice(
+            idx,
+            1,
+            this.autofillTypes({
+                ...rows[idx],
+                [key]: e.target.value.replace(/\n/g, ' ').replace("'", ''),
+            }),
+        );
         this.setState({ rows: [...copiedRows] });
+    };
+
+    autofillTypes = (row) => {
+        // Only autofill if the post-processor is null.
+        // Null means the post-processor has never been manually changed or autofilled.
+        if (row['post-processor'] !== null) {
+            return row;
+        }
+
+        row['post-processor'] =
+            DEFAULT_POST_PROCESSOR[row['generalized-path'].toLowerCase()] ?? row['post-processor'];
+
+        return row;
     };
 
     changeSchemaName = (e) => {
