@@ -1219,10 +1219,10 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             })
-            .catch((error) => {
+            .catch(() => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: error,
+                    errorDialogMessage: 'Failed to update run bundles.',
                     showWorksheetContainer: false,
                 });
             });
@@ -1587,11 +1587,12 @@ class Worksheet extends React.Component {
                 this.setState({ updating: false });
                 this.reloadWorksheet(undefined, rawIndex);
             }.bind(this),
-            error: function(error) {
+            error: function() {
                 this.setState({ updating: false, showUpdateProgress: false });
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
-                    errorDialogMessage: error,
+                    errorDialogMessage:
+                        'Failed to save and update the worksheet, please check the syntax and try again.',
                 });
                 if (fromRaw) {
                     this.toggleSourceEditMode(true);
