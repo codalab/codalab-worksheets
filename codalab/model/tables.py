@@ -136,6 +136,8 @@ bundle_store = Table(
     Column('authentication_env', String(255), nullable=True),
 
     UniqueConstraint('uuid', name='uix_1'),
+    Index('bundle_store_name_index', 'name'),
+    Index('bundle_store_owner_index', 'owner_id'),
 )
 
 
