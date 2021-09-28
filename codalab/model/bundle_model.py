@@ -25,6 +25,7 @@ from codalab.common import (
     UsageError,
 )
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
+from codalab.lib.print_util import FileTransferProgress
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
@@ -1086,9 +1087,11 @@ class BundleModel(object):
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:
+                formatted_data_size = FileTransferProgress.format_size(data_size)
+                formatted_disk_left_size = FileTransferProgress.format_size(disk_left)
                 raise UsageError(
                     "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (data_size, disk_left)
+                    % (formatted_data_size, formatted_disk_left_size)
                 )
 
         bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
