@@ -109,7 +109,7 @@ bundle_store = Table(
     # it is the user who created the bundle store.
     Column('owner_id', String(255), nullable=True),
     # Name used to refer to this bundle store from the CLI.
-    Column('name', String(255), nullable=True),
+    Column('name', String(255), nullable=False),
     # Storage type. This is usually redundant with information already in the url column, but set for efficiency reasons. When updating this column, sync it with codalab.common.StorageType.
     Column(
         'storage_type',
