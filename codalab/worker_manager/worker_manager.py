@@ -150,6 +150,7 @@ class WorkerManager(object):
                 ['--checkin-frequency-seconds', str(self.args.worker_checkin_frequency_seconds)]
             )
         if self.args.worker_shared_memory_size_gb:
+            print(f"shared memory: {str(self.args.worker_shared_memory_size_gb)}")
             command.extend(['--shared-memory-size-gb', str(self.args.worker_shared_memory_size_gb)])
 
         return command

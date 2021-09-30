@@ -115,8 +115,7 @@ class KubernetesWorkerManager(WorkerManager):
             mkdir_command = f"mkdir -p {to_work_dir};"
             command.insert(0, mkdir_command)
 
-        # worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
-        worker_image: str = 'codalab/worker:shm'
+        worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
         print(f"Using worker image: {worker_image} and pvc's at {work_dir}...")
 
         config: Dict[str, Any] = {
