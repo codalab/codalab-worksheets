@@ -53,3 +53,10 @@ export const BUNDLE_STATES: String[] = [
     'killed',
     'worker_offline',
 ];
+
+// Autofill types for schemas.
+export const DEFAULT_POST_PROCESSOR = {
+    time: 'duration',
+    size: 'size',
+    date: 'date',
+};

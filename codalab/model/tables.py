@@ -19,7 +19,7 @@ from sqlalchemy.types import (
     Unicode,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
-from codalab.common import StorageType
+from codalab.common import StorageType, StorageFormat
 
 db_metadata = MetaData()
 
@@ -92,6 +92,64 @@ bundle_dependency = Table(
     Column('parent_uuid', String(63), nullable=False),
     Column('parent_path', Text, nullable=False),
 )
+
+# Storage location for bundles.
+bundle_store = Table(
+    'bundle_store',
+    db_metadata,
+    Column(
+        'id',
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        nullable=False,
+        autoincrement=True,
+    ),
+    Column('uuid', String(63), nullable=False),
+    # Usually root. For BYO bundle stores (not yet supported),
+    # it is the user who created the bundle store.
+    Column('owner_id', String(255), nullable=True),
+    # Name used to refer to this bundle store from the CLI.
+    Column('name', String(255), nullable=False),
+    # Storage type. This is usually redundant with information already in the url column, but set for efficiency reasons. When updating this column, sync it with codalab.common.StorageType.
+    Column(
+        'storage_type',
+        Enum(StorageType.DISK_STORAGE.value, StorageType.AZURE_BLOB_STORAGE.value),
+        nullable=True,
+    ),
+    # The format through which the bundle is stored.
+    Column(
+        'storage_format', Enum(StorageFormat.UNCOMPRESSED.value, StorageFormat.COMPRESSED_V1.value)
+    ),
+    # URL that uniquely identifies the bundle store.
+    Column('url', String(255), nullable=True),
+    # Authentication / password to access the bundle store.
+    Column('authentication', String(255), nullable=True),
+    # Name of environment variable through which the authentication variable from above can be passed to codalab-service to access the bundle store.
+    Column('authentication_env', String(255), nullable=True),
+    UniqueConstraint('uuid', name='uix_1'),
+    Index('bundle_store_name_index', 'name'),
+    Index('bundle_store_owner_index', 'owner_id'),
+)
+
+
+# Location where the contents of a bundle is stored. Multiple
+# BundleLocations can be associated with a single Bundle.
+bundle_location = Table(
+    'bundle_location',
+    db_metadata,
+    Column(
+        'id',
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        nullable=False,
+        autoincrement=True,
+    ),
+    # Which bundle this location contains the contents of.
+    Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
+    # Which bundle store this location is on.
+    Column('bundle_store_uuid', String(63), ForeignKey(bundle_store.c.uuid), nullable=False),
+)
+
 
 # The worksheet table does not have many columns now, but it will eventually
 # include columns for owner, group, permissions, etc.
