@@ -221,7 +221,7 @@ class OpenIndexedArchiveFile(object):
             tarFileName="contents",
             writeIndex=False,
             clearIndexCache=False,
-            indexFileName=self.index_file_name,
+            indexFilePath=self.index_file_name,
         )
 
     def __exit__(self, type, value, traceback):

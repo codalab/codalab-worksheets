@@ -45,7 +45,7 @@ class AzureBlobTestBase:
                 tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
-                indexFileName=tmp_index_file.name,
+                indexFilePath=tmp_index_file.name,
             )
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_path).index_path,
@@ -94,7 +94,7 @@ class AzureBlobTestBase:
                     tarFileName="contents",
                     writeIndex=True,
                     clearIndexCache=True,
-                    indexFileName=tmp_index_file.name,
+                    indexFilePath=tmp_index_file.name,
                 )
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_path).index_path,
