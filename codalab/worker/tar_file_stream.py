@@ -1,7 +1,7 @@
 from io import SEEK_SET, SEEK_CUR, SEEK_END, BytesIO
 
 from codalab.worker.un_gzip_stream import BytesBuffer
-from codalab.lib.beam.ratarmount import FileInfo, SQLiteIndexedTar
+from ratarmountcore import FileInfo, SQLiteIndexedTar
 
 
 class TarFileStream(BytesIO):

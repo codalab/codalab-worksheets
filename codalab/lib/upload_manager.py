@@ -5,7 +5,7 @@ import tempfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from typing import Union, Tuple, IO, cast
-from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+from ratarmountcore import SQLiteIndexedTar
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
 from codalab.worker.file_util import tar_gzip_directory, GzipStream

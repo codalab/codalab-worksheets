@@ -10,7 +10,7 @@ from typing_extensions import TypedDict
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
 from codalab.worker.file_util import OpenIndexedArchiveFile
-from codalab.lib.beam.ratarmount import FileInfo
+from ratarmountcore import FileInfo
 
 
 class PathException(Exception):
