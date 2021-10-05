@@ -8,7 +8,7 @@ from typing import Union, Tuple, IO, cast
 from ratarmountcore import SQLiteIndexedTar
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
-from codalab.worker.file_util import tar_gzip_directory, GzipStream
+from codalab.worker.file_util import tar_gzip_directory, GzipStream 
 from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
 from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
