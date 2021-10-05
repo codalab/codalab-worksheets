@@ -22,17 +22,12 @@ class CurrentDescendant:
 
 # Used to initialize empty FileInfo objects
 EmptyFileInfo = FileInfo(
-    offsetheader=None,
-    offset=None,
     size=None,
     mtime=None,
     mode=None,
-    type=None,
     linkname=None,
     uid=None,
     gid=None,
-    istar=None,
-    issparse=None,
 )
 
 
