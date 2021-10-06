@@ -2040,9 +2040,20 @@ def test_groups(ctx):
     # Try to relegate yourself to non-admin status
     _run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
 
+    # Add a member
+    member_user = random_name()
+    create_user(ctx, member_user)
+    _run_command([cl, 'uadd', member_user, group_name])
+    group_info = _run_command([cl, 'ginfo', group_name])
+    check_contains(member_user, group_info)
+
+    # When member is removed, ginfo should not crash
+    _run_command([cl, 'ufarewell', member_user])
+    group_info = _run_command([cl, 'ginfo', group_name])
+    check_contains('[deleted user]', group_info)
+
     # TODO: Test other group membership semantics:
     # - removing a group
-    # - adding new members
     # - adding an admin
     # - converting member to admin
     # - converting admin to member
