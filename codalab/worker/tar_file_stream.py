@@ -32,7 +32,6 @@ class TarFileStream(BytesIO):
         the tar archive.
         """
         contents = self.tf.read(
-            path="",
             fileInfo=self.finfo,
             size=self.finfo.size
             if num_bytes is None

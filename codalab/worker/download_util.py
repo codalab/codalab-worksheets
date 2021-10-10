@@ -223,9 +223,9 @@ def _compute_target_info_blob(
         tobytes = (
             lambda x: x if type(x) is bytes else str(x).encode()
         )  # finfo.type is an int such as 5, and we need to convert it to bytes such as b"5" before comparing it with the types defined in tarfile.
-        isfile = lambda finfo: tobytes(finfo.type) in tarfile.REGULAR_TYPES
-        isdir = lambda finfo: tobytes(finfo.type) == tarfile.DIRTYPE
-        listdir = lambda path: cast(Dict[str, FileInfo], tf.getFileInfo(path, listDir=True) or {})
+        isfile = lambda finfo: not stat.S_ISDIR(finfo.mode)
+        isdir = lambda finfo: stat.S_ISDIR(finfo.mode)
+        listdir = lambda path: cast(Dict[str, FileInfo], tf.listDir(path) or {})
 
         def _get_info(path: str, depth: Union[int, float]) -> TargetInfo:
             """This function is called to get the target info of the specified path.

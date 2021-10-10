@@ -1,6 +1,9 @@
+import os
+import stat
+import tarfile
+
 from contextlib import ExitStack
 from ratarmountcore import FileInfo
-import tarfile
 from io import BytesIO
 from dataclasses import dataclass
 from typing import Optional, Any, cast
@@ -86,8 +89,16 @@ class TarSubdirStream(BytesIO):
             full_name = f"{self.linked_bundle_path.archive_subpath}/{member['name']}"
             member_finfo = cast(FileInfo, self.tf.getFileInfo("/" + full_name))
             member_tarinfo = tarfile.TarInfo(name="./" + member['name'] if member['name'] else '.')
-            for attr in ("size", "mtime", "mode", "type", "linkname", "uid", "gid"):
+            for attr in ("size", "mtime", "mode", "linkname", "uid", "gid"):
                 setattr(member_tarinfo, attr, getattr(member_finfo, attr))
+            # ratarmount's FileInfo does not have a type attribute, so we have
+            # to manually construct it from the mode.
+            if stat.S_ISDIR(member_finfo.mode):
+                member_tarinfo.type = tarfile.DIRTYPE
+            elif stat.S_ISLNK(member_finfo.mode):
+                member_tarinfo.type = tarfile.SYMTYPE
+            else:
+                member_tarinfo.type = tarfile.REGTYPE
 
             # finfo is a ratarmount-specific data structure, while tinfo is a tarfile-specific data structure.
             # We need to store the former in order to read from the file with ratarmount and the latter in order to
@@ -99,7 +110,6 @@ class TarSubdirStream(BytesIO):
         elif self.current_desc.pos < self.current_desc.finfo.size:
             # Read the contents of the current descendant.
             chunk = self.tf.read(
-                path="",
                 fileInfo=self.current_desc.finfo,
                 size=self.current_desc.finfo.size
                 if num_bytes is None
