@@ -17,7 +17,6 @@ from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
-import tarfile
 from ratarmountcore import SQLiteIndexedTar, FileInfo
 from typing import IO, cast
 

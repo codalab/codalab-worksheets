@@ -1,7 +1,6 @@
 import math
 import os
 import stat
-import tarfile
 import logging
 import traceback
 from typing import Any, Iterable, Generator, Optional, Union, cast, Dict
