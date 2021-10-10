@@ -218,10 +218,6 @@ def _compute_target_info_blob(
     with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
         readlink = lambda finfo: finfo.linkname
-
-        tobytes = (
-            lambda x: x if type(x) is bytes else str(x).encode()
-        )  # finfo.type is an int such as 5, and we need to convert it to bytes such as b"5" before comparing it with the types defined in tarfile.
         isfile = lambda finfo: not stat.S_ISDIR(finfo.mode)
         isdir = lambda finfo: stat.S_ISDIR(finfo.mode)
         listdir = lambda path: cast(Dict[str, FileInfo], tf.listDir(path) or {})
