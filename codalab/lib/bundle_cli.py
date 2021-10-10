@@ -122,6 +122,8 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'store',
+    'replicate',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -1010,6 +1012,40 @@ class BundleCLI(object):
             return
         print(Commands.help_text(args.verbose, args.markdown), file=self.stdout)
 
+    @Commands.command(
+        'store',
+        help=['Bundle store CLI commands.'],
+        arguments=(
+            Commands.Argument(
+                '-a',
+                '--add',
+                help='Creates a new bundle store, allows one to configure credentials.',
+            ),
+            Commands.Argument(
+                '-w',
+                '--work',
+                help='All bundles will by default be uploaded to this bundle store.',
+            ),
+        ),
+    )
+    def do_store_command(self, args):
+        print(args)
+
+    @Commands.command(
+        'replicate',
+        help=['Bundle store CLI commands.'],
+        arguments=(
+            Commands.Argument('buddle_uuid', help='Specify the bundle to replicate.'),
+            Commands.Argument(
+                '-b',
+                '--bundle-store',
+                help='Replicates the contents of the specified bundle to the specified bundle store.',
+            ),
+        ),
+    )
+    def do_replicate_command(self, args):
+        print(args)
+
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -1277,6 +1313,11 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
+            Commands.Argument(
+                '-b',
+                '--bundle-store',
+                help='Uploads a bundle and specifies the bundle store. If no bundle store is specified, the CLI will pick the optimal available bundle store.',
+            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1284,6 +1325,8 @@ class BundleCLI(object):
     def do_upload_command(self, args):
         from codalab.lib import zip_util
 
+        if args.bundle_store:
+            return
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
 
@@ -1732,12 +1775,22 @@ class BundleCLI(object):
                 help='Beta feature - Start an interactive session to construct your run command.',
                 action='store_true',
             ),
+            Commands.Argument(
+                '-b',
+                '--bundle-store',
+                help='Runs a bundle and specifies the bundle store where results are uploaded. If no bundle store is specified, the worker will pick the optimal available bundle store.',
+                nargs='?',
+            ),
         )
         + Commands.metadata_arguments([RunBundle])
         + EDIT_ARGUMENTS
         + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
+        if args.bundle_store:
+            print(args)
+            return
+
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
@@ -1987,7 +2040,7 @@ class BundleCLI(object):
         help='Remove a bundle (permanent!).',
         arguments=(
             Commands.Argument(
-                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
             ),
             Commands.Argument(
                 '--force',
@@ -2018,9 +2071,17 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            Commands.Argument(
+                '-b',
+                '--bundle-store',
+                help='Keeps the bundle, but removes the bundle contents from the specified bundle store.',
+            ),
         ),
     )
     def do_rm_command(self, args):
+        if args.bundle_store:
+            print(args)
+            return
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.
