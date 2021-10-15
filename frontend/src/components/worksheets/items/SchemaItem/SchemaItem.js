@@ -558,6 +558,7 @@ class SchemaItem extends React.Component<{
                     </Tooltip>
                     {(showSchemaDetail || this.props.create) && (
                         <TextField
+                            autoFocus
                             variant='outlined'
                             id='standard-multiline-static'
                             InputProps={{
