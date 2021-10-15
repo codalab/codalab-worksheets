@@ -286,12 +286,19 @@ class Worksheet extends React.Component {
         // state can take the value of 0 or 1
         // 0 represents the command is being executed
         // 1 represents the command has already been executed
-        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
-        let toastMsg =
-            (command in cmdMsgMap
-                ? count + (count === 1 ? ' bundle ' : ' bundles ') + cmdMsgMap[command][state]
-                : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
-            (state === 0 ? '...' : '!');
+        const cmdMsgMap = { rm: ['Deleting', 'deleted'] };
+        const bundleCount = count + (count === 1 ? ' bundle' : ' bundles');
+        const cmdMsg = cmdMsgMap[command] ?? ['Executing', 'Executed'];
+        let toastMsg;
+        if (command in cmdMsgMap) {
+            // We want the toasts to be "Deleting x bundles..." and "x bundles deleted!"
+            toastMsg =
+                state == 0 ? cmdMsg[state] + ' ' + bundleCount : bundleCount + ' ' + cmdMsg[state];
+        } else {
+            // Default text for unrecognized commands.
+            toastMsg = cmdMsg[state] + command + ' command';
+        }
+        toastMsg += state === 0 ? '...' : '!';
         return toastMsg;
     };
     handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
@@ -339,6 +346,7 @@ class Worksheet extends React.Component {
                 this.reloadWorksheet(undefined, undefined, param);
             })
             .catch((e) => {
+                toast.dismiss();
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: e,
