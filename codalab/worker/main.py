@@ -21,6 +21,7 @@ from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
+from codalab.worker.filelock_dependency_manager import FileLockDependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
 
@@ -190,6 +191,11 @@ def parse_args():
         default=1,
         help='The shared memory size of the run container in GB (defaults to 1).',
     )
+    parser.add_argument(
+        '--use-filelock-dependency-manager',
+        action='store_true',
+        help='If set, uses FileLockDependencyManager to cache dependencies in a shared cache.',
+    )
     return parser.parse_args()
 
 
@@ -262,13 +268,22 @@ def main():
         dependency_manager = None
     else:
         local_bundles_dir = os.path.join(args.work_dir, 'runs')
-        dependency_manager = DependencyManager(
-            os.path.join(args.work_dir, 'dependencies-state.json'),
-            bundle_service,
-            args.work_dir,
-            args.max_work_dir_size,
-            args.download_dependencies_max_retries,
-        )
+        if args.use_filelock_dependency_manager:
+            dependency_manager = DependencyManager(
+                os.path.join(args.work_dir, 'dependencies-state.json'),
+                bundle_service,
+                args.work_dir,
+                args.max_work_dir_size,
+                args.download_dependencies_max_retries,
+            )
+        else:
+            dependency_manager = FileLockDependencyManager(
+                os.path.join(args.work_dir, 'dependencies-state.json'),
+                bundle_service,
+                args.work_dir,
+                args.max_work_dir_size,
+                args.download_dependencies_max_retries,
+            )
 
     if args.container_runtime == "singularity":
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
