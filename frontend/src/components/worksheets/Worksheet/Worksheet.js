@@ -293,7 +293,7 @@ class Worksheet extends React.Component {
         if (command in cmdMsgMap) {
             // We want the toasts to be "Deleting x bundles..." and "x bundles deleted!"
             toastMsg =
-                state == 0 ? cmdMsg[state] + ' ' + bundleCount : bundleCount + ' ' + cmdMsg[state];
+                state === 0 ? cmdMsg[state] + ' ' + bundleCount : bundleCount + ' ' + cmdMsg[state];
         } else {
             // Default text for unrecognized commands.
             toastMsg = cmdMsg[state] + command + ' command';
