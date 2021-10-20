@@ -43,6 +43,7 @@ class MySQLModel(BundleModel):
             raise UsageError('Engine URL should start with mysql://')
         engine = create_engine(
             # Set the charset to utf8, so that it does not use latin1 by default.
+            # TODO: Migrate to utf8mb4 (https://github.com/codalab/codalab-worksheets/issues/3849)
             engine_url + "?charset=utf8",
             strategy='threadlocal',
             pool_size=20,
