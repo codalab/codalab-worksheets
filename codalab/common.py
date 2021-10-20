@@ -26,7 +26,7 @@ from codalab.lib.beam.filesystems import (
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '1.1.2'
+CODALAB_VERSION = '1.1.4'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
