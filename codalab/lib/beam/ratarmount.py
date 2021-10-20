@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """This is a fork of the `develop` branch of the library ratarmount (https://github.com/mxmlnkn/ratarmount).
-Mainly, it allows file-like objects to be handled by ratarmount, and it also substitutes the
-forked library indexed_gzip_fileobj_fork_epicfaace for indexed_gzip (which is required for the support
-of file-like objects for .tar.gz files).
+Mainly, it allows file-like objects to be handled by ratarmount.
 
 This fork is the same code as what is found here: https://github.com/codalab/ratarmount
 
@@ -60,7 +58,7 @@ try:
 except ImportError:
     pass
 try:
-    import indexed_gzip_fileobj_fork_epicfaace as indexed_gzip # type: ignore
+    import indexed_gzip # type: ignore
 except ImportError:
     pass
 try:
