@@ -147,7 +147,7 @@ bundle_location = Table(
     # Which bundle this location contains the contents of.
     Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     # Which bundle store this location is on.
-    Column('bundle_store_uuid', String(63), ForeignKey(bundle_store.c.uuid), nullable=False),
+    # Column('bundle_store_uuid', String(63), ForeignKey(bundle_store.c.uuid), nullable=False),
 )
 
 
