@@ -73,6 +73,9 @@ class Worksheet extends React.Component {
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
+            // We store separate indices for new texts, schema, and run.
+            // So we can keep the items when focus changes.
+            // If there's no focus, we add the new items to the top of the worksheet.
             newTextIndex: -1, // Which index new text to be on (-1 is at the beginning).
             newSchemaIndex: -1, // Which index new schema to be on (-1 is at the beginning).
             newRunIndex: -1, // Which index new run to be on (-1 is at the beginning).
