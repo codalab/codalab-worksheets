@@ -48,6 +48,7 @@ class MySQLModel(BundleModel):
             max_overflow=100,
             pool_recycle=3600,
             encoding='utf-8',
+            charset='utf8'
         )
         super(MySQLModel, self).__init__(engine, default_user_info, root_user_id, system_user_id)
 
