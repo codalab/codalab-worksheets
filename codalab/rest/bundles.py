@@ -391,6 +391,10 @@ def _delete_bundles():
     deleted_uuids = delete_bundles(
         uuids, force=force, recursive=recursive, data_only=data_only, dry_run=dry_run
     )
+    fpp = local.model.get_bundle_stores('codalab(0)')
+    logger.error(fpp)
+    for k in fpp:
+        logger.error(k)
 
     # Return list of deleted ids as meta
     return json_api_meta({}, {'ids': deleted_uuids})
@@ -424,6 +428,43 @@ def _fetch_locations():
         for uuid in bundle_uuids
     }
     return dict(data=uuids_to_locations)
+
+"""
+GET /bundle_stores/
+List bundle stores available to (owned by) the user.
+
+POST /bundle_stores/
+Add a new bundle store.
+
+PUT /bundle_store/{id}
+Update a bundle store.
+
+GET /bundle_store/{id}
+Get a bundle store.
+
+DELETE /bundle_store/{id}
+Delete a bundle store (you can’t delete a bundle store unless there are no BundleLocations associated with it)
+"""
+
+
+
+
+@get('/bundle_stores/', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_stores():
+    """
+    Fetch the bundle stores available to the user.
+
+    Returns a dictionary in which the keys are the bundle store uuids, and the values
+    are tuples with the owner_id, name, and url.
+    """
+    return local.model.get_bundle_stores(request.user)
+
+@post('/bundle_stores/', apply=AuthenticatedProtectedPlugin())
+def _add_bundle_store():
+    """
+    Add a bundle store that the user can access.
+    """
+
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')

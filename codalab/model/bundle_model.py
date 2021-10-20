@@ -30,6 +30,7 @@ from codalab.model.tables import (
     bundle as cl_bundle,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
+    bundle_store as cl_bundle_store,
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
@@ -2901,3 +2902,24 @@ class BundleModel(object):
             connection.execute(
                 oauth2_auth_code.delete().where(oauth2_auth_code.c.id == auth_code_id)
             )
+
+
+    # ===========================================================================
+    # Bundle Store methods follow!
+    # ===========================================================================
+    def get_bundle_stores(self, user):
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_bundle_store.c.uuid, cl_bundle_store.c.owner_id, cl_bundle_store.c.name,
+                                        cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format,
+                                        cl_bundle_store.c.url])
+                .where(or_(cl_bundle_store.c.owner_id == 'codalab(0)', cl_bundle_store.c.owner_id == user))
+            ).fetchall()
+            logger.error(rows)
+            return dict((row.uuid, (row.owner_id, row.name, row.url)) for row in rows)
+
+    def create_bundle_store(self, user, name, storage_type, storage_format, url):
+        """
+        create a bundle store
+        todo figure out how to generate uuid 
+        """
