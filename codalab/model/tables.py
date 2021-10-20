@@ -23,7 +23,7 @@ from codalab.common import StorageType, StorageFormat
 
 db_metadata = MetaData()
 
-# Set the table's charset to utf8, so that it is not set to latin1 by default.
+# Set tables' charset to utf8, so that it is not set to latin1 by default upon creation.
 # TODO: Migrate to utf8mb4 (https://github.com/codalab/codalab-worksheets/issues/3849)
 TABLE_DEFAULT_CHARSET = 'utf8'
 
