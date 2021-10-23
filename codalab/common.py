@@ -184,6 +184,20 @@ class StorageURLScheme(Enum):
     AZURE_BLOB_STORAGE = "azfs://"
 
 
+class StorageFormat(Enum):
+    """Possible storage formats for bundles.
+    When updating this enum, sync it with with the enum in the storage_format column
+    in codalab.model.tables and add the appropriate migrations to reflect the column change.
+    """
+
+    # Currently how disk storage stores bundles, just uncompressed.
+    UNCOMPRESSED = "uncompressed"
+
+    # Uses ratarmount to construct a single index.sqlite file along with a .tar.gz / .gz
+    # version of the bundle.
+    COMPRESSED_V1 = "compressed_v1"
+
+
 @dataclass(frozen=True)
 class LinkedBundlePath:
     """A LinkedBundlePath refers to a path that points to the location of a linked bundle within a specific storage location.
