@@ -301,7 +301,7 @@ class WorksheetItemList extends React.Component {
                             />
                         </div>
                     )}
-                    {this.props.showNewSchema && this.props.newSchemaIndex === -1 && !focusedItem && (
+                    {this.props.showNewSchema && this.props.newSchemaIndex === -1 && (
                         <SchemaItem
                             after_sort_key={-1}
                             ws={this.props.ws}
