@@ -127,7 +127,7 @@ class Worksheet extends React.Component {
             brief: props.brief ? 1 : 0,
         };
 
-        apiWrapper
+        return apiWrapper
             .fetchWorksheet(this.state.ws.uuid, queryParams)
             .then((info) => {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
@@ -866,20 +866,18 @@ class Worksheet extends React.Component {
         }
         if (!(this.state.openedDialog || this.state.BulkBundleDialog)) {
             // Only enable these shortcuts when no dialog is opened
-            Mousetrap.bind(
-                ['shift+r'],
-                function(e) {
-                    this.reloadWorksheet(undefined, undefined);
+            Mousetrap.bind(['shift+r'], () => {
+                this.reloadWorksheet(undefined, undefined, undefined, () => {
                     toast.info('🦄 Worksheet refreshed!', {
                         position: 'top-right',
+                        hideProgressBar: true,
                         autoClose: 1500,
-                        hideProgressBar: false,
                         closeOnClick: true,
                         pauseOnHover: false,
                         draggable: true,
                     });
-                }.bind(this),
-            );
+                });
+            });
 
             // Show/hide web terminal
             Mousetrap.bind(
@@ -1381,6 +1379,7 @@ class Worksheet extends React.Component {
             uploadFiles = false,
             addImage = false, // whether the reload is caused by adding an image
         } = {},
+        afterReload,
     ) => {
         if (partialUpdateItems === undefined) {
             this.setState({ updating: true, showUpdateProgress: true });
@@ -1518,6 +1517,8 @@ class Worksheet extends React.Component {
                     });
                     this.setState({ showUpdateProgress: false, showWorksheetContainer: false });
                 }.bind(this),
+            }).then(() => {
+                afterReload && afterReload();
             });
         } else {
             var ws = _.clone(this.state.ws);
