@@ -2,7 +2,7 @@ import * as React from 'react';
 import Store from '../components/Store/Store';
 
 /**
- * This route page displays a bundle's metadata and contents.
+ * This route page displays a bundle store's metadata and contents.
  */
 class StoreRoute extends React.Component {
     /** Prop default values. */
