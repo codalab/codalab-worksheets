@@ -190,6 +190,11 @@ def parse_args():
         default=1,
         help='The shared memory size of the run container in GB (defaults to 1).',
     )
+    parser.add_argument(
+        '--use-shared-cache',
+        action='store_true',
+        help="If set, this worker will share a cache with other workers.",
+    )
     return parser.parse_args()
 
 
@@ -268,6 +273,9 @@ def main():
             args.work_dir,
             args.max_work_dir_size,
             args.download_dependencies_max_retries,
+            # TODO: Roll out the shared cache feature incrementally.
+            #       Once we are confident with the NFS locking, set use_nfs_lock=True by default.
+            use_nfs_lock=args.use_shared_cache,
         )
 
     if args.container_runtime == "singularity":

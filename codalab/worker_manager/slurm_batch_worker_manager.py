@@ -207,7 +207,10 @@ class SlurmBatchWorkerManager(WorkerManager):
         """
         Start a CodaLab Slurm worker by submitting a batch job to Slurm
         """
-        worker_id = self.username + "-" + self.args.job_name + '-' + uuid.uuid4().hex[:8]
+        if self.args.worker_use_shared_cache:
+            worker_id = f"{self.username}-slurm-worker"
+        else:
+            worker_id = self.username + "-" + self.args.job_name + '-' + uuid.uuid4().hex[:8]
 
         # Set up the Slurm worker directory
         slurm_work_dir = self.setup_slurm_work_directory(worker_id)

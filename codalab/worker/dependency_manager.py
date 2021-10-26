@@ -6,7 +6,10 @@ import time
 import shutil
 from contextlib import closing
 from collections import namedtuple
+from datetime import timedelta
 from typing import Dict, Set
+
+from flufl.lock import Lock, AlreadyLockedError
 
 import codalab.worker.pyjson
 from .bundle_service_client import BundleServiceClient
@@ -23,6 +26,38 @@ logger = logging.getLogger(__name__)
 DependencyState = namedtuple(
     'DependencyState', 'stage dependency_key path size_bytes dependents last_used message killed'
 )
+
+
+class NFSLock(threading._RLock):
+    def __init__(self, path):
+        super().__init__()
+
+        # Specify the path to a file that will be used to synchronize the lock.
+        # Per the flufl.lock documentation, use a file that does not exist.
+        self._lock = Lock(path)
+        # Locks have a lifetime (default 15 seconds) which is the period of time that the process expects
+        # to keep the lock once it has been acquired. We set the lifetime to be 8 hours as we expect
+        # all dependencies to be downloaded way before reaching the end of the lock's lifetime.
+        self._lock.lifetime = timedelta(hours=8)
+
+    @property
+    def is_locked(self):
+        return self._lock.is_locked
+
+    def acquire(self, blocking=True, timeout=-1):
+        try:
+            # Errors when attempting to acquire the lock more than once in the same process
+            self._lock.lock()
+        except AlreadyLockedError as error:
+            print(error)
+
+    def release(self):
+        self._lock.unlock()
+
+    __enter__ = acquire
+
+    def __exit__(self, t, v, tb):
+        self.release()
 
 
 class DownloadAbortedException(Exception):
@@ -60,6 +95,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         worker_dir: str,
         max_cache_size_bytes: int,
         download_dependencies_max_retries: int,
+        use_nfs_lock: bool = False,
     ):
         super(DependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
@@ -69,6 +105,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         self._state_committer = JsonStateCommitter(commit_file)
         self._bundle_service = bundle_service
         self._max_cache_size_bytes = max_cache_size_bytes
+        self._use_nfs_lock = use_nfs_lock
         self.dependencies_dir = os.path.join(worker_dir, DependencyManager.DEPENDENCIES_DIR_NAME)
         self._download_dependencies_max_retries = download_dependencies_max_retries
         if not os.path.exists(self.dependencies_dir):
@@ -77,8 +114,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
         # Locks for concurrency
         self._dependency_locks = dict()  # type: Dict[DependencyKey, threading.RLock]
-        self._global_lock = threading.RLock()  # Used for add/remove actions
-        self._paths_lock = threading.RLock()  # Used for path name computations
+        self._global_lock = self._create_lock('global')  # Used for add/remove actions
+        self._paths_lock = self._create_lock('paths')  # Used for path name computations
 
         # File paths that are currently being used to store dependencies. Used to prevent conflicts
         self._paths: Set[str] = set()
@@ -91,6 +128,13 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
         self._stop = False
         self._main_thread = None
+
+    def _create_lock(self, name):
+        if self._use_nfs_lock:
+            path = os.path.join(self.dependencies_dir, f'{name}.lock')
+            return NFSLock(path)
+        else:
+            return threading.RLock()
 
     def _save_state(self):
         with self._global_lock, self._paths_lock:
@@ -108,7 +152,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
         for dep, dep_state in state['dependencies'].items():
             dependencies[dep] = dep_state
-            dependency_locks[dep] = threading.RLock()
+            dependency_locks[dep] = self._create_lock(dep.parent_uuid)
 
         with self._global_lock, self._paths_lock:
             self._dependencies = dependencies
@@ -305,7 +349,9 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         now = time.time()
         if not self._acquire_if_exists(dependency_key):  # add dependency state if it does not exist
             with self._global_lock:
-                self._dependency_locks[dependency_key] = threading.RLock()
+                self._dependency_locks[dependency_key] = self._create_lock(
+                    dependency_key.parent_uuid
+                )
                 self._dependency_locks[dependency_key].acquire()
                 self._dependencies[dependency_key] = DependencyState(
                     stage=DependencyStage.DOWNLOADING,
