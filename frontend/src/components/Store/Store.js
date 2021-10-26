@@ -104,7 +104,7 @@ function renderHeader(storeInfo, storeMetadataChanged) {
     // Display basic information
     let rows = [];
     rows.push(createRow(storeInfo, storeMetadataChanged, 'uuid', storeInfo.uuid));
-    rows.push(createRow(storeInfo, storeMetadataChanged, 'store store type', 'PLACEHOLDER'));
+    rows.push(createRow(storeInfo, storeMetadataChanged, 'bundle store type', 'PLACEHOLDER'));
     rows.push(
         createRow(
             storeInfo,
