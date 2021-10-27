@@ -109,7 +109,7 @@ def run_command(
         if not force_subprocess:
             # In this case, run the Codalab CLI directly, which is much faster
             # than opening a new subprocess to do so.
-            stderr = io.StringIO()  # Not used; we just don't want to redirect cli.stderr to stdout.
+            stderr = FakeStdout()  # Not used; we just don't want to redirect cli.stderr to stdout.
             stdout = FakeStdout()
             cli = BundleCLI(CodaLabManager(), stdout=stdout, stderr=stderr)
             try:
@@ -117,7 +117,9 @@ def run_command(
                 exitcode = 0
             except SystemExit as e:
                 exitcode = e.code
-            output = stdout.getvalue()
+            # except:
+            #     exitcode = 1
+            output = stdout.getvalue() if expected_exit_code == 0 else stderr.getvalue()
         else:
             output = subprocess.check_output([a.encode() for a in args], **kwargs)
             exitcode = 0

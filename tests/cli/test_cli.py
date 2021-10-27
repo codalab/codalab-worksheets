@@ -763,7 +763,8 @@ def test_upload1(ctx):
     # Upload a file that exceeds the disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
     # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    _run_command([cl, 'upload', test_path('codalab.png')], expected_exit_code='test-cli exception')
+    check_equals("Attempted to upload bundle of size 10.0k with only 2 remaining in user\'s disk quota", _run_command([cl, 'upload', test_path('codalab.png')], expected_exit_code='test-cli exception'))
     # we reset disk quota so tests added later don't fail on upload
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
@@ -771,7 +772,7 @@ def test_upload1(ctx):
     create_user(ctx, 'non_root_user_dq', disk_quota='2')
     switch_user('non_root_user_dq')
     # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    _run_command([cl, 'upload', test_path('codalab.png')], expected_exit_code='test-cli exception')
     # Switch back to root user
     switch_user('codalab')
 
