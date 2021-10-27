@@ -541,7 +541,7 @@ function renderStoreInfo(storeInfo) {
         <div>
             <div className='collapsible-header'>
                 <span>
-                    <p>host worksheets &#x25BE;</p>
+                    <p>store information &#x25BE;</p>
                 </span>
                 <a href={`/stores/${storeInfo.uuid}`}>see more</a>
             </div>
