@@ -19,13 +19,9 @@ from sqlalchemy.types import (
     Unicode,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
-from codalab.common import StorageType, StorageFormat
+from codalab.common import StorageType
 
 db_metadata = MetaData()
-
-# Set tables' charset to utf8, so that it is not set to latin1 by default upon creation.
-# TODO: Migrate to utf8mb4 (https://github.com/codalab/codalab-worksheets/issues/3849)
-TABLE_DEFAULT_CHARSET = 'utf8'
 
 bundle = Table(
     'bundle',
@@ -59,7 +55,6 @@ bundle = Table(
     UniqueConstraint('uuid', name='uix_1'),
     Index('bundle_data_hash_index', 'data_hash'),
     Index('state_index', 'state'),  # Needed for the bundle manager.
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Includes things like name, description, etc.
@@ -77,7 +72,6 @@ bundle_metadata = Table(
     Column('metadata_key', String(63), nullable=False),
     Column('metadata_value', Text, nullable=False),
     Index('metadata_kv_index', 'metadata_key', 'metadata_value', mysql_length=63),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # For each child_uuid, we have: key = child_path, target = (parent_uuid, parent_path)
@@ -97,68 +91,7 @@ bundle_dependency = Table(
     # dependencies to bundles not (yet) in the system.
     Column('parent_uuid', String(63), nullable=False),
     Column('parent_path', Text, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
-
-# Storage location for bundles.
-bundle_store = Table(
-    'bundle_store',
-    db_metadata,
-    Column(
-        'id',
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        nullable=False,
-        autoincrement=True,
-    ),
-    Column('uuid', String(63), nullable=False),
-    # Usually root. For BYO bundle stores (not yet supported),
-    # it is the user who created the bundle store.
-    Column('owner_id', String(255), nullable=True),
-    # Name used to refer to this bundle store from the CLI.
-    Column('name', String(255), nullable=False),
-    # Storage type. This is usually redundant with information already in the url column, but set for efficiency reasons. When updating this column, sync it with codalab.common.StorageType.
-    Column(
-        'storage_type',
-        Enum(StorageType.DISK_STORAGE.value, StorageType.AZURE_BLOB_STORAGE.value),
-        nullable=True,
-    ),
-    # The format through which the bundle is stored.
-    Column(
-        'storage_format', Enum(StorageFormat.UNCOMPRESSED.value, StorageFormat.COMPRESSED_V1.value)
-    ),
-    # URL that uniquely identifies the bundle store.
-    Column('url', String(255), nullable=True),
-    # Authentication / password to access the bundle store.
-    Column('authentication', String(255), nullable=True),
-    # Name of environment variable through which the authentication variable from above can be passed to codalab-service to access the bundle store.
-    Column('authentication_env', String(255), nullable=True),
-    UniqueConstraint('uuid', name='uix_1'),
-    Index('bundle_store_name_index', 'name'),
-    Index('bundle_store_owner_index', 'owner_id'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
-)
-
-
-# Location where the contents of a bundle is stored. Multiple
-# BundleLocations can be associated with a single Bundle.
-bundle_location = Table(
-    'bundle_location',
-    db_metadata,
-    Column(
-        'id',
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        nullable=False,
-        autoincrement=True,
-    ),
-    # Which bundle this location contains the contents of.
-    Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-    # Which bundle store this location is on.
-    Column('bundle_store_uuid', String(63), ForeignKey(bundle_store.c.uuid), nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
-)
-
 
 # The worksheet table does not have many columns now, but it will eventually
 # include columns for owner, group, permissions, etc.
@@ -189,7 +122,6 @@ worksheet = Table(
     UniqueConstraint('uuid', name='uix_1'),
     Index('worksheet_name_index', 'name'),
     Index('worksheet_owner_index', 'owner_id'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 worksheet_item = Table(
@@ -218,7 +150,6 @@ worksheet_item = Table(
     Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
     Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
     Index('worksheet_item_subworksheet_uuid_index', 'subworksheet_uuid'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Worksheet tags
@@ -236,7 +167,6 @@ worksheet_tag = Table(
     Column('tag', String(63), nullable=False),
     Index('worksheet_tag_worksheet_uuid_index', 'worksheet_uuid'),
     Index('worksheet_tag_tag_index', 'tag'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 group = Table(
@@ -256,7 +186,6 @@ group = Table(
     UniqueConstraint('uuid', name='uix_1'),
     Index('group_name_index', 'name'),
     Index('group_owner_id_index', 'owner_id'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 user_group = Table(
@@ -275,7 +204,6 @@ user_group = Table(
     Column('is_admin', Boolean),
     Index('group_uuid_index', 'group_uuid'),
     Index('user_id_index', 'user_id'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Permissions for bundles
@@ -294,7 +222,6 @@ group_bundle_permission = Table(
     Column('object_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     # Permissions encoded as integer (see below)
     Column('permission', Integer, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Permissions for worksheets
@@ -313,7 +240,6 @@ group_object_permission = Table(
     Column('object_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
     # Permissions encoded as integer (see below)
     Column('permission', Integer, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # A permission value is one of the following: none (0), read (1), or all (2).
@@ -372,7 +298,6 @@ user = Table(
     Index('user_user_id_index', 'user_id'),
     Index('user_user_name_index', 'user_name'),
     UniqueConstraint('user_id', name='uix_1'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Stores (email) verification keys
@@ -390,7 +315,6 @@ user_verification = Table(
     Column('date_created', DateTime, nullable=False),
     Column('date_sent', DateTime, nullable=True),
     Column('key', String(64), nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Stores password reset codes
@@ -407,7 +331,6 @@ user_reset_code = Table(
     Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
     Column('date_created', DateTime, nullable=False),
     Column('code', String(64), nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # OAuth2 Tables
@@ -435,7 +358,6 @@ oauth2_client = Table(
     Column('scopes', Text, nullable=False),  # comma-separated list of allowed scopes
     Column('redirect_uris', Text, nullable=False),  # comma-separated list of allowed redirect URIs
     UniqueConstraint('client_id', name='uix_1'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 oauth2_token = Table(
@@ -454,7 +376,6 @@ oauth2_token = Table(
     Column('access_token', String(255), unique=True),
     Column('refresh_token', String(255), unique=True),
     Column('expires', DateTime, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 oauth2_auth_code = Table(
@@ -473,7 +394,6 @@ oauth2_auth_code = Table(
     Column('code', String(100), nullable=False),
     Column('expires', DateTime, nullable=False),
     Column('redirect_uri', String(255), nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Store information about users' questions or feedback.
@@ -497,7 +417,6 @@ chat = Table(
     Column(
         'bundle_uuid', String(63), nullable=True
     ),  # What is the id of the bundle that the sender is on?
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Store information about workers.
@@ -526,7 +445,6 @@ worker = Table(
         'exit_after_num_runs', Integer, nullable=False
     ),  # Number of jobs allowed to run on worker.
     Column('is_terminating', Boolean, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Store information about all sockets currently allocated to each worker.
@@ -538,7 +456,6 @@ worker_socket = Table(
     # No foreign key constraint on the worker table so that we can create a socket
     # for the worker before adding the worker to the worker table.
     Column('socket_id', Integer, primary_key=True, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Store information about the bundles currently running on each worker.
@@ -550,7 +467,6 @@ worker_run = Table(
     ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
     Column('run_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     Index('uuid_index', 'run_uuid'),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
 # Store information about the dependencies available on each worker.
@@ -563,5 +479,4 @@ worker_dependency = Table(
     # Serialized list of dependencies for the user/worker combination.
     # See WorkerModel for the serialization method.
     Column('dependencies', LargeBinary, nullable=False),
-    mysql_charset=TABLE_DEFAULT_CHARSET,
 )
