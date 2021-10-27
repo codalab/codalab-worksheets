@@ -169,6 +169,13 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
+                {renderStoreInfo({
+                    owner: {
+                        user_name: 'codalab',
+                    },
+                    uuid: this.props.uuid,
+                    metadataType: {},
+                })}
             </div>
         );
 
@@ -517,6 +524,31 @@ function renderHostWorksheets(bundleInfo) {
                 <div className='host-worksheets-table'>
                     <table className='bundle-meta table'>
                         <tbody>{hostWorksheetRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function renderStoreInfo(storeInfo) {
+    let rows = [];
+    rows.push(createRow(storeInfo, undefined, 'type', 'PLACEHOLDER'));
+    rows.push(createRow(storeInfo, undefined, 'owner', 'PLACEHOLDER'));
+    rows.push(createRow(storeInfo, undefined, 'location', 'PLACEHOLDER'));
+
+    return (
+        <div>
+            <div className='collapsible-header'>
+                <span>
+                    <p>host worksheets &#x25BE;</p>
+                </span>
+                <a href={`/stores/${storeInfo.uuid}`}>see more</a>
+            </div>
+            <div className='collapsible-content'>
+                <div className='host-worksheets-table'>
+                    <table className='bundle-meta table'>
+                        <tbody>{rows}</tbody>
                     </table>
                 </div>
             </div>
