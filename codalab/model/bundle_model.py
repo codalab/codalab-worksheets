@@ -31,6 +31,7 @@ from codalab.model.tables import (
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
     bundle_store as cl_bundle_store,
+    bundle_location as cl_bundle_location,
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
@@ -2923,3 +2924,48 @@ class BundleModel(object):
         create a bundle store
         todo figure out how to generate uuid 
         """
+        uuid = uuid4()
+        with self.engine.begin() as connection:
+            bundle_store_value = {
+                'uuid': uuid,
+                'owner_id': user,
+                'name': name,
+                'storage_type': storage_type,
+                'storage_format': storage_format,
+                'url': 'url',
+            }
+            connection.execute(cl_bundle_store.insert().values(bundle_store_value))
+        return uuid
+
+    def update_bundle_store(self, user, id, name, storage_type, storage_format, url):
+        """
+        update a bundle store
+        """
+        with self.engine.begin() as connection:
+            bundle_store_value = {
+                'owner_id': user,
+                'name': name,
+                'storage_type': storage_type,
+                'storage_format': storage_format,
+                'url': 'url',
+            }
+            connection.execute(cl_bundle_store.update().where(cl_bundle_store.id == id).values(bundle_store_value))
+        return uuid
+
+    def get_bundle_store(self, user, id):
+        """
+        return the bundle store corresponding to the specified id
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([cl_bundle_store.c.uuid, cl_bundle_store.c.owner_id, cl_bundle_store.c.name,
+                                        cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format,
+                                        cl_bundle_store.c.url])
+                .where(cl_bundle_store.id == id)
+            ).fetchone()
+            logger.error(row)
+            return {
+                'owner_id': row.owner_id,
+                'name': row.name,
+                'url': row.url,
+            }

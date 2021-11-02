@@ -464,8 +464,24 @@ def _add_bundle_store():
     """
     Add a bundle store that the user can access.
     """
+    return local.model.create_bundle_store(request.user)
 
+@put('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
+def _add_bundle_store():
+    """
+    Add a bundle store that the user can access.
+    """
+    return local.model.update_bundle_store(request.user, id)
 
+@get('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_store():
+    """
+    Fetch the bundle store corresponding to the specified id.
+
+    Returns a dictionary in which the key id the bundle store uuid, and the value
+    is a tuple with the owner_id, name, and url.
+    """
+    return local.model.get_bundle_store(request.user, id)
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 @get(
