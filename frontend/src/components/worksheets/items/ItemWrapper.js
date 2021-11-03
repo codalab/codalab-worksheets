@@ -4,6 +4,7 @@ import { withStyles } from '@material-ui/core/styles';
 import NewRun from '../NewRun';
 import TextEditorItem from './TextEditorItem';
 import SchemaItem from './SchemaItem';
+import { PRE_POPULATE_SCHEMA_ROWS } from '../../../constants';
 
 class ItemWrapper extends React.Component {
     state = {
@@ -69,14 +70,7 @@ class ItemWrapper extends React.Component {
                         reloadWorksheet={reloadWorksheet}
                         editPermission={true}
                         item={{
-                            field_rows: [
-                                {
-                                    field: '',
-                                    'generalized-path': '',
-                                    'post-processor': null,
-                                    from_schema_name: '',
-                                },
-                            ],
+                            field_rows: PRE_POPULATE_SCHEMA_ROWS,
                             header: ['field', 'generalized-path', 'post-processor'],
                             schema_name: '',
                             sort_keys: [after_sort_key + 1],

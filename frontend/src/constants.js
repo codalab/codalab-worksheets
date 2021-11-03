@@ -60,3 +60,28 @@ export const DEFAULT_POST_PROCESSOR = {
     size: 'size',
     date: 'date',
 };
+
+export const PRE_POPULATE_SCHEMA_ROWS = [
+    {
+        field: 'uuid',
+        'generalized-path': 'uuid',
+        'post-processor': '[0:8]',
+        from_schema_name: '',
+    },
+    {
+        field: 'name',
+        'generalized-path': 'name',
+        from_schema_name: '',
+    },
+    {
+        field: 'summary',
+        'generalized-path': 'summary',
+        'post-processor': '[0:1024]',
+        from_schema_name: '',
+    },
+    {
+        field: 'state',
+        'generalized-path': 'state',
+        from_schema_name: '',
+    },
+];
