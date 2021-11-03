@@ -467,9 +467,9 @@ def _add_bundle_store():
     return local.model.create_bundle_store(request.user)
 
 @put('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
-def _add_bundle_store():
+def _update_bundle_store():
     """
-    Add a bundle store that the user can access.
+    Update a bundle store that the user can access.
     """
     return local.model.update_bundle_store(request.user, id)
 
@@ -482,6 +482,13 @@ def _fetch_bundle_store():
     is a tuple with the owner_id, name, and url.
     """
     return local.model.get_bundle_store(request.user, id)
+
+@delete('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
+def _delete_bundle_store():
+    """
+    Delete the bundle store that the user can access, only if there is an associated BundleLocation.
+    """
+    return local.model.delete_bundle_store(request.user, id)
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 @get(

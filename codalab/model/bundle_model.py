@@ -2922,7 +2922,6 @@ class BundleModel(object):
     def create_bundle_store(self, user, name, storage_type, storage_format, url):
         """
         create a bundle store
-        todo figure out how to generate uuid 
         """
         uuid = uuid4()
         with self.engine.begin() as connection:
@@ -2935,7 +2934,6 @@ class BundleModel(object):
                 'url': 'url',
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
-        return uuid
 
     def update_bundle_store(self, user, id, name, storage_type, storage_format, url):
         """
@@ -2950,7 +2948,6 @@ class BundleModel(object):
                 'url': 'url',
             }
             connection.execute(cl_bundle_store.update().where(cl_bundle_store.id == id).values(bundle_store_value))
-        return uuid
 
     def get_bundle_store(self, user, id):
         """
@@ -2969,3 +2966,21 @@ class BundleModel(object):
                 'name': row.name,
                 'url': row.url,
             }
+    
+    def delete_bundle_store(self, user, id):
+        """
+        return the bundle store corresponding to the specified id
+        """
+        with self.engine.begin() as connection:
+            bundle_store_row = connection.execute(
+                select([cl_bundle_store.c.uuid])
+                .where(cl_bundle_store.id == id)
+            ).fetchone()
+            logger.error(bundle_store_row)
+            bundle_location_row = connection.execute(
+                select([cl_bundle_location.c.id])
+                .where(bundle_uuid == bundle_store_row.uuid)
+            ).fetchone()
+            if bundle_location_row is not None:
+                connection.execute(cl_bundle_store.delete().where(cl_bundle_store.id == id))
+        return uuid
