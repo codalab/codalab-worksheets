@@ -2923,7 +2923,7 @@ class BundleModel(object):
         """
         create a bundle store
         """
-        uuid = uuid4()
+        uuid = spec_util.generate_uuid()
         with self.engine.begin() as connection:
             bundle_store_value = {
                 'uuid': uuid,
@@ -2931,7 +2931,7 @@ class BundleModel(object):
                 'name': name,
                 'storage_type': storage_type,
                 'storage_format': storage_format,
-                'url': 'url',
+                'url': url,
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
 
@@ -2945,7 +2945,7 @@ class BundleModel(object):
                 'name': name,
                 'storage_type': storage_type,
                 'storage_format': storage_format,
-                'url': 'url',
+                'url': url,
             }
             connection.execute(cl_bundle_store.update().where(cl_bundle_store.id == id).values(bundle_store_value))
 
@@ -2958,29 +2958,33 @@ class BundleModel(object):
                 select([cl_bundle_store.c.uuid, cl_bundle_store.c.owner_id, cl_bundle_store.c.name,
                                         cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format,
                                         cl_bundle_store.c.url])
-                .where(cl_bundle_store.id == id)
-            ).fetchone()
+                .where(and_(cl_bundle_store.id == id, or_(cl_bundle_store.c.owner_id == 'codalab(0)', cl_bundle_store.c.owner_id == user)
+            ).fetchone()))
             logger.error(row)
             return {
                 'owner_id': row.owner_id,
                 'name': row.name,
                 'url': row.url,
             }
-    
+
     def delete_bundle_store(self, user, id):
         """
         return the bundle store corresponding to the specified id
         """
         with self.engine.begin() as connection:
-            bundle_store_row = connection.execute(
-                select([cl_bundle_store.c.uuid])
-                .where(cl_bundle_store.id == id)
-            ).fetchone()
-            logger.error(bundle_store_row)
-            bundle_location_row = connection.execute(
-                select([cl_bundle_location.c.id])
-                .where(bundle_uuid == bundle_store_row.uuid)
-            ).fetchone()
-            if bundle_location_row is not None:
-                connection.execute(cl_bundle_store.delete().where(cl_bundle_store.id == id))
-        return uuid
+            connection.execute(
+                cl_bundle_store.delete().where(and_(cl_bundle_store.c.uuid == id, cl_bundle_store.c.owner_id == user))
+            )
+
+        #     bundle_store_row = connection.execute(
+        #         select([cl_bundle_store.c.uuid])
+        #             .where(cl_bundle_store.id == id)
+        #     ).fetchone()
+        #     logger.error(bundle_store_row)
+        #     bundle_location_row = connection.execute(
+        #         select([cl_bundle_location.c.id])
+        #             .where(bundle_uuid == bundle_store_row.uuid)
+        #     ).fetchone()
+        #     if bundle_location_row is not None:
+        #         connection.execute(cl_bundle_store.delete().where(cl_bundle_store.id == id))
+        # return uuid
