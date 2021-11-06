@@ -11,6 +11,7 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [API Endpoints](#api-endpoints)
   - [Bundle Actions API](#bundle-actions-api)
   - [Bundle Permissions API](#bundle-permissions-api)
+  - [Bundle_Stores API](#bundle_stores-api)
   - [Bundles API](#bundles-api)
   - [CLI API](#cli-api)
   - [Groups API](#groups-api)
@@ -321,6 +322,35 @@ Bulk set bundle permissions.
 
 A bundle permission created on a bundle-group pair will replace any
 existing permissions on the same bundle-group pair.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Bundle_Stores API
+### `GET /bundle_stores/`
+
+Fetch the bundle stores available to the user.
+
+Returns a dictionary in which the keys are the bundle store uuids, and the values
+are tuples with the owner_id, name, and url.
+
+### `POST /bundle_stores/`
+
+Add a bundle store that the user can access.
+
+### `PUT /bundle_stores/<id:re:%s>`
+
+Update a bundle store that the user can access.
+
+### `GET /bundle_stores/<id:re:%s>`
+
+Fetch the bundle store corresponding to the specified id.
+
+Returns a dictionary in which the key id the bundle store uuid, and the value
+is a tuple with the owner_id, name, and url.
+
+### `DELETE /bundle_stores/<id:re:%s>`
+
+Delete the bundle store that the user can access, only if there is an associated BundleLocation.
 
 
 &uarr; [Back to Top](#table-of-contents)
