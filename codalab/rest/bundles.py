@@ -391,11 +391,12 @@ def _delete_bundles():
     deleted_uuids = delete_bundles(
         uuids, force=force, recursive=recursive, data_only=data_only, dry_run=dry_run
     )
+    bs = local.model.get_bundle_store("codalab(0)", "0x94b7cc497aaa4e96bb7703bb8d949f0f")
+    logger.error(bs)
     fpp = local.model.get_bundle_stores('codalab(0)')
     logger.error(fpp)
     for k in fpp:
         logger.error(k)
-
     # Return list of deleted ids as meta
     return json_api_meta({}, {'ids': deleted_uuids})
 
@@ -473,14 +474,14 @@ def _add_bundle_store():
         request.forms.get('authentication')
     )
 
-@put('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
-def _update_bundle_store():
+@put('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
+def _update_bundle_store(uuid):
     """
     Update a bundle store that the user can access.
     """
     return local.model.update_bundle_store(
         request.user, 
-        id,
+        uuid,
         request.forms.get('name'), 
         request.forms.get('storage_type'), 
         request.forms.get('storage_format'), 
@@ -488,22 +489,22 @@ def _update_bundle_store():
         request.forms.get('authentication')
     )
 
-@get('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
-def _fetch_bundle_store():
+@get('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_store(uuid):
     """
     Fetch the bundle store corresponding to the specified id.
 
     Returns a dictionary in which the key id the bundle store uuid, and the value
     is a tuple with the owner_id, name, and url.
     """
-    return local.model.get_bundle_store(request.user, id)
+    return local.model.get_bundle_store(request.user, uuid)
 
-@delete('/bundle_stores/<id:re:%s>', id, apply=AuthenticatedProtectedPlugin())
-def _delete_bundle_store():
+@delete('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
+def _delete_bundle_store(uuid):
     """
     Delete the bundle store that the user can access, only if there is an associated BundleLocation.
     """
-    return local.model.delete_bundle_store(request.user, id)
+    return local.model.delete_bundle_store(request.user, uuid)
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 @get(
