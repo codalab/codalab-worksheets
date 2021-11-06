@@ -441,7 +441,14 @@ def _add_bundle_store():
     """
     Add a bundle store that the user can access.
     """
-    return local.model.create_bundle_store(request.user)
+    return local.model.create_bundle_store(
+        request.user,
+        request.forms.get('name'), 
+        request.forms.get('storage_type'), 
+        request.forms.get('storage_format'), 
+        request.forms.get('url'), 
+        request.forms.get('authentication')
+    )
 
 
 @put('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
@@ -449,7 +456,15 @@ def _update_bundle_store(uuid):
     """
     Update a bundle store that the user can access.
     """
-    return local.model.update_bundle_store(request.user, uuid)
+    return local.model.update_bundle_store(
+        request.user, 
+        uuid,
+        request.forms.get('name'), 
+        request.forms.get('storage_type'), 
+        request.forms.get('storage_format'), 
+        request.forms.get('url'), 
+        request.forms.get('authentication')
+    )
 
 
 @get('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())

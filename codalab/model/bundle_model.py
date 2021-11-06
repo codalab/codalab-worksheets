@@ -2929,7 +2929,7 @@ class BundleModel(object):
             logger.error(rows)
             return dict((row.uuid, (row.owner_id, row.name, row.url)) for row in rows)
 
-    def create_bundle_store(self, user, name, storage_type, storage_format, url):
+    def create_bundle_store(self, user, name, storage_type, storage_format, url, authentication):
         """
         create a bundle store
         """
@@ -2942,10 +2942,11 @@ class BundleModel(object):
                 'storage_type': storage_type,
                 'storage_format': storage_format,
                 'url': url,
+                'authentication': authentication,
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
 
-    def update_bundle_store(self, user, id, name, storage_type, storage_format, url):
+    def update_bundle_store(self, user, id, name, storage_type, storage_format, url, authentication):
         """
         update a bundle store
         """
@@ -2956,6 +2957,7 @@ class BundleModel(object):
                 'storage_type': storage_type,
                 'storage_format': storage_format,
                 'url': url,
+                'authentication': authentication,
             }
             connection.execute(
                 cl_bundle_store.update()
