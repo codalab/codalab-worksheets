@@ -243,10 +243,13 @@ def main():
         )
 
     # Configure logging
-    logging.basicConfig(
-        format='%(asctime)s %(message)s %(pathname)s %(lineno)d',
-        level=(logging.DEBUG if args.verbose else logging.INFO),
-    )
+    log_format: str = '%(asctime)s %(message)s'
+    if args.verbose:
+        log_format += ' %(pathname)s %(lineno)d'
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logging.basicConfig(format=log_format, level=log_level)
 
     logging.getLogger('urllib3').setLevel(logging.INFO)
     # Initialize sentry logging
