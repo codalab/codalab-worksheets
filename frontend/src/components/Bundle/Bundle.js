@@ -39,6 +39,7 @@ class Bundle extends React.Component<
             stdout: null,
             stderr: null,
             prevUuid: props.uuid,
+            errorCode: null,
         };
     }
 
@@ -69,11 +70,19 @@ class Bundle extends React.Component<
         };
 
         let errorHandler = (error) => {
-            if (error.response && error.response.status === 404) {
+            if (error.response && error.response.status === 403) {
                 this.setState({
                     fileContents: null,
                     stdout: null,
                     stderr: null,
+                    errorCode: 403,
+                });
+            } else if (error.response && error.response.status === 403) {
+                this.setState({
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                    errorCode: 404,
                 });
             } else {
                 this.setState({
@@ -81,7 +90,7 @@ class Bundle extends React.Component<
                     fileContents: null,
                     stdout: null,
                     stderr: null,
-                    errorMessages: this.state.errorMessages.concat([error]),
+                    errorMessages: this.state.errorMessages.concat([error.message]),
                 });
             }
         };
@@ -136,6 +145,20 @@ class Bundle extends React.Component<
     /** Renderer. */
     render() {
         const bundleInfo = this.state.bundleInfo;
+
+        // Below block can be used to map any errorCode to custom message for user
+        if (this.state.errorCode == 403) {
+            return (
+                <ErrorMessage
+                    message={
+                        "You don't have permission to access: '/bundles/" + this.props.uuid + "'"
+                    }
+                />
+            );
+        } else if (this.state.errorCode == 404) {
+            return <ErrorMessage message={"Not found: '/bundles/" + this.props.uuid + "'"} />;
+        }
+
         if (!bundleInfo) {
             // Error
             if (this.state.errorMessages.length > 0) {
