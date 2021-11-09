@@ -74,14 +74,24 @@ export const PRE_POPULATE_SCHEMA_ROWS = [
         from_schema_name: '',
     },
     {
-        field: 'summary',
+        field: 'summary[0:1024]',
         'generalized-path': 'summary',
         'post-processor': '[0:1024]',
         from_schema_name: '',
     },
     {
+        field: 'data_size',
+        'generalized-path': 'data_size',
+        from_schema_name: '',
+    },
+    {
         field: 'state',
         'generalized-path': 'state',
+        from_schema_name: '',
+    },
+    {
+        field: 'description',
+        'generalized-path': 'description',
         from_schema_name: '',
     },
 ];
