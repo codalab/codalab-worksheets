@@ -127,7 +127,7 @@ class Worksheet extends React.Component {
             brief: props.brief ? 1 : 0,
         };
 
-        apiWrapper
+        return apiWrapper
             .fetchWorksheet(this.state.ws.uuid, queryParams)
             .then((info) => {
                 info['date_created'] = addUTCTimeZone(info['date_created']);
@@ -280,20 +280,6 @@ class Worksheet extends React.Component {
         }
     };
 
-    _getToastMsg = (command, state, count) => {
-        // Creates a toast message for a given command.
-        // count is the number of bundles on which this command was performed, if applicable.
-        // state can take the value of 0 or 1
-        // 0 represents the command is being executed
-        // 1 represents the command has already been executed
-        const cmdMsgMap: { string: string } = { rm: ['deleting', 'deleted'] };
-        let toastMsg =
-            (command in cmdMsgMap
-                ? count + (count === 1 ? ' bundle ' : ' bundles ') + cmdMsgMap[command][state]
-                : (state === 0 ? 'Executing ' : 'Executed ') + command + ' command') +
-            (state === 0 ? '...' : '!');
-        return toastMsg;
-    };
     handleSelectedBundleCommand = (cmd, worksheet_uuid = this.state.ws.uuid) => {
         // This function runs the command for bulk bundle operations
         // The uuid are recorded by handleCheckBundle
@@ -303,7 +289,7 @@ class Worksheet extends React.Component {
         this.setState({ updating: true });
         const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
         // This toast info is used for showing a message when a command is being performed
-        const toastId = toast.info(this._getToastMsg(cmd, 0, bundleCount), {
+        const toastId = toast.info(getToastMsg(cmd, 0, bundleCount), {
             position: 'top-right',
             hideProgressBar: false,
             closeOnClick: true,
@@ -323,7 +309,7 @@ class Worksheet extends React.Component {
                 this.clearCheckedBundles(() => {
                     // This toast info is used for showing a message when a command has finished executing
                     toast.update(toastId, {
-                        render: this._getToastMsg(cmd, 1, bundleCount),
+                        render: getToastMsg(cmd, 1, bundleCount),
                         type: toast.TYPE.SUCCESS,
                         position: 'top-right',
                         autoClose: 2000,
@@ -339,6 +325,7 @@ class Worksheet extends React.Component {
                 this.reloadWorksheet(undefined, undefined, param);
             })
             .catch((e) => {
+                toast.dismiss();
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: e,
@@ -879,20 +866,18 @@ class Worksheet extends React.Component {
         }
         if (!(this.state.openedDialog || this.state.BulkBundleDialog)) {
             // Only enable these shortcuts when no dialog is opened
-            Mousetrap.bind(
-                ['shift+r'],
-                function(e) {
-                    this.reloadWorksheet(undefined, undefined);
+            Mousetrap.bind(['shift+r'], () => {
+                this.reloadWorksheet(undefined, undefined, undefined, () => {
                     toast.info('🦄 Worksheet refreshed!', {
                         position: 'top-right',
+                        hideProgressBar: true,
                         autoClose: 1500,
-                        hideProgressBar: false,
                         closeOnClick: true,
                         pauseOnHover: false,
                         draggable: true,
                     });
-                }.bind(this),
-            );
+                });
+            });
 
             // Show/hide web terminal
             Mousetrap.bind(
@@ -1394,6 +1379,7 @@ class Worksheet extends React.Component {
             uploadFiles = false,
             addImage = false, // whether the reload is caused by adding an image
         } = {},
+        afterReload,
     ) => {
         if (partialUpdateItems === undefined) {
             this.setState({ updating: true, showUpdateProgress: true });
@@ -1531,6 +1517,8 @@ class Worksheet extends React.Component {
                     });
                     this.setState({ showUpdateProgress: false, showWorksheetContainer: false });
                 }.bind(this),
+            }).then(() => {
+                afterReload && afterReload();
             });
         } else {
             var ws = _.clone(this.state.ws);
@@ -2116,6 +2104,31 @@ Mousetrap.stopCallback = function(e, element, combo) {
         element.tagName === 'TEXTAREA' ||
         (element.contentEditable && element.contentEditable === 'true')
     );
+};
+
+export const getToastMsg = (command, state, count) => {
+    // Creates a toast message for a given command.
+    // count is the number of bundles on which this command was performed, if applicable.
+    // state can take the value of 0 or 1
+    // 0 represents the command is being executed
+    // 1 represents the command has already been executed
+    const cmdMsgMap = { rm: ['Deleting', 'deleted'] };
+    const bundleCount = count + (count === 1 ? ' bundle' : ' bundles');
+    const cmdMsg = cmdMsgMap[command] ?? ['Executing', 'executed'];
+    let toastMsg;
+    if (command in cmdMsgMap) {
+        // We want the toasts to be "Deleting x bundles..." and "x bundles deleted!"
+        toastMsg =
+            state === 0 ? cmdMsg[state] + ' ' + bundleCount : bundleCount + ' ' + cmdMsg[state];
+    } else {
+        // Default text for unrecognized commands.
+        toastMsg =
+            state === 0
+                ? cmdMsg[state] + ' ' + command + ' command'
+                : command + ' command' + ' ' + cmdMsg[state];
+    }
+    toastMsg += state === 0 ? '...' : '!';
+    return toastMsg;
 };
 
 export default withStyles(styles)(Worksheet);

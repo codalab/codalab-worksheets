@@ -26,7 +26,7 @@ from codalab.lib.beam.filesystems import (
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '1.1.3'
+CODALAB_VERSION = '1.2.0'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
@@ -182,6 +182,20 @@ class StorageURLScheme(Enum):
 
     DISK_STORAGE = ""
     AZURE_BLOB_STORAGE = "azfs://"
+
+
+class StorageFormat(Enum):
+    """Possible storage formats for bundles.
+    When updating this enum, sync it with with the enum in the storage_format column
+    in codalab.model.tables and add the appropriate migrations to reflect the column change.
+    """
+
+    # Currently how disk storage stores bundles, just uncompressed.
+    UNCOMPRESSED = "uncompressed"
+
+    # Uses ratarmount to construct a single index.sqlite file along with a .tar.gz / .gz
+    # version of the bundle.
+    COMPRESSED_V1 = "compressed_v1"
 
 
 @dataclass(frozen=True)
