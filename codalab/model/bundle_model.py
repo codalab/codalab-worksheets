@@ -987,6 +987,8 @@ class BundleModel(object):
         Transitions bundle to WORKER_OFFLINE state:
             Updates the last_updated metadata.
             Removes the corresponding row from worker_run if it exists.
+        
+        If the worker is preemptible, move the bundle to the STAGED state instead.
         """
         with self.engine.begin() as connection:
             # Check that it still exists and is running
@@ -1000,15 +1002,22 @@ class BundleModel(object):
                 # The user deleted the bundle or the bundle finished
                 return False
 
+            worker = self.get_bundle_worker(bundle.uuid)
+            if worker['preemptible']:
+                bundle_update = {
+                    'state': State.STAGED,
+                    'metadata': {'last_updated': int(time.time())},
+                }
+                # TODO: we should store the history of which workers ran this bundle before in the bundle metadata.
+            else:
+                bundle_update = {
+                    'state': State.WORKER_OFFLINE,
+                    'metadata': {'last_updated': int(time.time())},
+                }
             # Delete row in worker_run
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
-
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {'last_updated': int(time.time())},
-            }
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
