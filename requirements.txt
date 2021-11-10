@@ -7,6 +7,7 @@ marshmallow==2.15.1
 setuptools>=40.0.0
 argcomplete==1.12.1
 indexed_gzip==1.6.3
+ratarmountcore==0.1.0
 PyYAML==5.4
 psutil==5.7.2
 six==1.15.0
