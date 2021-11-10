@@ -61,7 +61,8 @@ export const DEFAULT_POST_PROCESSOR = {
     date: 'date',
 };
 
-export const PRE_POPULATE_SCHEMA_ROWS = [
+// The rows should be synced with https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/worksheet_util.py#L575
+export const DEFAULT_SCHEMA_ROWS = [
     {
         field: 'uuid',
         'generalized-path': 'uuid',

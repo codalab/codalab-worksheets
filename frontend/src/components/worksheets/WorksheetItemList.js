@@ -18,7 +18,7 @@ import ImageEditor from './items/ImageEditor';
 import TextEditorItem from './items/TextEditorItem';
 import NewRun from './NewRun';
 import { withStyles } from '@material-ui/core/styles';
-import { PRE_POPULATE_SCHEMA_ROWS } from '../../constants';
+import { DEFAULT_SCHEMA_ROWS } from '../../constants';
 
 export const BLOCK_TO_COMPONENT = {
     markup_block: MarkdownItem,
@@ -296,7 +296,7 @@ class WorksheetItemList extends React.Component {
                             reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
                             editPermission={true}
                             item={{
-                                field_rows: PRE_POPULATE_SCHEMA_ROWS,
+                                field_rows: DEFAULT_SCHEMA_ROWS,
                                 header: ['field', 'generalized-path', 'post-processor'],
                                 schema_name: '',
                                 sort_keys: [0],
