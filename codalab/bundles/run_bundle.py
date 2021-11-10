@@ -36,6 +36,7 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important). Negative '
                                                                 'priority bundles are queued behind bundles with no specified priority.', default=None))
     METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.', default=True))
+    METADATA_SPECS.append(MetadataSpec('preemptible', bool, 'Whether the bundle is run on a preemptible worker.', default=False))
     METADATA_SPECS.append(
         MetadataSpec('cpu_usage', float, 'Proportion of current CPU usage for a running bundle. This field is only relevant for running bundles. (e.g., 0.24)', default=0.0, generated=True))
     METADATA_SPECS.append(

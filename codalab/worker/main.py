@@ -190,6 +190,9 @@ def parse_args():
         default=1,
         help='The shared memory size of the run container in GB (defaults to 1).',
     )
+    parser.add_argument(
+        '--preemptible', action='store_true', help='Whether the worker is preemptible.',
+    )
     return parser.parse_args()
 
 

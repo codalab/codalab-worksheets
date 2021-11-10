@@ -151,6 +151,8 @@ class WorkerManager(object):
             )
         if self.args.worker_shared_memory_size_gb:
             command.extend(['--shared-memory-size-gb', str(self.args.worker_shared_memory_size_gb)])
+        if self.args.worker_preemptible:
+            command.extend(['--worker-preemptible'])
 
         return command
 
