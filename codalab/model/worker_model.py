@@ -52,6 +52,7 @@ class WorkerModel(object):
         tag_exclusive,
         exit_after_num_runs,
         is_terminating,
+        preemptible,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -69,6 +70,7 @@ class WorkerModel(object):
                 'tag_exclusive': tag_exclusive,
                 'exit_after_num_runs': exit_after_num_runs,
                 'is_terminating': is_terminating,
+                'preemptible': preemptible,
             }
 
             # Populate the group for this worker, if group_name is valid
@@ -206,6 +208,7 @@ class WorkerModel(object):
                 'tag_exclusive': row.tag_exclusive,
                 'exit_after_num_runs': row.exit_after_num_runs,
                 'is_terminating': row.is_terminating,
+                'preemptible': row.preemptible,
             }
             for row in worker_rows
         }

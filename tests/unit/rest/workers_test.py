@@ -17,6 +17,7 @@ class WorkersTest(BaseTestCase):
             'tag_exclusive': False,
             'exit_after_num_runs': 999999999,
             'is_terminating': False,
+            'preemptible': True,
         }
         response = self.app.post_json('/rest/workers/test_worker/checkin', body)
         self.assertEqual(response.status_int, 200)

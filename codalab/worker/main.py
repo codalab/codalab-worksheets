@@ -328,6 +328,7 @@ def main():
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
+        preemptible=args.preemptible,
     )
 
     # Register a signal handler to ensure safe shutdown.

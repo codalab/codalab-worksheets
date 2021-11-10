@@ -526,6 +526,7 @@ worker = Table(
         'exit_after_num_runs', Integer, nullable=False
     ),  # Number of jobs allowed to run on worker.
     Column('is_terminating', Boolean, nullable=False),
+    Column('preemptible', Boolean, nullable=False),
     mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 
