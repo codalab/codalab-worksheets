@@ -995,7 +995,7 @@ class BundleModel(object):
         Transitions bundle to WORKER_OFFLINE state:
             Updates the last_updated metadata.
             Removes the corresponding row from worker_run if it exists.
-        
+
         If the worker is preemptible, move the bundle to the STAGED state instead.
         """
         with self.engine.begin() as connection:
