@@ -915,7 +915,15 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
+                'metadata': {
+                    'started': start_time,
+                    'last_updated': start_time,
+                    'remote': remote,
+                    'remotes': (bundle.metadata.remotes or [])
+                    + [
+                        remote
+                    ],  # Store the history of which workers ran this bundle before in the bundle metadata.
+                },
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -1002,14 +1010,11 @@ class BundleModel(object):
                 # The user deleted the bundle or the bundle finished
                 return False
 
-            worker = self.get_bundle_worker(bundle.uuid)
-            if worker['preemptible']:
+            if bundle.metadata.preemptible:
                 bundle_update = {
                     'state': State.STAGED,
                     'metadata': {'last_updated': int(time.time())},
-                    'remotes': worker.id
                 }
-                # TODO: we should store the history of which workers ran this bundle before in the bundle metadata.
             else:
                 bundle_update = {
                     'state': State.WORKER_OFFLINE,
