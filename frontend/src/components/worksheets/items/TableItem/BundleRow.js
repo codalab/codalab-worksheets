@@ -16,6 +16,7 @@ import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 import BundleDetail from '../../BundleDetail';
 import TextEditorItem from '../TextEditorItem';
 import SchemaItem from '../SchemaItem';
+import { DEFAULT_SCHEMA_ROWS } from '../../../../constants';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -390,14 +391,7 @@ class BundleRow extends Component {
                                     reloadWorksheet={reloadWorksheet}
                                     editPermission={true}
                                     item={{
-                                        field_rows: [
-                                            {
-                                                field: '',
-                                                'generalized-path': '',
-                                                'post-processor': null,
-                                                from_schema_name: '',
-                                            },
-                                        ],
+                                        field_rows: DEFAULT_SCHEMA_ROWS,
                                         header: ['field', 'generalized-path', 'post-processor'],
                                         schema_name: '',
                                         sort_keys: [this.props.after_sort_key + 2],
