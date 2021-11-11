@@ -482,7 +482,11 @@ class NavBar extends React.Component<{
                         <Button onClick={() => this.resetDialog()} color='primary'>
                             Cancel
                         </Button>
-                        <Button onClick={() => this.createNewWorksheet()} color='primary'>
+                        <Button
+                            onClick={() => this.createNewWorksheet()}
+                            variant='contained'
+                            color='primary'
+                        >
                             Confirm
                         </Button>
                     </DialogActions>
