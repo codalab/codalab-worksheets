@@ -1007,6 +1007,7 @@ class BundleModel(object):
                 bundle_update = {
                     'state': State.STAGED,
                     'metadata': {'last_updated': int(time.time())},
+                    'remotes': worker.id
                 }
                 # TODO: we should store the history of which workers ran this bundle before in the bundle metadata.
             else:
