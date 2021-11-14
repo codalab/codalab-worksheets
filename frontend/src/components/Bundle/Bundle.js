@@ -149,11 +149,7 @@ class Bundle extends React.Component<
         // Below block can be used to map any errorCode to custom message for user
         if (this.state.errorCode == 403) {
             return (
-                <ErrorMessage
-                    message={
-                        "You don't have permission to access: '/bundles/" + this.props.uuid + "'"
-                    }
-                />
+                <ErrorMessage message={"Permissind denied: '/bundles/" + this.props.uuid + "'"} />
             );
         } else if (this.state.errorCode == 404) {
             return <ErrorMessage message={"Not found: '/bundles/" + this.props.uuid + "'"} />;
