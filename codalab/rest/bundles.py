@@ -441,36 +441,38 @@ def _add_bundle_store():
     """
     Add a bundle store that the user can access.
     """
+    new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
+    # todo -- use new_bundle_store instead based on the schema
     return local.model.create_bundle_store(
         request.user,
-        request.forms.get('name'), 
-        request.forms.get('storage_type'), 
-        request.forms.get('storage_format'), 
-        request.forms.get('url'), 
-        request.forms.get('authentication')
+        request.json['name'], 
+        request.json['storage_type'], 
+        request.json['storage_format'], 
+        request.json['url'], 
+        request.json['authentication']
     )
+    # return BundleStoreSchema().dump(new_bundle_store).data
 
-
-@put('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
+@put('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
 def _update_bundle_store(uuid):
     """
     Update a bundle store that the user can access.
     """
+    # todo -- validate input against Marshmallow schema similar to POST endpoint
     return local.model.update_bundle_store(
         request.user, 
         uuid,
-        request.forms.get('name'), 
-        request.forms.get('storage_type'), 
-        request.forms.get('storage_format'), 
-        request.forms.get('url'), 
-        request.forms.get('authentication')
+        request.json['name'],
+        request.json['storage_type'], 
+        request.json['storage_format'], 
+        request.json['url'], 
+        request.json['authentication']
     )
 
-
-@get('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
+@get('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_store(uuid):
     """
-    Fetch the bundle store corresponding to the specified id.
+    Fetch the bundle store corresponding to the specified uuid.
 
     Returns a dictionary in which the key id the bundle store uuid, and the value
     is a tuple with the owner_id, name, and url.
@@ -478,10 +480,11 @@ def _fetch_bundle_store(uuid):
     return local.model.get_bundle_store(request.user, uuid)
 
 
-@delete('/bundle_stores/<id:re:%s>', apply=AuthenticatedProtectedPlugin())
+@delete('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
 def _delete_bundle_store(uuid):
     """
-    Delete the bundle store that the user can access, only if there is an associated BundleLocation.
+    Delete the bundle store that the user can access. Note that you can’t delete a bundle store 
+    unless there are no BundleLocations associated with it.
     """
     return local.model.delete_bundle_store(request.user, uuid)
 

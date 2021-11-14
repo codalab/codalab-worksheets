@@ -2908,6 +2908,9 @@ class BundleModel(object):
     # Bundle Store methods follow!
     # ===========================================================================
     def get_bundle_stores(self, user):
+        """
+        returns all bundle stores owned by the root user or the current user
+        """
         with self.engine.begin() as connection:
             rows = connection.execute(
                 select(
@@ -2926,7 +2929,6 @@ class BundleModel(object):
                     )
                 )
             ).fetchall()
-            logger.error(rows)
             return dict((row.uuid, (row.owner_id, row.name, row.url)) for row in rows)
 
     def create_bundle_store(self, user, name, storage_type, storage_format, url, authentication):
@@ -2945,8 +2947,9 @@ class BundleModel(object):
                 'authentication': authentication,
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
+            # todo - determine what the return type/value should be here
 
-    def update_bundle_store(self, user, id, name, storage_type, storage_format, url, authentication):
+    def update_bundle_store(self, user, uuid, name, storage_type, storage_format, url, authentication):
         """
         update a bundle store
         """
@@ -2961,13 +2964,19 @@ class BundleModel(object):
             }
             connection.execute(
                 cl_bundle_store.update()
-                .where(cl_bundle_store.c.uuid == id)
+                .where(
+                    and_(
+                        cl_bundle_store.c.uuid == uuid,
+                        cl_bundle_store.c.owner_id == user,
+                    )
+                )
                 .values(bundle_store_value)
             )
+            # todo - determine what the return type/value should be here
 
-    def get_bundle_store(self, user, id):
+    def get_bundle_store(self, user, uuid):
         """
-        return the bundle store corresponding to the specified id
+        return the bundle store corresponding to the specified uuid
         """
         with self.engine.begin() as connection:
             row = connection.execute(
@@ -2982,7 +2991,7 @@ class BundleModel(object):
                     ]
                 ).where(
                     and_(
-                        cl_bundle_store.c.uuid == id,
+                        cl_bundle_store.c.uuid == uuid,
                         or_(
                             cl_bundle_store.c.owner_id == 'codalab(0)',
                             cl_bundle_store.c.owner_id == user,
@@ -2990,25 +2999,30 @@ class BundleModel(object):
                     )
                 )
             ).fetchone()
-            logger.error(row)
             return {
                 'owner_id': row.owner_id,
                 'name': row.name,
                 'url': row.url,
             }
 
-    def delete_bundle_store(self, user, id):
+    def delete_bundle_store(self, user, uuid):
         """
-        return the bundle store corresponding to the specified id
+        return the bundle store corresponding to the specified uuid
         """
         with self.engine.begin() as connection:
             bundle_store_row = connection.execute(
-                select([cl_bundle_store.c.uuid]).where(cl_bundle_store.c.uuid == id)
+                select(
+                    [cl_bundle_store.c.uuid]
+                ).where(
+                    and_(
+                        cl_bundle_store.c.uuid == uuid,
+                        cl_bundle_store.c.owner_id == user,
+                    )
+                )
             ).fetchone()
-            logger.error(bundle_store_row)
             bundle_location_row = connection.execute(
-                select([cl_bundle_location.c.id]).where(id == bundle_store_row.uuid)
+                select([cl_bundle_location.c.id]).where(bundle_store == bundle_store_row.uuid)
             ).fetchone()
             if bundle_location_row is not None:
-                connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == id))
+                connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
         return id
