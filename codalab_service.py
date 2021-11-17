@@ -473,6 +473,12 @@ for worker_manager_type in ['cpu', 'gpu']:
             help='Name of queue to submit {} jobs'.format(worker_manager_type),
             default='codalab-{}'.format(worker_manager_type),
         ),
+        CodalabArg(
+            name='worker_manager_{}_worker_shared_memory_size_gb'.format(worker_manager_type),
+            help='The shared memory size in GB of the run container started by the CodaLab Workers.',
+            type=int,
+            default=1,
+        ),
     ]
 
 

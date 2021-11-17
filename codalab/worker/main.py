@@ -184,6 +184,12 @@ def parse_args():
         default=3,
         help='The number of times to retry downloading dependencies after a failure (defaults to 3).',
     )
+    parser.add_argument(
+        '--shared-memory-size-gb',
+        type=int,
+        default=1,
+        help='The shared memory size of the run container in GB (defaults to 1).',
+    )
     return parser.parse_args()
 
 
@@ -232,10 +238,13 @@ def main():
         )
 
     # Configure logging
-    logging.basicConfig(
-        format='%(asctime)s %(message)s %(pathname)s %(lineno)d',
-        level=(logging.DEBUG if args.verbose else logging.INFO),
-    )
+    log_format: str = '%(asctime)s %(message)s'
+    if args.verbose:
+        log_format += ' %(pathname)s %(lineno)d'
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logging.basicConfig(format=log_format, level=log_level)
 
     logging.getLogger('urllib3').setLevel(logging.INFO)
     # Initialize sentry logging
@@ -315,6 +324,7 @@ def main():
         pass_down_termination=args.pass_down_termination,
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
+        shared_memory_size_gb=args.shared_memory_size_gb,
     )
 
     # Register a signal handler to ensure safe shutdown.

@@ -165,7 +165,7 @@ class NewUpload extends React.Component<{
         let url = `/rest/bundles?worksheet=${worksheetUUID}`;
         url += `&after_sort_key=${isNaN(after_sort_key) ? -1 : after_sort_key}`;
 
-        if (focusedItem.mode === 'image_block') {
+        if (focusedItem && focusedItem.mode === 'image_block') {
             url += `&after_image=1`;
         }
 

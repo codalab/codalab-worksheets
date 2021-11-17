@@ -1,4 +1,4 @@
-apache-beam[azure]==2.27.0
+apache-beam[azure]==2.32.0
 bottle==0.12.19
 dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
@@ -6,7 +6,8 @@ marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
 setuptools>=40.0.0
 argcomplete==1.12.1
-indexed_gzip_fileobj_fork_epicfaace==1.5.4
+indexed_gzip==1.6.3
+ratarmountcore==0.1.0
 PyYAML==5.4
 psutil==5.7.2
 six==1.15.0

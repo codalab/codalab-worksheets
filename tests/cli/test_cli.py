@@ -38,6 +38,7 @@ import sys
 import tempfile
 import time
 import traceback
+import requests
 
 
 global cl
@@ -777,6 +778,8 @@ def test_upload1(ctx):
 
 @TestModule.register('upload2')
 def test_upload2(ctx):
+    """Additional upload tests. Also checks to make sure the REST API /contents/blob/ endpoint
+    has the right headers, so that the browser can properly transparently decompress the data if needed."""
     # Upload tar.gz and zip.
     for suffix in ['.tar.gz', '.zip']:
         # Pack it up
@@ -809,8 +812,22 @@ def test_upload2(ctx):
 
         # Upload it and unpack
         uuid = _run_command([cl, 'upload', archive_path])
-        check_equals(os.path.basename(archive_path).replace(suffix, ''), get_info(uuid, 'name'))
+        name = get_info(uuid, 'name')
+        check_equals(os.path.basename(archive_path).replace(suffix, ''), name)
         check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1']))
+
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals("application/gzip", response.headers.get("Content-Type"))
+        check_equals("identity", response.headers.get("Content-Encoding"))
+        check_equals(
+            f'attachment; filename="{name}.tar.gz"', response.headers.get("Content-Disposition")
+        )
+
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
+        check_equals("text/plain", response.headers.get("Content-Type"))
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals('inline; filename="f1"', response.headers.get("Content-Disposition"))
+        check_equals(test_path_contents('dir1/f1', binary=True), response.read().rstrip())
 
         # Upload it but don't unpack
         uuid = _run_command([cl, 'upload', archive_path, '--pack'])
@@ -820,12 +837,30 @@ def test_upload2(ctx):
             _run_command([cl, 'cat', uuid], binary=True),
         )
 
+        # Bundle should be streamed as a gzipped archive file, so it should be transparently decoded by the browser.
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals(
+            "application/zip" if suffix == ".zip" else "application/octet-stream",
+            response.headers.get("Content-Type"),
+        )
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals(
+            f'inline; filename="{os.path.basename(archive_path)}"',
+            response.headers.get("Content-Disposition"),
+        )
+        check_equals(test_path_contents(archive_path, binary=True), response.read())
+
         # Force compression
         uuid = _run_command([cl, 'upload', test_path('echo'), '--force-compression'])
         check_equals('echo', get_info(uuid, 'name'))
         check_equals(
             test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
         )
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals("text/plain", response.headers.get("Content-Type"))
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals('inline; filename="echo"', response.headers.get("Content-Disposition"))
+        check_equals(test_path_contents('echo', binary=True), response.read().rstrip())
 
         os.unlink(archive_path)
 
@@ -876,6 +911,76 @@ def test_upload4(ctx):
     # Cleanup
     for archive in archive_exts:
         os.unlink(archive)
+
+
+@TestModule.register('blob')
+def test_blob(ctx):
+    """Certain Blob Storage tests. Should only be called when
+    CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set to 1."""
+
+    def fetch_contents_blob_no_redirect(uuid):
+        """Fetch blob contents without redirecting to Blob Storage.
+        We don't redirect to Blob Storage, and Target-Type and X-CodaLab-Target-Size
+        should always be present on the response, if we don't pass in the
+        `support_redirect` parameter. In a future version, we will change this so that
+        this guarantee no longer exists (see comment at bundles.py:_fetch_bundle_contents_blob).
+        """
+        return ctx.client._make_request(
+            'GET',
+            f'/bundles/{uuid}/contents/blob/',
+            headers={'Accept-Encoding': 'gzip'},
+            return_response=True,
+        )
+
+    def fetch_contents_blob_from_web_browser(uuid):
+        """Fetch blob contents by simulating a web browser, which means that the
+        "Referer" / "Host" / "X-Forwarded-Host" headers are set
+        (see codalab/lib/server_util.py:get_request_source). This means that
+        we will redirect to Blob Storage by default if `support_redirect` is not specified.
+
+        We use requests to make this request in order to not follow redirects
+        (so we can check to ensure it properly redirects to http://localhost).
+        """
+        return requests.get(
+            ctx.client._base_url + f'/bundles/{uuid}/contents/blob/',
+            allow_redirects=False,
+            headers={
+                'Accept-Encoding': 'gzip',
+                'Host': 'rest',
+                'X-Forwarded-Host': 'localhost',
+                'Referer': 'localhost',
+                'Authorization': 'Bearer ' + ctx.client._get_access_token(),
+            },
+        )
+
+    # Upload file and directory
+    for (uuid, target_type) in [
+        (_run_command([cl, 'upload', '-a', test_path('echo')]), "file"),
+        (_run_command([cl, 'upload', test_path('dir1')]), "directory"),
+    ]:
+        # Should redirect by default
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        assert response.url.startswith("http://azurite")
+
+        # When client does not support redirect, should not redirect
+        response = fetch_contents_blob_no_redirect(uuid)
+        assert response.url.startswith("http://rest-server")
+        assert response.headers.get("Target-Type") == target_type
+        assert "X-CodaLab-Target-Size" in response.headers
+
+        # When retrieving part of a file / directory, it should not redirect
+        response = (
+            ctx.client.fetch_contents_blob(BundleTarget(uuid, ''), head=1)
+            if target_type == "file"
+            else ctx.client.fetch_contents_blob(BundleTarget(uuid, 'f1'))
+        )
+        assert response.url.startswith("http://rest-server")
+        assert response.headers.get("Target-Type") == "file"
+        assert "X-CodaLab-Target-Size" in response.headers
+
+        # When client is from a web browser, should redirect
+        response = fetch_contents_blob_from_web_browser(uuid)
+        assert response.headers['Location'].startswith("http://localhost")
 
 
 @TestModule.register('download')
@@ -1845,7 +1950,9 @@ def test_resources(ctx):
 
     # Test network access
     REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
-    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 1)
+    # Network access is set to true by default
+    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
+    # --request-network should behave the same as above
     wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
 
 
@@ -1933,9 +2040,20 @@ def test_groups(ctx):
     # Try to relegate yourself to non-admin status
     _run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
 
+    # Add a member
+    member_user = random_name()
+    create_user(ctx, member_user)
+    _run_command([cl, 'uadd', member_user, group_name])
+    group_info = _run_command([cl, 'ginfo', group_name])
+    check_contains(member_user, group_info)
+
+    # When member is removed, ginfo should not crash
+    _run_command([cl, 'ufarewell', member_user])
+    group_info = _run_command([cl, 'ginfo', group_name])
+    check_contains('[deleted user]', group_info)
+
     # TODO: Test other group membership semantics:
     # - removing a group
-    # - adding new members
     # - adding an admin
     # - converting member to admin
     # - converting admin to member
@@ -2293,6 +2411,13 @@ def test_rest1(ctx):
     _run_command([cl, 'add', 'bundle', uuid])
     response = ctx.client.fetch_interpreted_worksheet(wuuid)
     check_equals(response['uuid'], wuuid)
+
+    # Ensure right MIME type and other headers are set when getting this image bundle's contents
+    response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+    check_equals("image/png", response.headers.get("Content-Type"))
+    check_equals("gzip", response.headers.get("Content-Encoding"))
+    check_equals('inline; filename="codalab.png"', response.headers.get("Content-Disposition"))
+    check_equals(test_path_contents('codalab.png', binary=True), response.read().rstrip())
 
 
 @TestModule.register('worksheets')

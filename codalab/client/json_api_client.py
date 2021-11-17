@@ -621,7 +621,7 @@ class JsonApiClient(RestClient):
         headers = {'Accept-Encoding': 'gzip'}
         if range_ is not None:
             headers['Range'] = 'bytes=%d-%d' % range_
-        params = {}
+        params = {'support_redirect': 1}
         if head is not None:
             params['head'] = head
         if tail is not None:

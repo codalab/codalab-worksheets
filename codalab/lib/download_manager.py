@@ -349,6 +349,9 @@ class DownloadManager(object):
         except download_util.PathException as e:
             raise UsageError(str(e))
 
+    def get_target_sas_url(self, target, **kwargs):
+        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_sas_url(**kwargs)
+
     def _send_read_message(self, worker, response_socket_id, target, read_args):
         message = {
             'type': 'read',

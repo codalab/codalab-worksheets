@@ -15,9 +15,18 @@ from dataclasses import dataclass
 from retry import retry
 from enum import Enum
 
+from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+import datetime
+from codalab.lib.beam.filesystems import (
+    AZURE_BLOB_ACCOUNT_NAME,
+    AZURE_BLOB_ACCOUNT_KEY,
+    AZURE_BLOB_CONTAINER_NAME,
+    AZURE_BLOB_HTTP_ENDPOINT,
+)
+
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '1.0.3'
+CODALAB_VERSION = '1.2.0'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
@@ -175,6 +184,20 @@ class StorageURLScheme(Enum):
     AZURE_BLOB_STORAGE = "azfs://"
 
 
+class StorageFormat(Enum):
+    """Possible storage formats for bundles.
+    When updating this enum, sync it with with the enum in the storage_format column
+    in codalab.model.tables and add the appropriate migrations to reflect the column change.
+    """
+
+    # Currently how disk storage stores bundles, just uncompressed.
+    UNCOMPRESSED = "uncompressed"
+
+    # Uses ratarmount to construct a single index.sqlite file along with a .tar.gz / .gz
+    # version of the bundle.
+    COMPRESSED_V1 = "compressed_v1"
+
+
 @dataclass(frozen=True)
 class LinkedBundlePath:
     """A LinkedBundlePath refers to a path that points to the location of a linked bundle within a specific storage location.
@@ -208,6 +231,32 @@ class LinkedBundlePath:
     uses_beam: bool
     archive_subpath: str
     bundle_uuid: str
+
+    def _get_sas_url(self, path, **kwargs):
+        """Generates a SAS URL that can be used to read the given blob for one hour."""
+        if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
+            raise ValueError(
+                f"SAS URLs can only be retrieved for bundles on Blob Storage. Storage type is: {self.storage_type}."
+            )
+        blob_name = path.replace(
+            f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
+        )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
+        sas_token = generate_blob_sas(
+            **kwargs,
+            account_name=AZURE_BLOB_ACCOUNT_NAME,
+            container_name=AZURE_BLOB_CONTAINER_NAME,
+            account_key=AZURE_BLOB_ACCOUNT_KEY,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.datetime.now() + datetime.timedelta(hours=1),
+            blob_name=blob_name,
+        )
+        return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
+
+    def bundle_path_sas_url(self, **kwargs):
+        return self._get_sas_url(self.bundle_path, **kwargs)
+
+    def index_path_sas_url(self, **kwargs):
+        return self._get_sas_url(self.index_path, **kwargs)
 
 
 def parse_linked_bundle_url(url):

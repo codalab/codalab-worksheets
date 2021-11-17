@@ -9,13 +9,16 @@ import time
 from io import BytesIO
 from http.client import HTTPResponse
 
-from bottle import abort, get, post, put, delete, local, request, response
+from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.common import precondition, UsageError, NotFoundError
+from codalab.common import StorageType, precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
+from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
 from codalab.lib.server_util import (
+    RequestSource,
     bottle_patch as patch,
+    get_request_source,
     json_api_include,
     query_get_json_api_include_set,
     json_api_meta,
@@ -605,6 +608,15 @@ def _fetch_bundle_contents_blob(uuid, path=''):
       Default is 0, meaning to fetch the entire file.
     - `max_line_length`: maximum number of characters to fetch from each line,
       if either `head` or `tail` is specified. Default is 128.
+    - `support_redirect`: Set to 1 if the client supports bypassing the server
+      and redirecting to another URL (such as Blob Storage). If so, the Target-Type and
+      X-CodaLab-Target-Size headers will not be present in the response.
+
+      If this endpoint is called from a web browser (`Referer` header is set), this parameter
+      defaults to 1. Otherwise, it defaults to 0, meant for compatibility
+      with older clients / CLI versions that depend on the Target-Type and
+      X-CodaLab-Target-Size headers. In a future release, this parameter will always
+      be set to 1.
 
     HTTP Response headers (for single-file targets):
     - `Content-Disposition: inline; filename=<bundle name or target filename>`
@@ -629,8 +641,14 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     tail_lines = query_get_type(int, 'tail', default=0)
     truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
+    support_redirect = query_get_type(
+        int,
+        'support_redirect',
+        default=1 if get_request_source() == RequestSource.WEB_BROWSER else 0,
+    )
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     target = BundleTarget(uuid, path)
+    fileobj = None
 
     try:
         target_info = local.download_manager.get_target_info(target, 0)
@@ -645,11 +663,21 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         abort(http.client.BAD_REQUEST, str(e))
 
     # Figure out the file name.
-    bundle_name = local.model.get_bundle(target.bundle_uuid).metadata.name
+    bundle = local.model.get_bundle(target.bundle_uuid)
+    bundle_name = bundle.metadata.name
     if not path and bundle_name:
         filename = bundle_name
     else:
         filename = target_info['name']
+
+    # We should redirect to the Blob Storage URL if the following conditions are met:
+    should_redirect_url = (
+        support_redirect == 1
+        and bundle.storage_type == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        and path == ''  # No subpath
+        and request_accepts_gzip_encoding()  # Client accepts gzip encoding
+        and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
+    )
 
     if target_info['type'] == 'directory':
         if byte_range:
@@ -660,7 +688,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         gzipped_stream = False  # but don't set the encoding to 'gzip'
         mimetype = "application/gzip"
         filename += ".tar.gz"
-        fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
+        if not should_redirect_url:
+            fileobj = local.download_manager.stream_tarred_gzipped_directory(target)
     elif target_info['type'] == 'file':
         # Let's gzip to save bandwidth.
         # For simplicity, we do this even if the file is already a packed
@@ -678,19 +707,20 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         if encoding is not None:
             mimetype = 'application/octet-stream'
 
-        if byte_range and (head_lines or tail_lines):
-            abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
-        elif byte_range:
-            start, end = byte_range
-            fileobj = local.download_manager.read_file_section(
-                target, start, end - start + 1, gzipped_stream
-            )
-        elif head_lines or tail_lines:
-            fileobj = local.download_manager.summarize_file(
-                target, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
-            )
-        else:
-            fileobj = local.download_manager.stream_file(target, gzipped_stream)
+        if not should_redirect_url:
+            if byte_range and (head_lines or tail_lines):
+                abort(http.client.BAD_REQUEST, 'Head and range not supported on the same request.')
+            elif byte_range:
+                start, end = byte_range
+                fileobj = local.download_manager.read_file_section(
+                    target, start, end - start + 1, gzipped_stream
+                )
+            elif head_lines or tail_lines:
+                fileobj = local.download_manager.summarize_file(
+                    target, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
+                )
+            else:
+                fileobj = local.download_manager.stream_file(target, gzipped_stream)
     else:
         # Symlinks.
         abort(
@@ -716,6 +746,26 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         # if request is for a subdir in a bundle then return 0
         size = 0
     response.set_header('X-Codalab-Target-Size', size)
+
+    if should_redirect_url:
+        # Redirect to SAS URL on Blob Storage.
+        assert fileobj is None  # We should not be returning any other contents.
+        sas_url = local.download_manager.get_target_sas_url(
+            target,
+            # We pass these parameters to set the Content-Type, Content-Encoding, and
+            # Content-Disposition headers that are set on the Blob Storage response.
+            content_type=response.get_header('Content-Type'),
+            content_encoding=response.get_header('Content-Encoding'),
+            content_disposition=response.get_header('Content-Disposition'),
+        )
+        # Quirk when running CodaLab locally -- if this endpoint was called from within a Docker container
+        # such as the REST server or the worker, we need to redirect to http://azurite. This is because
+        # of the way Docker networking is set up, as local Docker containers doesn't have access to
+        # Azurite through http://localhost, but rather only through http://azurite.
+        if LOCAL_USING_AZURITE:
+            if get_request_source() == RequestSource.LOCAL_DOCKER:
+                sas_url = sas_url.replace("localhost", "azurite", 1)
+        return redirect(sas_url)
     return fileobj
 
 
