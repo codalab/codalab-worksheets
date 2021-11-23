@@ -1,9 +1,34 @@
 import os
 import unittest
+import shutil
 import tempfile
 import threading
 
-from codalab.worker.nfs_dependency_manager import NFSLock
+from codalab.worker.nfs_dependency_manager import NFSDependencyManager, NFSLock
+from codalab.worker.bundle_state import DependencyKey
+
+
+class DependencyManagerTest(unittest.TestCase):
+    def setUp(self):
+        self.work_dir = tempfile.mkdtemp()
+        self.state_path = os.path.join(self.work_dir, 'dependencies-state.json')
+        self.dependency_manager = NFSDependencyManager(
+            commit_file=self.state_path,
+            bundle_service=None,
+            worker_dir=self.work_dir,
+            max_cache_size_bytes=1024,
+            download_dependencies_max_retries=1,
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.work_dir)
+
+    def test_get(self):
+        dependent_uuid = "0x2"
+        dependency_key = DependencyKey(parent_uuid="0x1", parent_path="parent")
+        state = self.dependency_manager.get(dependent_uuid, dependency_key)
+        self.assertEqual(state.stage, 'DOWNLOADING')
+        self.assertEqual(state.path, '0x1_parent')
 
 
 class NFSLockTest(unittest.TestCase):

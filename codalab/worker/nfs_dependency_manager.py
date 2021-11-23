@@ -19,7 +19,6 @@ from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.fsm import DependencyStage
 from codalab.worker.worker_thread import ThreadDict
-from codalab.worker.state_committer import JsonStateCommitter
 from codalab.worker.bundle_state import DependencyKey
 from codalab.worker.dependency_manager import (
     DownloadAbortedException,
@@ -88,19 +87,7 @@ class NFSDependencyManager(DependencyManager):
             max_cache_size_bytes,
             download_dependencies_max_retries,
         )
-        self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
-        self.add_terminal(DependencyStage.READY)
-        self.add_terminal(DependencyStage.FAILED)
-
         self._id: str = "worker-dependency-manager-{}".format(uuid.uuid4().hex[:8])
-        self._state_committer = JsonStateCommitter(commit_file)
-        self._bundle_service = bundle_service
-        self._max_cache_size_bytes = max_cache_size_bytes
-        self.dependencies_dir = os.path.join(worker_dir, DependencyManager.DEPENDENCIES_DIR_NAME)
-        self._download_dependencies_max_retries = download_dependencies_max_retries
-        if not os.path.exists(self.dependencies_dir):
-            logger.info('{} doesn\'t exist, creating.'.format(self.dependencies_dir))
-            os.makedirs(self.dependencies_dir, 0o770)
 
         # Locks for concurrency
         self._dependency_locks: Dict[DependencyKey, threading.RLock] = dict()
@@ -184,10 +171,7 @@ class NFSDependencyManager(DependencyManager):
         Not thread safe. Caller should acquire self._global_lock before calling this method.
         """
         state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
-        dependencies = {}
-        for dep, dep_state in state['dependencies'].items():
-            dependencies[dep] = dep_state
-        return dependencies
+        return state['dependencies']
 
     def _fetch_paths(self) -> Set[str]:
         """
@@ -367,7 +351,7 @@ class NFSDependencyManager(DependencyManager):
             dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
             return dependency_key in dependencies
 
-    def get(self, uuid, dependency_key):
+    def get(self, uuid: str, dependency_key: DependencyKey) -> DependencyState:
         """
         Request the dependency for the run with uuid, registering uuid as a dependent of this dependency
         """
