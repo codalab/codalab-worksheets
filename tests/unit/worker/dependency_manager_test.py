@@ -3,7 +3,7 @@ import unittest
 import tempfile
 import threading
 
-from codalab.worker.dependency_manager import NFSLock
+from codalab.worker.nfs_dependency_manager import NFSLock
 
 
 class NFSLockTest(unittest.TestCase):

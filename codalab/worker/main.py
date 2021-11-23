@@ -21,6 +21,7 @@ from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
+from codalab.worker.nfs_dependency_manager import NFSDependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
 
@@ -270,15 +271,15 @@ def main():
         dependency_manager = None
     else:
         local_bundles_dir = os.path.join(args.work_dir, 'runs')
-        dependency_manager = DependencyManager(
+        # TODO: Roll out the shared cache feature incrementally.
+        #       Once we are confident with the NFS locking, replace the DependencyManager with NFSDependencyManager.
+        dependency_manager_type = NFSDependencyManager if args.use_shared_cache else DependencyManager
+        dependency_manager = dependency_manager_type(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
             args.work_dir,
             args.max_work_dir_size,
             args.download_dependencies_max_retries,
-            # TODO: Roll out the shared cache feature incrementally.
-            #       Once we are confident with the NFS locking, set use_nfs_lock=True by default.
-            use_nfs_lock=args.use_shared_cache,
         )
 
     if args.container_runtime == "singularity":
