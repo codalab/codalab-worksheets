@@ -273,7 +273,9 @@ def main():
         local_bundles_dir = os.path.join(args.work_dir, 'runs')
         # TODO: Roll out the shared cache feature incrementally.
         #       Once we are confident with the NFS locking, replace the DependencyManager with NFSDependencyManager.
-        dependency_manager_type = NFSDependencyManager if args.use_shared_cache else DependencyManager
+        dependency_manager_type = (
+            NFSDependencyManager if args.use_shared_cache else DependencyManager
+        )
         dependency_manager = dependency_manager_type(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
