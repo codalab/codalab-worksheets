@@ -54,7 +54,7 @@ class NFSLock(threading._RLock):
             # Errors when attempting to acquire the lock more than once in the same process
             self._lock.lock()
         except AlreadyLockedError as error:
-            print(error)
+            pass
 
     def release(self):
         self._lock.unlock(unconditionally=True)
