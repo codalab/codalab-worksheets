@@ -425,6 +425,29 @@ def _fetch_locations():
     }
     return dict(data=uuids_to_locations)
 
+@get('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_locations(bundle_uuid):
+    """
+    Returns a list of BundleLocations associated with the given bundle in the format 
+    [{name, storage_type, storage_format, url}]
+    """
+    return dict(data=local.model.get_bundle_locations(bundle_uuid))
+    
+@post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+def _add_bundle_location(bundle_uuid):
+    """
+    Add a new BundleLocation to a bundle. Returns a SAS URL that the caller can then 
+    use to upload directly to a bundle location
+    """
+    return dict(data=local.model.add_bundle_location(bundle_uuid))
+
+@get('/bundles/<bundle_uuid:re:%s>/locations/<location_id:re:%s>/', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_location(bundle_uuid, location_id):
+    """
+    Get info about a specific BundleLocation. This returns a SAS URL that the caller 
+    can use to download directly from a bundle location.
+    """
+    return dict(data=local.model.get_bundle_location(bundle_uuid, location_id))
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 @get(

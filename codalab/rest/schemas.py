@@ -220,6 +220,12 @@ class BundleSchema(Schema):
     class Meta:
         type_ = 'bundles'
 
+class BundleLocationSchema(Schema):
+    id = fields.String(validate=validate_uuid, attribute='uuid')
+    bundle_uuid = fields.Nested(BundleSchema, many=True)
+    bundle_store = fields.Nested(BundleStoreSchema, many=False)
+    class Meta:
+        type_ = 'bundle-location'
 
 # Field-update restrictions are specified as lists below because the
 # restrictions differ depending on the action

@@ -30,6 +30,8 @@ from codalab.model.tables import (
     bundle as cl_bundle,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
+    bundle_store as cl_bundle_store,
+    bundle_location as cl_bundle_location,
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
@@ -2901,3 +2903,56 @@ class BundleModel(object):
             connection.execute(
                 oauth2_auth_code.delete().where(oauth2_auth_code.c.id == auth_code_id)
             )
+
+    # ===========================================================================
+    # Multiple bundle locations methods follow!
+    # ===========================================================================
+
+    def get_bundle_locations(self, bundle_uuid):
+        """
+        returns all bundle locations associated with the specified bundle
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
+                .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
+            ).fetchall()
+            return [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
+
+    def add_bundle_location(self, bundle_uuid):
+        """
+        adds a new bundle location to the specified bundle and returns SAS URL
+        """
+        uuid = spec_util.generate_uuid()
+        with self.engine.begin() as connection:
+            bundle_location_value = {
+                'uuid': uuid,
+                'bundle_uuid': bundle_uuid,
+                'bundle_store': # TODO
+            }
+            connection.execute(cl_bundle_location.insert().values(bundle_location_value))
+        
+        # TODO - Return SAS URL
+
+    def get_bundle_location(self, bundle_uuid, location_id):
+        """
+        returns the SAS URL for the specified location associated with the specified bundle
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
+                .where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.id == location_id))
+            ).fetchone()
+            
+            # Ensure that the specified bundle location exists for the provided bundle
+            if row is None:
+                return None
+            
+            # TODO - fetch the SAS URL
+            # target = BundleTarget(location_id, path='')
+            # return local.download_manager.get_target_sas_url(
+            #     target,
+            #     content_type=response.get_header('Content-Type'),
+            #     content_encoding=response.get_header('Content-Encoding'),
+            #     content_disposition=response.get_header('Content-Disposition'),
+            # )
