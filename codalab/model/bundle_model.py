@@ -2915,6 +2915,11 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             rows = connection.execute(
                 select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
+                .select_from(
+                    cl_bundle_location.join(
+                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store
+                    )
+                )
                 .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
             ).fetchall()
             return [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
@@ -2941,7 +2946,11 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
-                .where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.id == location_id))
+                .select_from(
+                    cl_bundle_location.join(
+                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store
+                    )
+                ).where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.id == location_id))
             ).fetchone()
             
             # Ensure that the specified bundle location exists for the provided bundle
