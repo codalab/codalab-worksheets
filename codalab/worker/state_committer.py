@@ -32,16 +32,22 @@ class JsonStateCommitter(BaseStateCommitter):
 
     def commit(self, state):
         """ Write out the state in JSON format to a temporary file and rename it into place """
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            try:
-                self.temp_file = f.name
-                f.write(pyjson.dumps(state).encode())
-                f.flush()
-                shutil.copyfile(self.temp_file, self._state_file)
-            finally:
-                try:
-                    os.unlink(self.temp_file)
-                except FileNotFoundError as e:
-                    logger.error(
-                        f"Problem occurred in deleting temp file {self.temp_file} via os.unlink: {str(e)}"
-                    )
+        # TODO: temporary files still randomly disappear. Why can't we just write directly to the JSON file? -Tony
+        #       See the following PR for more info: https://github.com/codalab/codalab-worksheets/pull/2765.
+        # with tempfile.NamedTemporaryFile(delete=False) as f:
+        #     try:
+        #         self.temp_file = f.name
+        #         f.write(pyjson.dumps(state).encode())
+        #         f.flush()
+        #         shutil.copyfile(self.temp_file, self._state_file)
+        #     finally:
+        #         try:
+        #             os.unlink(self.temp_file)
+        #         except FileNotFoundError:
+        #             logger.error(
+        #                 "Problem occurred in deleting temp file {} via os.unlink".format(
+        #                     self.temp_file
+        #                 )
+        #             )
+        with open(self._state_file, 'w+') as f:
+            f.write(pyjson.dumps(state))

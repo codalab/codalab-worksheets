@@ -203,7 +203,6 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         failed dependency would automatically fail indefinitely.
         """
         with self._global_lock:
-            # TODO: culprit? -Tony
             self._acquire_all_locks()
             failed_deps = {
                 dep_key: dep_state

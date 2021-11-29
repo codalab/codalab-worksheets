@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 from codalab.worker.bundle_state import DependencyKey
 from codalab.worker.nfs_dependency_manager import NFSDependencyManager, NFSLock
 
+
 class DependencyManagerTest(unittest.TestCase):
     def setUp(self):
         self.work_dir = tempfile.mkdtemp()
@@ -62,13 +63,12 @@ class DependencyManagerTest(unittest.TestCase):
         self.assertEqual(len(dependency_keys), 2)
 
     def test_concurrency(self):
-        num_of_dependency_managers = 5
+        num_of_dependency_managers = 20
         executor = ProcessPoolExecutor(max_workers=num_of_dependency_managers)
 
         random_file_path = os.path.join(self.work_dir, "random_file")
         with open(random_file_path, "wb") as f:
-            # fileobj.seek((1024 * 1024 * 1024) - 1)
-            f.seek(1024 - 1)
+            f.seek((1024 * 1024 * 1024) - 1)  # 1 GB
             f.write(b"\0")
 
         futures = [
@@ -95,7 +95,7 @@ def task(work_dir, state_path, random_file_path):
 
     # Create and start a dependency manager
     process_id = os.getpid()
-    print(f"{process_id}: Starting a DependencyManager on process {process_id}...")
+    print(f"{process_id}: Starting a DependencyManager...")
     dependency_manager = NFSDependencyManager(
         commit_file=state_path,
         bundle_service=mock_bundle_service,
@@ -110,7 +110,10 @@ def task(work_dir, state_path, random_file_path):
     dependency_key = DependencyKey(parent_uuid="0x1", parent_path="parent")
     run_uuid = f"0x{process_id}"
     state = dependency_manager.get(run_uuid, dependency_key)
-    assert run_uuid in state.dependents
+    # print(f"{process_id}: Dependents={state.dependents}")
+    assert (
+        run_uuid in state.dependents
+    ), f"{process_id}: Expected {run_uuid} as one of the dependents."
 
     # Release the run bundle as a dependent
     dependency_manager.release(run_uuid, dependency_key)
@@ -120,10 +123,12 @@ def task(work_dir, state_path, random_file_path):
         print(f"{process_id}: Checking {run_uuid} in {state.dependents}")
         assert (
             run_uuid not in state.dependents
-        ), "Dependent should not be in the list of dependents after unregistering."
+        ), f"{process_id}: Dependent should not be in the list of dependents after unregistering."
+
+    # Keep the dependency manager running for some time to test the loop
+    time.sleep(30)
 
     # Stop the Dependency Manager
-    time.sleep(30)
     print(f"{process_id}: Stopping DependencyManger...")
     dependency_manager.stop()
     print(f"{process_id}: Done.")
