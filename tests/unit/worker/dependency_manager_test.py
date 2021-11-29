@@ -1,4 +1,5 @@
 import os
+import time
 import unittest
 import shutil
 import tempfile
@@ -7,9 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from unittest.mock import MagicMock
 
 from codalab.worker.bundle_state import DependencyKey
-from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.nfs_dependency_manager import NFSDependencyManager, NFSLock
-
 
 class DependencyManagerTest(unittest.TestCase):
     def setUp(self):
@@ -63,64 +62,71 @@ class DependencyManagerTest(unittest.TestCase):
         self.assertEqual(len(dependency_keys), 2)
 
     def test_concurrency(self):
-        num_of_dependency_managers = 2
-        with ProcessPoolExecutor(max_workers=num_of_dependency_managers) as executor:
-            futures = [
-                executor.submit(task, self.work_dir, self.state_path)
-                for _ in range(num_of_dependency_managers)
-            ]
-            for future in futures:
-                print(future.result())
-                self.assertIsNone(future.exception())
+        num_of_dependency_managers = 5
+        executor = ProcessPoolExecutor(max_workers=num_of_dependency_managers)
+
+        random_file_path = os.path.join(self.work_dir, "random_file")
+        with open(random_file_path, "wb") as f:
+            # fileobj.seek((1024 * 1024 * 1024) - 1)
+            f.seek(1024 - 1)
+            f.write(b"\0")
+
+        futures = [
+            executor.submit(task, self.work_dir, self.state_path, random_file_path)
+            for _ in range(num_of_dependency_managers)
+        ]
+        for future in futures:
+            print(future.result())
+            self.assertIsNone(future.exception())
+        executor.shutdown()
 
 
-def task(work_dir, state_path):
+def task(work_dir, state_path, random_file_path):
     """
     Runs the end-to-end workflow of the Dependency Manager.
     Note: ProcessPoolExecutor must serialize everything before sending it to the worker,
           so this function needs to be defined at the top-level.
-    """
+    # """
     # Mock Bundle Service to return a random file object
     mock_bundle_service = MagicMock()
-    mock_bundle_service.get_bundle_info = MagicMock(return_value={type: "file"})
-    fileobj = open(os.path.join(work_dir, "random_file"), "wb")
-    # fileobj.seek((1024 * 1024 * 1024) - 1)
-    fileobj.seek(1024 - 1)
-    fileobj.write(b"\0")
-    mock_bundle_service.get_bundle_contents = MagicMock(return_value=fileobj)
+    mock_bundle_service.get_bundle_info = MagicMock(return_value={'type': "file"})
+    file_obj = open(random_file_path, "rb")
+    mock_bundle_service.get_bundle_contents = MagicMock(return_value=file_obj)
 
     # Create and start a dependency manager
     process_id = os.getpid()
-    print(f"Starting a DependencyManager on process {process_id}...")
+    print(f"{process_id}: Starting a DependencyManager on process {process_id}...")
     dependency_manager = NFSDependencyManager(
         commit_file=state_path,
         bundle_service=mock_bundle_service,
         worker_dir=work_dir,
-        max_cache_size_bytes=1024,
+        max_cache_size_bytes=2048,
         download_dependencies_max_retries=1,
     )
     dependency_manager.start()
-    print("started")
+    print(f"{process_id}: Started with work directory: {work_dir}.")
 
     # Register a run's UUID as a dependent of a parent bundle with UUID 0x1
     dependency_key = DependencyKey(parent_uuid="0x1", parent_path="parent")
     run_uuid = f"0x{process_id}"
     state = dependency_manager.get(run_uuid, dependency_key)
-    dependency_path = os.path.join(dependency_manager.dependencies_dir, state.path)
-    print(dependency_path)
-    assert os.path.exists(dependency_path), "Dependency was deleted even with dependents."
+    assert run_uuid in state.dependents
 
     # Release the run bundle as a dependent
     dependency_manager.release(run_uuid, dependency_key)
     dependencies = dependency_manager._fetch_dependencies()
-    state = dependencies[dependency_key]
-    print(f"Checking {run_uuid} in {state.dependents}")
-    assert (
-        run_uuid not in state.dependents
-    ), "Dependent should not be in the list of dependents after unregistering."
+    if dependency_key in dependencies:
+        state = dependencies[dependency_key]
+        print(f"{process_id}: Checking {run_uuid} in {state.dependents}")
+        assert (
+            run_uuid not in state.dependents
+        ), "Dependent should not be in the list of dependents after unregistering."
 
     # Stop the Dependency Manager
+    time.sleep(30)
+    print(f"{process_id}: Stopping DependencyManger...")
     dependency_manager.stop()
+    print(f"{process_id}: Done.")
 
 
 class NFSLockTest(unittest.TestCase):

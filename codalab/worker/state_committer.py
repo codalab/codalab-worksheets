@@ -41,9 +41,7 @@ class JsonStateCommitter(BaseStateCommitter):
             finally:
                 try:
                     os.unlink(self.temp_file)
-                except FileNotFoundError:
+                except FileNotFoundError as e:
                     logger.error(
-                        "Problem occurred in deleting temp file {} via os.unlink".format(
-                            self.temp_file
-                        )
+                        f"Problem occurred in deleting temp file {self.temp_file} via os.unlink: {str(e)}"
                     )

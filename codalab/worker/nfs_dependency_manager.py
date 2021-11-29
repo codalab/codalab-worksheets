@@ -10,7 +10,7 @@ from contextlib import closing
 from datetime import timedelta
 from typing import Dict, Set, Union
 
-from flufl.lock import Lock, AlreadyLockedError
+from flufl.lock import Lock, AlreadyLockedError, NotLockedError
 
 import codalab.worker.pyjson
 from .bundle_service_client import BundleServiceClient
@@ -33,33 +33,88 @@ DependencyState = namedtuple(
 )
 
 
-class NFSLock(threading._RLock):
+class NFSLock:
     def __init__(self, path):
-        super().__init__()
-
         # Specify the path to a file that will be used to synchronize the lock.
         # Per the flufl.lock documentation, use a file that does not exist.
         self._lock = Lock(path)
         # Locks have a lifetime (default 15 seconds) which is the period of time that the process expects
-        # to keep the lock once it has been acquired. We set the lifetime to be 1 hour as we expect
+        # to keep the lock once it has been acquired. We set the lifetime to be 5 minutes as we expect
         # all operations that require locks to be completed within that time.
-        self._lock.lifetime = timedelta(hours=1)
+        self._lock.lifetime = timedelta(minutes=30)
+
+        self._r_lock = threading.RLock()
 
     @property
     def is_locked(self):
-        return self._lock.is_locked
+        with self._r_lock:
+            return self._lock.is_locked
 
-    def acquire(self, blocking=True, timeout=-1):
+    def acquire(self):
+        # if not self._lock.is_locked:
+        #     self._lock.lock()
+        # else:
+        #     print(f"Lock {self._lock.lockfile} is already locked.")
+        with self._r_lock:
+            self.acquire_nfs_lock()
+
+    def acquire_nfs_lock(self):
         try:
-            # Errors when attempting to acquire the lock more than once in the same process
             self._lock.lock()
-        except AlreadyLockedError as error:
+            # print(f"Locked {self._lock.lockfile}.")
+        except AlreadyLockedError:
             pass
 
-    def release(self):
-        self._lock.unlock(unconditionally=True)
+        # if self._lock.is_locked:
+        #     current_pid = os.getpid()
+        #     _, pid, _ = self._lock.details
+        #
+        #     # print(f"acquire - current_pid: {current_pid} holder: {pid}.")
+        #     if pid != current_pid:
+        #         self._lock.lock()
+        # else:
+        #     self._lock.lock()
 
-    __enter__ = acquire
+
+        # print(f"Lock {self._lock.lockfile} is already locked.")
+        # if not self._lock.is_locked:
+        #     self._lock.lock()
+        # try:
+        #     self._lock.lock()
+        # except AlreadyLockedError:
+        #     print(f"Lock {self._lock.lockfile} is already locked.")
+
+    def release(self):
+        # if self._lock.is_locked:
+        #     current_pid = os.getpid()
+        #     hostname, pid, lockfile = self._lock.details
+        #     print(f"release - current_pid: {current_pid} holder: {pid}.")
+
+        with self._r_lock:
+            self.release_nfs_lock()
+
+    def release_nfs_lock(self):
+        try:
+            self._lock.unlock(unconditionally=False)
+        except NotLockedError:
+            pass
+
+        # self._lock.unlock(unconditionally=True)
+        # if self._lock.is_locked:
+        #     current_pid = os.getpid()
+        #     _, pid, _ = self._lock.details
+        #
+        #     # print(f"acquire - current_pid: {current_pid} holder: {pid}.")
+        #     if pid != current_pid:
+        #         self._lock.unlock(unconditionally=False)
+        #     # try:
+        #     self._lock.unlock(unconditionally=False)
+        # except NotLockedError:
+        #     pass
+        # print(f"Lock {self._lock.lockfile} is already unlocked.")
+
+    def __enter__(self):
+        self.acquire()
 
     def __exit__(self, t, v, tb):
         self.release()
@@ -89,8 +144,14 @@ class NFSDependencyManager(DependencyManager):
         )
         self._id: str = "worker-dependency-manager-{}".format(uuid.uuid4().hex[:8])
 
-        # Locks for concurrency
-        self._dependency_locks: Dict[DependencyKey, threading.RLock] = dict()
+        # Locks for concurrency. Create a separate locks directory to keep track of lock files.
+        self._locks_dir: str = os.path.join(worker_dir, 'locks')
+
+        try:
+            os.makedirs(self._locks_dir)
+        except FileExistsError:
+            logger.info("A locks directory already exists.")
+        self._dependency_locks = dict()
         self._global_lock = self._create_lock('global')  # Used for add/remove actions
 
         # DependencyKey -> WorkerThread(thread, success, failure_message)
@@ -103,7 +164,7 @@ class NFSDependencyManager(DependencyManager):
         self._main_thread = None
 
     def _create_lock(self, name):
-        path = os.path.join(self.dependencies_dir, f'{name}.lock')
+        path = os.path.join(self._locks_dir, f'{name}.lock')
         return NFSLock(path)
 
     def _sync_state(self):
@@ -156,10 +217,11 @@ class NFSDependencyManager(DependencyManager):
             directories_to_remove = local_directories - paths
             for directory in directories_to_remove:
                 full_path = os.path.join(self.dependencies_dir, directory)
-                logger.info(
-                    "Remove orphaned directory {} from the local file system.".format(full_path)
-                )
-                remove_path(full_path)
+                if os.path.exists(full_path):
+                    logger.info(
+                        "Remove orphaned directory {} from the local file system.".format(full_path)
+                    )
+                    remove_path(full_path)
 
             # Save the current synced state back to the state file: dependency-state.json as
             # the current state might have been changed during the state syncing phase
@@ -168,7 +230,7 @@ class NFSDependencyManager(DependencyManager):
     def _fetch_dependencies(self) -> Dict[DependencyKey, DependencyState]:
         """
         Fetch state from dependencies JSON file stored on disk.
-        Not thread safe. Caller should acquire self._global_lock before calling this method.
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
         state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
         return state['dependencies']
@@ -176,7 +238,7 @@ class NFSDependencyManager(DependencyManager):
     def _fetch_paths(self) -> Set[str]:
         """
         Fetch normalized paths from JSON file stored on disk.
-        Not thread safe. Caller should acquire self._global_lock before calling this method.
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
         state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
         return state['paths']
@@ -184,7 +246,7 @@ class NFSDependencyManager(DependencyManager):
     def _commit_dependencies(self, dependencies: Dict[DependencyKey, DependencyState]):
         """
         Update state in dependencies JSON file stored on disk.
-        Not thread safe. Caller should acquire self._global_lock before calling this method.
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
         state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
         state['dependencies'] = dependencies
@@ -193,7 +255,7 @@ class NFSDependencyManager(DependencyManager):
     def _commit_paths(self, paths: Set[str]):
         """
         Update paths in JSON file stored on disk.
-        Not thread safe. Caller should acquire self._global_lock before calling this method.
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
         state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
         state['paths'] = paths
@@ -202,7 +264,7 @@ class NFSDependencyManager(DependencyManager):
     def _commit_state(self, dependencies: Dict[DependencyKey, DependencyState], paths: Set[str]):
         """
         Update state in dependencies JSON file stored on disk.
-        Not thread safe. Caller should acquire self._global_lock before calling this method.
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
         state: Dict[str, Union[Dict[DependencyKey, DependencyState], Set[str]]] = dict()
         state['dependencies'] = dependencies
@@ -216,7 +278,8 @@ class NFSDependencyManager(DependencyManager):
             while not self._stop:
                 try:
                     self._transition_dependencies()
-                    self._cleanup()
+                    # TODO: redo this? -Tony
+                    # self._cleanup()
                 except Exception:
                     traceback.print_exc()
                 time.sleep(1)
@@ -229,10 +292,6 @@ class NFSDependencyManager(DependencyManager):
         self._stop = True
         self._downloading.stop()
         self._main_thread.join()
-
-        # Release all locks
-        self._release_all_locks()
-        self._global_lock.release()
         logger.info('Stopped local dependency manager.')
 
     def _transition_dependencies(self):
@@ -250,18 +309,21 @@ class NFSDependencyManager(DependencyManager):
         failed dependency would automatically fail indefinitely.
         """
         with self._global_lock:
+            self._acquire_all_locks()
             dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
             paths: Set[str] = self._fetch_paths()
 
-            for dep_key, dep_state in dependencies.items():
-                if (
-                    dep_state.stage == DependencyStage.FAILED
-                    and time.time() - dep_state.last_used
-                    > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
-                ):
-                    if self._acquire_if_exists(dep_key):
-                        self._delete_dependency(dep_key, dependencies, paths)
+            failed_deps = {
+                dep_key: dep_state
+                for dep_key, dep_state in dependencies.items()
+                if dep_state.stage == DependencyStage.FAILED
+                and time.time() - dep_state.last_used
+                > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
+            }
+            for dep_key, dep_state in failed_deps.items():
+                self._delete_dependency(dep_key, dependencies, paths)
             self._commit_state(dependencies, paths)
+            self._release_all_locks()
 
     def _cleanup(self):
         """
@@ -319,7 +381,7 @@ class NFSDependencyManager(DependencyManager):
                         self._release_all_locks()
                         break
                     if dep_key_to_remove:
-                        self._delete_dependency(dependencies, paths, dep_key_to_remove)
+                        self._delete_dependency(dep_key_to_remove, dependencies, paths)
                         self._commit_state(dependencies, paths)
                 else:
                     self._release_all_locks()
@@ -329,6 +391,7 @@ class NFSDependencyManager(DependencyManager):
         """
         Remove the given dependency from the manager's state
         Also delete any known files on the filesystem if any exist
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
         if self._acquire_if_exists(dep_key):
             try:
@@ -392,8 +455,9 @@ class NFSDependencyManager(DependencyManager):
         Register that the run with uuid is no longer dependent on this dependency
         If no more runs are dependent on this dependency, kill it
         """
-        if self._acquire_if_exists(dependency_key):
-            with self._global_lock:
+        with self._global_lock:
+            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+            if self._acquire_if_exists(dependency_key):
                 dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
                 dep_state = dependencies[dependency_key]
                 if uuid in dep_state.dependents:
@@ -406,17 +470,17 @@ class NFSDependencyManager(DependencyManager):
 
     def _acquire_if_exists(self, dependency_key):
         """
-        Safely acquires a lock for the given dependency if it exists
+        Acquires a lock for the given dependency if it exists.
         Returns True if dependency exists, False otherwise
         Callers should remember to release the lock
+        NOT NFS-SAFE - Caller should acquire self._global_lock before calling this method.
         """
-        with self._global_lock:
-            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
-            if dependency_key in dependencies:
-                self._dependency_locks[dependency_key].acquire()
-                return True
-            else:
-                return False
+        dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+        if dependency_key in dependencies:
+            self._dependency_locks[dependency_key].acquire()
+            return True
+        else:
+            return False
 
     def _acquire_all_locks(self):
         """
@@ -584,16 +648,17 @@ class NFSDependencyManager(DependencyManager):
 
         # If there is already a thread or another dependency manager downloading the dependency,
         # just return the dependency state as downloading is in progress.
-        if (
-            dependency_state.downloading_by and dependency_state.downloading_by != self._id
-        ) or self._downloading[dependency_state.dependency_key].is_alive():
+        if (dependency_state.downloading_by and dependency_state.downloading_by != self._id) or (
+            dependency_state.dependency_key in self._downloading
+            and self._downloading[dependency_state.dependency_key].is_alive()
+        ):
             return dependency_state
 
         # At this point, no thread is downloading the dependency. Check the status of the download.
         success = self._downloading[dependency_state.dependency_key]['success']
         failure_message = self._downloading[dependency_state.dependency_key]['failure_message']
 
-        if dependency_state.downloding_by == self._id:
+        if dependency_state.downloading_by == self._id:
             dependency_state = dependency_state._replace(downloading_by=None)
             self._downloading.remove(dependency_state.dependency_key)
 

@@ -203,6 +203,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         failed dependency would automatically fail indefinitely.
         """
         with self._global_lock:
+            # TODO: culprit? -Tony
             self._acquire_all_locks()
             failed_deps = {
                 dep_key: dep_state
@@ -475,6 +476,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         self._downloading[dependency_state.dependency_key]['success'] = True
 
                 except Exception as e:
+                    raise e
                     attempt += 1
                     if attempt >= self._download_dependencies_max_retries:
                         with self._dependency_locks[dependency_state.dependency_key]:
