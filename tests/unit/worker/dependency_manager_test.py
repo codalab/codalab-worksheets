@@ -7,11 +7,20 @@ from concurrent.futures import ProcessPoolExecutor
 from unittest.mock import MagicMock
 
 from codalab.worker.bundle_state import DependencyKey
-from codalab.worker.nfs_dependency_manager import NFSDependencyManager
+
+try:
+    from codalab.worker.nfs_dependency_manager import NFSDependencyManager
+
+    module_failed = False
+except ImportError:
+    module_failed = True
 
 
 class DependencyManagerTest(unittest.TestCase):
     def setUp(self):
+        if module_failed:
+            self.skipTest('Issue with ratarmountcore.')
+
         self.work_dir = tempfile.mkdtemp()
         self.state_path = os.path.join(self.work_dir, "dependencies-state.json")
         self.dependency_manager = NFSDependencyManager(

@@ -18,7 +18,6 @@ from codalab.lib.formatting import size_str
 from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.fsm import DependencyStage
-from codalab.worker.worker_thread import ThreadDict
 from codalab.worker.bundle_state import DependencyKey
 from codalab.worker.dependency_manager import (
     DownloadAbortedException,
