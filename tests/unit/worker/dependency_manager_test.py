@@ -7,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from unittest.mock import MagicMock
 
 from codalab.worker.bundle_state import DependencyKey
-from codalab.worker.nfs_dependency_manager import NFSDependencyManager, NFSLock
+from codalab.worker.nfs_dependency_manager import NFSDependencyManager
 
 
 class DependencyManagerTest(unittest.TestCase):
