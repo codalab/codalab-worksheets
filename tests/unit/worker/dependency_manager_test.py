@@ -71,8 +71,8 @@ class DependencyManagerTest(unittest.TestCase):
         self.assertEqual(len(dependency_keys), 2)
 
     def test_concurrency(self):
-        num_of_dependency_managers = 1
-        executor = ProcessPoolExecutor(max_workers=num_of_dependency_managers)
+        num_of_dependency_managers = 0
+        executor = ProcessPoolExecutor(max_workers=1)
 
         random_file_path = os.path.join(self.work_dir, "random_file")
         with open(random_file_path, "wb") as f:
