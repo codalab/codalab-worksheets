@@ -488,11 +488,11 @@ class NFSDependencyManager(DependencyManager):
                     with closing(fileobj):
                         # "Bug" the fileobj's read function so that we can keep
                         # track of the number of bytes downloaded so far.
-                        old_read_method = fileobj.read
+                        original_read_method = fileobj.read
                         bytes_downloaded = [0]
 
                         def interruptable_read(*args, **kwargs):
-                            data = old_read_method(*args, **kwargs)
+                            data = original_read_method(*args, **kwargs)
                             bytes_downloaded[0] += len(data)
                             update_state_and_check_killed(bytes_downloaded[0])
                             return data

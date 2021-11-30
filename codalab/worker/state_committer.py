@@ -28,10 +28,14 @@ class JsonStateCommitter(BaseStateCommitter):
         try:
             with open(self._state_file) as json_data:
                 return pyjson.load(json_data)
-        except (ValueError, EnvironmentError):
-            return default if default else dict()
+        except (ValueError, EnvironmentError) as e:
+            if default:
+                logger.warning(f"Failed to load state due to {e}. Using default: {default}.")
+                return default
+            logger.error(f"Failed to load state: {e}", exc_info=True)
+            raise e
         except Exception as e:
-            logger.error(f"Failed to commit state: {e}", exc_info=True)
+            logger.error(f"Failed to load state: {e}", exc_info=True)
             raise e
 
     def commit(self, state):

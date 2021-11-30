@@ -475,7 +475,6 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         self._downloading[dependency_state.dependency_key]['success'] = True
 
                 except Exception as e:
-                    raise e
                     attempt += 1
                     if attempt >= self._download_dependencies_max_retries:
                         with self._dependency_locks[dependency_state.dependency_key]:
