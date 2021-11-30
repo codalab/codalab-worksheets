@@ -515,11 +515,12 @@ class NFSDependencyManager(DependencyManager):
                         self._downloading[dependency_state.dependency_key]['success'] = False
                         self._downloading[dependency_state.dependency_key][
                             'failure_message'
-                        ] = "Dependency download failed: %s " % str(e)
+                        ] = f"Dependency download failed: {e} "
                     else:
-                        logger.warning(
+                        logging.warning(
                             f'Failed to download {dependency_state.dependency_key} after {attempt} attempt(s) '
-                            f'due to {str(e)}. Retrying up to {self._download_dependencies_max_retries} times...'
+                            f'due to {e}. Retrying up to {self._download_dependencies_max_retries} times...',
+                            exc_info=True,
                         )
                 else:
                     # Break out of the retry loop if no exceptions were thrown
