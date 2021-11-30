@@ -259,6 +259,8 @@ class NFSDependencyManager(DependencyManager):
                 > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
             for dep_key, dep_state in failed_deps.items():
+                # TODO: remove -Tony
+                logger.info(f"Pruning {dep_key}...")
                 self._delete_dependency(dep_key, dependencies, paths)
             self._commit_state(dependencies, paths)
 
@@ -337,6 +339,7 @@ class NFSDependencyManager(DependencyManager):
                 pass
             finally:
                 del dependencies[dep_key]
+                logger.info(f"Deleted dependency {dep_key}.")
 
     def has(self, dependency_key):
         """
@@ -385,7 +388,6 @@ class NFSDependencyManager(DependencyManager):
         with self._state_lock:
             dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
             if dependency_key in dependencies:
-                dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
                 dep_state = dependencies[dependency_key]
                 if uuid in dep_state.dependents:
                     dep_state.dependents.remove(uuid)
