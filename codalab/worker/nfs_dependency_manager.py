@@ -173,7 +173,7 @@ class NFSDependencyManager(DependencyManager):
         Fetch state from dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+        state = self._state_committer.load()
         return state['dependencies']
 
     def _fetch_paths(self) -> Set[str]:
@@ -181,7 +181,7 @@ class NFSDependencyManager(DependencyManager):
         Fetch normalized paths from JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+        state = self._state_committer.load()
         return state['paths']
 
     def _commit_dependencies(self, dependencies: Dict[DependencyKey, DependencyState]):
@@ -189,7 +189,7 @@ class NFSDependencyManager(DependencyManager):
         Update state in dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+        state = self._state_committer.load()
         state['dependencies'] = dependencies
         self._state_committer.commit(state)
 
@@ -198,7 +198,7 @@ class NFSDependencyManager(DependencyManager):
         Update paths in JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+        state = self._state_committer.load()
         state['paths'] = paths
         self._state_committer.commit(state)
 
@@ -519,7 +519,7 @@ class NFSDependencyManager(DependencyManager):
                             'failure_message'
                         ] = f"Dependency download failed: {e} "
                     else:
-                        logging.warning(
+                        logger.warning(
                             f'Failed to download {dependency_state.dependency_key} after {attempt} attempt(s) '
                             f'due to {e}. Retrying up to {self._download_dependencies_max_retries} times...',
                             exc_info=True,

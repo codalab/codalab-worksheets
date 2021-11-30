@@ -28,8 +28,15 @@ class JsonStateCommitter(BaseStateCommitter):
         try:
             with open(self._state_file) as json_data:
                 return pyjson.load(json_data)
-        except (ValueError, EnvironmentError):
-            return dict() if default is None else default
+        except (ValueError, EnvironmentError) as e:
+            if default:
+                return default
+            else:
+                logger.error(f"Failed to commit state: {e}", exc_info=True)
+                raise e
+        except Exception as e:
+            logger.error(f"Failed to commit state: {e}", exc_info=True)
+            raise e
 
     def commit(self, state):
         """ Write out the state in JSON format to a temporary file and rename it into place """
@@ -50,5 +57,9 @@ class JsonStateCommitter(BaseStateCommitter):
         #                     self.temp_file
         #                 )
         #             )
-        with open(self._state_file, 'w+') as f:
-            f.write(pyjson.dumps(state))
+        try:
+            with open(self._state_file, 'w+') as f:
+                f.write(pyjson.dumps(state))
+        except Exception as e:
+            logger.error(f"Failed to commit state: {e}", exc_info=True)
+            raise e
