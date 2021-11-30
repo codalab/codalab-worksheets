@@ -2909,7 +2909,7 @@ class BundleModel(object):
     # ===========================================================================
     def get_bundle_stores(self, user):
         """
-        returns all bundle stores owned by the root user or the current user
+        Returns all bundle stores owned by the root user or the current user
         """
         with self.engine.begin() as connection:
             rows = connection.execute(

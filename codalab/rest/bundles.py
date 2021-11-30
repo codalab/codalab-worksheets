@@ -36,7 +36,7 @@ from codalab.rest.schemas import (
     BundlePermissionSchema,
     BUNDLE_CREATE_RESTRICTED_FIELDS,
     BUNDLE_UPDATE_RESTRICTED_FIELDS,
-    WorksheetSchema,
+    WorksheetSchema, BundleStoreSchema,
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
@@ -210,6 +210,7 @@ def build_bundles_document(bundle_uuids):
 
     return document
 
+    # todo -- validate input against Marshmallow schema similar to POST endpoint
 
 @post('/bundles', apply=AuthenticatedProtectedPlugin())
 def _create_bundles():
@@ -425,7 +426,7 @@ def _fetch_locations():
     return dict(data=uuids_to_locations)
 
 
-@get('/bundle_stores/', apply=AuthenticatedProtectedPlugin())
+@get('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_stores():
     """
     Fetch the bundle stores available to the user.
@@ -433,40 +434,42 @@ def _fetch_bundle_stores():
     Returns a dictionary in which the keys are the bundle store uuids, and the values
     are tuples with the owner_id, name, and url.
     """
-    return local.model.get_bundle_stores(request.user)
+    bundle_stores = local.model.get_bundle_stores(request.user).values()
+    logger.error(bundle_stores)
+    logger.info(BundleStoreSchema(many=True).dump(bundle_stores).data)
+    return BundleStoreSchema(many=True).dump(bundle_stores).data
 
 
-@post('/bundle_stores/', apply=AuthenticatedProtectedPlugin())
+
+@post('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _add_bundle_store():
     """
     Add a bundle store that the user can access.
     """
     new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
-    # todo -- use new_bundle_store instead based on the schema
     return local.model.create_bundle_store(
         request.user,
-        request.json['name'], 
-        request.json['storage_type'], 
-        request.json['storage_format'], 
-        request.json['url'], 
-        request.json['authentication']
+        new_bundle_store.name,
+        new_bundle_store.storage_format,
+        new_bundle_store.storage_type,
+        new_bundle_store.url,
+        new_bundle_store.authentication
     )
-    # return BundleStoreSchema().dump(new_bundle_store).data
 
 @put('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
 def _update_bundle_store(uuid):
     """
     Update a bundle store that the user can access.
     """
-    # todo -- validate input against Marshmallow schema similar to POST endpoint
+    updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
     return local.model.update_bundle_store(
         request.user, 
         uuid,
-        request.json['name'],
-        request.json['storage_type'], 
-        request.json['storage_format'], 
-        request.json['url'], 
-        request.json['authentication']
+        updated_bundle_store.name,
+        updated_bundle_store.storage_type,
+        updated_bundle_store.storage_format,
+        updated_bundle_store.url,
+        updated_bundle_store.authentication
     )
 
 @get('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
