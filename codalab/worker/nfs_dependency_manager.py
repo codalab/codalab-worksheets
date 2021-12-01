@@ -10,9 +10,6 @@ from contextlib import closing
 from datetime import timedelta
 from typing import Dict, Set, Union
 
-logging.getLogger('flufl.lock').setLevel(logging.WARNING)
-from flufl.lock import Lock, AlreadyLockedError, NotLockedError
-
 import codalab.worker.pyjson
 from .bundle_service_client import BundleServiceClient
 from codalab.lib.formatting import size_str
@@ -24,6 +21,10 @@ from codalab.worker.dependency_manager import (
     DownloadAbortedException,
     DependencyManager,
 )
+
+logging.getLogger('flufl.lock').setLevel(logging.WARNING)
+from flufl.lock import Lock, AlreadyLockedError, NotLockedError  # noqa: E402
+
 
 logger = logging.getLogger(__name__)
 
