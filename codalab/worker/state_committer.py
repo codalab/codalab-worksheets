@@ -34,9 +34,9 @@ class JsonStateCommitter(BaseStateCommitter):
             raise e
 
     def commit(self, state):
-        """ 
-        Write out the state in JSON format to state file with an immediate flush and fsync.
-        This is done in order to deal with file bufferring.
+        """
+        Write out the state in JSON format to the state file with an immediate flush and fsync
+        to deal with file buffering.
         """
         try:
             with open(self._state_file, 'w+') as f:
