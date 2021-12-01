@@ -81,7 +81,8 @@ class NFSDependencyManager(DependencyManager):
     NFS-safe version of the DependencyManager.
     """
 
-    _DEPENDENCY_DOWNLOAD_TIMEOUT_SECONDS = 10 * 60  # 10 minutes in seconds
+    _DEPENDENCY_DOWNLOAD_TIMEOUT_SECONDS = 30 * 60
+    _DEPENDENCY_DOWNLOAD_UPDATE_FREQUENCY_SECONDS = 5 * 60
 
     def __init__(
         self,
@@ -436,22 +437,36 @@ class NFSDependencyManager(DependencyManager):
                 Callback method for bundle service client updates dependency state and
                 raises DownloadAbortedException if download is killed by dep. manager
                 """
-                if self._state_lock.is_locked:
-                    return
+                # if self._state_lock.is_locked:
+                #     return
 
                 try:
-                    self._state_lock.acquire()
-                    dependencies, dependency_paths = self._fetch_state()
-                    state = dependencies[dependency_state.dependency_key]
+                    dependency_states, _ = self._fetch_state()
+                    state = dependency_states[dependency_state.dependency_key]
                     if state.killed:
-                        raise DownloadAbortedException("Aborted by user")
-                    dependencies[dependency_state.dependency_key] = state._replace(
+                        raise DownloadAbortedException("Aborted by user.")
+
+                    current_time = time.time()
+                    if (
+                        current_time - state.last_downloading
+                        < self._DEPENDENCY_DOWNLOAD_UPDATE_FREQUENCY_SECONDS
+                    ):
+                        return
+
+                    downloaded_size_str = size_str(bytes_downloaded)
+
+                    self._state_lock.acquire()
+                    dependency_states, dependency_paths = self._fetch_state()
+                    state = dependency_states[dependency_state.dependency_key]
+                    dependency_states[dependency_state.dependency_key] = state._replace(
                         size_bytes=bytes_downloaded,
-                        message="Downloading dependency: %s downloaded"
-                        % size_str(bytes_downloaded),
-                        last_downloading=time.time(),
+                        message=f"Downloading dependency: {downloaded_size_str} downloaded.",
+                        last_downloading=current_time,
                     )
-                    self._commit_state(dependencies, dependency_paths)
+                    self._commit_state(dependency_states, dependency_paths)
+                    logger.info(
+                        f"Updated state: {dependency_state.dependency_key} downloaded: {downloaded_size_str}."
+                    )
                 except Exception as e:
                     if isinstance(e, DownloadAbortedException):
                         raise e
