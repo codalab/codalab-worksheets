@@ -10,6 +10,7 @@ from contextlib import closing
 from datetime import timedelta
 from typing import Dict, Set, Union
 
+logging.getLogger('flufl.lock').setLevel(logging.WARNING)
 from flufl.lock import Lock, AlreadyLockedError, NotLockedError
 
 import codalab.worker.pyjson
@@ -232,6 +233,7 @@ class NFSDependencyManager(DependencyManager):
         self._stop = True
         self._downloading.stop()
         self._main_thread.join()
+        self._state_lock.release()
         logger.info('Stopped local dependency manager.')
 
     def _transition_dependencies(self):
@@ -259,8 +261,6 @@ class NFSDependencyManager(DependencyManager):
                 > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
             for dep_key, dep_state in failed_deps.items():
-                # TODO: remove -Tony
-                logger.info(f"Pruning {dep_key}...")
                 self._delete_dependency(dep_key, dependencies, paths)
             self._commit_state(dependencies, paths)
 
@@ -457,7 +457,8 @@ class NFSDependencyManager(DependencyManager):
                 Callback method for bundle service client updates dependency state and
                 raises DownloadAbortedException if download is killed by dep. manager
                 """
-                with self._state_lock:
+                try:
+                    self._state_lock.acquire()
                     dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
                     state = dependencies[dependency_state.dependency_key]
                     if state.killed:
@@ -469,6 +470,10 @@ class NFSDependencyManager(DependencyManager):
                         last_downloading=time.time(),
                     )
                     self._commit_dependencies(dependencies)
+                except Exception as e:
+                    logger.warning(f"Skipping updating download state due to {e}")
+                finally:
+                    self._state_lock.release()
 
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
