@@ -359,7 +359,12 @@ class NavBar extends React.Component<{
                                 <Link to='/account/signup'>
                                     <Button color='inherit'>Sign Up</Button>
                                 </Link>
-                                <Link to='/account/login'>
+                                <Link
+                                    to={{
+                                        pathname: '/account/login',
+                                        state: { from: this.props.location },
+                                    }}
+                                >
                                     <Button color='inherit'>Login</Button>
                                 </Link>
                             </React.Fragment>
