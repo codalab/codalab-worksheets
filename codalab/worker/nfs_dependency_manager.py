@@ -108,6 +108,7 @@ class NFSDependencyManager(DependencyManager):
             max_cache_size_bytes,
             download_dependencies_max_retries,
         )
+        logger.info(f"Initialized NFS Dependency Manager with ID: {self._id}")
 
     def _load_state(self):
         """
@@ -435,6 +436,12 @@ class NFSDependencyManager(DependencyManager):
                 Callback method for bundle service client updates dependency state and
                 raises DownloadAbortedException if download is killed by dep. manager
                 """
+                if self._state_lock.is_locked:
+                    logger.debug(
+                        f"State lock is locked. Skipping download update for {dependency_state.dependency_key}."
+                    )
+                    return
+
                 try:
                     self._state_lock.acquire()
                     dependencies, dependency_paths = self._fetch_state()
@@ -521,6 +528,16 @@ class NFSDependencyManager(DependencyManager):
             and now - dependency_state.last_downloading
             >= NFSDependencyManager._DEPENDENCY_DOWNLOAD_TIMEOUT_SECONDS
         ):
+            if not dependency_state.downloading_by:
+                logger.info(
+                    f"{self._id} will start downloading dependency: {dependency_state.dependency_key}."
+                )
+            else:
+                logger.info(
+                    f"{dependency_state.downloading_by} stopped downloading "
+                    f"dependency: {dependency_state.dependency_key}. {self._id} will restart downloading."
+                )
+
             self._downloading.add_if_new(
                 dependency_state.dependency_key, threading.Thread(target=download, args=[])
             )
@@ -528,7 +545,14 @@ class NFSDependencyManager(DependencyManager):
 
         # If there is already a thread or another dependency manager downloading the dependency,
         # just return the dependency state as downloading is in progress.
-        if (dependency_state.downloading_by and dependency_state.downloading_by != self._id) or (
+        if dependency_state.downloading_by != self._id:
+            logger.info(
+                f"Waiting for {dependency_state.downloading_by} "
+                f"to download dependency: {dependency_state.dependency_key}"
+            )
+            return dependency_state
+
+        if (
             dependency_state.dependency_key in self._downloading
             and self._downloading[dependency_state.dependency_key].is_alive()
         ):
@@ -541,6 +565,9 @@ class NFSDependencyManager(DependencyManager):
         if dependency_state.downloading_by == self._id:
             dependency_state = dependency_state._replace(downloading_by=None)
             self._downloading.remove(dependency_state.dependency_key)
+            logger.info(
+                f"Download complete. Removing downloading thread for {dependency_state.dependency_key}."
+            )
 
         if success:
             return dependency_state._replace(
