@@ -33,6 +33,8 @@ DependencyState = namedtuple(
     'stage downloading_by dependency_key path size_bytes dependents last_used last_downloading message killed',
 )
 
+DependencyManagerState = Dict[str, Union[Dict[DependencyKey, DependencyState], Set[str]]]
+
 
 class NFSLock:
     def __init__(self, path):
@@ -170,48 +172,30 @@ class NFSDependencyManager(DependencyManager):
             # the current state might have been changed during the state syncing phase
             self._commit_state(dependencies, paths)
 
+    def _fetch_state(self):
+        """
+        Fetch state from JSON file stored on disk.
+        NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
+        """
+        state: DependencyManagerState = self._state_committer.load()
+        dependencies: Dict[DependencyKey, DependencyState] = state['dependencies']
+        paths: Set[str] = state['paths']
+        return dependencies, paths
+
     def _fetch_dependencies(self) -> Dict[DependencyKey, DependencyState]:
         """
-        Fetch state from dependencies JSON file stored on disk.
+        Fetch dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
         state = self._state_committer.load()
         return state['dependencies']
-
-    def _fetch_paths(self) -> Set[str]:
-        """
-        Fetch normalized paths from JSON file stored on disk.
-        NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
-        """
-        state = self._state_committer.load()
-        return state['paths']
-
-    def _commit_dependencies(self, dependencies: Dict[DependencyKey, DependencyState]):
-        """
-        Update state in dependencies JSON file stored on disk.
-        NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
-        """
-        state = self._state_committer.load()
-        state['dependencies'] = dependencies
-        self._state_committer.commit(state)
-
-    def _commit_paths(self, paths: Set[str]):
-        """
-        Update paths in JSON file stored on disk.
-        NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
-        """
-        state = self._state_committer.load()
-        state['paths'] = paths
-        self._state_committer.commit(state)
 
     def _commit_state(self, dependencies: Dict[DependencyKey, DependencyState], paths: Set[str]):
         """
         Update state in dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state: Dict[str, Union[Dict[DependencyKey, DependencyState], Set[str]]] = dict()
-        state['dependencies'] = dependencies
-        state['paths'] = paths
+        state: DependencyManagerState = {'dependencies': dependencies, 'paths': paths}
         self._state_committer.commit(state)
 
     def start(self):
@@ -239,10 +223,10 @@ class NFSDependencyManager(DependencyManager):
 
     def _transition_dependencies(self):
         with self._state_lock:
-            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+            dependencies, paths = self._fetch_state()
             for dep_key, dep_state in dependencies.items():
                 dependencies[dep_key] = self.transition(dep_state)
-            self._commit_dependencies(dependencies)
+            self._commit_state(dependencies, paths)
 
     def _prune_failed_dependencies(self):
         """
@@ -251,9 +235,7 @@ class NFSDependencyManager(DependencyManager):
         failed dependency would automatically fail indefinitely.
         """
         with self._state_lock:
-            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
-            paths: Set[str] = self._fetch_paths()
-
+            dependencies, paths = self._fetch_state()
             failed_deps = {
                 dep_key: dep_state
                 for dep_key, dep_state in dependencies.items()
@@ -276,9 +258,7 @@ class NFSDependencyManager(DependencyManager):
         # With all the locks (should be fast if no cleanup needed, otherwise make sure nothing is corrupted
         while True:
             with self._state_lock:
-                dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
-                paths: Set[str] = self._fetch_paths()
-
+                dependencies, paths = self._fetch_state()
                 bytes_used = sum(dep_state.size_bytes for dep_state in dependencies.values())
                 serialized_length = len(codalab.worker.pyjson.dumps(dependencies))
                 if (
@@ -356,16 +336,31 @@ class NFSDependencyManager(DependencyManager):
         Request the dependency for the run with uuid, registering uuid as a dependent of this dependency
         """
         with self._state_lock:
-            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+            dependencies, paths = self._fetch_state()
 
             now = time.time()
             # Add dependency state if it does not exist
             if dependency_key not in dependencies:
+                # Determine dependency path
+                path = (
+                    os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
+                    if dependency_key.parent_path
+                    else dependency_key.parent_uuid
+                )
+                path = path.replace(os.path.sep, '_')
+
+                # Normalize the path for the dependency by replacing / with _, avoiding conflicts
+                while path in paths:
+                    path = path + '_'
+
+                # Add to the new path to the list of dependency state paths
+                paths.add(path)
+
                 dependencies[dependency_key] = DependencyState(
                     stage=DependencyStage.DOWNLOADING,
                     downloading_by=None,
                     dependency_key=dependency_key,
-                    path=self._assign_path(dependency_key),
+                    path=path,
                     size_bytes=0,
                     dependents=set([uuid]),
                     last_used=now,
@@ -378,7 +373,8 @@ class NFSDependencyManager(DependencyManager):
             if dependencies[dependency_key].stage != DependencyStage.FAILED:
                 dependencies[dependency_key].dependents.add(uuid)
                 dependencies[dependency_key] = dependencies[dependency_key]._replace(last_used=now)
-            self._commit_dependencies(dependencies)
+
+            self._commit_state(dependencies, paths)
             return dependencies[dependency_key]
 
     def release(self, uuid, dependency_key):
@@ -387,7 +383,8 @@ class NFSDependencyManager(DependencyManager):
         If no more runs are dependent on this dependency, kill it
         """
         with self._state_lock:
-            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+            dependencies, paths = self._fetch_state()
+
             if dependency_key in dependencies:
                 dep_state = dependencies[dependency_key]
                 if uuid in dep_state.dependents:
@@ -395,27 +392,7 @@ class NFSDependencyManager(DependencyManager):
                 if not dep_state.dependents:
                     dep_state = dep_state._replace(killed=True)
                     dependencies[dependency_key] = dep_state
-                self._commit_dependencies(dependencies)
-
-    def _assign_path(self, dependency_key):
-        """
-        Normalize the path for the dependency by replacing / with _, avoiding conflicts
-        """
-        if dependency_key.parent_path:
-            path = os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
-        else:
-            path = dependency_key.parent_uuid
-        path = path.replace(os.path.sep, '_')
-
-        # You could have a conflict between, for example a/b_c and
-        # a_b/c. We have to avoid those.
-        with self._state_lock:
-            paths: Set[str] = self._fetch_paths()
-            while path in paths:
-                path = path + '_'
-            paths.add(path)
-            self._commit_paths(paths)
-        return path
+                self._commit_state(dependencies, paths)
 
     def _store_dependency(self, dependency_path, fileobj, target_type):
         """
@@ -460,7 +437,7 @@ class NFSDependencyManager(DependencyManager):
                 """
                 try:
                     self._state_lock.acquire()
-                    dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+                    dependencies, dependency_paths = self._fetch_state()
                     state = dependencies[dependency_state.dependency_key]
                     if state.killed:
                         raise DownloadAbortedException("Aborted by user")
@@ -470,7 +447,7 @@ class NFSDependencyManager(DependencyManager):
                         % size_str(bytes_downloaded),
                         last_downloading=time.time(),
                     )
-                    self._commit_dependencies(dependencies)
+                    self._commit_state(dependencies, dependency_paths)
                 except Exception as e:
                     logger.warning(f"Skipping updating download state due to {e}")
                 finally:
@@ -570,10 +547,9 @@ class NFSDependencyManager(DependencyManager):
                 stage=DependencyStage.READY, message="Download complete"
             )
         else:
-            with self._state_lock:
-                paths: Set[str] = self._fetch_paths()
-                paths.remove(dependency_state.path)
-                self._commit_paths(paths)
+            dependencies, paths = self._fetch_state()
+            paths.remove(dependency_state.path)
+            self._commit_state(dependencies, paths)
 
             logger.error(failure_message)
             return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)
