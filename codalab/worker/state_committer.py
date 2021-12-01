@@ -1,8 +1,6 @@
 import logging
 
 import os
-import tempfile
-import shutil
 from . import pyjson
 
 
