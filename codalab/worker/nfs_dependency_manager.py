@@ -437,9 +437,6 @@ class NFSDependencyManager(DependencyManager):
                 raises DownloadAbortedException if download is killed by dep. manager
                 """
                 if self._state_lock.is_locked:
-                    logger.debug(
-                        f"State lock is locked. Skipping download update for {dependency_state.dependency_key}."
-                    )
                     return
 
                 try:
@@ -456,6 +453,8 @@ class NFSDependencyManager(DependencyManager):
                     )
                     self._commit_state(dependencies, dependency_paths)
                 except Exception as e:
+                    if isinstance(e, DownloadAbortedException):
+                        raise e
                     logger.warning(f"Skipping updating download state due to {e}")
                 finally:
                     self._state_lock.release()
