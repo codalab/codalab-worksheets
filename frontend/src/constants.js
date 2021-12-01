@@ -60,3 +60,39 @@ export const DEFAULT_POST_PROCESSOR = {
     size: 'size',
     date: 'date',
 };
+
+// The rows should be synced with https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/worksheet_util.py#L575
+export const DEFAULT_SCHEMA_ROWS = [
+    {
+        field: 'uuid',
+        'generalized-path': 'uuid',
+        'post-processor': '[0:8]',
+        from_schema_name: '',
+    },
+    {
+        field: 'name',
+        'generalized-path': 'name',
+        from_schema_name: '',
+    },
+    {
+        field: 'summary[0:1024]',
+        'generalized-path': 'summary',
+        'post-processor': '[0:1024]',
+        from_schema_name: '',
+    },
+    {
+        field: 'data_size',
+        'generalized-path': 'data_size',
+        from_schema_name: '',
+    },
+    {
+        field: 'state',
+        'generalized-path': 'state',
+        from_schema_name: '',
+    },
+    {
+        field: 'description',
+        'generalized-path': 'description',
+        from_schema_name: '',
+    },
+];
