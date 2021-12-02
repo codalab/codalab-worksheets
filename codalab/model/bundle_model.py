@@ -919,7 +919,7 @@ class BundleModel(object):
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,
-                    'remotes': (bundle.metadata.remotes or [])
+                    'remote_history': (bundle.metadata.remotes or [])
                     + [
                         remote
                     ],  # Store the history of which workers ran this bundle before in the bundle metadata.
