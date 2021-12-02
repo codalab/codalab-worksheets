@@ -2924,7 +2924,7 @@ class BundleModel(object):
             ).fetchall()
             return [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
 
-    def add_bundle_location(self, bundle_uuid):
+    def add_bundle_location(self, new_location):
         """
         adds a new bundle location to the specified bundle and returns SAS URL
         """
@@ -2933,11 +2933,11 @@ class BundleModel(object):
             bundle_location_value = {
                 'uuid': uuid,
                 'bundle_uuid': bundle_uuid,
-                'bundle_store': # TODO
+                'bundle_store': # TODO - obtain from request
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
-        
-        # TODO - Return SAS URL
+
+        return uuid # return entire bundle location
 
     def get_bundle_location(self, bundle_uuid, location_id):
         """
@@ -2956,12 +2956,3 @@ class BundleModel(object):
             # Ensure that the specified bundle location exists for the provided bundle
             if row is None:
                 return None
-            
-            # TODO - fetch the SAS URL
-            # target = BundleTarget(location_id, path='')
-            # return local.download_manager.get_target_sas_url(
-            #     target,
-            #     content_type=response.get_header('Content-Type'),
-            #     content_encoding=response.get_header('Content-Encoding'),
-            #     content_disposition=response.get_header('Content-Disposition'),
-            # )

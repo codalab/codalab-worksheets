@@ -430,6 +430,8 @@ def _fetch_bundle_locations(bundle_uuid):
     """
     Returns a list of BundleLocations associated with the given bundle in the format 
     [{name, storage_type, storage_format, url}]
+
+    TODO: Use schema to return output (look into `dump` function. See lines 407-409)
     """
     return dict(data=local.model.get_bundle_locations(bundle_uuid))
     
@@ -438,8 +440,14 @@ def _add_bundle_location(bundle_uuid):
     """
     Add a new BundleLocation to a bundle. Returns a SAS URL that the caller can then 
     use to upload directly to a bundle location
+
+    Validates the user input against the BundleLocation schema
     """
-    return dict(data=local.model.add_bundle_location(bundle_uuid))
+    new_location = BundleLocationSchema(strict=True, many=False).load(request.json).data
+    new_location = local.model.add_bundle_location(new_location)
+    return BundleLocationSchema(many=True).dump(new_location).data
+
+    # return dict(data=local.model.add_bundle_location(bundle_uuid))
 
 @get('/bundles/<bundle_uuid:re:%s>/locations/<location_id:re:%s>/', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_location(bundle_uuid, location_id):
