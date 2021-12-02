@@ -2892,6 +2892,26 @@ class BundleModel(object):
 
         return OAuth2AuthCode(self, **row)
 
+
+    def create_bundle_store(self, user, name, storage_type, storage_format, url, authentication):
+        """
+        create a bundle store
+        """
+        uuid = spec_util.generate_uuid()
+        with self.engine.begin() as connection:
+            bundle_store_value = {
+                'uuid': uuid,
+                'owner_id': user,
+                'name': name,
+                'storage_type': storage_type,
+                'storage_format': storage_format,
+                'url': url,
+                'authentication': authentication,
+            }
+            connection.execute(cl_bundle_store.insert().values(bundle_store_value))
+        return uuid
+
+
     def save_oauth2_auth_code(self, grant):
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_auth_code.insert().values(grant.columns))
