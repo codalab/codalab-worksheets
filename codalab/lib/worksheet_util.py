@@ -572,6 +572,7 @@ def apply_func(func, arg):
         return arg
 
 
+# The default schema should be synced with https://github.com/codalab/codalab-worksheets/blob/master/frontend/src/constants.js
 def get_default_schemas():
     # Single fields
     uuid = ['uuid[0:8]', 'uuid', '[0:8]']
