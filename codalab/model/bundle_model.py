@@ -919,7 +919,7 @@ class BundleModel(object):
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,
-                    'remote_history': (bundle.metadata.remotes or [])
+                    'remote_history': getattr(bundle.metadata, "remote_history", [])
                     + [
                         remote
                     ],  # Store the history of which workers ran this bundle before in the bundle metadata.
@@ -1010,7 +1010,7 @@ class BundleModel(object):
                 # The user deleted the bundle or the bundle finished
                 return False
 
-            if bundle.metadata.preemptible:
+            if getattr(bundle.metadata, "preemptible", False):
                 bundle_update = {
                     'state': State.STAGED,
                     'metadata': {'last_updated': int(time.time())},

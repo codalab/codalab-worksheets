@@ -71,6 +71,18 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.WORKER_OFFLINE)
 
+    def test_reassign_stuck_running_preemptible_bundles(self):
+        """If no workers exist to claim a bundle, and the bundle is running on a preemptible worker, it should go to the STAGED state in preparation for being reassigned to another worker."""
+        bundle = self.create_run_bundle(
+            State.RUNNING, {"preemptible": True, "remote_history": ["remote1"], "remote": "remote1"}
+        )
+        self.save_bundle(bundle)
+        self.bundle_manager._schedule_run_bundles()
+
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.STAGED)
+        self.assertEqual(bundle.metadata.remote_history, ["remote1"])
+
     def test_finalizing_bundle_gets_finished(self):
         """If a worker checks in with a "finalizing" message, the bundle should transition
         to the FINALIZING and then FINISHED state."""
