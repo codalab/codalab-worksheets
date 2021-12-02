@@ -37,6 +37,7 @@ nav:
     - Execution: Execution.md
     - Competitions: Competitions.md
     - Storage Externalization: Externalization.md
+    - Checkpoints: Checkpoints.md
   - Reference:
     - CLI Reference: CLI-Reference.md
     - REST API Reference: REST-API-Reference.md
