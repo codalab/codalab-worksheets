@@ -189,7 +189,7 @@ class MainPanel extends React.Component<{
 
     componentDidMount() {
         // Fetch worksheets owned by the current user
-        navBarSearch(['owner=' + this.props.userInfo.user_name])
+        navBarSearch(['owner=' + this.props.userInfo.user_name, '.limit=' + 100])
             .then((data) => this.setWorksheets(data))
             .catch(defaultErrorHandler);
         navBarSearch(['.shared', '.notmine', '.limit=' + 100])

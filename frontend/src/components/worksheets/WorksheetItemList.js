@@ -18,6 +18,7 @@ import ImageEditor from './items/ImageEditor';
 import TextEditorItem from './items/TextEditorItem';
 import NewRun from './NewRun';
 import { withStyles } from '@material-ui/core/styles';
+import { DEFAULT_SCHEMA_ROWS } from '../../constants';
 
 export const BLOCK_TO_COMPONENT = {
     markup_block: MarkdownItem,
@@ -148,7 +149,7 @@ class WorksheetItemList extends React.Component {
             ['shift+g'],
             function() {
                 this.props.setFocus(this.props.ws.info.blocks.length - 1, 'end');
-                $('#worksheet_container').scrollTop($('#worksheet_container')[0].scrollHeight);
+                window.scrollTo(0, document.body.scrollHeight);
             }.bind(this),
             'keydown',
         );
@@ -295,14 +296,7 @@ class WorksheetItemList extends React.Component {
                             reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
                             editPermission={true}
                             item={{
-                                field_rows: [
-                                    {
-                                        field: '',
-                                        'generalized-path': '',
-                                        'post-processor': null,
-                                        from_schema_name: '',
-                                    },
-                                ],
+                                field_rows: DEFAULT_SCHEMA_ROWS,
                                 header: ['field', 'generalized-path', 'post-processor'],
                                 schema_name: '',
                                 sort_keys: [0],

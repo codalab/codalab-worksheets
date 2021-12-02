@@ -1950,7 +1950,9 @@ def test_resources(ctx):
 
     # Test network access
     REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
-    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 1)
+    # Network access is set to true by default
+    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
+    # --request-network should behave the same as above
     wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
 
 

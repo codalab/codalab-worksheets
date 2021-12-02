@@ -76,7 +76,7 @@ class Login extends React.Component {
                         </div>
                         <input type='hidden' name='success_uri' value={from} />
                         <input type='hidden' name='error_uri' value={pathname} />
-                        <button className='btn btn-primary margin-top' type='submit'>
+                        <button className='btn btn-primary' type='submit'>
                             Sign In
                         </button>
                         {/* the above is almost certainly wrong, not sure how to fix*/}
