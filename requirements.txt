@@ -5,7 +5,7 @@ docker==4.3.0
 marshmallow-jsonapi==0.15.1
 marshmallow==2.15.1
 setuptools>=40.0.0
-argcomplete==1.12.1
+argcomplete==1.12.3
 indexed_gzip==1.6.3
 ratarmountcore==0.1.0
 PyYAML==5.4
