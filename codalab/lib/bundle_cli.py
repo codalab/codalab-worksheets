@@ -1035,7 +1035,7 @@ class BundleCLI(object):
         'replicate',
         help=['Bundle store CLI commands.'],
         arguments=(
-            Commands.Argument('buddle_uuid', help='Specify the bundle to replicate.'),
+            Commands.Argument('bundle_uuid', help='Specify the bundle to replicate.'),
             Commands.Argument(
                 '-b',
                 '--bundle-store',
