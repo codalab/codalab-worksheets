@@ -287,12 +287,6 @@ Usage: `cl <command> <arguments>`
       -a, --add   Creates a new bundle store, allows one to configure credentials.
       -w, --work  All bundles will by default be uploaded to this bundle store.
 
-### replicate
-    Bundle store CLI commands.
-    Arguments:
-      buddle_uuid         Specify the bundle to replicate.
-      -b, --bundle-store  Replicates the contents of the specified bundle to the specified bundle store.
-
 
 ## Commands for worksheets
 ### new

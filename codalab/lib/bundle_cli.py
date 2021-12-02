@@ -123,7 +123,6 @@ BUNDLE_COMMANDS = (
     'mount',
     'netcat',
     'store',
-    'replicate',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -1029,21 +1028,6 @@ class BundleCLI(object):
         ),
     )
     def do_store_command(self, args):
-        print(args)
-
-    @Commands.command(
-        'replicate',
-        help=['Bundle store CLI commands.'],
-        arguments=(
-            Commands.Argument('bundle_uuid', help='Specify the bundle to replicate.'),
-            Commands.Argument(
-                '-b',
-                '--bundle-store',
-                help='Replicates the contents of the specified bundle to the specified bundle store.',
-            ),
-        ),
-    )
-    def do_replicate_command(self, args):
         print(args)
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
