@@ -454,22 +454,26 @@ Query parameters:
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/`
 
-Returns a list of BundleLocations associated with the given bundle in the format 
-[{name, storage_type, storage_format, url}]
+Returns a list of BundleLocations associated with the given bundle
 
-TODO: Use schema to return output (look into `dump` function. See lines 407-409)
+Query parameters:
+- `bundle_uuid`: Bundle UUID to get the locations for
 
 ### `POST /bundles/<bundle_uuid:re:%s>/locations/`
 
-Add a new BundleLocation to a bundle. Returns a SAS URL that the caller can then 
-use to upload directly to a bundle location
+Adds a new BundleLocation to a bundle
 
-Validates the user input against the BundleLocation schema
+Query parameters:
+- `bundle_uuid`: Bundle UUID corresponding to the new location
+- `bundle_store_uuid`: Bundle Store UUID corresponding to the new location
 
-### `GET /bundles/<bundle_uuid:re:%s>/locations/<store_id:re:%s>/`
+### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 
-Get info about a specific BundleLocation. This returns a SAS URL that the caller 
-can use to download directly from a bundle location.
+Get info about a specific BundleLocation
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID to get the location for
+- `bundle_store_uuid`: Bundle Store UUID to get the location for
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 

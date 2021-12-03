@@ -61,7 +61,7 @@ from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 from codalab.worker.worker_run_state import RunStage
-
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -2926,7 +2926,7 @@ class BundleModel(object):
     # Multiple bundle locations methods follow!
     # ===========================================================================
 
-    def get_bundle_locations(self, bundle_uuid):
+    def get_bundle_locations(self, bundle_uuid: str) -> List[dict]:
         """
         returns all bundle locations associated with the specified bundle
         """
@@ -2948,7 +2948,7 @@ class BundleModel(object):
                 )
                 .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
             ).fetchall()
-            rows_data = [
+            return [
                 {
                     'name': row.name,
                     'storage_type': row.storage_type,
@@ -2957,11 +2957,10 @@ class BundleModel(object):
                 }
                 for row in rows
             ]
-            return rows_data
 
     def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> None:
         """
-        adds a new bundle location to the specified bundle and returns SAS URL
+        adds a new bundle location to the specified bundle
         """
         with self.engine.begin() as connection:
             bundle_location_value = {
@@ -2970,9 +2969,9 @@ class BundleModel(object):
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
 
-    def get_bundle_location(self, bundle_uuid, store_id):
+    def get_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> dict:
         """
-        returns the SAS URL for the specified location associated with the specified bundle
+        returns data about the location associated with the specified bundle and bundle store
         """
         with self.engine.begin() as connection:
             row = connection.execute(
@@ -2993,14 +2992,13 @@ class BundleModel(object):
                 .where(
                     and_(
                         cl_bundle_location.c.bundle_uuid == bundle_uuid,
-                        cl_bundle_location.c.bundle_store_uuid == store_id,
+                        cl_bundle_location.c.bundle_store_uuid == bundle_store_uuid,
                     )
                 )
             ).fetchone()
-            row_data = {
+            return {
                 'name': row.name,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,
                 'url': row.url,
             }
-            return row_data
