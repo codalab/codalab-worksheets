@@ -26,13 +26,33 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Call get_bundle_locations
         bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle.uuid)
-        self.assertEqual(bundle_locations, [{'name': 'store1', 'storage_type': 'disk', 'storage_format': 'uncompressed', 'url': 'http://url'}])
-        
-        # Call get_bundle_location
-        bundle_location = self.bundle_manager._model.get_bundle_location(bundle.uuid, bundle_store_uuid)
-        self.assertEqual(bundle_location, {'name': 'store1', 'storage_type': 'disk', 'storage_format': 'uncompressed', 'url': 'http://url'})
+        self.assertEqual(
+            bundle_locations,
+            [
+                {
+                    'name': 'store1',
+                    'storage_type': 'disk',
+                    'storage_format': 'uncompressed',
+                    'url': 'http://url',
+                }
+            ],
+        )
 
-        # Create second bundle store 
+        # Call get_bundle_location
+        bundle_location = self.bundle_manager._model.get_bundle_location(
+            bundle.uuid, bundle_store_uuid
+        )
+        self.assertEqual(
+            bundle_location,
+            {
+                'name': 'store1',
+                'storage_type': 'disk',
+                'storage_format': 'uncompressed',
+                'url': 'http://url',
+            },
+        )
+
+        # Create second bundle store
         bundle_store_uuid_2 = self.bundle_manager._model.create_bundle_store(
             user=self.user_id,
             name="store2",
@@ -49,8 +69,34 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Call get_bundle_locations
         bundle_locations_2 = self.bundle_manager._model.get_bundle_locations(bundle.uuid)
-        self.assertEqual(bundle_locations_2, [{'name': 'store1', 'storage_type': 'disk', 'storage_format': 'uncompressed', 'url': 'http://url'}, {'name': 'store2', 'storage_type': 'disk', 'storage_format': 'uncompressed', 'url': 'http://url2'}])
+        self.assertEqual(
+            bundle_locations_2,
+            [
+                {
+                    'name': 'store1',
+                    'storage_type': 'disk',
+                    'storage_format': 'uncompressed',
+                    'url': 'http://url',
+                },
+                {
+                    'name': 'store2',
+                    'storage_type': 'disk',
+                    'storage_format': 'uncompressed',
+                    'url': 'http://url2',
+                },
+            ],
+        )
 
         # Call get_bundle_location
-        bundle_location_2 = self.bundle_manager._model.get_bundle_location(bundle.uuid, bundle_store_uuid_2)
-        self.assertEqual(bundle_location_2, {'name': 'store2', 'storage_type': 'disk', 'storage_format': 'uncompressed', 'url': 'http://url2'})
+        bundle_location_2 = self.bundle_manager._model.get_bundle_location(
+            bundle.uuid, bundle_store_uuid_2
+        )
+        self.assertEqual(
+            bundle_location_2,
+            {
+                'name': 'store2',
+                'storage_type': 'disk',
+                'storage_format': 'uncompressed',
+                'url': 'http://url2',
+            },
+        )

@@ -2892,7 +2892,6 @@ class BundleModel(object):
 
         return OAuth2AuthCode(self, **row)
 
-
     def create_bundle_store(self, user, name, storage_type, storage_format, url, authentication):
         """
         create a bundle store
@@ -2910,7 +2909,6 @@ class BundleModel(object):
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
         return uuid
-
 
     def save_oauth2_auth_code(self, grant):
         with self.engine.begin() as connection:
@@ -2934,15 +2932,31 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             rows = connection.execute(
-                select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
+                select(
+                    [
+                        cl_bundle_store.c.name,
+                        cl_bundle_store.c.storage_type,
+                        cl_bundle_store.c.storage_format,
+                        cl_bundle_store.c.url,
+                    ]
+                )
                 .select_from(
                     cl_bundle_location.join(
-                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid
+                        cl_bundle_store,
+                        cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid,
                     )
                 )
                 .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
             ).fetchall()
-            rows_data = [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
+            rows_data = [
+                {
+                    'name': row.name,
+                    'storage_type': row.storage_type,
+                    'storage_format': row.storage_format,
+                    'url': row.url,
+                }
+                for row in rows
+            ]
             return rows_data
 
     def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> None:
@@ -2952,22 +2966,41 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             bundle_location_value = {
                 'bundle_uuid': bundle_uuid,
-                'bundle_store_uuid': bundle_store_uuid
+                'bundle_store_uuid': bundle_store_uuid,
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
-        
+
     def get_bundle_location(self, bundle_uuid, store_id):
         """
         returns the SAS URL for the specified location associated with the specified bundle
         """
         with self.engine.begin() as connection:
             row = connection.execute(
-                select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
+                select(
+                    [
+                        cl_bundle_store.c.name,
+                        cl_bundle_store.c.storage_type,
+                        cl_bundle_store.c.storage_format,
+                        cl_bundle_store.c.url,
+                    ]
+                )
                 .select_from(
                     cl_bundle_location.join(
-                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid
+                        cl_bundle_store,
+                        cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid,
                     )
-                ).where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.bundle_store_uuid == store_id))
+                )
+                .where(
+                    and_(
+                        cl_bundle_location.c.bundle_uuid == bundle_uuid,
+                        cl_bundle_location.c.bundle_store_uuid == store_id,
+                    )
+                )
             ).fetchone()
-            row_data = {'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url}
+            row_data = {
+                'name': row.name,
+                'storage_type': row.storage_type,
+                'storage_format': row.storage_format,
+                'url': row.url,
+            }
             return row_data
