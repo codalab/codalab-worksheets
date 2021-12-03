@@ -2956,7 +2956,7 @@ class BundleModel(object):
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
         
-    def get_bundle_location(self, bundle_uuid, location_id):
+    def get_bundle_location(self, bundle_uuid, store_id):
         """
         returns the SAS URL for the specified location associated with the specified bundle
         """
@@ -2967,7 +2967,7 @@ class BundleModel(object):
                     cl_bundle_location.join(
                         cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid
                     )
-                ).where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.id == location_id))
+                ).where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.bundle_store_uuid == store_id))
             ).fetchone()
             row_data = {'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url}
             return row_data

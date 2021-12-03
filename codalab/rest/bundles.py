@@ -448,13 +448,13 @@ def _add_bundle_location(bundle_uuid: str):
     local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
     return BundleLocationSchema(many=False).dump(new_location).data
 
-@get('/bundles/<bundle_uuid:re:%s>/locations/<location_id:re:%s>/', apply=AuthenticatedProtectedPlugin())
-def _fetch_bundle_location(bundle_uuid, location_id):
+@get('/bundles/<bundle_uuid:re:%s>/locations/<store_id:re:%s>/', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_location(bundle_uuid, store_id):
     """
     Get info about a specific BundleLocation. This returns a SAS URL that the caller 
     can use to download directly from a bundle location.
     """
-    bundle_location = local.model.get_bundle_location(bundle_uuid, location_id)
+    bundle_location = local.model.get_bundle_location(bundle_uuid, store_id)
     return BundleLocationListSchema(many=False).dump(bundle_location).data
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')

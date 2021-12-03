@@ -195,6 +195,24 @@ Name | Type
 `parent_path` | String
 `parent_name` | Method
 
+## bundle-location-list
+
+
+Name | Type
+--- | ---
+`name` | String
+`storage_type` | String
+`storage_format` | String
+`url` | Url
+
+## bundle-location
+
+
+Name | Type
+--- | ---
+`bundle_uuid` | String
+`bundle_store_uuid` | String
+
 ## bundle-permissions
 
 
@@ -433,6 +451,25 @@ Fetch locations of bundles.
 
 Query parameters:
 - `uuids`: List of bundle UUID's to get the locations for
+
+### `GET /bundles/<bundle_uuid:re:%s>/locations/`
+
+Returns a list of BundleLocations associated with the given bundle in the format 
+[{name, storage_type, storage_format, url}]
+
+TODO: Use schema to return output (look into `dump` function. See lines 407-409)
+
+### `POST /bundles/<bundle_uuid:re:%s>/locations/`
+
+Add a new BundleLocation to a bundle. Returns a SAS URL that the caller can then 
+use to upload directly to a bundle location
+
+Validates the user input against the BundleLocation schema
+
+### `GET /bundles/<bundle_uuid:re:%s>/locations/<store_id:re:%s>/`
+
+Get info about a specific BundleLocation. This returns a SAS URL that the caller 
+can use to download directly from a bundle location.
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
