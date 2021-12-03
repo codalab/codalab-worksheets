@@ -20,9 +20,7 @@ class BundleStoreTest(BaseBundleManagerTest):
         )
 
         # Calls add_bundle_location to add first bundle location to the bundle
-        bundle_location_uuid = self.bundle_manager._model.add_bundle_location(
-            bundle.uuid, bundle_store_uuid
-        )
+        self.bundle_manager._model.add_bundle_location(bundle.uuid, bundle_store_uuid)
 
         # Call get_bundle_locations
         bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle.uuid)
@@ -63,9 +61,7 @@ class BundleStoreTest(BaseBundleManagerTest):
         )
 
         # Add second bundle store to the bundle
-        bundle_location_uuid_2 = self.bundle_manager._model.add_bundle_location(
-            bundle.uuid, bundle_store_uuid_2
-        )
+        self.bundle_manager._model.add_bundle_location(bundle.uuid, bundle_store_uuid_2)
 
         # Call get_bundle_locations
         bundle_locations_2 = self.bundle_manager._model.get_bundle_locations(bundle.uuid)
