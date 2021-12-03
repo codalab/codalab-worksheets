@@ -2952,7 +2952,7 @@ class BundleModel(object):
         uuid = spec_util.generate_uuid()
         with self.engine.begin() as connection:
             bundle_location_value = {
-                'uuid': uuid,
+                'id': uuid,
                 'bundle_uuid': bundle_uuid,
                 'bundle_store_uuid': bundle_store_uuid
             }
