@@ -221,7 +221,6 @@ class BundleSchema(Schema):
         type_ = 'bundles'
 
 class BundleLocationSchema(Schema):
-    # id = fields.String(validate=validate_uuid, attribute='uuid', required=False)
     bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
     bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
     class Meta:

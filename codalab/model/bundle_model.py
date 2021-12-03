@@ -2956,8 +2956,6 @@ class BundleModel(object):
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
         
-        #return uuid
-
     def get_bundle_location(self, bundle_uuid, location_id):
         """
         returns the SAS URL for the specified location associated with the specified bundle
