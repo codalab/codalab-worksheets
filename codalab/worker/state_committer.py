@@ -19,8 +19,15 @@ class BaseStateCommitter(object):
 
 class JsonStateCommitter(BaseStateCommitter):
     def __init__(self, json_path):
-        self.temp_file = None
         self._state_file = json_path
+
+    @property
+    def path(self):
+        return self._state_file
+
+    @property
+    def state_file_exists(self) -> bool:
+        return os.path.isfile(self._state_file)
 
     def load(self, default=None):
         try:

@@ -82,7 +82,6 @@ class NFSDependencyManager(DependencyManager):
     """
 
     _DEPENDENCY_DOWNLOAD_TIMEOUT_SECONDS = 30 * 60
-    _DEPENDENCY_DOWNLOAD_UPDATE_FREQUENCY_SECONDS = 5 * 60
 
     def __init__(
         self,
@@ -128,17 +127,23 @@ class NFSDependencyManager(DependencyManager):
         """
         with self._state_lock:
             # Load states from dependencies-state.json, which contains information about bundles (e.g., state,
-            # dependencies, last used, etc.) and create a lock for each dependency.
-            state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
-
-            paths = state['paths']
-            dependencies = {}
-            for dep, dep_state in state['dependencies'].items():
-                dependencies[dep] = dep_state
-
-            logger.info(
-                'Found {} dependencies, {} paths from cache.'.format(len(dependencies), len(paths))
-            )
+            # dependencies, last used, etc.).
+            if self._state_committer.state_file_exists:
+                # If the state file exists, do not pass in a default. It's critical that we read the contents
+                # of the state file, as this method prunes dependencies. If we can't read the contents of the
+                # state file, fail immediately.
+                dependencies, paths = self._fetch_state()
+                logger.info(
+                    'Found {} dependencies, {} paths from cache.'.format(
+                        len(dependencies), len(paths)
+                    )
+                )
+            else:
+                dependencies: Dict[DependencyKey, DependencyState] = dict()
+                paths: Set[str] = set()
+                logger.info(
+                    f'State file did not exist. Creating one at path {self._state_committer.path}.'
+                )
 
             # Get the paths that exist in dependency state, loaded path and
             # the local file system (the dependency directories under self.dependencies_dir)
@@ -174,22 +179,22 @@ class NFSDependencyManager(DependencyManager):
             # the current state might have been changed during the state syncing phase
             self._commit_state(dependencies, paths)
 
-    def _fetch_state(self):
+    def _fetch_state(self, default=None):
         """
         Fetch state from JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state: DependencyManagerState = self._state_committer.load()
+        state: DependencyManagerState = self._state_committer.load(default)
         dependencies: Dict[DependencyKey, DependencyState] = state['dependencies']
         paths: Set[str] = state['paths']
         return dependencies, paths
 
-    def _fetch_dependencies(self) -> Dict[DependencyKey, DependencyState]:
+    def _fetch_dependencies(self, default=None) -> Dict[DependencyKey, DependencyState]:
         """
         Fetch dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        state = self._state_committer.load()
+        state = self._state_committer.load(default)
         return state['dependencies']
 
     def _commit_state(self, dependencies: Dict[DependencyKey, DependencyState], paths: Set[str]):
@@ -225,10 +230,15 @@ class NFSDependencyManager(DependencyManager):
 
     def _transition_dependencies(self):
         with self._state_lock:
-            dependencies, paths = self._fetch_state()
+            dependencies, paths = self._fetch_state(default={'dependencies': {}, 'paths': set()})
+            if len(dependencies) == 0:
+                return
+
+            # Update the class variable _paths as the transition function may update it
+            self._paths = paths
             for dep_key, dep_state in dependencies.items():
                 dependencies[dep_key] = self.transition(dep_state)
-            self._commit_state(dependencies, paths)
+            self._commit_state(dependencies, self._paths)
 
     def _prune_failed_dependencies(self):
         """
@@ -237,14 +247,17 @@ class NFSDependencyManager(DependencyManager):
         failed dependency would automatically fail indefinitely.
         """
         with self._state_lock:
-            dependencies, paths = self._fetch_state()
-            failed_deps = {
+            dependencies, paths = self._fetch_state(default={'dependencies': {}, 'paths': set()})
+            failed_deps: Dict[DependencyKey, DependencyState] = {
                 dep_key: dep_state
                 for dep_key, dep_state in dependencies.items()
                 if dep_state.stage == DependencyStage.FAILED
                 and time.time() - dep_state.last_used
                 > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
+            if len(failed_deps) == 0:
+                return
+
             for dep_key, dep_state in failed_deps.items():
                 self._delete_dependency(dep_key, dependencies, paths)
             self._commit_state(dependencies, paths)
@@ -257,10 +270,12 @@ class NFSDependencyManager(DependencyManager):
         Doesn't touch downloading dependencies.
         """
         self._prune_failed_dependencies()
-        # With all the locks (should be fast if no cleanup needed, otherwise make sure nothing is corrupted
+
         while True:
             with self._state_lock:
-                dependencies, paths = self._fetch_state()
+                dependencies, paths = self._fetch_state(
+                    default={'dependencies': {}, 'paths': set()}
+                )
                 bytes_used = sum(dep_state.size_bytes for dep_state in dependencies.values())
                 serialized_length = len(codalab.worker.pyjson.dumps(dependencies))
                 if (
@@ -423,10 +438,17 @@ class NFSDependencyManager(DependencyManager):
     @property
     def all_dependencies(self):
         with self._state_lock:
-            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
+            dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies(
+                default={'dependencies': {}, 'paths': set()}
+            )
             return list(dependencies.keys())
 
     def _transition_from_DOWNLOADING(self, dependency_state):
+        """
+        Checks if the dependency is downloading or not.
+        NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
+        """
+
         def download():
             """
             Runs in a separate thread. Only one worker should be running this in a thread at a time.
@@ -436,43 +458,19 @@ class NFSDependencyManager(DependencyManager):
                 """
                 Callback method for bundle service client updates dependency state and
                 raises DownloadAbortedException if download is killed by dep. manager
+
+                Note: This function needs to be fast, since it's called every time fileobj.read is called.
+                      Therefore, we keep a copy of the state in memory and copy over non-critical fields
+                      (last_downloading, size_bytes and message) when the download transition function.
                 """
-                # if self._state_lock.is_locked:
-                #     return
-
-                try:
-                    dependency_states, _ = self._fetch_state()
-                    state = dependency_states[dependency_state.dependency_key]
-                    if state.killed:
-                        raise DownloadAbortedException("Aborted by user.")
-
-                    current_time = time.time()
-                    if (
-                        current_time - state.last_downloading
-                        < self._DEPENDENCY_DOWNLOAD_UPDATE_FREQUENCY_SECONDS
-                    ):
-                        return
-
-                    downloaded_size_str = size_str(bytes_downloaded)
-
-                    self._state_lock.acquire()
-                    dependency_states, dependency_paths = self._fetch_state()
-                    state = dependency_states[dependency_state.dependency_key]
-                    dependency_states[dependency_state.dependency_key] = state._replace(
-                        size_bytes=bytes_downloaded,
-                        message=f"Downloading dependency: {downloaded_size_str} downloaded.",
-                        last_downloading=current_time,
-                    )
-                    self._commit_state(dependency_states, dependency_paths)
-                    logger.info(
-                        f"Updated state: {dependency_state.dependency_key} downloaded: {downloaded_size_str}."
-                    )
-                except Exception as e:
-                    if isinstance(e, DownloadAbortedException):
-                        raise e
-                    logger.warning(f"Skipping updating download state due to {e}")
-                finally:
-                    self._state_lock.release()
+                state = self._downloading[dependency_state.dependency_key]['state']
+                if state.killed:
+                    raise DownloadAbortedException("Aborted by user")
+                self._downloading[dependency_state.dependency_key]['state'] = state._replace(
+                    last_downloading=time.time(),
+                    size_bytes=bytes_downloaded,
+                    message=f"Downloading dependency: {str(bytes_downloaded)} downloaded",
+                )
 
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s', dependency_state.dependency_key)
@@ -555,6 +553,7 @@ class NFSDependencyManager(DependencyManager):
             self._downloading.add_if_new(
                 dependency_state.dependency_key, threading.Thread(target=download, args=[])
             )
+            self._downloading[dependency_state.dependency_key]['state'] = dependency_state
             dependency_state = dependency_state._replace(downloading_by=self._id)
 
         # If there is already a thread or another dependency manager downloading the dependency,
@@ -570,7 +569,14 @@ class NFSDependencyManager(DependencyManager):
             dependency_state.dependency_key in self._downloading
             and self._downloading[dependency_state.dependency_key].is_alive()
         ):
-            return dependency_state
+            state = self._downloading[dependency_state.dependency_key]['state']
+            # Copy over the values of the non-critical fields of the state in memory
+            # that is being updated by the download thread.
+            return dependency_state._replace(
+                last_downloading=state.last_downloading,
+                size_bytes=state.size_bytes,
+                message=state.message,
+            )
 
         # At this point, no thread is downloading the dependency. Check the status of the download.
         success = self._downloading[dependency_state.dependency_key]['success']
@@ -588,9 +594,8 @@ class NFSDependencyManager(DependencyManager):
                 stage=DependencyStage.READY, message="Download complete"
             )
         else:
-            dependencies, paths = self._fetch_state()
-            paths.remove(dependency_state.path)
-            self._commit_state(dependencies, paths)
-
-            logger.error(failure_message)
+            self._paths.remove(dependency_state.path)
+            logger.error(
+                f"Dependency {dependency_state.dependency_key} download failed: {failure_message}"
+            )
             return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)
