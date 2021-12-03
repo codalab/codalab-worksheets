@@ -2943,21 +2943,20 @@ class BundleModel(object):
                 .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
             ).fetchall()
             rows_data = [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
-            return BundleLocationListSchema(strict=True, many=True).load(rows_data).data
+            return rows_data
 
-    def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> str:
+    def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> None:
         """
         adds a new bundle location to the specified bundle and returns SAS URL
         """
-        uuid = spec_util.generate_uuid()
         with self.engine.begin() as connection:
             bundle_location_value = {
-                'id': uuid,
                 'bundle_uuid': bundle_uuid,
                 'bundle_store_uuid': bundle_store_uuid
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
-        return uuid
+        
+        #return uuid
 
     def get_bundle_location(self, bundle_uuid, location_id):
         """
@@ -2973,4 +2972,4 @@ class BundleModel(object):
                 ).where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.id == location_id))
             ).fetchone()
             row_data = {'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url}
-            return BundleLocationListSchema(strict=True, many=True).load(row_data).data
+            return row_data

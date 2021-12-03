@@ -445,7 +445,7 @@ def _add_bundle_location(bundle_uuid: str):
     Validates the user input against the BundleLocation schema
     """
     new_location = BundleLocationSchema(many=False).load(request.json).data
-    new_location['uuid'] = local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
+    local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
     return BundleLocationSchema(many=False).dump(new_location).data
 
 @get('/bundles/<bundle_uuid:re:%s>/locations/<location_id:re:%s>/', apply=AuthenticatedProtectedPlugin())
