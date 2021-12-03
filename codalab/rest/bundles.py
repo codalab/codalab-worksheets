@@ -34,6 +34,8 @@ from codalab.objects.permission import (
 from codalab.rest.schemas import (
     BundleSchema,
     BundlePermissionSchema,
+    BundleLocationSchema,
+    BundleLocationListSchema,
     BUNDLE_CREATE_RESTRICTED_FIELDS,
     BUNDLE_UPDATE_RESTRICTED_FIELDS,
     WorksheetSchema,
