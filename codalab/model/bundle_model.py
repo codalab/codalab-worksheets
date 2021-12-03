@@ -2937,14 +2937,15 @@ class BundleModel(object):
                 select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
                 .select_from(
                     cl_bundle_location.join(
-                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store
+                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid
                     )
                 )
                 .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
             ).fetchall()
-            return [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
+            rows_data = [{'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url} for row in rows]
+            return BundleLocationListSchema(strict=True, many=True).load(rows_data).data
 
-    def add_bundle_location(self, new_location):
+    def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> str:
         """
         adds a new bundle location to the specified bundle and returns SAS URL
         """
@@ -2953,11 +2954,10 @@ class BundleModel(object):
             bundle_location_value = {
                 'uuid': uuid,
                 'bundle_uuid': bundle_uuid,
-                'bundle_store': # TODO - obtain from request
+                'bundle_store_uuid': bundle_store_uuid
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
-
-        return uuid # return entire bundle location
+        return uuid
 
     def get_bundle_location(self, bundle_uuid, location_id):
         """
@@ -2968,11 +2968,9 @@ class BundleModel(object):
                 select([cl_bundle_store.c.name, cl_bundle_store.c.storage_type, cl_bundle_store.c.storage_format, cl_bundle_store.c.url])
                 .select_from(
                     cl_bundle_location.join(
-                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store
+                        cl_bundle_store, cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid
                     )
                 ).where(and_(cl_bundle_location.c.bundle_uuid == bundle_uuid, cl_bundle_location.c.id == location_id))
             ).fetchone()
-            
-            # Ensure that the specified bundle location exists for the provided bundle
-            if row is None:
-                return None
+            row_data = {'name': row.name, 'storage_type': row.storage_type, 'storage_format': row.storage_format, 'url': row.url}
+            return BundleLocationListSchema(strict=True, many=True).load(row_data).data

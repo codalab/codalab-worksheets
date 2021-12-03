@@ -433,21 +433,20 @@ def _fetch_bundle_locations(bundle_uuid):
 
     TODO: Use schema to return output (look into `dump` function. See lines 407-409)
     """
-    return dict(data=local.model.get_bundle_locations(bundle_uuid))
+    bundle_locations = local.model.get_bundle_locations(bundle_uuid)
+    return BundleLocationListSchema(many=True).dump(bundle_locations).data
     
 @post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
-def _add_bundle_location(bundle_uuid):
+def _add_bundle_location(bundle_uuid: str):
     """
     Add a new BundleLocation to a bundle. Returns a SAS URL that the caller can then 
     use to upload directly to a bundle location
 
     Validates the user input against the BundleLocation schema
     """
-    new_location = BundleLocationSchema(strict=True, many=False).load(request.json).data
-    new_location = local.model.add_bundle_location(new_location)
-    return BundleLocationSchema(many=True).dump(new_location).data
-
-    # return dict(data=local.model.add_bundle_location(bundle_uuid))
+    new_location = BundleLocationSchema(many=False).load(request.json).data
+    new_location['uuid'] = local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
+    return BundleLocationSchema(many=False).dump(new_location).data
 
 @get('/bundles/<bundle_uuid:re:%s>/locations/<location_id:re:%s>/', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_location(bundle_uuid, location_id):
@@ -455,7 +454,8 @@ def _fetch_bundle_location(bundle_uuid, location_id):
     Get info about a specific BundleLocation. This returns a SAS URL that the caller 
     can use to download directly from a bundle location.
     """
-    return dict(data=local.model.get_bundle_location(bundle_uuid, location_id))
+    bundle_location = local.model.get_bundle_location(bundle_uuid, location_id)
+    return BundleLocationListSchema(many=False).dump(bundle_location).data
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 @get(
