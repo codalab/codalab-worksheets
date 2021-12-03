@@ -461,8 +461,7 @@ class Worksheet extends React.Component {
     };
 
     moveFocusToBottom = () => {
-        const container = document.querySelector('#worksheet_container');
-        container.scrollTop = container.scrollHeight;
+        window.scrollTo(0, document.body.scrollHeight);
         this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
     };
 
