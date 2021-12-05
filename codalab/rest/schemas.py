@@ -226,7 +226,7 @@ class BundleStoreSchema(Schema):
     owner = fields.String(attribute='owner_id')
     name = fields.String()
     storage_type = fields.String()
-    storage_format = fields.String(validate=validate.OneOf({'UNCOMPRESSED', 'COMPRESSED_V1'}))
+    storage_format = fields.String()
     url = fields.String(allow_none=True)
     authentication = fields.String()
     authentication_env = fields.String()

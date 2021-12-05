@@ -599,7 +599,7 @@ def test_localhost(ctx):
 @TestModule.register('unittest')
 def test_unittest(ctx):
     """Run backend unit tests."""
-    _run_command(['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit.rest'])
+    _run_command(['coverage', 'run', '--rcfile=tests/unit/.coveragerc', '-m', 'nose', 'tests.unit'])
     _run_command(
         ['coverage', 'report', '--rcfile=tests/unit/.coveragerc'], max_output_chars=sys.maxsize
     )
