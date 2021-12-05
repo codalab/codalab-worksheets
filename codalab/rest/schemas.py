@@ -223,11 +223,11 @@ class BundleSchema(Schema):
 class BundleStoreSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     uuid = fields.String(attribute='uuid')
-    owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')    
+    owner = fields.String(attribute='owner_id')
     name = fields.String()
     storage_type = fields.String()
     storage_format = fields.String(validate=validate.OneOf({'UNCOMPRESSED', 'COMPRESSED_V1'}))
-    url = fields.Url(allow_none=True)
+    url = fields.String(allow_none=True)
     authentication = fields.String()
     authentication_env = fields.String()
     class Meta:

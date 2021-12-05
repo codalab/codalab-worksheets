@@ -434,9 +434,7 @@ def _fetch_bundle_stores():
     Returns a dictionary in which the keys are the bundle store uuids, and the values
     are tuples with the owner_id, name, and url.
     """
-    bundle_stores = local.model.get_bundle_stores(request.user).values()
-    logger.error(bundle_stores)
-    logger.info(BundleStoreSchema(many=True).dump(bundle_stores).data)
+    bundle_stores = local.model.get_bundle_stores(request.user)
     return BundleStoreSchema(many=True).dump(bundle_stores).data
 
 
@@ -449,14 +447,14 @@ def _add_bundle_store():
     new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
     return local.model.create_bundle_store(
         request.user,
-        new_bundle_store.name,
-        new_bundle_store.storage_format,
-        new_bundle_store.storage_type,
-        new_bundle_store.url,
-        new_bundle_store.authentication
+        new_bundle_store.get('name'),
+        new_bundle_store.get('storage_format'),
+        new_bundle_store.get('storage_type'),
+        new_bundle_store.get('url'),
+        new_bundle_store.get('authentication')
     )
 
-@put('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
+@put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
 def _update_bundle_store(uuid):
     """
     Update a bundle store that the user can access.
@@ -465,14 +463,10 @@ def _update_bundle_store(uuid):
     return local.model.update_bundle_store(
         request.user, 
         uuid,
-        updated_bundle_store.name,
-        updated_bundle_store.storage_type,
-        updated_bundle_store.storage_format,
-        updated_bundle_store.url,
-        updated_bundle_store.authentication
+        updated_bundle_store
     )
 
-@get('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
+@get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_store(uuid):
     """
     Fetch the bundle store corresponding to the specified uuid.
@@ -480,10 +474,11 @@ def _fetch_bundle_store(uuid):
     Returns a dictionary in which the key id the bundle store uuid, and the value
     is a tuple with the owner_id, name, and url.
     """
-    return local.model.get_bundle_store(request.user, uuid)
+    bundle_store = local.model.get_bundle_store(request.user, uuid)
+    return BundleStoreSchema().dump(bundle_store).data
 
 
-@delete('/bundle_stores/<uuid:re:%s>', apply=AuthenticatedProtectedPlugin())
+@delete('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
 def _delete_bundle_store(uuid):
     """
     Delete the bundle store that the user can access. Note that you can’t delete a bundle store 
