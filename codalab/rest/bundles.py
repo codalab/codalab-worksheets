@@ -443,7 +443,7 @@ def _fetch_bundle_locations(bundle_uuid: str):
 @post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
 def _add_bundle_location(bundle_uuid: str):
     """
-    Adds a new BundleLocation to a bundle
+    Adds a new BundleLocation to a bundle.
 
     Query parameters:
     - `bundle_uuid`: Bundle UUID corresponding to the new location
