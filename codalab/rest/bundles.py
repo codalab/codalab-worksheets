@@ -442,7 +442,7 @@ def _fetch_bundle_stores():
 @post('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _add_bundle_store():
     """
-    Add a bundle store that the user can access.
+    Add a bundle store that the user can access. Request body must contain the fields in BundleStoreSchema.
     """
     new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
     return local.model.create_bundle_store(
@@ -458,6 +458,7 @@ def _add_bundle_store():
 def _update_bundle_store(uuid):
     """
     Update a bundle store that the user can access.
+    The request should contain at least one the fields in BundleStoreSchema.
     """
     updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
     return local.model.update_bundle_store(
