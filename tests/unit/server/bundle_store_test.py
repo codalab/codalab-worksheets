@@ -5,8 +5,7 @@ from tests.unit.server.bundle_manager import BaseBundleManagerTest
 class BundleStoreTest(BaseBundleManagerTest):
     def test_add_bundle_location(self):
         """
-        Creates a new bundle and multiple associated bundle stores and bundle locations to 
-        test the get_bundle_locations, get_bundle_location, and add_bundle_location functions
+        Creates a new bundle and multiple associated bundle stores and bundle locations to test the get_bundle_locations, get_bundle_location, and add_bundle_location functions
         """
         # Create bundle
         bundle = self.create_run_bundle()

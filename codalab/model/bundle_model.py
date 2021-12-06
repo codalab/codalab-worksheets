@@ -2932,7 +2932,6 @@ class BundleModel(object):
 
         Args:
             bundle_uuid (str): The uuid for the bundle whose locations we want to fetch.
-        
         Returns:
             A list of bundle locations associated with the specified bundle uuid.
         """
@@ -2986,7 +2985,6 @@ class BundleModel(object):
         Args:
             bundle_uuid (str): The uuid for the bundle whose location we want to fetch.
             bundle_store_uuid (str): The uuid for the bundle store whose associated location we want to fetch.
-        
         Returns:
             An object representing the specific BundleLocation corresponding to the specified bundle and bundle store.
         """
