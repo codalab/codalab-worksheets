@@ -454,22 +454,21 @@ Query parameters:
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/`
 
-Returns a list of BundleLocations associated with the given bundle
+Returns a list of BundleLocations associated with the given bundle.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the locations for
 
 ### `POST /bundles/<bundle_uuid:re:%s>/locations/`
 
-Adds a new BundleLocation to a bundle
+Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID corresponding to the new location
-- `bundle_store_uuid`: Bundle Store UUID corresponding to the new location
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 
-Get info about a specific BundleLocation
+Get info about a specific BundleLocation.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the location for

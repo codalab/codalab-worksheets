@@ -230,7 +230,6 @@ class BundleLocationSchema(Schema):
 
 
 class BundleLocationListSchema(Schema):
-    # Used only for bundle locations GET endpoint
     name = fields.String()
     storage_type = fields.String()
     storage_format = fields.String()

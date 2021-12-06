@@ -431,7 +431,7 @@ def _fetch_locations():
 @get('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_locations(bundle_uuid: str):
     """
-    Returns a list of BundleLocations associated with the given bundle
+    Returns a list of BundleLocations associated with the given bundle.
 
     Query parameters:
     - `bundle_uuid`: Bundle UUID to get the locations for
@@ -443,11 +443,10 @@ def _fetch_bundle_locations(bundle_uuid: str):
 @post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
 def _add_bundle_location(bundle_uuid: str):
     """
-    Adds a new BundleLocation to a bundle
+    Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
 
     Query parameters:
     - `bundle_uuid`: Bundle UUID corresponding to the new location
-    - `bundle_store_uuid`: Bundle Store UUID corresponding to the new location
     """
     new_location = BundleLocationSchema(many=False).load(request.json).data
     local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
@@ -460,7 +459,7 @@ def _add_bundle_location(bundle_uuid: str):
 )
 def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     """
-    Get info about a specific BundleLocation
+    Get info about a specific BundleLocation.
 
     Query parameters:
     - `bundle_uuid`: Bundle UUID to get the location for

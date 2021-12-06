@@ -2928,7 +2928,13 @@ class BundleModel(object):
 
     def get_bundle_locations(self, bundle_uuid: str) -> List[dict]:
         """
-        returns all bundle locations associated with the specified bundle
+        Returns all bundle locations associated with the specified bundle.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle whose locations we want to fetch.
+        
+        Returns:
+            A list of bundle locations associated with the specified bundle uuid.
         """
         with self.engine.begin() as connection:
             rows = connection.execute(
@@ -2960,7 +2966,11 @@ class BundleModel(object):
 
     def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> None:
         """
-        adds a new bundle location to the specified bundle
+        Adds a new bundle location to the specified bundle.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle which we want to add a BundleLocation to.
+            bundle_store_uuid (str): The uuid for the bundle store we are associating with the new BundleLocation.
         """
         with self.engine.begin() as connection:
             bundle_location_value = {
@@ -2971,7 +2981,14 @@ class BundleModel(object):
 
     def get_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> dict:
         """
-        returns data about the location associated with the specified bundle and bundle store
+        Returns data about the location associated with the specified bundle and bundle store.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle whose location we want to fetch.
+            bundle_store_uuid (str): The uuid for the bundle store whose associated location we want to fetch.
+        
+        Returns:
+            An object representing the specific BundleLocation corresponding to the specified bundle and bundle store.
         """
         with self.engine.begin() as connection:
             row = connection.execute(
