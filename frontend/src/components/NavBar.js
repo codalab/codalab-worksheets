@@ -359,7 +359,12 @@ class NavBar extends React.Component<{
                                 <Link to='/account/signup'>
                                     <Button color='inherit'>Sign Up</Button>
                                 </Link>
-                                <Link to='/account/login'>
+                                <Link
+                                    to={{
+                                        pathname: '/account/login',
+                                        state: { from: this.props.location },
+                                    }}
+                                >
                                     <Button color='inherit'>Login</Button>
                                 </Link>
                             </React.Fragment>
@@ -482,7 +487,11 @@ class NavBar extends React.Component<{
                         <Button onClick={() => this.resetDialog()} color='primary'>
                             Cancel
                         </Button>
-                        <Button onClick={() => this.createNewWorksheet()} color='primary'>
+                        <Button
+                            onClick={() => this.createNewWorksheet()}
+                            variant='contained'
+                            color='primary'
+                        >
                             Confirm
                         </Button>
                     </DialogActions>

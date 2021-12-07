@@ -61,7 +61,7 @@ from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 from codalab.worker.worker_run_state import RunStage
-
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -2952,6 +2952,7 @@ class BundleModel(object):
                 'authentication': authentication,
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
+            return uuid
 
     def update_bundle_store(self, user, uuid, update_fields):
         """
@@ -3024,3 +3025,99 @@ class BundleModel(object):
             ).fetchone()
             if bundle_location_row is not None:
                 connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
+
+    # ===========================================================================
+    # Multiple bundle locations methods follow!
+    # ===========================================================================
+
+    def get_bundle_locations(self, bundle_uuid: str) -> List[dict]:
+        """
+        Returns all bundle locations associated with the specified bundle.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle whose locations we want to fetch.
+        Returns:
+            A list of bundle locations associated with the specified bundle uuid.
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select(
+                    [
+                        cl_bundle_store.c.name,
+                        cl_bundle_store.c.storage_type,
+                        cl_bundle_store.c.storage_format,
+                        cl_bundle_store.c.url,
+                    ]
+                )
+                .select_from(
+                    cl_bundle_location.join(
+                        cl_bundle_store,
+                        cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid,
+                    )
+                )
+                .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
+            ).fetchall()
+            return [
+                {
+                    'name': row.name,
+                    'storage_type': row.storage_type,
+                    'storage_format': row.storage_format,
+                    'url': row.url,
+                }
+                for row in rows
+            ]
+
+    def add_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> None:
+        """
+        Adds a new bundle location to the specified bundle.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle which we want to add a BundleLocation to.
+            bundle_store_uuid (str): The uuid for the bundle store we are associating with the new BundleLocation.
+        """
+        with self.engine.begin() as connection:
+            bundle_location_value = {
+                'bundle_uuid': bundle_uuid,
+                'bundle_store_uuid': bundle_store_uuid,
+            }
+            connection.execute(cl_bundle_location.insert().values(bundle_location_value))
+
+    def get_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> dict:
+        """
+        Returns data about the location associated with the specified bundle and bundle store.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle whose location we want to fetch.
+            bundle_store_uuid (str): The uuid for the bundle store whose associated location we want to fetch.
+        Returns:
+            An object representing the specific BundleLocation corresponding to the specified bundle and bundle store.
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select(
+                    [
+                        cl_bundle_store.c.name,
+                        cl_bundle_store.c.storage_type,
+                        cl_bundle_store.c.storage_format,
+                        cl_bundle_store.c.url,
+                    ]
+                )
+                .select_from(
+                    cl_bundle_location.join(
+                        cl_bundle_store,
+                        cl_bundle_store.c.uuid == cl_bundle_location.c.bundle_store_uuid,
+                    )
+                )
+                .where(
+                    and_(
+                        cl_bundle_location.c.bundle_uuid == bundle_uuid,
+                        cl_bundle_location.c.bundle_store_uuid == bundle_store_uuid,
+                    )
+                )
+            ).fetchone()
+            return {
+                'name': row.name,
+                'storage_type': row.storage_type,
+                'storage_format': row.storage_format,
+                'url': row.url,
+            }

@@ -34,6 +34,8 @@ from codalab.objects.permission import (
 from codalab.rest.schemas import (
     BundleSchema,
     BundlePermissionSchema,
+    BundleLocationSchema,
+    BundleLocationListSchema,
     BUNDLE_CREATE_RESTRICTED_FIELDS,
     BUNDLE_UPDATE_RESTRICTED_FIELDS,
     WorksheetSchema, BundleStoreSchema,
@@ -210,7 +212,6 @@ def build_bundles_document(bundle_uuids):
 
     return document
 
-    # todo -- validate input against Marshmallow schema similar to POST endpoint
 
 @post('/bundles', apply=AuthenticatedProtectedPlugin())
 def _create_bundles():
@@ -426,6 +427,47 @@ def _fetch_locations():
     return dict(data=uuids_to_locations)
 
 
+@get('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_locations(bundle_uuid: str):
+    """
+    Returns a list of BundleLocations associated with the given bundle.
+
+    Query parameters:
+    - `bundle_uuid`: Bundle UUID to get the locations for
+    """
+    bundle_locations = local.model.get_bundle_locations(bundle_uuid)
+    return BundleLocationListSchema(many=True).dump(bundle_locations).data
+
+
+@post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+def _add_bundle_location(bundle_uuid: str):
+    """
+    Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+
+    Query parameters:
+    - `bundle_uuid`: Bundle UUID corresponding to the new location
+    """
+    new_location = BundleLocationSchema(many=False).load(request.json).data
+    local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
+    return BundleLocationSchema(many=False).dump(new_location).data
+
+
+@get(
+    '/bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/',
+    apply=AuthenticatedProtectedPlugin(),
+)
+def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
+    """
+    Get info about a specific BundleLocation.
+
+    Query parameters:
+    - `bundle_uuid`: Bundle UUID to get the location for
+    - `bundle_store_uuid`: Bundle Store UUID to get the location for
+    """
+    bundle_location = local.model.get_bundle_location(bundle_uuid, bundle_store_uuid)
+    return BundleLocationListSchema(many=False).dump(bundle_location).data
+
+
 @get('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_stores():
     """
@@ -462,7 +504,7 @@ def _update_bundle_store(uuid):
     """
     updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
     return local.model.update_bundle_store(
-        request.user, 
+        request.user,
         uuid,
         updated_bundle_store
     )
@@ -482,7 +524,7 @@ def _fetch_bundle_store(uuid):
 @delete('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
 def _delete_bundle_store(uuid):
     """
-    Delete the bundle store that the user can access. Note that you can’t delete a bundle store 
+    Delete the bundle store that the user can access. Note that you can’t delete a bundle store
     unless there are no BundleLocations associated with it.
     """
     return local.model.delete_bundle_store(request.user, uuid)

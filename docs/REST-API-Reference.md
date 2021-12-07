@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.1.2_
+_version 1.3.0_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -195,6 +195,24 @@ Name | Type
 `parent_uuid` | String
 `parent_path` | String
 `parent_name` | Method
+
+## bundle-location-list
+
+
+Name | Type
+--- | ---
+`name` | String
+`storage_type` | String
+`storage_format` | String
+`url` | Url
+
+## bundle-location
+
+
+Name | Type
+--- | ---
+`bundle_uuid` | String
+`bundle_store_uuid` | String
 
 ## bundle-permissions
 
@@ -463,6 +481,28 @@ Fetch locations of bundles.
 
 Query parameters:
 - `uuids`: List of bundle UUID's to get the locations for
+
+### `GET /bundles/<bundle_uuid:re:%s>/locations/`
+
+Returns a list of BundleLocations associated with the given bundle.
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID to get the locations for
+
+### `POST /bundles/<bundle_uuid:re:%s>/locations/`
+
+Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID corresponding to the new location
+
+### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
+
+Get info about a specific BundleLocation.
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID to get the location for
+- `bundle_store_uuid`: Bundle Store UUID to get the location for
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 

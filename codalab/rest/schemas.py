@@ -233,6 +233,24 @@ class BundleStoreSchema(Schema):
     class Meta:
         type_ = 'bundle-store'
 
+class BundleLocationSchema(Schema):
+    bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
+    bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
+
+    class Meta:
+        type_ = 'bundle-location'
+
+
+class BundleLocationListSchema(Schema):
+    name = fields.String()
+    storage_type = fields.String()
+    storage_format = fields.String()
+    url = fields.Url(allow_none=True)
+
+    class Meta:
+        type_ = 'bundle-location-list'
+
+
 # Field-update restrictions are specified as lists below because the
 # restrictions differ depending on the action
 
