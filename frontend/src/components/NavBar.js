@@ -372,7 +372,7 @@ class NavBar extends React.Component<{
                         {this.props.auth.isAuthenticated && (
                             <React.Fragment>
                                 <Link to='/users'>
-                                    <Button color='primary'>My Profile</Button>
+                                    <Button color='primary'>My Worksheets</Button>
                                 </Link>
                                 <Tooltip title='New Worksheet'>
                                     <IconButton
