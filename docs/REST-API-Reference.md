@@ -251,6 +251,21 @@ Name | Type
 `permission` | Integer
 `permission_spec` | PermissionSpec
 
+## bundle-store
+
+
+Name | Type
+--- | ---
+`id` | String
+`uuid` | String
+`owner` | String
+`name` | String
+`storage_type` | String
+`storage_format` | String
+`url` | String
+`authentication` | String
+`authentication_env` | String
+
 ## groups
 
 
@@ -344,31 +359,33 @@ existing permissions on the same bundle-group pair.
 
 &uarr; [Back to Top](#table-of-contents)
 ## Bundle_Stores API
-### `GET /bundle_stores/`
+### `GET /bundle_stores`
 
 Fetch the bundle stores available to the user.
 
 Returns a dictionary in which the keys are the bundle store uuids, and the values
 are tuples with the owner_id, name, and url.
 
-### `POST /bundle_stores/`
+### `POST /bundle_stores`
 
-Add a bundle store that the user can access.
+Add a bundle store that the user can access. Request body must contain the fields in BundleStoreSchema.
 
-### `PUT /bundle_stores/<id:re:%s>`
+### `PUT /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
 Update a bundle store that the user can access.
+The request should contain at least one the fields in BundleStoreSchema.
 
-### `GET /bundle_stores/<id:re:%s>`
+### `GET /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
-Fetch the bundle store corresponding to the specified id.
+Fetch the bundle store corresponding to the specified uuid.
 
 Returns a dictionary in which the key id the bundle store uuid, and the value
 is a tuple with the owner_id, name, and url.
 
-### `DELETE /bundle_stores/<id:re:%s>`
+### `DELETE /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
-Delete the bundle store that the user can access, only if there is an associated BundleLocation.
+Delete the bundle store that the user can access. Note that you can’t delete a bundle store
+unless there are no BundleLocations associated with it.
 
 
 &uarr; [Back to Top](#table-of-contents)

@@ -41,7 +41,6 @@ def bundle_to_bundle_info(model, bundle):
     return info
 
 
-
 def mimic_bundles(
     client,
     old_inputs,

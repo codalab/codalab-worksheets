@@ -38,7 +38,8 @@ from codalab.rest.schemas import (
     BundleLocationListSchema,
     BUNDLE_CREATE_RESTRICTED_FIELDS,
     BUNDLE_UPDATE_RESTRICTED_FIELDS,
-    WorksheetSchema, BundleStoreSchema,
+    WorksheetSchema,
+    BundleStoreSchema,
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
@@ -393,6 +394,7 @@ def _delete_bundles():
     deleted_uuids = delete_bundles(
         uuids, force=force, recursive=recursive, data_only=data_only, dry_run=dry_run
     )
+
     # Return list of deleted ids as meta
     return json_api_meta({}, {'ids': deleted_uuids})
 
@@ -480,7 +482,6 @@ def _fetch_bundle_stores():
     return BundleStoreSchema(many=True).dump(bundle_stores).data
 
 
-
 @post('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _add_bundle_store():
     """
@@ -493,8 +494,9 @@ def _add_bundle_store():
         new_bundle_store.get('storage_format'),
         new_bundle_store.get('storage_type'),
         new_bundle_store.get('url'),
-        new_bundle_store.get('authentication')
+        new_bundle_store.get('authentication'),
     )
+
 
 @put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
 def _update_bundle_store(uuid):
@@ -503,11 +505,8 @@ def _update_bundle_store(uuid):
     The request should contain at least one the fields in BundleStoreSchema.
     """
     updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
-    return local.model.update_bundle_store(
-        request.user,
-        uuid,
-        updated_bundle_store
-    )
+    return local.model.update_bundle_store(request.user, uuid, updated_bundle_store)
+
 
 @get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_store(uuid):

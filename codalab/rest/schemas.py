@@ -220,6 +220,7 @@ class BundleSchema(Schema):
     class Meta:
         type_ = 'bundles'
 
+
 class BundleStoreSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     uuid = fields.String(attribute='uuid')
@@ -230,8 +231,10 @@ class BundleStoreSchema(Schema):
     url = fields.String(allow_none=True)
     authentication = fields.String()
     authentication_env = fields.String()
+
     class Meta:
         type_ = 'bundle-store'
+
 
 class BundleLocationSchema(Schema):
     bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')

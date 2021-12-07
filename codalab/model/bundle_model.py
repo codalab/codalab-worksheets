@@ -2929,13 +2929,19 @@ class BundleModel(object):
                     )
                 )
             ).fetchall()
-            return list(({
-                'uuid': row.uuid,
-                'owner_id': row.owner_id,
-                'name': row.name,
-                'storage_type': row.storage_type,
-                'storage_format': row.storage_format,
-                'url': row.url}) for row in rows)
+            return list(
+                (
+                    {
+                        'uuid': row.uuid,
+                        'owner_id': row.owner_id,
+                        'name': row.name,
+                        'storage_type': row.storage_type,
+                        'storage_format': row.storage_format,
+                        'url': row.url,
+                    }
+                )
+                for row in rows
+            )
 
     def create_bundle_store(self, user, name, storage_type, storage_format, url, authentication):
         """
@@ -2962,12 +2968,7 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             connection.execute(
                 cl_bundle_store.update()
-                .where(
-                    and_(
-                        cl_bundle_store.c.uuid == uuid,
-                        cl_bundle_store.c.owner_id == user,
-                    )
-                )
+                .where(and_(cl_bundle_store.c.uuid == uuid, cl_bundle_store.c.owner_id == user,))
                 .values(update_fields)
             )
 
@@ -3002,7 +3003,7 @@ class BundleModel(object):
                 'name': row.name,
                 'url': row.url,
                 'storage_type': row.storage_type,
-                'storage_format': row.storage_format
+                'storage_format': row.storage_format,
             }
 
     def delete_bundle_store(self, user, uuid):
@@ -3012,17 +3013,14 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             bundle_store_row = connection.execute(
-                select(
-                    [cl_bundle_store.c.uuid]
-                ).where(
-                    and_(
-                        cl_bundle_store.c.uuid == uuid,
-                        cl_bundle_store.c.owner_id == user,
-                    )
+                select([cl_bundle_store.c.uuid]).where(
+                    and_(cl_bundle_store.c.uuid == uuid, cl_bundle_store.c.owner_id == user,)
                 )
             ).fetchone()
             bundle_location_row = connection.execute(
-                select([cl_bundle_location.c.id]).where(cl_bundle_location.c.bundle_store_uuid == bundle_store_row.uuid)
+                select([cl_bundle_location.c.id]).where(
+                    cl_bundle_location.c.bundle_store_uuid == bundle_store_row.uuid
+                )
             ).fetchone()
             # delete only if there is BundleLocation associated
             if bundle_location_row is None:
