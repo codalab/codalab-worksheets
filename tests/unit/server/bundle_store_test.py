@@ -23,14 +23,14 @@ class BundleStoreTest(BaseBundleManagerTest):
         # it should now exist
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 1)
-        self.assertEqual(bundle_stores[0].uuid, bundle_store_uuid)
-        self.assertEqual(bundle_stores[0].name, "stfore1")
+        self.assertEqual(bundle_stores[0].get("uuid"), bundle_store_uuid)
+        self.assertEqual(bundle_stores[0].get("name"), "store1")
         # update one of the bundle store fields
         self.bundle_manager._model.update_bundle_store(self.user_id, bundle_store_uuid, {"name": "im-not-a-store"})
         # check if the field has been updated
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 1)
-        self.assertEqual(bundle_stores[0].name, "im-not-a-store")
+        self.assertEqual(bundle_stores[0].get("name"), "im-not-a-store")
         # delete the store
         self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid)
         # check that it has been deleted
@@ -64,7 +64,7 @@ class BundleStoreTest(BaseBundleManagerTest):
             bundle_locations,
             [
                 {
-                    'name': 'storef1',
+                    'name': 'store1',
                     'storage_type': 'disk',
                     'storage_format': 'uncompressed',
                     'url': 'http://url',

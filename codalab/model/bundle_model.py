@@ -2930,6 +2930,7 @@ class BundleModel(object):
                 )
             ).fetchall()
             return list(({
+                'uuid': row.uuid,
                 'owner_id': row.owner_id,
                 'name': row.name,
                 'storage_type': row.storage_type,
@@ -2952,7 +2953,7 @@ class BundleModel(object):
                 'authentication': authentication,
             }
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
-            return uuid
+        return uuid
 
     def update_bundle_store(self, user, uuid, update_fields):
         """
@@ -3023,7 +3024,8 @@ class BundleModel(object):
             bundle_location_row = connection.execute(
                 select([cl_bundle_location.c.id]).where(cl_bundle_location.c.bundle_store_uuid == bundle_store_row.uuid)
             ).fetchone()
-            if bundle_location_row is not None:
+            # delete only if there is BundleLocation associated
+            if bundle_location_row is None:
                 connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
     # ===========================================================================
