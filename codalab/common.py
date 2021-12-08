@@ -182,6 +182,7 @@ class StorageURLScheme(Enum):
 
     DISK_STORAGE = ""
     AZURE_BLOB_STORAGE = "azfs://"
+    GCS_STORAGE = "gcs://"
 
 
 class StorageFormat(Enum):
@@ -236,7 +237,7 @@ class LinkedBundlePath:
         """Generates a SAS URL that can be used to read the given blob for one hour."""
         if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
             raise ValueError(
-                f"SAS URLs can only be retrieved for bundles on Blob Storage. Storage type is: {self.storage_type}."
+                f"SAS URLs can only be retrieved for bundles on Azure Blob Storage. Storage type is: {self.storage_type}."
             )
         blob_name = path.replace(
             f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
@@ -266,12 +267,23 @@ def parse_linked_bundle_url(url):
 
         Returns a LinkedBundlePath instance to encode this information.
     """
-    if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+    if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value) or url.startswith(
+        StorageURLScheme.GCS_STORAGE.value
+    ):
         uses_beam = True
-        storage_type = StorageType.AZURE_BLOB_STORAGE.value
-        url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
-        storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
-        bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
+        if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+            storage_type = StorageType.AZURE_BLOB_STORAGE.value
+            url = url[len(storage_type) :]
+            storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
+            bundle_path = (
+                f"{storage_type}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
+            )
+        if url.startswith(StorageURLScheme.GCS_STORAGE.value):
+            storage_type = StorageType.GCS_STORAGE.value
+            url = url[len(storage_type) :]
+            bucket_name, bundle_uuid, contents_file, *remainder = url.split("/", 3)
+            bundle_path = f"{storage_type}{bucket_name}/{container}/{bundle_uuid}/{contents_file}"
+
         is_archive = contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
         is_archive_dir = contents_file.endswith(".tar.gz")
         index_path = None

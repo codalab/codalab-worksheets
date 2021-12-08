@@ -402,7 +402,11 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
 
     In Blob Storage, each bundle is stored in the format:
     azfs://{container name}/bundles/{bundle uuid}/contents.tar.gz if a directory,
-    azfs://{container name}/bundles/{bundle uuid}/contents.gz
+    azfs://{container name}/bundles/{bundle uuid}/contents.gz if a file.
+
+    In GCS, each bundle is stored in the format:
+    gcs://{bucket name}/{bundle uuid}/contents.tar.gz if a directory,
+    gcs://{bucket name}/{bundle uuid}/contents.gz if a file.
 
     If the bundle is a directory, the entire contents of the bundle is stored in the .tar.gz file;
     otherwise, if the bundle is a single file, the file is stored in the .gz file as an archive
@@ -422,5 +426,8 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
         if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             file_name = "contents.tar.gz" if is_dir else "contents.gz"
             return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}"
+        # if storage_type == StorageType.GCS_STORAGE.value:
+        #     file_name = "contents.tar.gz" if is_dir else "contents.gz"
+        #     return f"gcs://{self.gcp_account_name}/bundles/{uuid}/{file_name}"
         else:
             return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
