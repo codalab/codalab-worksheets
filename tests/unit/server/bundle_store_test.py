@@ -3,7 +3,7 @@ from tests.unit.server.bundle_manager import BaseBundleManagerTest
 
 
 class BundleStoreTest(BaseBundleManagerTest):
-    def test_add_bundle_store(self):
+    def test_bundle_store_workflow(self):
         """
         Tests the workflow for creating bundles
         """
@@ -34,9 +34,10 @@ class BundleStoreTest(BaseBundleManagerTest):
         self.assertEqual(bundle_stores[0].get("name"), "im-not-a-store")
         # delete the store
         self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid)
-        # check that it has been deleted
+        # check that it hasn't been deleted, the Bundle Store can't be deleted if it has
+        # no bundle locations associated with it.
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
-        self.assertEqual(len(bundle_stores), 0)
+        self.assertEqual(len(bundle_stores), 1)
 
     def test_add_bundle_location(self):
         """
