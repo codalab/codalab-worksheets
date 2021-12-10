@@ -1,7 +1,7 @@
 import React from 'react';
 import nock from 'nock';
 import { render, waitFor, screen } from '../utils/test-utils';
-import Worksheet from '../components/worksheets/Worksheet/Worksheet';
+import Worksheet, { getToastMsg } from '../components/worksheets/Worksheet/Worksheet';
 
 describe('render simple worksheet', () => {
     beforeEach(() => {
@@ -94,5 +94,14 @@ describe('render simple worksheet', () => {
         await waitFor(() => screen.getByText("Not found: '/worksheets/sample_uuid'"));
         expect(nock.isDone());
         expect(comp).toMatchSnapshot();
+    });
+
+    test('getToastMsg', () => {
+        expect(getToastMsg('rm', 0, 1)).toEqual('Deleting 1 bundle...');
+        expect(getToastMsg('rm', 0, 2)).toEqual('Deleting 2 bundles...');
+        expect(getToastMsg('rm', 1, 1)).toEqual('1 bundle deleted!');
+        expect(getToastMsg('rm', 1, 2)).toEqual('2 bundles deleted!');
+        expect(getToastMsg('random', 0, 2)).toEqual('Executing random command...');
+        expect(getToastMsg('random', 1, 2)).toEqual('random command executed!');
     });
 });

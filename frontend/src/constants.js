@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '1.1.5';
+export const CODALAB_VERSION = '1.3.0';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -60,3 +60,39 @@ export const DEFAULT_POST_PROCESSOR = {
     size: 'size',
     date: 'date',
 };
+
+// The rows should be synced with https://github.com/codalab/codalab-worksheets/blob/master/codalab/lib/worksheet_util.py#L575
+export const DEFAULT_SCHEMA_ROWS = [
+    {
+        field: 'uuid',
+        'generalized-path': 'uuid',
+        'post-processor': '[0:8]',
+        from_schema_name: '',
+    },
+    {
+        field: 'name',
+        'generalized-path': 'name',
+        from_schema_name: '',
+    },
+    {
+        field: 'summary[0:1024]',
+        'generalized-path': 'summary',
+        'post-processor': '[0:1024]',
+        from_schema_name: '',
+    },
+    {
+        field: 'data_size',
+        'generalized-path': 'data_size',
+        from_schema_name: '',
+    },
+    {
+        field: 'state',
+        'generalized-path': 'state',
+        from_schema_name: '',
+    },
+    {
+        field: 'description',
+        'generalized-path': 'description',
+        from_schema_name: '',
+    },
+];
