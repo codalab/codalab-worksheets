@@ -15,7 +15,7 @@ upload some code and data, and run your first experiment.
 3.  A verification email will be sent to the email address you used to sign up. When you open it, there will be a link to follow in order to verify your account.
 4.  After verifying your account, sign in again. This will bring you to your **User Profile Page**. 
 This is the page where contains your account information, and an overview of your bundles and worksheets. 
-You can get back to this page at any time by clicking the "MY PROFILE" button in the top-right of the navigation bar or directly going to [http://worksheets.codalab.org/users](http://worksheets.codalab.org/users)
+You can get back to this page at any time by clicking the "MY WORKSHEETS" button in the top-right of the navigation bar or directly going to [http://worksheets.codalab.org/users](http://worksheets.codalab.org/users)
 ![Dashboard](../images/quickstart/profile.png)
 5. You can hover over your avatar in the side bar and then click to upload and edit your profile image.
 ![Dashboard](../images/quickstart/edit-avatar.png)
