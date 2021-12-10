@@ -8,7 +8,12 @@ import { BundleEditableField } from '../EditableField';
 import { FileBrowser } from '../FileBrowser/FileBrowser';
 import './Bundle.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
-import { fetchBundleContents, fetchBundleMetadata, fetchFileSummary } from '../../util/apiWrapper';
+import {
+    fetchBundleContents,
+    fetchBundleMetadata,
+    fetchFileSummary,
+    fetchBundleStores,
+} from '../../util/apiWrapper';
 
 class Bundle extends React.Component<
     {
@@ -134,6 +139,16 @@ class Bundle extends React.Component<
         fetchBundleContents(this.props.uuid)
             .then(callback)
             .catch(errorHandler);
+
+        callback = (response) => {
+            const storeInfo = response.data;
+            if (!storeInfo) return;
+            this.setState({ storeInfo });
+        };
+
+        fetchBundleStores(this.props.uuid)
+            .then(callback)
+            .catch(errorHandler);
     };
 
     componentDidMount() {
@@ -144,7 +159,7 @@ class Bundle extends React.Component<
 
     /** Renderer. */
     render() {
-        const bundleInfo = this.state.bundleInfo;
+        const { storeInfo, bundleInfo } = this.state;
 
         // Show custom messages based on error code
         if (this.state.errorCode == 403) {
@@ -188,13 +203,7 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
-                {renderStoreInfo({
-                    owner: {
-                        user_name: 'codalab',
-                    },
-                    uuid: this.props.uuid,
-                    metadataType: {},
-                })}
+                {renderStoreInfo(storeInfo)}
             </div>
         );
 
@@ -552,9 +561,18 @@ function renderHostWorksheets(bundleInfo) {
 
 function renderStoreInfo(storeInfo) {
     let rows = [];
-    rows.push(createRow(storeInfo, undefined, 'type', 'PLACEHOLDER'));
-    rows.push(createRow(storeInfo, undefined, 'owner', 'PLACEHOLDER'));
-    rows.push(createRow(storeInfo, undefined, 'location', 'PLACEHOLDER'));
+    for (const [uuid, path] of Object.entries(storeInfo)) {
+        rows.push(
+            <tr>
+                <td>
+                    <a href={`/stores/${uuid}`}>{uuid}</a>
+                </td>
+                <td>
+                    <span>{path}</span>
+                </td>
+            </tr>,
+        );
+    }
 
     return (
         <div>
@@ -562,7 +580,6 @@ function renderStoreInfo(storeInfo) {
                 <span>
                     <p>store information &#x25BE;</p>
                 </span>
-                <a href={`/stores/${storeInfo.uuid}`}>see more</a>
             </div>
             <div className='collapsible-content'>
                 <div className='host-worksheets-table'>
