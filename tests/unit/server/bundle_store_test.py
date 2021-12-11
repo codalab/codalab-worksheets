@@ -49,7 +49,7 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Create first bundle store
         bundle_store_uuid = self.bundle_manager._model.create_bundle_store(
-            user=self.user_id,
+            user_id=self.user_id,
             name="store1",
             storage_type=StorageType.DISK_STORAGE.value,
             storage_format=StorageFormat.UNCOMPRESSED.value,
