@@ -91,7 +91,7 @@ class KubernetesWorkerManager(WorkerManager):
                 'default', field_selector='status.phase==Running'
             )
             logger.debug(pods.items)
-            return [WorkerJob(True) for _ in pods.items]
+            return [WorkerJob(True) for pod in pods.items if 'cl-worker' in pod.metadata.name]
         except (client.ApiException, MaxRetryError, NewConnectionError) as e:
             logger.error(f'Exception when calling Kubernetes CoreV1Api->list_namespaced_pod: {e}')
             return []
