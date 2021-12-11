@@ -2945,7 +2945,15 @@ class BundleModel(object):
                 for row in rows
             )
 
-    def create_bundle_store(self, user_id: int, name: str, storage_type: str, storage_format: str, url: str, authentication: str) -> str:
+    def create_bundle_store(
+        self,
+        user_id: int,
+        name: str,
+        storage_type: str,
+        storage_format: str,
+        url: str,
+        authentication: str,
+    ) -> str:
         """
         Create a bundle store
         Arguments:

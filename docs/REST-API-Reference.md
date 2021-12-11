@@ -258,7 +258,7 @@ Name | Type
 --- | ---
 `id` | String
 `uuid` | String
-`owner` | String
+`owner` | Integer
 `name` | String
 `storage_type` | String
 `storage_format` | String
@@ -361,31 +361,58 @@ existing permissions on the same bundle-group pair.
 ## Bundle_Stores API
 ### `GET /bundle_stores`
 
-Fetch the bundle stores available to the user.
+Fetch the bundle stores available to the user. No required arguments.
 
-Returns a dictionary in which the keys are the bundle store uuids, and the values
-are tuples with the owner_id, name, and url.
+Returns a list of bundle stores, each having the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: (integer) owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
 
 ### `POST /bundle_stores`
 
-Add a bundle store that the user can access. Request body must contain the fields in BundleStoreSchema.
+Add a bundle store that the user can access.
+Required JSON parameters:
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+- `authentication`: key for authentication that the bundle store uses.
+Returns the UUID of the created bundle store.
+
 
 ### `PUT /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
 Update a bundle store that the user can access.
-The request should contain at least one the fields in BundleStoreSchema.
+Query Parameters:
+- `uuid`: uuid of bundle store
+JSON Parameters (needs to contain at least one of these):
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    - `authentication`: key for authentication that the bundle store uses.
 
 ### `GET /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
 Fetch the bundle store corresponding to the specified uuid.
 
-Returns a dictionary in which the key id the bundle store uuid, and the value
-is a tuple with the owner_id, name, and url.
+Returns a single bundle store, with the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
 
 ### `DELETE /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
-Delete the bundle store that the user can access. Note that you can’t delete a bundle store
+Delete the specified bundle store. Note that you can't delete a bundle store
 unless there are no BundleLocations associated with it.
+Query Parameters:
+- `uuid`: uuid of bundle store
 
 
 &uarr; [Back to Top](#table-of-contents)
