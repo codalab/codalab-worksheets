@@ -90,7 +90,7 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Create second bundle store
         bundle_store_uuid_2 = self.bundle_manager._model.create_bundle_store(
-            user=self.user_id,
+            user_id=self.user_id,
             name="store2",
             storage_type=StorageType.DISK_STORAGE.value,
             storage_format=StorageFormat.UNCOMPRESSED.value,
