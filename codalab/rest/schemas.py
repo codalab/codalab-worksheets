@@ -224,7 +224,7 @@ class BundleSchema(Schema):
 class BundleStoreSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     uuid = fields.String(attribute='uuid')
-    owner = fields.String(attribute='owner_id')
+    owner = fields.Integer(attribute='owner_id')
     name = fields.String()
     storage_type = fields.String()
     storage_format = fields.String()

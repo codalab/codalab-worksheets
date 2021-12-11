@@ -2907,7 +2907,7 @@ class BundleModel(object):
     # ===========================================================================
     # Bundle Store methods follow!
     # ===========================================================================
-    def get_bundle_stores(self, user_id: str) -> List[dict]:
+    def get_bundle_stores(self, user_id: int) -> List[dict]:
         """
         Returns all bundle stores owned by the root user or the current user.
         Arguments:
@@ -2926,7 +2926,7 @@ class BundleModel(object):
                     ]
                 ).where(
                     or_(
-                        cl_bundle_store.c.owner_id == 'codalab(0)',
+                        cl_bundle_store.c.owner_id == self.root_user_id,
                         cl_bundle_store.c.owner_id == user_id,
                     )
                 )
@@ -2945,7 +2945,7 @@ class BundleModel(object):
                 for row in rows
             )
 
-    def create_bundle_store(self, user_id: str, name: str, storage_type: str, storage_format: str, url: str, authentication: str) -> str:
+    def create_bundle_store(self, user_id: int, name: str, storage_type: str, storage_format: str, url: str, authentication: str) -> str:
         """
         Create a bundle store
         Arguments:
@@ -2970,7 +2970,7 @@ class BundleModel(object):
             connection.execute(cl_bundle_store.insert().values(bundle_store_value))
         return uuid
 
-    def update_bundle_store(self, user_id: str, uuid: str, update_fields: dict) -> None:
+    def update_bundle_store(self, user_id: int, uuid: str, update_fields: dict) -> None:
         """
         Update a bundle store
         Arguments:
@@ -2987,7 +2987,7 @@ class BundleModel(object):
                 .values(update_fields)
             )
 
-    def get_bundle_store(self, user_id: str, uuid: str) -> dict:
+    def get_bundle_store(self, user_id: int, uuid: str) -> dict:
         """
         Return the bundle store corresponding to the specified uuid.
         Arguments:
@@ -3016,7 +3016,7 @@ class BundleModel(object):
                     and_(
                         cl_bundle_store.c.uuid == uuid,
                         or_(
-                            cl_bundle_store.c.owner_id == 'codalab(0)',
+                            cl_bundle_store.c.owner_id == self.root_user_id,
                             cl_bundle_store.c.owner_id == user_id,
                         ),
                     )
@@ -3030,7 +3030,7 @@ class BundleModel(object):
                 'storage_format': row.storage_format,
             }
 
-    def delete_bundle_store(self, user_id: str, uuid: str) -> None:
+    def delete_bundle_store(self, user_id: int, uuid: str) -> None:
         """
         Delete a bundle store given its uuid. We can only delete the bundle store if there are
         no BundleLocations associated with it.

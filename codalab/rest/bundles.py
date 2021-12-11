@@ -477,13 +477,13 @@ def _fetch_bundle_stores():
 
     Returns a list of bundle stores, each having the following parameters:
     - `uuid`: bundle store UUID
-    - `owner_id`: owner of bundle store
+    - `owner_id`: (integer) owner of bundle store
     - `name`: name of bundle store
     - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
     - `url`: a self-referential URL that points to the bundle store.
     """
-    bundle_stores = local.model.get_bundle_stores(request.user)
+    bundle_stores = local.model.get_bundle_stores(request.user.user_id)
     return BundleStoreSchema(many=True).dump(bundle_stores).data
 
 
@@ -491,7 +491,6 @@ def _fetch_bundle_stores():
 def _add_bundle_store():
     """
     Add a bundle store that the user can access.
-
     Required JSON parameters:
     - `name`: name of bundle store
     - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
@@ -503,7 +502,7 @@ def _add_bundle_store():
     """
     new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
     return local.model.create_bundle_store(
-        request.user,
+        request.user.user_id,
         new_bundle_store.get('name'),
         new_bundle_store.get('storage_format'),
         new_bundle_store.get('storage_type'),
@@ -526,7 +525,7 @@ def _update_bundle_store(uuid):
         - `authentication`: key for authentication that the bundle store uses.
     """
     updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
-    return local.model.update_bundle_store(request.user, uuid, updated_bundle_store)
+    return local.model.update_bundle_store(request.user.user_id, uuid, updated_bundle_store)
 
 
 @get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
@@ -542,7 +541,7 @@ def _fetch_bundle_store(uuid):
     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
     - `url`: a self-referential URL that points to the bundle store.
     """
-    bundle_store = local.model.get_bundle_store(request.user, uuid)
+    bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
     return BundleStoreSchema().dump(bundle_store).data
 
 
@@ -554,7 +553,7 @@ def _delete_bundle_store(uuid):
     Query Parameters:
     - `uuid`: uuid of bundle store
     """
-    return local.model.delete_bundle_store(request.user, uuid)
+    return local.model.delete_bundle_store(request.user.user_id, uuid)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
