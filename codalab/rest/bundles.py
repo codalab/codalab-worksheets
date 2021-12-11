@@ -39,6 +39,7 @@ from codalab.rest.schemas import (
     BUNDLE_CREATE_RESTRICTED_FIELDS,
     BUNDLE_UPDATE_RESTRICTED_FIELDS,
     WorksheetSchema,
+    BundleStoreSchema,
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
@@ -467,6 +468,92 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     """
     bundle_location = local.model.get_bundle_location(bundle_uuid, bundle_store_uuid)
     return BundleLocationListSchema(many=False).dump(bundle_location).data
+
+
+@get('/bundle_stores', apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_stores():
+    """
+    Fetch the bundle stores available to the user. No required arguments.
+
+    Returns a list of bundle stores, each having the following parameters:
+    - `uuid`: bundle store UUID
+    - `owner_id`: (integer) owner of bundle store
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    """
+    bundle_stores = local.model.get_bundle_stores(request.user.user_id)
+    return BundleStoreSchema(many=True).dump(bundle_stores).data
+
+
+@post('/bundle_stores', apply=AuthenticatedProtectedPlugin())
+def _add_bundle_store():
+    """
+    Add a bundle store that the user can access.
+    Required JSON parameters:
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    - `authentication`: key for authentication that the bundle store uses.
+    Returns the UUID of the created bundle store.
+
+    """
+    new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
+    return local.model.create_bundle_store(
+        request.user.user_id,
+        new_bundle_store.get('name'),
+        new_bundle_store.get('storage_format'),
+        new_bundle_store.get('storage_type'),
+        new_bundle_store.get('url'),
+        new_bundle_store.get('authentication'),
+    )
+
+
+@put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+def _update_bundle_store(uuid):
+    """
+    Update a bundle store that the user can access.
+    Query Parameters:
+    - `uuid`: uuid of bundle store
+    JSON Parameters (needs to contain at least one of these):
+        - `name`: name of bundle store
+        - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+        - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+        - `url`: a self-referential URL that points to the bundle store.
+        - `authentication`: key for authentication that the bundle store uses.
+    """
+    updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
+    return local.model.update_bundle_store(request.user.user_id, uuid, updated_bundle_store)
+
+
+@get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_store(uuid):
+    """
+    Fetch the bundle store corresponding to the specified uuid.
+
+    Returns a single bundle store, with the following parameters:
+    - `uuid`: bundle store UUID
+    - `owner_id`: owner of bundle store
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    """
+    bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
+    return BundleStoreSchema().dump(bundle_store).data
+
+
+@delete('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+def _delete_bundle_store(uuid):
+    """
+    Delete the specified bundle store. Note that you can't delete a bundle store
+    unless there are no BundleLocations associated with it.
+    Query Parameters:
+    - `uuid`: uuid of bundle store
+    """
+    return local.model.delete_bundle_store(request.user.user_id, uuid)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')

@@ -11,6 +11,7 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [API Endpoints](#api-endpoints)
   - [Bundle Actions API](#bundle-actions-api)
   - [Bundle Permissions API](#bundle-permissions-api)
+  - [Bundle_Stores API](#bundle_stores-api)
   - [Bundles API](#bundles-api)
   - [CLI API](#cli-api)
   - [Groups API](#groups-api)
@@ -250,6 +251,21 @@ Name | Type
 `permission` | Integer
 `permission_spec` | PermissionSpec
 
+## bundle-store
+
+
+Name | Type
+--- | ---
+`id` | String
+`uuid` | String
+`owner` | Integer
+`name` | String
+`storage_type` | String
+`storage_format` | String
+`url` | String
+`authentication` | String
+`authentication_env` | String
+
 ## groups
 
 
@@ -339,6 +355,64 @@ Bulk set bundle permissions.
 
 A bundle permission created on a bundle-group pair will replace any
 existing permissions on the same bundle-group pair.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Bundle_Stores API
+### `GET /bundle_stores`
+
+Fetch the bundle stores available to the user. No required arguments.
+
+Returns a list of bundle stores, each having the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: (integer) owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+
+### `POST /bundle_stores`
+
+Add a bundle store that the user can access.
+Required JSON parameters:
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+- `authentication`: key for authentication that the bundle store uses.
+Returns the UUID of the created bundle store.
+
+
+### `PUT /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
+
+Update a bundle store that the user can access.
+Query Parameters:
+- `uuid`: uuid of bundle store
+JSON Parameters (needs to contain at least one of these):
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    - `authentication`: key for authentication that the bundle store uses.
+
+### `GET /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
+
+Fetch the bundle store corresponding to the specified uuid.
+
+Returns a single bundle store, with the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+
+### `DELETE /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
+
+Delete the specified bundle store. Note that you can't delete a bundle store
+unless there are no BundleLocations associated with it.
+Query Parameters:
+- `uuid`: uuid of bundle store
 
 
 &uarr; [Back to Top](#table-of-contents)

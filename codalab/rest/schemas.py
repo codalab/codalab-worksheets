@@ -221,6 +221,21 @@ class BundleSchema(Schema):
         type_ = 'bundles'
 
 
+class BundleStoreSchema(Schema):
+    id = fields.String(validate=validate_uuid, attribute='uuid')
+    uuid = fields.String(attribute='uuid')
+    owner = fields.Integer(attribute='owner_id')
+    name = fields.String()
+    storage_type = fields.String()
+    storage_format = fields.String()
+    url = fields.String(allow_none=True)
+    authentication = fields.String()
+    authentication_env = fields.String()
+
+    class Meta:
+        type_ = 'bundle-store'
+
+
 class BundleLocationSchema(Schema):
     bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
     bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
