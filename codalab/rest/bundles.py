@@ -63,7 +63,7 @@ def _fetch_bundle(uuid):
     """
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
-    document['data'] = document['data'][0]  # Flatten data list
+    document['data'] = document[0]  # Flatten data list
     return document
 
 
@@ -449,7 +449,7 @@ def _add_bundle_location(bundle_uuid: str):
     Query parameters:
     - `bundle_uuid`: Bundle UUID corresponding to the new location
     """
-    new_location = BundleLocationSchema(many=True).load(request.json).data['data'][0]
+    new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
     return BundleLocationSchema(many=True).dump(new_location).data
 
@@ -500,7 +500,7 @@ def _add_bundle_store():
     Returns the UUID of the created bundle store.
 
     """
-    new_bundle_store = BundleStoreSchema(strict=True, many=True).load(request.json).data['data'][0]
+    new_bundle_store = BundleStoreSchema(strict=True, many=True).load(request.json).data[0]
     bundle_store = local.model.create_bundle_store(
         request.user.user_id,
         new_bundle_store.get('name'),
@@ -525,7 +525,7 @@ def _update_bundle_store(uuid):
         - `url`: a self-referential URL that points to the bundle store.
         - `authentication`: key for authentication that the bundle store uses.
     """
-    update = BundleStoreSchema(strict=True, many=True).load(request.json).data['data'][0]
+    update = BundleStoreSchema(strict=True, many=True).load(request.json).data[0]
     updated_bundle_store = local.model.update_bundle_store(request.user.user_id, uuid, update)
     return BundleStoreSchema(many=True).dump(updated_bundle_store).data
 
