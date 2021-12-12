@@ -2995,12 +2995,14 @@ class BundleModel(object):
                 .values(update_fields)
             )
 
-    def get_bundle_store(self, user_id: int, uuid: str) -> dict:
+    def get_bundle_store(self, user_id: int, uuid: str = None, name: str = None) -> dict:
         """
-        Return the bundle store corresponding to the specified uuid.
+        Return the bundle store corresponding to the specified uuid or name.
         Arguments:
             user_id: username of requesting user.
             uuid: uuid of bundle store to be retrieved.
+            name: name of bundle store to be retrieved.
+        At least one of (uuid, name) must be specified.
         Returns a dict that has the following fields:
             owner_id: username of owner of the bundle.
             name: name of the bundle store.
@@ -3009,6 +3011,9 @@ class BundleModel(object):
             storage_format: the way the storage is stored in the bundle store.
 
         """
+        match_condition = (
+            cl_bundle_store.c.name == name if name is not None else cl_bundle_store.c.uuid == uuid
+        )
         with self.engine.begin() as connection:
             row = connection.execute(
                 select(
@@ -3022,7 +3027,7 @@ class BundleModel(object):
                     ]
                 ).where(
                     and_(
-                        cl_bundle_store.c.uuid == uuid,
+                        match_condition,
                         or_(
                             cl_bundle_store.c.owner_id == self.root_user_id,
                             cl_bundle_store.c.owner_id == user_id,
@@ -3082,6 +3087,7 @@ class BundleModel(object):
             rows = connection.execute(
                 select(
                     [
+                        cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
                         cl_bundle_store.c.storage_format,
@@ -3098,6 +3104,7 @@ class BundleModel(object):
             ).fetchall()
             return [
                 {
+                    'bundle_store_uuid': row.uuid,
                     'name': row.name,
                     'storage_type': row.storage_type,
                     'storage_format': row.storage_format,
@@ -3135,6 +3142,7 @@ class BundleModel(object):
             row = connection.execute(
                 select(
                     [
+                        cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
                         cl_bundle_store.c.storage_format,
@@ -3155,6 +3163,7 @@ class BundleModel(object):
                 )
             ).fetchone()
             return {
+                'bundle_store_uuid': row.uuid,
                 'name': row.name,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,

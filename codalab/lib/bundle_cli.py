@@ -1034,7 +1034,7 @@ class BundleCLI(object):
             ),
             Commands.Argument(
                 '--storage-format',
-                help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1".',
+                help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.',
             ),
             Commands.Argument(
                 '--url', help='A self-referential URL that points to the bundle store.',
@@ -1342,9 +1342,8 @@ class BundleCLI(object):
                 default=False,
             ),
             Commands.Argument(
-                '-b',
-                '--bundle-store',
-                help='Uploads a bundle and specifies the bundle store. If no bundle store is specified, the CLI will pick the optimal available bundle store.',
+                '--store',
+                help='The name of the bundle store where the bundle should be uploaded to. If unspecified, the CLI will pick the optimal available bundle store.',
             ),
         )
         + Commands.metadata_arguments([UploadedBundle])
@@ -1353,8 +1352,6 @@ class BundleCLI(object):
     def do_upload_command(self, args):
         from codalab.lib import zip_util
 
-        if args.bundle_store:
-            return
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
 
@@ -1404,6 +1401,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
+                    'store': args.store,
                 },
             )
 
@@ -1424,6 +1422,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
+                    'store': args.store,
                 },
             )
 
@@ -1489,6 +1488,7 @@ class BundleCLI(object):
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
+                        'store': args.store,
                     },
                     progress_callback=progress.update,
                 )
@@ -1804,10 +1804,8 @@ class BundleCLI(object):
                 action='store_true',
             ),
             Commands.Argument(
-                '-b',
-                '--bundle-store',
-                help='Runs a bundle and specifies the bundle store where results are uploaded. If no bundle store is specified, the worker will pick the optimal available bundle store.',
-                nargs='?',
+                '--store',
+                help='The name of the bundle store where results should be uploaded. If unspecified, the worker will pick the optimal available bundle store.',
             ),
         )
         + Commands.metadata_arguments([RunBundle])
@@ -1815,10 +1813,6 @@ class BundleCLI(object):
         + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
-        if args.bundle_store:
-            print(args)
-            return
-
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
@@ -2099,17 +2093,15 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
-            Commands.Argument(
-                '-b',
-                '--bundle-store',
-                help='Keeps the bundle, but removes the bundle contents from the specified bundle store.',
-            ),
+            # TODO: this feature is not implemented yet, implement as part of https://github.com/codalab/codalab-worksheets/issues/3803.
+            # Commands.Argument(
+            #     '-b',
+            #     '--store',
+            #     help='Keeps the bundle, but removes the bundle contents from the specified bundle store.',
+            # ),
         ),
     )
     def do_rm_command(self, args):
-        if args.bundle_store:
-            print(args)
-            return
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.

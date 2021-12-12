@@ -227,7 +227,7 @@ class BundleStoreSchema(Schema):
     owner = fields.Integer(attribute='owner_id')
     name = fields.String(required=True)
     storage_type = fields.String(required=True)
-    storage_format = fields.String(required=True)
+    storage_format = fields.String(allow_none=True)
     url = fields.String(allow_none=True)
     authentication = fields.String(allow_none=True)
     authentication_env = fields.String(allow_none=True)
