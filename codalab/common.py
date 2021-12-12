@@ -274,16 +274,16 @@ def parse_linked_bundle_url(url):
         uses_beam = True
         if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
             storage_type = StorageType.AZURE_BLOB_STORAGE.value
-            url = url[len(storage_type) :]
+            url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
             storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
-            bundle_path = (
-                f"{storage_type}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
-            )
+            bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
         if url.startswith(StorageURLScheme.GCS_STORAGE.value):
             storage_type = StorageType.GCS_STORAGE.value
-            url = url[len(storage_type) :]
+            url = url[len(StorageURLScheme.GCS_STORAGE.value) :]
             bucket_name, bundle_uuid, contents_file, *remainder = url.split("/", 3)
-            bundle_path = f"{storage_type}{bucket_name}/{bundle_uuid}/{contents_file}"
+            bundle_path = (
+                f"{StorageURLScheme.GCS_STORAGE.value}{bucket_name}/{bundle_uuid}/{contents_file}"
+            )
 
         is_archive = contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
         is_archive_dir = contents_file.endswith(".tar.gz")

@@ -397,7 +397,9 @@ CODALAB_ARGUMENTS = [
         default='/tmp/codalab/link-mounts',
     ),
     CodalabArg(name='azure_blob_connection_string', help='Azure Blob storage connection string'),
-    CodalabArg(name='google_application_credentials', help='Path to Google Application Credentials file.'),
+    CodalabArg(
+        name='google_application_credentials', help='Path to Google Application Credentials file.'
+    ),
     CodalabArg(
         name='always_use_azure_blob_beta',
         help='If set, Azure Blob Storage is always used to store uploads, regardless of the use_azure_blob_beta parameter.',

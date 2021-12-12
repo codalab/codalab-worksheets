@@ -19,7 +19,7 @@ from sqlalchemy.types import (
     Unicode,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
-from codalab.common import StorageType, StorageFormat
+from codalab.common import StorageType
 
 db_metadata = MetaData()
 
