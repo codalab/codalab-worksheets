@@ -505,13 +505,13 @@ def _add_bundle_store():
     uuid = local.model.create_bundle_store(
         request.user.user_id,
         new_bundle_store.get('name'),
-        new_bundle_store.get('storage_format'),
         new_bundle_store.get('storage_type'),
+        new_bundle_store.get('storage_format'),
         new_bundle_store.get('url'),
         new_bundle_store.get('authentication'),
     )
-    new_bundle_store["uuid"] = uuid
-    return BundleStoreSchema(many=True).dump([new_bundle_store]).data
+    bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
+    return BundleStoreSchema(many=True).dump([bundle_store]).data
 
 
 # TODO: Endpoint not tested / used, reenable when we use it.

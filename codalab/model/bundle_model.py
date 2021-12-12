@@ -3031,11 +3031,12 @@ class BundleModel(object):
                 )
             ).fetchone()
             return {
-                'owner_id': row.owner_id,
+                'uuid': row.uuid,
+                'owner': row.owner_id,
                 'name': row.name,
-                'url': row.url,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,
+                'url': row.url,
             }
 
     def delete_bundle_store(self, user_id: int, uuid: str) -> None:

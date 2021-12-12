@@ -24,6 +24,8 @@ class BundleStoreTest(BaseBundleManagerTest):
         self.assertEqual(len(bundle_stores), 1)
         self.assertEqual(bundle_stores[0].get("uuid"), bundle_store_uuid)
         self.assertEqual(bundle_stores[0].get("name"), "store1")
+        self.assertEqual(bundle_stores[0].get("storage_type"), StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle_stores[0].get("storage_format"), StorageFormat.UNCOMPRESSED.value)
         # update one of the bundle store fields
         self.bundle_manager._model.update_bundle_store(
             self.user_id, bundle_store_uuid, {"name": "im-not-a-store"}
