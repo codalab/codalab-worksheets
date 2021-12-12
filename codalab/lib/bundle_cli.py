@@ -1015,7 +1015,16 @@ class BundleCLI(object):
         'store',
         help=['Add a bundle store.'],
         arguments=(
-            Commands.Argument('command', help='Set to "add" to add a new bundle store.', nargs='?'),
+            Commands.Argument(
+                'command',
+                help='Set to "add" to add a new bundle store, "ls" to list bundle stores, and "rm" to remove a bundle store.',
+                nargs='?',
+            ),
+            Commands.Argument(
+                'bundle_store_uuid',
+                help='Bundle store uuid. Specified when running "cl store rm [uuid]".',
+                nargs='?',
+            ),
             Commands.Argument(
                 '-n', '--name', help='Name of the bundle store; must be globally unique.',
             ),
@@ -1036,8 +1045,8 @@ class BundleCLI(object):
         ),
     )
     def do_store_command(self, args):
+        client = self.manager.current_client()
         if args.command == 'add':
-            client = self.manager.current_client()
             bundle_store_info = {
                 "name": args.name,
                 "storage_type": args.storage_type,
@@ -1048,7 +1057,6 @@ class BundleCLI(object):
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':
-            client = self.manager.current_client()
             bundle_stores = client.fetch('bundle_stores')
             print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
             print(
@@ -1058,9 +1066,12 @@ class BundleCLI(object):
                 ),
                 file=self.stdout,
             )
+        elif args.command == 'rm':
+            client.delete('bundle_stores', resource_ids=[args.bundle_store_uuid])
+            print(args.bundle_store_uuid, file=self.stdout)
         else:
             raise UsageError(
-                f"{args.command} is not supported. Only the following subcommands are supported: 'cl store add', 'cl store ls'."
+                f"cl store {args.command} is not supported. Only the following subcommands are supported: 'cl store add', 'cl store ls', 'cl store rm'."
             )
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')

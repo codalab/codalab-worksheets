@@ -3057,9 +3057,12 @@ class BundleModel(object):
                     cl_bundle_location.c.bundle_store_uuid == bundle_store_row.uuid
                 )
             ).fetchone()
-            # delete only if there are no BundleLocation associated
+            # Delete only if there are no BundleLocations associated with the bundle store
             if bundle_location_row is not None:
-                connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
+                raise UsageError(
+                    "Some bundles are storing their data in this BundleStore. BundleStores can be deleted only when they are unused."
+                )
+            connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
     # ===========================================================================
     # Multiple bundle locations methods follow!

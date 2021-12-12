@@ -1,4 +1,4 @@
-from codalab.common import StorageType, StorageFormat
+from codalab.common import StorageType, StorageFormat, UsageError
 from tests.unit.server.bundle_manager import BaseBundleManagerTest
 
 
@@ -32,12 +32,10 @@ class BundleStoreTest(BaseBundleManagerTest):
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 1)
         self.assertEqual(bundle_stores[0].get("name"), "im-not-a-store")
-        # delete the store
+        # Deletion should succeed since there are bundle locations associated with the bundle store
         self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid)
-        # check that it hasn't been deleted, the Bundle Store can't be deleted if it has
-        # no bundle locations associated with it.
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
-        self.assertEqual(len(bundle_stores), 1)
+        self.assertEqual(len(bundle_stores), 0)
 
     def test_add_bundle_location(self):
         """
@@ -134,3 +132,7 @@ class BundleStoreTest(BaseBundleManagerTest):
                 'url': 'http://url2',
             },
         )
+
+        # Deletion of bundle store should fail because there are still BundleLocations associated with the BundleStore.
+        with self.assertRaises(UsageError):
+            self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid_2)

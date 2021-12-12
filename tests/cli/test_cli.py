@@ -903,6 +903,11 @@ def test_upload3(ctx):
     check_contains(bundle_store_uuid, list_output)
     check_contains("disk", list_output)
     check_contains("uncompressed", list_output)
+    # Delete bundle store
+    check_equals(bundle_store_uuid, _run_command([cl, "store", "rm", bundle_store_uuid]))
+    list_output = _run_command([cl, "store", "ls"])
+    check_not_contains(bundle_store_name, list_output)
+    check_not_contains(bundle_store_uuid, list_output)
 
     # Upload URL
     uuid = _run_command([cl, 'upload', 'https://www.wikipedia.org'])

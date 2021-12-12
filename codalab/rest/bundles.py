@@ -514,50 +514,50 @@ def _add_bundle_store():
     return BundleStoreSchema(many=True).dump([new_bundle_store]).data
 
 
-@put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
-def _update_bundle_store(uuid):
-    """
-    Update a bundle store that the user can access.
-    Query Parameters:
-    - `uuid`: uuid of bundle store
-    JSON Parameters (needs to contain at least one of these):
-        - `name`: name of bundle store
-        - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-        - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-        - `url`: a self-referential URL that points to the bundle store.
-        - `authentication`: key for authentication that the bundle store uses.
-    """
-    update = BundleStoreSchema(strict=True, many=True).load(request.json).data[0]
-    updated_bundle_store = local.model.update_bundle_store(request.user.user_id, uuid, update)
-    return BundleStoreSchema(many=True).dump(updated_bundle_store).data
+# TODO: Endpoint not tested / used, reenable when we use it.
+# @put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+# def _update_bundle_store(uuid):
+#     """
+#     Update a bundle store that the user can access.
+#     Query Parameters:
+#     - `uuid`: uuid of bundle store
+#     JSON Parameters (needs to contain at least one of these):
+#         - `name`: name of bundle store
+#         - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+#         - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+#         - `url`: a self-referential URL that points to the bundle store.
+#         - `authentication`: key for authentication that the bundle store uses.
+#     """
+#     update = BundleStoreSchema(strict=True, many=True).load(request.json).data[0]
+#     updated_bundle_store = local.model.update_bundle_store(request.user.user_id, uuid, update)
+#     return BundleStoreSchema(many=True).dump(updated_bundle_store).data
+
+# TODO: Endpoint not tested / used, reenable when we use it.
+# @get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+# def _fetch_bundle_store(uuid):
+#     """
+#     Fetch the bundle store corresponding to the specified uuid.
+
+#     Returns a single bundle store, with the following parameters:
+#     - `uuid`: bundle store UUID
+#     - `owner_id`: owner of bundle store
+#     - `name`: name of bundle store
+#     - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+#     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+#     - `url`: a self-referential URL that points to the bundle store.
+#     """
+#     bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
+#     return BundleStoreSchema(many=True).dump(bundle_store).data
 
 
-@get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
-def _fetch_bundle_store(uuid):
+@delete('/bundle_stores', apply=AuthenticatedProtectedPlugin())
+def _delete_bundle_stores():
     """
-    Fetch the bundle store corresponding to the specified uuid.
-
-    Returns a single bundle store, with the following parameters:
-    - `uuid`: bundle store UUID
-    - `owner_id`: owner of bundle store
-    - `name`: name of bundle store
-    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-    - `url`: a self-referential URL that points to the bundle store.
+    Delete the specified bundle stores.
     """
-    bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
-    return BundleStoreSchema(many=True).dump(bundle_store).data
-
-
-@delete('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
-def _delete_bundle_store(uuid):
-    """
-    Delete the specified bundle store. Note that you can't delete a bundle store
-    unless there are no BundleLocations associated with it.
-    Query Parameters:
-    - `uuid`: uuid of bundle store
-    """
-    local.model.delete_bundle_store(request.user.user_id, uuid)
+    uuids = get_resource_ids(request.json, 'bundle_stores')
+    for uuid in uuids:
+        local.model.delete_bundle_store(request.user.user_id, uuid)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
