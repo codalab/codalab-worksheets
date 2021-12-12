@@ -172,6 +172,7 @@ class StorageType(Enum):
 
     DISK_STORAGE = "disk"
     AZURE_BLOB_STORAGE = "azure_blob"
+    GCS_STORAGE = "gcs"
 
 
 class StorageURLScheme(Enum):
@@ -182,7 +183,7 @@ class StorageURLScheme(Enum):
 
     DISK_STORAGE = ""
     AZURE_BLOB_STORAGE = "azfs://"
-    GCS_STORAGE = "gcs://"
+    GCS_STORAGE = "gs://"
 
 
 class StorageFormat(Enum):
@@ -282,7 +283,7 @@ def parse_linked_bundle_url(url):
             storage_type = StorageType.GCS_STORAGE.value
             url = url[len(storage_type) :]
             bucket_name, bundle_uuid, contents_file, *remainder = url.split("/", 3)
-            bundle_path = f"{storage_type}{bucket_name}/{container}/{bundle_uuid}/{contents_file}"
+            bundle_path = f"{storage_type}{bucket_name}/{bundle_uuid}/{contents_file}"
 
         is_archive = contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
         is_archive_dir = contents_file.endswith(".tar.gz")

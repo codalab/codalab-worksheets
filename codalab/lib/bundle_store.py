@@ -406,8 +406,8 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
     azfs://{container name}/bundles/{bundle uuid}/contents.gz if a file.
 
     In GCS, each bundle is stored in the format:
-    gcs://{bucket name}/{bundle uuid}/contents.tar.gz if a directory,
-    gcs://{bucket name}/{bundle uuid}/contents.gz if a file.
+    gs://{bucket name}/{bundle uuid}/contents.tar.gz if a directory,
+    gs://{bucket name}/{bundle uuid}/contents.gz if a file.
 
     If the bundle is a directory, the entire contents of the bundle is stored in the .tar.gz file;
     otherwise, if the bundle is a single file, the file is stored in the .gz file as an archive
@@ -452,7 +452,8 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
                 # Next precedence: prefer blob storage over disk storage.
                 PRIORITY = 2
                 if (
-                    location["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value
+                    location["storage_type"]
+                    in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value)
                     and PRIORITY < selected_location_priority
                 ):
                     selected_location = location
@@ -473,6 +474,14 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
                 file_name = "contents.tar.gz" if is_dir else "contents.gz"
                 url = selected_location["url"]  # Format: "azfs://[container name]/bundles"
                 assert url.startswith("azfs://")
+                return f"{url}/{uuid}/{file_name}"
+            elif selected_location["storage_type"] == StorageType.GCS_STORAGE.value:
+                assert (
+                    selected_location["storage_format"] == StorageFormat.COMPRESSED_V1.value
+                )  # Only supported format on GCS
+                file_name = "contents.tar.gz" if is_dir else "contents.gz"
+                url = selected_location["url"]  # Format: "gs://[bucket name]"
+                assert url.startswith("gs://")
                 return f"{url}/{uuid}/{file_name}"
             else:
                 assert (
