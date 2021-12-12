@@ -50,6 +50,8 @@ from codalab.common import (
     UsageError,
     ensure_str,
     DiskQuotaExceededError,
+    StorageType,
+    StorageFormat,
 )
 from codalab.lib import (
     file_util,
@@ -1013,22 +1015,43 @@ class BundleCLI(object):
 
     @Commands.command(
         'store',
-        help=['Bundle store CLI commands.'],
+        help=['Add a bundle store.'],
         arguments=(
+            Commands.Argument('command', help='Set to "add" to add a new bundle store.', nargs='?'),
             Commands.Argument(
-                '-a',
-                '--add',
-                help='Creates a new bundle store, allows one to configure credentials.',
+                '-n', '--name', help='Name of the bundle store; must be globally unique.',
             ),
             Commands.Argument(
-                '-w',
-                '--work',
-                help='All bundles will by default be uploaded to this bundle store.',
+                '--storage-type',
+                help='Storage type of the bundle store. Acceptable values are "disk" and "azure_blob".',
+            ),
+            Commands.Argument(
+                '--storage-format',
+                help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1".',
+            ),
+            Commands.Argument(
+                '--url', help='A self-referential URL that points to the bundle store.',
+            ),
+            Commands.Argument(
+                '--authentication', help='Key for authentication that the bundle store uses.',
             ),
         ),
     )
     def do_store_command(self, args):
-        print(args)
+        if args.command != 'add':
+            raise UsageError("Only 'cl store add' is supported at the moment.")
+        client = self.manager.current_client()
+        bundle_store_info = {
+            "name": args.name,
+            "storage_type": args.storage_type,
+            "storage_format": args.storage_format,
+            "url": args.url,
+            "authentication": args.authentication,
+        }
+        # from codalab.rest.schemas import BundleStoreSchema
+        # BundleStoreSchema(strict=True).load(bundle_store_info)
+        new_bundle_store_id = client.create('bundle_stores', bundle_store_info)
+        print(new_bundle_store_id, file=self.stdout)
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):

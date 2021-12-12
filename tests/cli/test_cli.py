@@ -867,6 +867,22 @@ def test_upload2(ctx):
 
 @TestModule.register('upload3')
 def test_upload3(ctx):
+    # Create a new bundle store and upload to it
+    uuid = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            random_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    check_equals(uuid, "test")
+
     # Upload URL
     uuid = _run_command([cl, 'upload', 'https://www.wikipedia.org'])
     check_contains('<title>Wikipedia</title>', _run_command([cl, 'cat', uuid]))

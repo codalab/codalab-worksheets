@@ -449,9 +449,9 @@ def _add_bundle_location(bundle_uuid: str):
     Query parameters:
     - `bundle_uuid`: Bundle UUID corresponding to the new location
     """
-    new_location = BundleLocationSchema(many=False).load(request.json).data
+    new_location = BundleLocationSchema(many=True).load(request.json).data['data'][0]
     local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
-    return BundleLocationSchema(many=False).dump(new_location).data
+    return BundleLocationSchema(many=True).dump(new_location).data
 
 
 @get(
@@ -467,7 +467,7 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     - `bundle_store_uuid`: Bundle Store UUID to get the location for
     """
     bundle_location = local.model.get_bundle_location(bundle_uuid, bundle_store_uuid)
-    return BundleLocationListSchema(many=False).dump(bundle_location).data
+    return BundleLocationListSchema(many=True).dump(bundle_location).data
 
 
 @get('/bundle_stores', apply=AuthenticatedProtectedPlugin())
@@ -500,8 +500,8 @@ def _add_bundle_store():
     Returns the UUID of the created bundle store.
 
     """
-    new_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
-    return local.model.create_bundle_store(
+    new_bundle_store = BundleStoreSchema(strict=True, many=True).load(request.json).data['data'][0]
+    bundle_store = local.model.create_bundle_store(
         request.user.user_id,
         new_bundle_store.get('name'),
         new_bundle_store.get('storage_format'),
@@ -509,6 +509,7 @@ def _add_bundle_store():
         new_bundle_store.get('url'),
         new_bundle_store.get('authentication'),
     )
+    return BundleStoreSchema(many=True).dump(bundle_store).data
 
 
 @put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
@@ -524,8 +525,9 @@ def _update_bundle_store(uuid):
         - `url`: a self-referential URL that points to the bundle store.
         - `authentication`: key for authentication that the bundle store uses.
     """
-    updated_bundle_store = BundleStoreSchema(strict=True).load(request.json).data
-    return local.model.update_bundle_store(request.user.user_id, uuid, updated_bundle_store)
+    update = BundleStoreSchema(strict=True, many=True).load(request.json).data['data'][0]
+    updated_bundle_store = local.model.update_bundle_store(request.user.user_id, uuid, update)
+    return BundleStoreSchema(many=True).dump(updated_bundle_store).data
 
 
 @get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
@@ -542,7 +544,7 @@ def _fetch_bundle_store(uuid):
     - `url`: a self-referential URL that points to the bundle store.
     """
     bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
-    return BundleStoreSchema().dump(bundle_store).data
+    return BundleStoreSchema(many=True).dump(bundle_store).data
 
 
 @delete('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
@@ -553,7 +555,7 @@ def _delete_bundle_store(uuid):
     Query Parameters:
     - `uuid`: uuid of bundle store
     """
-    return local.model.delete_bundle_store(request.user.user_id, uuid)
+    local.model.delete_bundle_store(request.user.user_id, uuid)
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
