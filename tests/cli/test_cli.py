@@ -868,20 +868,41 @@ def test_upload2(ctx):
 @TestModule.register('upload3')
 def test_upload3(ctx):
     # Create a new bundle store and upload to it
-    uuid = _run_command(
+    bundle_store_name = random_name()
+    bundle_store_uuid = _run_command(
         [
             cl,
             "store",
             "add",
             "--name",
-            random_name,
+            bundle_store_name,
             '--storage-type',
             'disk',
             '--storage-format',
             'uncompressed',
         ]
     )
-    check_equals(uuid, "test")
+    # Names should be unique
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ],
+        expected_exit_code=1,
+    )
+    # List bundle stores
+    list_output = _run_command([cl, "store", "ls"])
+    check_contains(bundle_store_name, list_output)
+    check_contains(bundle_store_uuid, list_output)
+    check_contains("disk", list_output)
+    check_contains("uncompressed", list_output)
 
     # Upload URL
     uuid = _run_command([cl, 'upload', 'https://www.wikipedia.org'])

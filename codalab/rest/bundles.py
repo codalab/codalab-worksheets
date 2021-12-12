@@ -450,8 +450,10 @@ def _add_bundle_location(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID corresponding to the new location
     """
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
-    local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
-    return BundleLocationSchema(many=True).dump(new_location).data
+    new_location["uuid"] = local.model.add_bundle_location(
+        new_location['bundle_uuid'], new_location['bundle_store_uuid']
+    )
+    return BundleLocationSchema(many=True).dump([new_location]).data
 
 
 @get(
@@ -492,16 +494,15 @@ def _add_bundle_store():
     """
     Add a bundle store that the user can access.
     Required JSON parameters:
-    - `name`: name of bundle store
-    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-    - `url`: a self-referential URL that points to the bundle store.
-    - `authentication`: key for authentication that the bundle store uses.
-    Returns the UUID of the created bundle store.
-
+        - `name`: name of bundle store
+        - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+        - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+        - `url`: a self-referential URL that points to the bundle store.
+        - `authentication`: key for authentication that the bundle store uses.
+    Returns the data of the created bundle store.
     """
     new_bundle_store = BundleStoreSchema(strict=True, many=True).load(request.json).data[0]
-    bundle_store = local.model.create_bundle_store(
+    uuid = local.model.create_bundle_store(
         request.user.user_id,
         new_bundle_store.get('name'),
         new_bundle_store.get('storage_format'),
@@ -509,7 +510,8 @@ def _add_bundle_store():
         new_bundle_store.get('url'),
         new_bundle_store.get('authentication'),
     )
-    return BundleStoreSchema(many=True).dump(bundle_store).data
+    new_bundle_store["uuid"] = uuid
+    return BundleStoreSchema(many=True).dump([new_bundle_store]).data
 
 
 @put('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())

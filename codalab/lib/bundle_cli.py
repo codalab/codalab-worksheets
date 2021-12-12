@@ -1038,20 +1038,38 @@ class BundleCLI(object):
         ),
     )
     def do_store_command(self, args):
-        if args.command != 'add':
-            raise UsageError("Only 'cl store add' is supported at the moment.")
-        client = self.manager.current_client()
-        bundle_store_info = {
-            "name": args.name,
-            "storage_type": args.storage_type,
-            "storage_format": args.storage_format,
-            "url": args.url,
-            "authentication": args.authentication,
-        }
-        # from codalab.rest.schemas import BundleStoreSchema
-        # BundleStoreSchema(strict=True).load(bundle_store_info)
-        new_bundle_store_id = client.create('bundle_stores', bundle_store_info)
-        print(new_bundle_store_id, file=self.stdout)
+        if args.command == 'add':
+            client = self.manager.current_client()
+            bundle_store_info = {
+                "name": args.name,
+                "storage_type": args.storage_type,
+                "storage_format": args.storage_format,
+                "url": args.url,
+                "authentication": args.authentication,
+            }
+            new_bundle_store = client.create('bundle_stores', bundle_store_info)
+            print(new_bundle_store["id"], file=self.stdout)
+        elif args.command == 'ls':
+            client = self.manager.current_client()
+            bundle_stores = client.fetch('bundle_stores')
+            print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
+            print(
+                "\n".join(
+                    b["id"]
+                    + "\t"
+                    + b["name"]
+                    + "\t"
+                    + b["storage_type"]
+                    + "\t"
+                    + b["storage_format"]
+                    for b in bundle_stores
+                ),
+                file=self.stdout,
+            )
+        else:
+            raise UsageError(
+                f"{args.command} is not supported. Only the following subcommands are supported: 'cl store add', 'cl store ls'."
+            )
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
