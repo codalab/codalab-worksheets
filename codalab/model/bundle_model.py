@@ -2892,24 +2892,6 @@ class BundleModel(object):
 
         return OAuth2AuthCode(self, **row)
 
-    def create_bundle_store(self, user, name, storage_type, storage_format, url, authentication):
-        """
-        create a bundle store
-        """
-        uuid = spec_util.generate_uuid()
-        with self.engine.begin() as connection:
-            bundle_store_value = {
-                'uuid': uuid,
-                'owner_id': user,
-                'name': name,
-                'storage_type': storage_type,
-                'storage_format': storage_format,
-                'url': url,
-                'authentication': authentication,
-            }
-            connection.execute(cl_bundle_store.insert().values(bundle_store_value))
-        return uuid
-
     def save_oauth2_auth_code(self, grant):
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_auth_code.insert().values(grant.columns))
@@ -2921,6 +2903,172 @@ class BundleModel(object):
             connection.execute(
                 oauth2_auth_code.delete().where(oauth2_auth_code.c.id == auth_code_id)
             )
+
+    # ===========================================================================
+    # Bundle Store methods follow!
+    # ===========================================================================
+    def get_bundle_stores(self, user_id: int) -> List[dict]:
+        """
+        Returns all bundle stores owned by the root user or the current user.
+        Arguments:
+            user_id: username of bundle store requester
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select(
+                    [
+                        cl_bundle_store.c.uuid,
+                        cl_bundle_store.c.owner_id,
+                        cl_bundle_store.c.name,
+                        cl_bundle_store.c.storage_type,
+                        cl_bundle_store.c.storage_format,
+                        cl_bundle_store.c.url,
+                    ]
+                ).where(
+                    or_(
+                        cl_bundle_store.c.owner_id == self.root_user_id,
+                        cl_bundle_store.c.owner_id == user_id,
+                    )
+                )
+            ).fetchall()
+            return list(
+                (
+                    {
+                        'uuid': row.uuid,
+                        'owner_id': row.owner_id,
+                        'name': row.name,
+                        'storage_type': row.storage_type,
+                        'storage_format': row.storage_format,
+                        'url': row.url,
+                    }
+                )
+                for row in rows
+            )
+
+    def create_bundle_store(
+        self,
+        user_id: int,
+        name: str,
+        storage_type: str,
+        storage_format: str,
+        url: str,
+        authentication: str,
+    ) -> str:
+        """
+        Create a bundle store
+        Arguments:
+            user_id: username of requesting user.
+            name: name of the bundle store to be created.
+            storage_type: the type of storage this bundle store supports (disk, GCP, AWS, etc).
+            storage_format: the format of the stored data (COMPRESSED_V1, UNCOMPRESSED).
+            url: self-referential url of the bundle store.
+            authentication: the authentication key for accessing the bundle store.
+        """
+        uuid = spec_util.generate_uuid()
+        with self.engine.begin() as connection:
+            bundle_store_value = {
+                'uuid': uuid,
+                'owner_id': user_id,
+                'name': name,
+                'storage_type': storage_type,
+                'storage_format': storage_format,
+                'url': url,
+                'authentication': authentication,
+            }
+            connection.execute(cl_bundle_store.insert().values(bundle_store_value))
+        return uuid
+
+    def update_bundle_store(self, user_id: int, uuid: str, update_fields: dict) -> None:
+        """
+        Update a bundle store
+        Arguments:
+            user_id: username of requesting user.
+            uuid: uuid of bundle store that is to be updated.
+            update_fields: a dict of fields of the bundle store that are to be updated, where the keys are the
+                names of the fields in the database, and the values are the values the database is to be updated
+                to reflect.
+        """
+        with self.engine.begin() as connection:
+            connection.execute(
+                cl_bundle_store.update()
+                .where(and_(cl_bundle_store.c.uuid == uuid, cl_bundle_store.c.owner_id == user_id))
+                .values(update_fields)
+            )
+
+    def get_bundle_store(self, user_id: int, uuid: str = None, name: str = None) -> dict:
+        """
+        Return the bundle store corresponding to the specified uuid or name.
+        Arguments:
+            user_id: username of requesting user.
+            uuid: uuid of bundle store to be retrieved.
+            name: name of bundle store to be retrieved.
+        At least one of (uuid, name) must be specified.
+        Returns a dict that has the following fields:
+            owner_id: username of owner of the bundle.
+            name: name of the bundle store.
+            url: url that points to the bundle store.
+            storage_type: the type of storage used for that bundle store.
+            storage_format: the way the storage is stored in the bundle store.
+
+        """
+        match_condition = (
+            cl_bundle_store.c.name == name if name is not None else cl_bundle_store.c.uuid == uuid
+        )
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select(
+                    [
+                        cl_bundle_store.c.uuid,
+                        cl_bundle_store.c.owner_id,
+                        cl_bundle_store.c.name,
+                        cl_bundle_store.c.storage_type,
+                        cl_bundle_store.c.storage_format,
+                        cl_bundle_store.c.url,
+                    ]
+                ).where(
+                    and_(
+                        match_condition,
+                        or_(
+                            cl_bundle_store.c.owner_id == self.root_user_id,
+                            cl_bundle_store.c.owner_id == user_id,
+                        ),
+                    )
+                )
+            ).fetchone()
+            return {
+                'uuid': row.uuid,
+                'owner': row.owner_id,
+                'name': row.name,
+                'storage_type': row.storage_type,
+                'storage_format': row.storage_format,
+                'url': row.url,
+            }
+
+    def delete_bundle_store(self, user_id: int, uuid: str) -> None:
+        """
+        Delete a bundle store given its uuid. We can only delete the bundle store if there are
+        no BundleLocations associated with it.
+        Arguments:
+            user_id: requesting user's ID (we check if the deletion is legal)
+            uuid: uuid of bundle store to be deleted.
+        """
+        with self.engine.begin() as connection:
+            bundle_store_row = connection.execute(
+                select([cl_bundle_store.c.uuid]).where(
+                    and_(cl_bundle_store.c.uuid == uuid, cl_bundle_store.c.owner_id == user_id)
+                )
+            ).fetchone()
+            bundle_location_row = connection.execute(
+                select([cl_bundle_location.c.id]).where(
+                    cl_bundle_location.c.bundle_store_uuid == bundle_store_row.uuid
+                )
+            ).fetchone()
+            # Delete only if there are no BundleLocations associated with the bundle store
+            if bundle_location_row is not None:
+                raise UsageError(
+                    "Some bundles are storing their data in this BundleStore. BundleStores can be deleted only when they are unused."
+                )
+            connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
     # ===========================================================================
     # Multiple bundle locations methods follow!
@@ -2939,6 +3087,7 @@ class BundleModel(object):
             rows = connection.execute(
                 select(
                     [
+                        cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
                         cl_bundle_store.c.storage_format,
@@ -2955,6 +3104,7 @@ class BundleModel(object):
             ).fetchall()
             return [
                 {
+                    'bundle_store_uuid': row.uuid,
                     'name': row.name,
                     'storage_type': row.storage_type,
                     'storage_format': row.storage_format,
@@ -2992,6 +3142,7 @@ class BundleModel(object):
             row = connection.execute(
                 select(
                     [
+                        cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
                         cl_bundle_store.c.storage_format,
@@ -3012,6 +3163,7 @@ class BundleModel(object):
                 )
             ).fetchone()
             return {
+                'bundle_store_uuid': row.uuid,
                 'name': row.name,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,

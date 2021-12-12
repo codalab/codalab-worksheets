@@ -221,12 +221,27 @@ class BundleSchema(Schema):
         type_ = 'bundles'
 
 
+class BundleStoreSchema(Schema):
+    id = fields.String(validate=validate_uuid, attribute='uuid')
+    uuid = fields.String(attribute='uuid')
+    owner = fields.Integer(attribute='owner_id')
+    name = fields.String(required=True)
+    storage_type = fields.String(required=True)
+    storage_format = fields.String(allow_none=True)
+    url = fields.String(allow_none=True)
+    authentication = fields.String(allow_none=True)
+    authentication_env = fields.String(allow_none=True)
+
+    class Meta:
+        type_ = 'bundle_stores'
+
+
 class BundleLocationSchema(Schema):
     bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
     bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
 
     class Meta:
-        type_ = 'bundle-location'
+        type_ = 'bundle_locations'
 
 
 class BundleLocationListSchema(Schema):
@@ -236,7 +251,7 @@ class BundleLocationListSchema(Schema):
     url = fields.Url(allow_none=True)
 
     class Meta:
-        type_ = 'bundle-location-list'
+        type_ = 'bundle_locations'
 
 
 # Field-update restrictions are specified as lists below because the
