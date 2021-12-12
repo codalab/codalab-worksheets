@@ -1053,13 +1053,7 @@ class BundleCLI(object):
             print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
             print(
                 "\n".join(
-                    b["id"]
-                    + "\t"
-                    + b["name"]
-                    + "\t"
-                    + b["storage_type"]
-                    + "\t"
-                    + b["storage_format"]
+                    "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
                     for b in bundle_stores
                 ),
                 file=self.stdout,
