@@ -63,7 +63,7 @@ def _fetch_bundle(uuid):
     """
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
-    document['data'] = document[0]  # Flatten data list
+    document['data'] = document['data'][0]  # Flatten data list
     return document
 
 
