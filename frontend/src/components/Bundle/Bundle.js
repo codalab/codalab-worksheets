@@ -578,7 +578,7 @@ function renderStoreInfo(storeInfo) {
         <div>
             <div className='collapsible-header'>
                 <span>
-                    <p>store information &#x25BE;</p>
+                    <p>bundle store &#x25BE;</p>
                 </span>
             </div>
             <div className='collapsible-content'>
