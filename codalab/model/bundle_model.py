@@ -3028,7 +3028,7 @@ class BundleModel(object):
                     ]
                 ).where(
                     and_(
-                         match_condition,
+                        match_condition,
                         or_(
                             cl_bundle_store.c.owner_id == self.root_user_id,
                             cl_bundle_store.c.owner_id == user_id,

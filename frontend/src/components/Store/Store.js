@@ -101,6 +101,7 @@ function createRow(key, value) {
 function renderHeader(storeInfo) {
     // Display basic information.
     let rows = [];
+    rows.push(createRow('name', storeInfo.name));
     rows.push(createRow('uuid', storeInfo.uuid));
     rows.push(createRow('bundle store type', storeInfo.storage_type));
     rows.push(createRow('owner', storeInfo.owner === null ? '<anonymous>' : storeInfo.owner));
