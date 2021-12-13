@@ -3011,6 +3011,7 @@ class BundleModel(object):
             storage_format: the way the storage is stored in the bundle store.
 
         """
+
         match_condition = (
             cl_bundle_store.c.name == name if name is not None else cl_bundle_store.c.uuid == uuid
         )
@@ -3027,7 +3028,7 @@ class BundleModel(object):
                     ]
                 ).where(
                     and_(
-                        match_condition,
+                         match_condition,
                         or_(
                             cl_bundle_store.c.owner_id == self.root_user_id,
                             cl_bundle_store.c.owner_id == user_id,
@@ -3037,7 +3038,7 @@ class BundleModel(object):
             ).fetchone()
             return {
                 'uuid': row.uuid,
-                'owner': row.owner_id,
+                'owner_id': row.owner_id,
                 'name': row.name,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,

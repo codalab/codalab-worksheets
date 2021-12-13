@@ -5,27 +5,32 @@ import ContentWrapper from '../ContentWrapper';
 import { renderFormat } from '../../util/worksheet_utils';
 import './Store.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
+import { fetchStores } from '../../util/apiWrapper';
 
 class Store extends React.Component {
     state = {
         errorMessages: [],
         storeInfo: null,
     };
-
     /**
      * Fetch store data and update the state of this component.
      */
     refreshStore = () => {
-        // TODO: Implement actual API call.
-        this.setState({
-            storeInfo: {
-                owner: {
-                    user_name: 'codalab',
-                },
-                uuid: this.props.uuid,
-                metadataType: {},
-            },
-        });
+        const { uuid } = this.props;
+        fetchStores(uuid)
+            .then((response) => {
+                const {
+                    data: { attributes: storeInfo },
+                } = response;
+                console.log('storeInfo', storeInfo);
+
+                this.setState({
+                    storeInfo,
+                });
+            })
+            .catch((err) => {
+                this.setState({ errorMessages: [err.toString()] });
+            });
     };
 
     componentDidMount = () => {
@@ -80,49 +85,31 @@ function renderErrorMessages(messages) {
     );
 }
 
-function createRow(storeInfo, storeMetadataChanged, key, value) {
-    // Return a row corresponding to showing
-    //   key: value
-    // which can be edited.
-    let fieldType = storeInfo.metadataType;
-
+function createRow(key, value) {
     return (
         <tr key={key}>
             <th>
                 <span>{key}</span>
             </th>
             <td>
-                <span>{renderFormat(value, fieldType[key])}</span>
+                <span>{value}</span>
             </td>
         </tr>
     );
 }
 
-function renderHeader(storeInfo, storeMetadataChanged) {
-    let storeDownloadUrl = '/rest/stores/' + storeInfo.uuid + '/contents/blob/';
-
-    // Display basic information
+function renderHeader(storeInfo) {
+    // Display basic information.
     let rows = [];
-    rows.push(createRow(storeInfo, storeMetadataChanged, 'uuid', storeInfo.uuid));
-    rows.push(createRow(storeInfo, storeMetadataChanged, 'bundle store type', 'PLACEHOLDER'));
-    rows.push(
-        createRow(
-            storeInfo,
-            storeMetadataChanged,
-            'owner',
-            storeInfo.owner === null ? '<anonymous>' : storeInfo.owner.user_name,
-        ),
-    );
-    rows.push(createRow(storeInfo, storeMetadataChanged, 'location', 'PLACEHOLDER'));
+    rows.push(createRow('uuid', storeInfo.uuid));
+    rows.push(createRow('bundle store type', storeInfo.storage_type));
+    rows.push(createRow('owner', storeInfo.owner === null ? '<anonymous>' : storeInfo.owner));
+    rows.push(createRow('location', storeInfo.url));
 
     return (
         <div>
             <table className='store-meta table'>
-                <tbody>
-                    {rows.map(function(elem) {
-                        return elem;
-                    })}
-                </tbody>
+                <tbody>{rows.map((elem) => elem)}</tbody>
             </table>
         </div>
     );
