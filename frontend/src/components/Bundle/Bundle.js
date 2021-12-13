@@ -140,15 +140,16 @@ class Bundle extends React.Component<
             .then(callback)
             .catch(errorHandler);
 
-        callback = (response) => {
-            const storeInfo = response.data;
-            if (!storeInfo) return;
+        callback = (storeInfo) => {
+            if (!storeInfo || storeInfo.length == 0) return;
             this.setState({ storeInfo });
         };
 
         fetchBundleStores(this.props.uuid)
             .then(callback)
-            .catch(errorHandler);
+            // TODO: Add error handling when the migration #3802 is ready.
+            // Right now legacy bundles will have errors, which is expected.
+            .catch(() => {});
     };
 
     componentDidMount() {
@@ -203,7 +204,7 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
-                {renderStoreInfo(storeInfo)}
+                {storeInfo && renderStoreInfo(storeInfo)}
             </div>
         );
 
@@ -561,18 +562,18 @@ function renderHostWorksheets(bundleInfo) {
 
 function renderStoreInfo(storeInfo) {
     let rows = [];
-    for (const [uuid, path] of Object.entries(storeInfo)) {
+    storeInfo.forEach(({ bundle_store_uuid, url }) => {
         rows.push(
             <tr>
                 <td>
-                    <a href={`/stores/${uuid}`}>{uuid}</a>
+                    <a href={`/stores/${bundle_store_uuid}`}>{bundle_store_uuid}</a>
                 </td>
                 <td>
-                    <span>{path}</span>
+                    <span>{url}</span>
                 </td>
             </tr>,
         );
-    }
+    });
 
     return (
         <div>

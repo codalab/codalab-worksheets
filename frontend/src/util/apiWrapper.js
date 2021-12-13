@@ -103,8 +103,8 @@ export const fetchBundleContents = (uuid) => {
     return get(url, { depth: 1 });
 };
 
-export const fetchBundleStores = (uuids) => {
-    const url = '/rest/bundles/locations?' + new URLSearchParams({ uuids });
+export const fetchBundleStores = (uuid) => {
+    const url = `/rest/bundles/${uuid}/locations/`;
     return get(url);
 };
 

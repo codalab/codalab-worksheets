@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import mimetypes
 import os
@@ -429,7 +430,10 @@ def _fetch_locations():
     return dict(data=uuids_to_locations)
 
 
-@get('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+@get(
+    '/bundles/<bundle_uuid:re:%s>/locations/' % spec_util.UUID_STR,
+    apply=AuthenticatedProtectedPlugin(),
+)
 def _fetch_bundle_locations(bundle_uuid: str):
     """
     Returns a list of BundleLocations associated with the given bundle.
@@ -438,10 +442,13 @@ def _fetch_bundle_locations(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID to get the locations for
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
-    return BundleLocationListSchema(many=True).dump(bundle_locations).data
+    return json.dumps(bundle_locations)
 
 
-@post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+@post(
+    '/bundles/<bundle_uuid:re:%s>/locations/' % spec_util.UUID_STR,
+    apply=AuthenticatedProtectedPlugin(),
+)
 def _add_bundle_location(bundle_uuid: str):
     """
     Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
@@ -1043,7 +1050,9 @@ def _update_bundle_contents_blob(uuid):
         else:
             local.model.update_bundle(
                 bundle,
-                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},},
+                {
+                    'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
+                },
             )
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
