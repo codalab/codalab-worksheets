@@ -7,7 +7,7 @@ from typing import Callable, Any
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
 from functools import reduce
-from codalab.common import StorageType
+from codalab.common import StorageType, StorageFormat
 
 
 def require_partitions(f: Callable[['MultiDiskBundleStore', Any], Any]):
@@ -44,7 +44,7 @@ class BundleStore(object):
         self._bundle_model = bundle_model
         self.codalab_home = path_util.normalize(codalab_home)
 
-    def get_bundle_location(self, uuid):
+    def get_bundle_location(self, uuid, bundle_store_uuid=None):
         raise NotImplementedError
 
     def cleanup(self, uuid, dry_run):
@@ -93,7 +93,7 @@ class _MultiDiskBundleStoreBase(BundleStore):
         return free
 
     @require_partitions
-    def get_bundle_location(self, uuid):
+    def get_bundle_location(self, uuid, bundle_store_uuid=None):
         """
         get_bundle_location: look for bundle in the cache, or if not in cache, go through every partition.
         If not in any partition, return disk with largest free space.
@@ -397,12 +397,17 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
     A multi-disk bundle store that also supports storing bundles in a CodaLab-managed
     Blob Storage container.
 
-    If bundles are indicated to be stored in Blob Storage, they are retrieved from Blob
-    Storage. Otherwise, the bundle is retrieved from the underlying disk bundle store.
+    If bundles are indicated to be stored in a custom BundleStore, they are retrieved from
+    that bundle store. Otherwise, their storage type is determined by the legacy "storage_type"
+    column, which indicates if they are in Blob Storage or from the underlying disk bundle store.
 
     In Blob Storage, each bundle is stored in the format:
     azfs://{container name}/bundles/{bundle uuid}/contents.tar.gz if a directory,
-    azfs://{container name}/bundles/{bundle uuid}/contents.gz
+    azfs://{container name}/bundles/{bundle uuid}/contents.gz if a file.
+
+    In GCS, each bundle is stored in the format:
+    gs://{bucket name}/{bundle uuid}/contents.tar.gz if a directory,
+    gs://{bucket name}/{bundle uuid}/contents.gz if a file.
 
     If the bundle is a directory, the entire contents of the bundle is stored in the .tar.gz file;
     otherwise, if the bundle is a single file, the file is stored in the .gz file as an archive
@@ -417,10 +422,74 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
 
         self._azure_blob_account_name = azure_blob_account_name
 
-    def get_bundle_location(self, uuid):
+    def get_bundle_location(self, uuid, bundle_store_uuid=None):
+        """
+        Get the bundle location.
+        Arguments:
+            uuid (str): uuid of the bundle.
+            bundle_store_uuid (str): uuid of a specific BundleLocation to use when retrieving the bundle's location.
+                If unspecified, will pick an optimal location.
+        Returns: a string with the path to the bundle.
+        """
+        bundle_locations = self._bundle_model.get_bundle_locations(uuid)
+        if bundle_store_uuid:
+            assert len(bundle_locations) >= 1
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
-        if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
+        if len(bundle_locations) >= 1:
+            # Use the BundleLocations stored with the bundle, along with some
+            # precedence rules, to determine where the bundle is stored.
+            selected_location = None
+            selected_location_priority = 999
+            for location in bundle_locations:
+                # Highest precedence: bundle_store_uuid specified in this function.
+                PRIORITY = 1
+                if (
+                    location["bundle_store_uuid"] == bundle_store_uuid
+                    and PRIORITY < selected_location_priority
+                ):
+                    selected_location = location
+                    selected_location_priority = PRIORITY
+                # Next precedence: prefer blob storage over disk storage.
+                PRIORITY = 2
+                if (
+                    location["storage_type"]
+                    in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value)
+                    and PRIORITY < selected_location_priority
+                ):
+                    selected_location = location
+                    selected_location_priority = PRIORITY
+                # Last precedence: pick whatever storage is available.
+                PRIORITY = 3
+                if PRIORITY < selected_location_priority:
+                    selected_location = location
+                    selected_location_priority = PRIORITY
+            assert selected_location is not None
+
+            # Now get the BundleLocation.
+            # TODO: refactor this into a class-based system so different storage types can implement this method.
+            if selected_location["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value:
+                assert (
+                    selected_location["storage_format"] == StorageFormat.COMPRESSED_V1.value
+                )  # Only supported format on Blob Storage
+                file_name = "contents.tar.gz" if is_dir else "contents.gz"
+                url = selected_location["url"]  # Format: "azfs://[container name]/bundles"
+                assert url.startswith("azfs://")
+                return f"{url}/{uuid}/{file_name}"
+            elif selected_location["storage_type"] == StorageType.GCS_STORAGE.value:
+                assert (
+                    selected_location["storage_format"] == StorageFormat.COMPRESSED_V1.value
+                )  # Only supported format on GCS
+                file_name = "contents.tar.gz" if is_dir else "contents.gz"
+                url = selected_location["url"]  # Format: "gs://[bucket name]"
+                assert url.startswith("gs://")
+                return f"{url}/{uuid}/{file_name}"
+            else:
+                assert (
+                    selected_location["storage_format"] == StorageFormat.UNCOMPRESSED.value
+                )  # Only supported format on disk
+                return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
+        # If no BundleLocations are available, use the legacy "storage_type" column to determine where the bundle is stored.
+        elif storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             file_name = "contents.tar.gz" if is_dir else "contents.gz"
             return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}"
-        else:
-            return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
+        return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)

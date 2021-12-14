@@ -103,6 +103,11 @@ export const fetchBundleContents = (uuid) => {
     return get(url, { depth: 1 });
 };
 
+export const fetchBundleStores = (uuids) => {
+    const url = '/rest/bundles/locations?' + new URLSearchParams({ uuids });
+    return get(url);
+};
+
 export const fetchBundleMetadata = (uuid) => {
     const url = '/rest/bundles/' + uuid;
     return get(url, {
