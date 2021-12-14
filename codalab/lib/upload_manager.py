@@ -25,8 +25,6 @@ class Uploader:
         self._bundle_store = bundle_store
         self.destination_bundle_store = destination_bundle_store
 
-    destination_bundle_store = None
-
     @property
     def storage_type(self):
         """Returns storage type. Must be one of the values of the StorageType enum."""
@@ -239,7 +237,10 @@ class UploadManager(object):
         UploaderCls: Any = DiskStorageUploader
         if destination_bundle_store:
             # Set the uploader class based on which bundle store is specified.
-            if destination_bundle_store["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value:
+            if destination_bundle_store["storage_type"] in (
+                StorageType.AZURE_BLOB_STORAGE.value,
+                StorageType.GCS_STORAGE.value,
+            ):
                 UploaderCls = BlobStorageUploader
         elif use_azure_blob_beta:
             # Legacy "-a" flag without specifying a bundle store.

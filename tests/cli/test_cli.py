@@ -903,6 +903,14 @@ def test_upload3(ctx):
     check_contains(bundle_store_uuid, list_output)
     check_contains("disk", list_output)
     check_contains("uncompressed", list_output)
+
+    # Upload file to bundle store
+    uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
+    check_equals('hello', _run_command([cl, 'cat', uuid]))
+
+    # A bundle with a BundleLocation should be able to be deleted
+    _run_command([cl, 'rm', uuid])
+
     # Delete bundle store
     check_equals(bundle_store_uuid, _run_command([cl, "store", "rm", bundle_store_uuid]))
     list_output = _run_command([cl, "store", "ls"])

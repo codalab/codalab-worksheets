@@ -36,9 +36,18 @@ cl store add --name blob --storage-type azure_blob --url azfs://devstoreaccount1
 cl upload --store blob mkdocs.yml
 ```
 
-## Steps to set up GCP
+## Steps to set up and test with GCP
+
+First, make sure the `CODALAB_GOOGLE_APPLICATION_CREDENTIALS` env var is set on the server that runs the REST server. It should be set to a path to a credentials JSON file.
 
 ```
-cl store add --name gcp --storage-type gcp --url gcs://bucket1
-cl upload --store gcp mkdocs.yml
+export CODALAB_GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+codalab-service start -bd
+```
+
+Then make a bucket on your GCP account (in this case, it's called `ashwin123123123`). You can then store bundles on GCP:
+
+```
+cl store add --name gcp2 --storage-type gcs --url gs://ashwin123123123
+cl upload --store gcp2 mkdocs.yml
 ```
