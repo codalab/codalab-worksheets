@@ -29,7 +29,7 @@ class UploadedBundle(NamedBundle):
                                          '"raw" or "zip" (only "raw" is supported as of now).', optional=True)
     )
 
-    METADATA_SPECS.append(MetadataSpec('store', str, 'The name of the bundle store where the bundle should be uploaded to.'
+    METADATA_SPECS.append(MetadataSpec('store', str, 'The name of the bundle store where the bundle should be uploaded to. '
                                                      'If unspecified, an optimal available bundle store will be chosen.', default=None, hidden=True, optional=True))
 
     # fmt: on
