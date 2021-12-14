@@ -34,6 +34,7 @@ First, make sure you start Azurite locally by running `codalab-service start -bd
 ```
 cl store add --name blob --storage-type azure_blob --url azfs://devstoreaccount1/bundles
 cl upload --store blob mkdocs.yml
+cl run --store blob "echo hello"
 ```
 
 ## Steps to set up GCP

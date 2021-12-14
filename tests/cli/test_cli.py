@@ -908,6 +908,10 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
     check_equals('hello', _run_command([cl, 'cat', uuid]))
 
+    # Run bundle that outputs to bundle store
+    uuid = _run_command([cl, 'run', 'echo hello', '--store', bundle_store_name])
+    check_equals('hello', _run_command([cl, 'cat', f'{uuid}/stdout']))
+
     # A bundle with a BundleLocation should be able to be deleted
     _run_command([cl, 'rm', uuid])
 
