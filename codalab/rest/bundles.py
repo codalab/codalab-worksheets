@@ -442,6 +442,7 @@ def _fetch_bundle_locations(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID to get the locations for
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
+    return BundleLocationListSchema(many=True).dump(bundle_locations).data
     return json.dumps(bundle_locations)
 
 
@@ -1048,10 +1049,8 @@ def _update_bundle_contents_blob(uuid):
         else:
             local.model.update_bundle(
                 bundle,
-                {
-                    'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
-                },
-s            )
+                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},},
+            )
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
 
