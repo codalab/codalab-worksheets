@@ -897,6 +897,9 @@ def test_upload3(ctx):
         ],
         expected_exit_code=1,
     )
+    # Run bundle that outputs to bundle store
+    uuid_run = _run_command([cl, 'run', 'echo hello', '--store', bundle_store_name])
+
     # List bundle stores
     list_output = _run_command([cl, "store", "ls"])
     check_contains(bundle_store_name, list_output)
@@ -908,8 +911,8 @@ def test_upload3(ctx):
     uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
     check_equals('hello', _run_command([cl, 'cat', uuid]))
 
-    # Run bundle that outputs to bundle store
-    uuid = _run_command([cl, 'run', 'echo hello', '--store', bundle_store_name])
+    # Check that uuid_run finished and uploaded results properly.
+    wait(uuid_run)
     check_equals('hello', _run_command([cl, 'cat', f'{uuid}/stdout']))
 
     # A bundle with a BundleLocation should be able to be deleted
