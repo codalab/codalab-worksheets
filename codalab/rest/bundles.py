@@ -442,7 +442,6 @@ def _fetch_bundle_locations(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID to get the locations for
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
-    return BundleLocationListSchema(many=True).dump(bundle_locations).data
     return json.dumps(bundle_locations)
 
 
