@@ -913,7 +913,7 @@ def test_upload3(ctx):
 
     # Check that uuid_run finished and uploaded results properly.
     wait(uuid_run)
-    check_equals('hello', _run_command([cl, 'cat', f'{uuid}/stdout']))
+    check_equals('hello', _run_command([cl, 'cat', f'{uuid_run}/stdout']))
 
     # A bundle with a BundleLocation should be able to be deleted
     _run_command([cl, 'rm', uuid])
