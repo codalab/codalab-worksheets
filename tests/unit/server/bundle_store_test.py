@@ -1,4 +1,4 @@
-from codalab.common import StorageType, StorageFormat
+from codalab.common import StorageType, StorageFormat, UsageError
 from tests.unit.server.bundle_manager import BaseBundleManagerTest
 
 
@@ -24,6 +24,18 @@ class BundleStoreTest(BaseBundleManagerTest):
         self.assertEqual(len(bundle_stores), 1)
         self.assertEqual(bundle_stores[0].get("uuid"), bundle_store_uuid)
         self.assertEqual(bundle_stores[0].get("name"), "store1")
+        self.assertEqual(bundle_stores[0].get("storage_type"), StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle_stores[0].get("storage_format"), StorageFormat.UNCOMPRESSED.value)
+        bundle_store = self.bundle_manager._model.get_bundle_store(self.user_id, bundle_store_uuid)
+        self.assertEqual(bundle_store.get("uuid"), bundle_store_uuid)
+        self.assertEqual(bundle_store.get("name"), "store1")
+        self.assertEqual(bundle_store.get("storage_type"), StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle_store.get("storage_format"), StorageFormat.UNCOMPRESSED.value)
+        bundle_store = self.bundle_manager._model.get_bundle_store(self.user_id, name="store1")
+        self.assertEqual(bundle_store.get("uuid"), bundle_store_uuid)
+        self.assertEqual(bundle_store.get("name"), "store1")
+        self.assertEqual(bundle_store.get("storage_type"), StorageType.DISK_STORAGE.value)
+        self.assertEqual(bundle_store.get("storage_format"), StorageFormat.UNCOMPRESSED.value)
         # update one of the bundle store fields
         self.bundle_manager._model.update_bundle_store(
             self.user_id, bundle_store_uuid, {"name": "im-not-a-store"}
@@ -32,12 +44,10 @@ class BundleStoreTest(BaseBundleManagerTest):
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 1)
         self.assertEqual(bundle_stores[0].get("name"), "im-not-a-store")
-        # delete the store
+        # Deletion should succeed since there are bundle locations associated with the bundle store
         self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid)
-        # check that it hasn't been deleted, the Bundle Store can't be deleted if it has
-        # no bundle locations associated with it.
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
-        self.assertEqual(len(bundle_stores), 1)
+        self.assertEqual(len(bundle_stores), 0)
 
     def test_add_bundle_location(self):
         """
@@ -66,6 +76,7 @@ class BundleStoreTest(BaseBundleManagerTest):
             bundle_locations,
             [
                 {
+                    'bundle_store_uuid': bundle_store_uuid,
                     'name': 'store1',
                     'storage_type': 'disk',
                     'storage_format': 'uncompressed',
@@ -81,6 +92,7 @@ class BundleStoreTest(BaseBundleManagerTest):
         self.assertEqual(
             bundle_location,
             {
+                'bundle_store_uuid': bundle_store_uuid,
                 'name': 'store1',
                 'storage_type': 'disk',
                 'storage_format': 'uncompressed',
@@ -107,12 +119,14 @@ class BundleStoreTest(BaseBundleManagerTest):
             bundle_locations_2,
             [
                 {
+                    'bundle_store_uuid': bundle_store_uuid,
                     'name': 'store1',
                     'storage_type': 'disk',
                     'storage_format': 'uncompressed',
                     'url': 'http://url',
                 },
                 {
+                    'bundle_store_uuid': bundle_store_uuid_2,
                     'name': 'store2',
                     'storage_type': 'disk',
                     'storage_format': 'uncompressed',
@@ -128,9 +142,14 @@ class BundleStoreTest(BaseBundleManagerTest):
         self.assertEqual(
             bundle_location_2,
             {
+                'bundle_store_uuid': bundle_store_uuid_2,
                 'name': 'store2',
                 'storage_type': 'disk',
                 'storage_format': 'uncompressed',
                 'url': 'http://url2',
             },
         )
+
+        # Deletion of bundle store should fail because there are still BundleLocations associated with the BundleStore.
+        with self.assertRaises(UsageError):
+            self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid_2)
