@@ -43,7 +43,7 @@ class RunBundle(DerivedBundle):
 
     METADATA_SPECS.append(MetadataSpec('exclude_patterns', list, 'Exclude these file patterns from being saved into the bundle contents.', default=[]))
 
-    METADATA_SPECS.append(MetadataSpec('store', str, 'If specified, bundle output is initially saved in the bundle store with this name.', default=None))
+    METADATA_SPECS.append(MetadataSpec('store', str, 'The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen.', default=None, hidden=True))
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 
