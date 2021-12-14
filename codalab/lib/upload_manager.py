@@ -25,8 +25,6 @@ class Uploader:
         self._bundle_store = bundle_store
         self.destination_bundle_store = destination_bundle_store
 
-    destination_bundle_store = None
-
     @property
     def storage_type(self):
         """Returns storage type. Must be one of the values of the StorageType enum."""

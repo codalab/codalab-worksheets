@@ -1401,7 +1401,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
-                    'store': args.store,
+                    'store': args.store or '',
                 },
             )
 
@@ -1422,7 +1422,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
-                    'store': args.store,
+                    'store': args.store or '',
                 },
             )
 
@@ -1488,7 +1488,7 @@ class BundleCLI(object):
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': args.store,
+                        'store': args.store or '',
                     },
                     progress_callback=progress.update,
                 )

@@ -24,7 +24,7 @@ Usage: `cl <command> <arguments>`
       -i, --ignore               Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
       -l, --link                 Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -a, --use-azure-blob-beta  Use Azure Blob Storage to store files (beta feature).
-      -b, --bundle-store         Uploads a bundle and specifies the bundle store. If no bundle store is specified, the CLI will pick the optimal available bundle store.
+      --store                    The name of the bundle store where the bundle should be uploaded to. If unspecified, the CLI will pick the optimal available bundle store.
       -n, --name                 Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description          Full description of the bundle.
       --tags                     Space-separated list of tags used for search (e.g., machine-learning).
@@ -56,7 +56,7 @@ Usage: `cl <command> <arguments>`
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -i, --interactive            Beta feature - Start an interactive session to construct your run command.
-      -b, --bundle-store           Runs a bundle and specifies the bundle store where results are uploaded. If no bundle store is specified, the worker will pick the optimal available bundle store.
+      --store                      The name of the bundle store where results should be uploaded. If unspecified, the worker will pick the optimal available bundle store.
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -109,7 +109,6 @@ Usage: `cl <command> <arguments>`
       -d, --data-only       Keep the bundle metadata, but remove the bundle contents on disk.
       -i, --dry-run         Perform a dry run (just show what will be done without doing it).
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -b, --bundle-store    Keeps the bundle, but removes the bundle contents from the specified bundle store.
 
 ### search (s)
     Search for bundles on a CodaLab instance (returns 10 results by default).
@@ -282,10 +281,15 @@ Usage: `cl <command> <arguments>`
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
 ### store
-    Bundle store CLI commands.
+    Add a bundle store.
     Arguments:
-      -a, --add   Creates a new bundle store, allows one to configure credentials.
-      -w, --work  All bundles will by default be uploaded to this bundle store.
+      command            Set to "add" to add a new bundle store, "ls" to list bundle stores, and "rm" to remove a bundle store.
+      bundle_store_uuid  Bundle store uuid. Specified when running "cl store rm [uuid]".
+      -n, --name         Name of the bundle store; must be globally unique.
+      --storage-type     Storage type of the bundle store. Acceptable values are "disk" and "azure_blob".
+      --storage-format   Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.
+      --url              A self-referential URL that points to the bundle store.
+      --authentication   Key for authentication that the bundle store uses.
 
 
 ## Commands for worksheets
