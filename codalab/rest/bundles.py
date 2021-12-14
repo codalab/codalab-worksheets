@@ -512,7 +512,7 @@ def _add_bundle_store():
     storage_type = new_bundle_store.get('storage_type')
     storage_format = new_bundle_store.get('storage_format')
     if storage_format is None:
-        if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
+        if storage_type in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value):
             storage_format = StorageFormat.COMPRESSED_V1.value
         elif storage_type == StorageType.DISK_STORAGE.value:
             storage_format = StorageFormat.UNCOMPRESSED.value
@@ -967,9 +967,7 @@ def _update_bundle_contents_blob(uuid):
     )
     store_name = request.query.get('store')
     store = (
-        local.model.get_bundle_store(request.user.user_id, name=store_name)
-        if store_name is not None
-        else None
+        local.model.get_bundle_store(request.user.user_id, name=store_name) if store_name else None
     )
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
@@ -1053,7 +1051,7 @@ def _update_bundle_contents_blob(uuid):
                 {
                     'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
                 },
-            )
+s            )
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
 

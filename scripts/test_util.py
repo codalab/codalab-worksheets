@@ -126,7 +126,7 @@ def run_command(
         exitcode = e.returncode
     except Exception:
         output = traceback.format_exc()
-        exitcode = 'test-cli exception'
+        exitcode = 1
 
     if expected_exit_code is not None and exitcode != expected_exit_code:
         colorize = Colorizer.red
@@ -138,7 +138,9 @@ def run_command(
     sys.stdout.flush()
     print(sanitize(output, max_output_chars))
     sys.stdout.flush()
-    assert expected_exit_code == exitcode, 'Exit codes don\'t match'
+    assert (
+        expected_exit_code == exitcode
+    ), f'Exit codes don\'t match: got {exitcode}, expected {expected_exit_code}'
     return output.rstrip()
 
 
