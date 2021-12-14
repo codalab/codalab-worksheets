@@ -543,22 +543,28 @@ def _add_bundle_store():
 #     updated_bundle_store = local.model.update_bundle_store(request.user.user_id, uuid, update)
 #     return BundleStoreSchema(many=True).dump(updated_bundle_store).data
 
-# TODO: Endpoint not tested / used, reenable when we use it.
-# @get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
-# def _fetch_bundle_store(uuid):
-#     """
-#     Fetch the bundle store corresponding to the specified uuid.
 
-#     Returns a single bundle store, with the following parameters:
-#     - `uuid`: bundle store UUID
-#     - `owner_id`: owner of bundle store
-#     - `name`: name of bundle store
-#     - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-#     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-#     - `url`: a self-referential URL that points to the bundle store.
-#     """
-#     bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
-#     return BundleStoreSchema(many=True).dump(bundle_store).data
+@get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_store(uuid):
+    """
+    Fetch the bundle store corresponding to the specified uuid.
+
+    Returns a single bundle store, with the following parameters:
+    - `uuid`: bundle store UUID
+    - `owner_id`: owner of bundle store
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    """
+    bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
+    data = BundleStoreSchema().dump(bundle_store).data
+
+    # Fetch username instead of user_id for display on the front end.
+    data['data']['attributes']['owner'] = local.model.get_user(
+        user_id=data['data']['attributes']['owner']
+    ).user_name
+    return data
 
 
 @delete('/bundle_stores', apply=AuthenticatedProtectedPlugin())
