@@ -3040,7 +3040,7 @@ class BundleModel(object):
             ).fetchone()
             return {
                 'uuid': row.uuid,
-                'owner': row.owner_id,
+                'owner_id': row.owner_id,
                 'name': row.name,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,

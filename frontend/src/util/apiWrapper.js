@@ -116,6 +116,11 @@ export const fetchBundleMetadata = (uuid) => {
     });
 };
 
+export const fetchStores = (uuid) => {
+    const url = '/rest/bundle_stores/' + uuid;
+    return get(url);
+};
+
 export const fetchFileSummary = (uuid, path) => {
     const params = {
         head: 50,

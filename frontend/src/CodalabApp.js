@@ -27,6 +27,7 @@ import NewDashboard from './components/Dashboard/NewDashboard';
 // Routes
 import HomePage from './routes/HomePage';
 import BundleRoute from './routes/BundleRoute';
+import StoreRoute from './routes/StoreRoute';
 
 import history from './history';
 import Cookies from 'universal-cookie';
@@ -119,6 +120,7 @@ function CodalabApp() {
                                 path='/users'
                                 render={(props) => <NewDashboard {...props} auth={fakeAuth} />}
                             />
+                            <Route path='/stores/:uuid' component={StoreRoute} />
                             <Route component={PageNotFound} />
                         </Switch>
                         {/*Footer.*/}
