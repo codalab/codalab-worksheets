@@ -278,9 +278,9 @@ class MainPanel extends React.Component<{
                                 onChange={this.handleTabChange}
                                 aria-label='mainpanel tabs'
                             >
-                                <Tab label='Owned by Me' {...this.a11yProps(0)}></Tab>
+                                <Tab label='My Worksheets' {...this.a11yProps(0)}></Tab>
                                 <Tab
-                                    label='Shared with Me'
+                                    label='Shared Worksheets with Me'
                                     {...this.a11yProps(1)}
                                     disabled={!this.props.ownDashboard}
                                 ></Tab>
