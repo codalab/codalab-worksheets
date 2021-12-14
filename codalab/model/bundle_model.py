@@ -3090,7 +3090,6 @@ class BundleModel(object):
             rows = connection.execute(
                 select(
                     [
-                        cl_bundle_store.c.id,
                         cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
@@ -3108,7 +3107,6 @@ class BundleModel(object):
             ).fetchall()
             return [
                 {
-                    'id': row.id,
                     'bundle_store_uuid': row.uuid,
                     'name': row.name,
                     'storage_type': row.storage_type,
