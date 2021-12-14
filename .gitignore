@@ -46,3 +46,4 @@ codalab-worker-scratch
 .coverage
 
 sent.jsonl
+google-credentials.json
