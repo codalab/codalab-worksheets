@@ -401,7 +401,7 @@ CODALAB_ARGUMENTS = [
         name='google_application_credentials',
         help='Path to Google Application Credentials file.',
         # TODO: find a better default that is a no-op (we need a default value in order for docker-compose to mount this properly).
-        default='codalab_service.py',
+        default='./codalab_service.py',
     ),
     CodalabArg(
         name='always_use_azure_blob_beta',
