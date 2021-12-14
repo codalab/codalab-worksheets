@@ -917,6 +917,7 @@ def test_upload3(ctx):
 
     # A bundle with a BundleLocation should be able to be deleted
     _run_command([cl, 'rm', uuid])
+    _run_command([cl, 'rm', uuid_run])
 
     # Delete bundle store
     check_equals(bundle_store_uuid, _run_command([cl, "store", "rm", bundle_store_uuid]))
