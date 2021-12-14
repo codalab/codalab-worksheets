@@ -30,7 +30,6 @@ from scripts.test_util import Colorizer, run_command
 import argparse
 import json
 import os
-import random
 import re
 import shutil
 import subprocess
@@ -38,6 +37,7 @@ import sys
 import tempfile
 import time
 import traceback
+import uuid
 import requests
 
 
@@ -75,7 +75,7 @@ def temp_path(suffix, tmp=True):
 
 
 def random_name():
-    return 'temp-test-cli-' + str(random.randint(0, 1000000))
+    return 'temp-test-cli-' + str(uuid.uuid4())
 
 
 def current_worksheet():
