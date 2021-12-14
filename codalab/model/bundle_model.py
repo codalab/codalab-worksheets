@@ -1283,6 +1283,9 @@ class BundleModel(object):
             connection.execute(
                 cl_bundle_dependency.delete().where(cl_bundle_dependency.c.child_uuid.in_(uuids))
             )
+            connection.execute(
+                cl_bundle_location.delete().where(cl_bundle_location.c.bundle_uuid.in_(uuids))
+            )
             # In case something goes wrong, delete bundles that are currently running on workers.
             connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
