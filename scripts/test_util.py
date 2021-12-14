@@ -138,7 +138,9 @@ def run_command(
     sys.stdout.flush()
     print(sanitize(output, max_output_chars))
     sys.stdout.flush()
-    assert expected_exit_code == exitcode, f'Exit codes don\'t match: got {exitcode}, expected {expected_exit_code}'
+    assert (
+        expected_exit_code == exitcode
+    ), f'Exit codes don\'t match: got {exitcode}, expected {expected_exit_code}'
     return output.rstrip()
 
 
