@@ -960,9 +960,7 @@ def _update_bundle_contents_blob(uuid):
     )
     store_name = request.query.get('store')
     store = (
-        local.model.get_bundle_store(request.user.user_id, name=store_name)
-        if store_name is not None
-        else None
+        local.model.get_bundle_store(request.user.user_id, name=store_name) if store_name else None
     )
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
