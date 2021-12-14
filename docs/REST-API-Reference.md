@@ -510,14 +510,14 @@ Fetch locations of bundles.
 Query parameters:
 - `uuids`: List of bundle UUID's to get the locations for
 
-### `GET /bundles/<bundle_uuid:re:%s>/locations/`
+### `GET /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
 Returns a list of BundleLocations associated with the given bundle.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the locations for
 
-### `POST /bundles/<bundle_uuid:re:%s>/locations/`
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
 Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
 
