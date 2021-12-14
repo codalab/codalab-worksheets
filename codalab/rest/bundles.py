@@ -505,7 +505,7 @@ def _add_bundle_store():
     storage_type = new_bundle_store.get('storage_type')
     storage_format = new_bundle_store.get('storage_format')
     if storage_format is None:
-        if storage_type == StorageType.AZURE_BLOB_STORAGE.value:
+        if storage_type in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value):
             storage_format = StorageFormat.COMPRESSED_V1.value
         elif storage_type == StorageType.DISK_STORAGE.value:
             storage_format = StorageFormat.UNCOMPRESSED.value
