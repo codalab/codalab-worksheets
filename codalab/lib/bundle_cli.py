@@ -1373,8 +1373,6 @@ class BundleCLI(object):
             if disk_left - total_bundle_size <= 0:
                 formatted_total_bundle_size = formatting.size_str(total_bundle_size)
                 formatted_disk_left = formatting.size_str(disk_left)
-                print("Inside no space remaining")
-                print("SIZE TOTAL FORMAT", formatted_total_bundle_size)
                 raise DiskQuotaExceededError(
                     'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
                     % (formatted_total_bundle_size, formatted_disk_left)
