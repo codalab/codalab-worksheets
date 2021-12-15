@@ -41,7 +41,7 @@ class WorkerModel(object):
         self,
         user_id,
         worker_id,
-        tag,
+        tags,
         group_name,
         cpus,
         gpus,
@@ -59,7 +59,7 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             worker_row = {
-                'tag': tag,
+                'tags': tags,
                 'cpus': cpus,
                 'gpus': gpus,
                 'memory_bytes': memory_bytes,
@@ -191,7 +191,7 @@ class WorkerModel(object):
                 'user_id': row.user_id,
                 'worker_id': row.worker_id,
                 'group_uuid': row.group_uuid,
-                'tag': row.tag,
+                'tags': row.tags,
                 'cpus': row.cpus,
                 'gpus': row.gpus,
                 'memory_bytes': row.memory_bytes,

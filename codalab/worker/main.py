@@ -33,7 +33,9 @@ DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument(
-        '--tag', help='Alphanumeric tag that allows for scheduling runs on specific workers.'
+        '--tags',
+        nargs="+",
+        help='Alphanumeric tag(s) that allows for scheduling runs on specific workers.',
     )
     parser.add_argument(
         '--server',
@@ -232,10 +234,12 @@ def connect_to_codalab_server(server, password_file):
 def main():
     args = parse_args()
 
-    if args.tag and not args.tag.isalnum():
-        raise argparse.ArgumentTypeError(
-            "Worker tag must be alphanumeric (only contain letters and numbers)."
-        )
+    if args.tags:
+        for tag in args.tags:
+            if not tag.isalnum():
+                raise argparse.ArgumentTypeError(
+                    f"Worker tags must be alphanumeric (only contain letters and numbers), but {tag} is not."
+                )
 
     # Configure logging
     log_format: str = '%(asctime)s %(message)s'
@@ -308,7 +312,7 @@ def main():
         args.gpuset,
         args.max_memory,
         args.id,
-        args.tag,
+        args.tags,
         args.work_dir,
         local_bundles_dir,
         args.exit_when_idle,

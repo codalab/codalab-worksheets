@@ -8,7 +8,7 @@ import traceback
 import socket
 import http.client
 import sys
-from typing import Optional, Set, Dict
+from typing import List, Optional, Set, Dict
 
 import psutil
 
@@ -59,7 +59,7 @@ class Worker:
         gpuset,  # type: Set[str]
         max_memory,  # type: Optional[int]
         worker_id,  # type: str
-        tag,  # type: str
+        tags,  # type: List[str]
         work_dir,  # type: str
         local_bundles_dir,  # type: Optional[str]
         exit_when_idle,  # type: str
@@ -97,7 +97,7 @@ class Worker:
 
         self.id = worker_id
         self.group_name = group_name
-        self.tag = tag
+        self.tags = tags
         self.tag_exclusive = tag_exclusive
 
         self.work_dir = work_dir
@@ -409,7 +409,7 @@ class Worker:
         processes must be handled asynchronously.
         """
         request = {
-            'tag': self.tag,
+            'tags': ",".join(self.tags) if self.tags is not None else self.tags,
             'group_name': self.group_name,
             'cpus': len(self.cpuset),
             'gpus': len(self.gpuset),

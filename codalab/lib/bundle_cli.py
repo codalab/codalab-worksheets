@@ -1233,7 +1233,7 @@ class BundleCLI(object):
             'free_disk',
             'last_checkin',
             'group',
-            'tag',
+            'tags',
             'runs',
             'shared_file_system',
             'tag_exclusive',
@@ -1255,7 +1255,8 @@ class BundleCLI(object):
                         formatting.duration_str(int(time.time()) - worker['checkin_time'])
                     ),
                     'group': worker['group_uuid'],
-                    'tag': worker['tag'],
+                    # TODO(nfliu): deprecate support for old servers that still send worker "tag" over "tags"
+                    'tags': worker['tags'] if 'tags' in worker else worker['tag'],
                     'runs': ",".join([uuid[0:8] for uuid in worker['run_uuids']]),
                     'shared_file_system': worker['shared_file_system'],
                     'tag_exclusive': worker['tag_exclusive'],
