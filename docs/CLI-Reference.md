@@ -24,7 +24,6 @@ Usage: `cl <command> <arguments>`
       -i, --ignore               Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
       -l, --link                 Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -a, --use-azure-blob-beta  Use Azure Blob Storage to store files (beta feature).
-      --store                    The name of the bundle store where the bundle should be uploaded to. If unspecified, the CLI will pick the optimal available bundle store.
       -n, --name                 Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description          Full description of the bundle.
       --tags                     Space-separated list of tags used for search (e.g., machine-learning).
@@ -32,6 +31,7 @@ Usage: `cl <command> <arguments>`
       --source-url               URL corresponding to the original source of this bundle.
       --link-url                 Link URL of bundle.
       --link-format              Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
+      --store                    The name of the bundle store where the bundle should be uploaded to. If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                 Show an editor to allow editing of the bundle metadata.
 
 ### make
@@ -56,7 +56,6 @@ Usage: `cl <command> <arguments>`
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -i, --interactive            Beta feature - Start an interactive session to construct your run command.
-      --store                      The name of the bundle store where results should be uploaded. If unspecified, the worker will pick the optimal available bundle store.
       -n, --name                   Short variable name (not necessarily unique); must conform to ^[a-zA-Z_][a-zA-Z0-9_\.\-]*$.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
@@ -71,6 +70,7 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority.
       --request-network            Whether to allow network access.
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
+      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -211,6 +211,7 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -240,6 +241,7 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
