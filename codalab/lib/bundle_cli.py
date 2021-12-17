@@ -1054,6 +1054,11 @@ class BundleCLI(object):
                 "url": args.url,
                 "authentication": args.authentication,
             }
+            if args.storage_type is None:
+                if args.url.startswith("azfs://"):
+                    bundle_store_info["storage_type"] = "azure_blob"
+                if args.url.startswith("gs://"):
+                    bundle_store_info["storage_type"] = "gcs"
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':
