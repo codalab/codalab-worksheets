@@ -31,6 +31,7 @@ Usage: `cl <command> <arguments>`
       --source-url               URL corresponding to the original source of this bundle.
       --link-url                 Link URL of bundle.
       --link-format              Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
+      --store                    The name of the bundle store where the bundle should be uploaded to. If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                 Show an editor to allow editing of the bundle metadata.
 
 ### make
@@ -69,6 +70,7 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority.
       --request-network            Whether to allow network access.
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
+      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -209,6 +211,7 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -238,6 +241,7 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access. (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -277,6 +281,17 @@ Usage: `cl <command> <arguments>`
       -f, --file            Add this file at end of message
       --verbose             Verbose mode.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+
+### store
+    Add a bundle store.
+    Arguments:
+      command            Set to "add" to add a new bundle store, "ls" to list bundle stores, and "rm" to remove a bundle store.
+      bundle_store_uuid  Bundle store uuid. Specified when running "cl store rm [uuid]".
+      -n, --name         Name of the bundle store; must be globally unique.
+      --storage-type     Storage type of the bundle store. Acceptable values are "disk" and "azure_blob".
+      --storage-format   Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.
+      --url              A self-referential URL that points to the bundle store.
+      --authentication   Key for authentication that the bundle store uses.
 
 
 ## Commands for worksheets

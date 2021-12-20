@@ -103,12 +103,22 @@ export const fetchBundleContents = (uuid) => {
     return get(url, { depth: 1 });
 };
 
+export const fetchBundleStores = (uuid) => {
+    const url = `/rest/bundles/${uuid}/locations/`;
+    return get(url);
+};
+
 export const fetchBundleMetadata = (uuid) => {
     const url = '/rest/bundles/' + uuid;
     return get(url, {
         include_display_metadata: 1,
         include: 'owner,group_permissions,host_worksheets',
     });
+};
+
+export const fetchStores = (uuid) => {
+    const url = '/rest/bundle_stores/' + uuid;
+    return get(url);
 };
 
 export const fetchFileSummary = (uuid, path) => {
