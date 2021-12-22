@@ -196,7 +196,7 @@ Name | Type
 `parent_path` | String
 `parent_name` | Method
 
-## bundle-location-list
+## bundle_locations
 
 
 Name | Type
@@ -206,7 +206,7 @@ Name | Type
 `storage_format` | String
 `url` | Url
 
-## bundle-location
+## bundle_locations
 
 
 Name | Type
@@ -251,7 +251,7 @@ Name | Type
 `permission` | Integer
 `permission_spec` | PermissionSpec
 
-## bundle-store
+## bundle_stores
 
 
 Name | Type
@@ -374,26 +374,13 @@ Returns a list of bundle stores, each having the following parameters:
 ### `POST /bundle_stores`
 
 Add a bundle store that the user can access.
-Required JSON parameters:
-- `name`: name of bundle store
-- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-- `url`: a self-referential URL that points to the bundle store.
-- `authentication`: key for authentication that the bundle store uses.
-Returns the UUID of the created bundle store.
-
-
-### `PUT /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
-
-Update a bundle store that the user can access.
-Query Parameters:
-- `uuid`: uuid of bundle store
-JSON Parameters (needs to contain at least one of these):
+JSON parameters:
     - `name`: name of bundle store
     - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc). If unspecified, an optimal default will be set.
     - `url`: a self-referential URL that points to the bundle store.
     - `authentication`: key for authentication that the bundle store uses.
+Returns the data of the created bundle store.
 
 ### `GET /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
 
@@ -407,12 +394,9 @@ Returns a single bundle store, with the following parameters:
 - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
 - `url`: a self-referential URL that points to the bundle store.
 
-### `DELETE /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
+### `DELETE /bundle_stores`
 
-Delete the specified bundle store. Note that you can't delete a bundle store
-unless there are no BundleLocations associated with it.
-Query Parameters:
-- `uuid`: uuid of bundle store
+Delete the specified bundle stores.
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -526,14 +510,14 @@ Fetch locations of bundles.
 Query parameters:
 - `uuids`: List of bundle UUID's to get the locations for
 
-### `GET /bundles/<bundle_uuid:re:%s>/locations/`
+### `GET /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
 Returns a list of BundleLocations associated with the given bundle.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the locations for
 
-### `POST /bundles/<bundle_uuid:re:%s>/locations/`
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
 Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
 
@@ -761,6 +745,8 @@ Query parameters:
 - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
   Default is False. If CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set, this parameter
   is disregarded, as Azure Blob Storage will always be used.
+- `store`: (optional) The name of the bundle store where the bundle should be uploaded to.
+  If unspecified, the CLI will pick the optimal available bundle store.
 
 
 &uarr; [Back to Top](#table-of-contents)

@@ -103,8 +103,8 @@ export const fetchBundleContents = (uuid) => {
     return get(url, { depth: 1 });
 };
 
-export const fetchBundleStores = (uuids) => {
-    const url = '/rest/bundles/locations?' + new URLSearchParams({ uuids });
+export const fetchBundleStores = (uuid) => {
+    const url = `/rest/bundles/${uuid}/locations/`;
     return get(url);
 };
 
@@ -114,6 +114,11 @@ export const fetchBundleMetadata = (uuid) => {
         include_display_metadata: 1,
         include: 'owner,group_permissions,host_worksheets',
     });
+};
+
+export const fetchStores = (uuid) => {
+    const url = '/rest/bundle_stores/' + uuid;
+    return get(url);
 };
 
 export const fetchFileSummary = (uuid, path) => {

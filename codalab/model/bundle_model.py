@@ -1283,6 +1283,9 @@ class BundleModel(object):
             connection.execute(
                 cl_bundle_dependency.delete().where(cl_bundle_dependency.c.child_uuid.in_(uuids))
             )
+            connection.execute(
+                cl_bundle_location.delete().where(cl_bundle_location.c.bundle_uuid.in_(uuids))
+            )
             # In case something goes wrong, delete bundles that are currently running on workers.
             connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
@@ -2995,12 +2998,14 @@ class BundleModel(object):
                 .values(update_fields)
             )
 
-    def get_bundle_store(self, user_id: int, uuid: str) -> dict:
+    def get_bundle_store(self, user_id: int, uuid: str = None, name: str = None) -> dict:
         """
-        Return the bundle store corresponding to the specified uuid.
+        Return the bundle store corresponding to the specified uuid or name.
         Arguments:
             user_id: username of requesting user.
             uuid: uuid of bundle store to be retrieved.
+            name: name of bundle store to be retrieved.
+        At least one of (uuid, name) must be specified.
         Returns a dict that has the following fields:
             owner_id: username of owner of the bundle.
             name: name of the bundle store.
@@ -3009,6 +3014,9 @@ class BundleModel(object):
             storage_format: the way the storage is stored in the bundle store.
 
         """
+        match_condition = (
+            cl_bundle_store.c.name == name if name is not None else cl_bundle_store.c.uuid == uuid
+        )
         with self.engine.begin() as connection:
             row = connection.execute(
                 select(
@@ -3022,7 +3030,7 @@ class BundleModel(object):
                     ]
                 ).where(
                     and_(
-                        cl_bundle_store.c.uuid == uuid,
+                        match_condition,
                         or_(
                             cl_bundle_store.c.owner_id == self.root_user_id,
                             cl_bundle_store.c.owner_id == user_id,
@@ -3031,11 +3039,12 @@ class BundleModel(object):
                 )
             ).fetchone()
             return {
+                'uuid': row.uuid,
                 'owner_id': row.owner_id,
                 'name': row.name,
-                'url': row.url,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,
+                'url': row.url,
             }
 
     def delete_bundle_store(self, user_id: int, uuid: str) -> None:
@@ -3057,9 +3066,12 @@ class BundleModel(object):
                     cl_bundle_location.c.bundle_store_uuid == bundle_store_row.uuid
                 )
             ).fetchone()
-            # delete only if there are no BundleLocation associated
+            # Delete only if there are no BundleLocations associated with the bundle store
             if bundle_location_row is not None:
-                connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
+                raise UsageError(
+                    "Some bundles are storing their data in this BundleStore. BundleStores can be deleted only when they are unused."
+                )
+            connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
     # ===========================================================================
     # Multiple bundle locations methods follow!
@@ -3078,6 +3090,7 @@ class BundleModel(object):
             rows = connection.execute(
                 select(
                     [
+                        cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
                         cl_bundle_store.c.storage_format,
@@ -3094,6 +3107,7 @@ class BundleModel(object):
             ).fetchall()
             return [
                 {
+                    'bundle_store_uuid': row.uuid,
                     'name': row.name,
                     'storage_type': row.storage_type,
                     'storage_format': row.storage_format,
@@ -3131,6 +3145,7 @@ class BundleModel(object):
             row = connection.execute(
                 select(
                     [
+                        cl_bundle_store.c.uuid,
                         cl_bundle_store.c.name,
                         cl_bundle_store.c.storage_type,
                         cl_bundle_store.c.storage_format,
@@ -3151,6 +3166,7 @@ class BundleModel(object):
                 )
             ).fetchone()
             return {
+                'bundle_store_uuid': row.uuid,
                 'name': row.name,
                 'storage_type': row.storage_type,
                 'storage_format': row.storage_format,

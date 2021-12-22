@@ -44,7 +44,6 @@ class Bundle extends React.Component<
             stdout: null,
             stderr: null,
             prevUuid: props.uuid,
-            errorCode: null,
         };
     }
 
@@ -75,19 +74,11 @@ class Bundle extends React.Component<
         };
 
         let errorHandler = (error) => {
-            if (error.response && error.response.status === 403) {
+            if (error.response && error.response.status === 404) {
                 this.setState({
                     fileContents: null,
                     stdout: null,
                     stderr: null,
-                    errorCode: 403,
-                });
-            } else if (error.response && error.response.status === 404) {
-                this.setState({
-                    fileContents: null,
-                    stdout: null,
-                    stderr: null,
-                    errorCode: 404,
                 });
             } else {
                 this.setState({
@@ -95,7 +86,7 @@ class Bundle extends React.Component<
                     fileContents: null,
                     stdout: null,
                     stderr: null,
-                    errorMessages: this.state.errorMessages.concat([error.message]),
+                    errorMessages: this.state.errorMessages.concat([error]),
                 });
             }
         };
@@ -140,15 +131,16 @@ class Bundle extends React.Component<
             .then(callback)
             .catch(errorHandler);
 
-        callback = (response) => {
-            const storeInfo = response.data;
-            if (!storeInfo) return;
+        callback = (storeInfo) => {
+            if (!storeInfo || storeInfo.length == 0) return;
             this.setState({ storeInfo });
         };
 
         fetchBundleStores(this.props.uuid)
             .then(callback)
-            .catch(errorHandler);
+            // TODO: Add error handling when the migration #3802 is ready.
+            // Right now legacy bundles will have errors, which is expected.
+            .catch(() => {});
     };
 
     componentDidMount() {
@@ -160,16 +152,6 @@ class Bundle extends React.Component<
     /** Renderer. */
     render() {
         const { storeInfo, bundleInfo } = this.state;
-
-        // Show custom messages based on error code
-        if (this.state.errorCode == 403) {
-            return (
-                <ErrorMessage message={"Permission denied: '/bundles/" + this.props.uuid + "'"} />
-            );
-        } else if (this.state.errorCode == 404) {
-            return <ErrorMessage message={"Not found: '/bundles/" + this.props.uuid + "'"} />;
-        }
-
         if (!bundleInfo) {
             // Error
             if (this.state.errorMessages.length > 0) {
@@ -203,7 +185,7 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
-                {renderStoreInfo(storeInfo)}
+                {storeInfo && renderStoreInfo(storeInfo)}
             </div>
         );
 
@@ -561,18 +543,18 @@ function renderHostWorksheets(bundleInfo) {
 
 function renderStoreInfo(storeInfo) {
     let rows = [];
-    for (const [uuid, path] of Object.entries(storeInfo)) {
+    storeInfo.forEach(({ bundle_store_uuid, url }) => {
         rows.push(
             <tr>
                 <td>
-                    <a href={`/stores/${uuid}`}>{uuid}</a>
+                    <a href={`/stores/${bundle_store_uuid}`}>{bundle_store_uuid}</a>
                 </td>
                 <td>
-                    <span>{path}</span>
+                    <span>{url}</span>
                 </td>
             </tr>,
         );
-    }
+    });
 
     return (
         <div>
