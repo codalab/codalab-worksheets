@@ -131,7 +131,7 @@ class Bundle extends React.Component<
             .then(callback)
             .catch(errorHandler);
 
-        callback = (storeInfo) => {
+        callback = ({ data: storeInfo }) => {
             if (!storeInfo || storeInfo.length == 0) return;
             this.setState({ storeInfo });
         };
