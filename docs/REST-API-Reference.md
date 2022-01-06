@@ -201,6 +201,8 @@ Name | Type
 
 Name | Type
 --- | ---
+`id` | String
+`bundle_store_uuid` | String
 `name` | String
 `storage_type` | String
 `storage_format` | String
