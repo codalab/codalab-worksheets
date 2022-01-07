@@ -40,6 +40,7 @@ class Bundle extends React.Component<
         this.state = {
             errorMessages: [],
             bundleInfo: null,
+            storeInfo: null,
             fileContents: null,
             stdout: null,
             stderr: null,
@@ -132,7 +133,7 @@ class Bundle extends React.Component<
             .catch(errorHandler);
 
         callback = ({ data: storeInfo }) => {
-            if (!storeInfo || storeInfo.length == 0) return;
+            if (!storeInfo) return;
             this.setState({ storeInfo });
         };
 
@@ -185,7 +186,7 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
-                {storeInfo && renderStoreInfo(storeInfo)}
+                {storeInfo && storeInfo.length > 0 && renderStoreInfo(storeInfo)}
             </div>
         );
 
