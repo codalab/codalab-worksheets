@@ -283,7 +283,7 @@ services:
     <<: *codalab-base
     <<: *codalab-server
     volumes:
-      - ${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}:ro
+      - ${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}
     networks:
       - rest-server
 
@@ -315,7 +315,7 @@ services:
     <<: *codalab-base
     <<: *codalab-server
     volumes:
-      - ${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}:ro
+      - ${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_KUBERNETES_CERT_PATH}
     networks:
       - rest-server
 
@@ -340,13 +340,13 @@ services:
     ports:
       - ${CODALAB_HTTP_PORT}:80
     volumes:
-      - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./files/nginx.conf:/etc/nginx/nginx.conf
     networks:
       - rest-server
 
   mysql:
     # https://hub.docker.com/_/mysql
-    image: mysql:5.5.53
+    image: mariadb:10.5.8
     <<: *codalab-base
     environment:
       - MYSQL_ROOT_PASSWORD=${CODALAB_MYSQL_ROOT_PASSWORD}

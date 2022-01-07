@@ -1,5 +1,9 @@
 # CodaLab Worksheets
 
+Note: This branch contains experimental changes to run CodaLab on M1 chip based Mac Computers. Only frontend code has been tested.
+
+Last checked on macOS Monterey Version 12.1
+
 [![Build Status](https://github.com/codalab/codalab-worksheets/workflows/CI/badge.svg)](https://github.com/codalab/codalab-worksheets/actions)
 [![Downloads](https://pepy.tech/badge/codalab)](https://pepy.tech/project/codalab)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
@@ -11,3 +15,4 @@ CodaLab Worksheets is a collaborative platform for reproducible research that al
 
 * [Official CodaLab Worksheets Instance](https://worksheets.codalab.org/)
 * [CodaLab Worksheets Documentation](https://codalab-worksheets.readthedocs.io/en/latest/)
+
