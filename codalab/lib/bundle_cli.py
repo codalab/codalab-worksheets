@@ -1026,7 +1026,9 @@ class BundleCLI(object):
                 nargs='?',
             ),
             Commands.Argument(
-                '-n', '--name', help='Name of the bundle store; must be globally unique.',
+                '-n',
+                '--name',
+                help='Name of the bundle store; must be globally unique.',
             ),
             Commands.Argument(
                 '--storage-type',
@@ -1037,10 +1039,12 @@ class BundleCLI(object):
                 help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.',
             ),
             Commands.Argument(
-                '--url', help='A self-referential URL that points to the bundle store.',
+                '--url',
+                help='A self-referential URL that points to the bundle store.',
             ),
             Commands.Argument(
-                '--authentication', help='Key for authentication that the bundle store uses.',
+                '--authentication',
+                help='Key for authentication that the bundle store uses.',
             ),
         ),
     )
@@ -2446,7 +2450,19 @@ class BundleCLI(object):
         show_hidden = client.fetch('user')['is_root_user']
 
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
-            lines.append(self.key_value_str(key, value))
+            if key == 'store':
+                bundle_locations = client.get_multiple_bundle_locations((info.get('uuid')))
+                # print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
+                # print(
+                #     "\n".join(
+                #         "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
+                #         for b in bundle_stores
+                #     ),
+                #     file=self.stdout,
+                # )
+                lines.append(self.key_value_str(key, str(bundle_locations)))
+            else:
+                lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
@@ -3026,7 +3042,8 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch(
-            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+            'bundles',
+            params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
         )
 
         for info in bundles:
@@ -3051,7 +3068,10 @@ class BundleCLI(object):
         )
 
     def worksheet_url_and_name(self, worksheet_info):
-        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
+        return '%s (%s)' % (
+            self.worksheet_url(worksheet_info['uuid']),
+            worksheet_info['name'],
+        )
 
     @Commands.command(
         'new',
