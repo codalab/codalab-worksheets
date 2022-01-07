@@ -710,8 +710,7 @@ class JsonApiClient(RestClient):
     @wrap_exception('Unable to get the locations of bundles')
     def get_multiple_bundle_locations(self, bundle_uuid):
         response = self._make_request(
-            method='GET',
-            path='/bundles/{}/locations/'.format(bundle_uuid),
+            method='GET', path='/bundles/{}/locations/'.format(bundle_uuid),
         )
         print('/bundles/{}/locations/'.format(bundle_uuid), response)
         return response['data']
