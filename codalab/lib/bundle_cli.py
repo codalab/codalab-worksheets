@@ -1026,7 +1026,9 @@ class BundleCLI(object):
                 nargs='?',
             ),
             Commands.Argument(
-                '-n', '--name', help='Name of the bundle store; must be globally unique.',
+                '-n',
+                '--name',
+                help='Name of the bundle store; must be globally unique.',
             ),
             Commands.Argument(
                 '--storage-type',
@@ -1037,10 +1039,12 @@ class BundleCLI(object):
                 help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.',
             ),
             Commands.Argument(
-                '--url', help='A self-referential URL that points to the bundle store.',
+                '--url',
+                help='A self-referential URL that points to the bundle store.',
             ),
             Commands.Argument(
-                '--authentication', help='Key for authentication that the bundle store uses.',
+                '--authentication',
+                help='Key for authentication that the bundle store uses.',
             ),
         ),
     )
@@ -2448,10 +2452,14 @@ class BundleCLI(object):
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             if key == 'store':
                 bundle_locations = client.get_multiple_bundle_locations((info.get('uuid')))
-                bundle_store_uuids = [
-                    location.get('bundle_store_uuid') for location in bundle_locations
-                ]
-                lines.append(self.key_value_str(key, ','.join(bundle_store_uuids)))
+                if raw:
+                    bundle_locations = str(bundle_locations)
+                    lines.append(self.key_value_str(key, bundle_locations))
+                else:
+                    bundle_locations = [
+                        location.get('bundle_store_uuid') for location in bundle_locations
+                    ]
+                    lines.append(self.key_value_str(key, ','.join(bundle_locations)))
             else:
                 lines.append(self.key_value_str(key, value))
 
@@ -3033,7 +3041,8 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch(
-            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+            'bundles',
+            params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
         )
 
         for info in bundles:
@@ -3058,7 +3067,10 @@ class BundleCLI(object):
         )
 
     def worksheet_url_and_name(self, worksheet_info):
-        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
+        return '%s (%s)' % (
+            self.worksheet_url(worksheet_info['uuid']),
+            worksheet_info['name'],
+        )
 
     @Commands.command(
         'new',

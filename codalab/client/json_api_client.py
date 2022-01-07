@@ -712,5 +712,4 @@ class JsonApiClient(RestClient):
         response = self._make_request(
             method='GET', path='/bundles/{}/locations/'.format(bundle_uuid),
         )
-        print('/bundles/{}/locations/'.format(bundle_uuid), response)
         return response['data']
