@@ -1026,9 +1026,7 @@ class BundleCLI(object):
                 nargs='?',
             ),
             Commands.Argument(
-                '-n',
-                '--name',
-                help='Name of the bundle store; must be globally unique.',
+                '-n', '--name', help='Name of the bundle store; must be globally unique.',
             ),
             Commands.Argument(
                 '--storage-type',
@@ -1039,12 +1037,10 @@ class BundleCLI(object):
                 help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.',
             ),
             Commands.Argument(
-                '--url',
-                help='A self-referential URL that points to the bundle store.',
+                '--url', help='A self-referential URL that points to the bundle store.',
             ),
             Commands.Argument(
-                '--authentication',
-                help='Key for authentication that the bundle store uses.',
+                '--authentication', help='Key for authentication that the bundle store uses.',
             ),
         ),
     )
@@ -3041,8 +3037,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch(
-            'bundles',
-            params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
         )
 
         for info in bundles:
@@ -3067,10 +3062,7 @@ class BundleCLI(object):
         )
 
     def worksheet_url_and_name(self, worksheet_info):
-        return '%s (%s)' % (
-            self.worksheet_url(worksheet_info['uuid']),
-            worksheet_info['name'],
-        )
+        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
 
     @Commands.command(
         'new',
