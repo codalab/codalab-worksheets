@@ -2452,15 +2452,8 @@ class BundleCLI(object):
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             if key == 'store':
                 bundle_locations = client.get_multiple_bundle_locations((info.get('uuid')))
-                # print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
-                # print(
-                #     "\n".join(
-                #         "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
-                #         for b in bundle_stores
-                #     ),
-                #     file=self.stdout,
-                # )
-                lines.append(self.key_value_str(key, str(bundle_locations)))
+                bundle_store_uuids = [location.get('bundle_store_uuid') for location in bundle_locations]
+                lines.append(self.key_value_str(key, ','.join(bundle_store_uuids)))
             else:
                 lines.append(self.key_value_str(key, value))
 
