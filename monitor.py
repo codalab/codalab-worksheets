@@ -155,7 +155,7 @@ def error_logs(error_type, s):
 args_to_durations: Dict[str, list] = defaultdict(list)  # Command => durations for that command
 
 
-def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True, log_output=True):
+def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     args = ['timeout', '%ss' % hard_time_limit] + args
@@ -191,7 +191,7 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
         max_duration,
         full_output if include_output else '',
     )
-    if exitcode == 0 and log_output:
+    if exitcode == 0:
         logs(message)
     else:
         error_logs('command failed: ' + ' '.join(simple_args), message)
@@ -254,11 +254,11 @@ def check_disk_space(paths):
     """Checks whether there is low disk space in the given paths, and
     prints out a report of "df -h" run on the given paths."""
 
-    # Run "df -h", so that human-readable output is logged in the reports.
-    # However, we run "df" afterwards (and don't log the output) so that
-    # we can numerically check whether there is low disk space with the results of that command.
+    # Run "df -h" first, so that human-readable output is logged in the reports.
+    # We run "df" afterwards (and don't log the output) so that we can numerically
+    # check whether there is low disk space.
     run_command(['df', '-h'] + paths)
-    lines = run_command(['df'] + paths, log_output=False).split('\n')[1:]
+    lines = run_command(['df'] + paths, include_output=False).split('\n')[1:]
     results = [int(line.split()[3]) for line in lines]
     # Flag an error if disk space running low
     total = sum(results)
