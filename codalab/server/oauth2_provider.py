@@ -55,6 +55,7 @@ from oauthlib import oauth2
 from oauthlib.common import to_unicode
 from oauthlib.oauth2 import RequestValidator, Server
 
+from codalab.lib.formatting import parse_duration
 from codalab.lib.server_util import (
     cached_property,
     create_response,
@@ -150,15 +151,8 @@ class OAuth2Provider(object):
 
             oauth._validator = MyValidator()
         """
-        # TODO: remove later -Tony
-        error_uri = self.app.config.get('OAUTH2_PROVIDER_ERROR_URI')
-        log.info(f"oauth provider error uri: {error_uri}")
-        error_endpoint = self.app.config.get('OAUTH2_PROVIDER_ERROR_ENDPOINT')
-        log.info(f"oauth provider error endpoint: {error_endpoint}")
-
-        # TODO: be able to set default of one month -Tony
-        expires_in = self.app.config.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN')
-        log.info(f"oauth expires in: {expires_in}")
+        expires_in = self.app.config.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN', parse_duration("30d"))
+        log.info(f"oauth expires in: {expires_in}",)
         token_generator = self.app.config.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
         log.info(f"oauth token generator: {token_generator}")
         if token_generator and not isinstance(token_generator, collections.Callable):
