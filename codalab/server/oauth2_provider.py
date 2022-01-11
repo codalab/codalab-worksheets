@@ -150,14 +150,24 @@ class OAuth2Provider(object):
 
             oauth._validator = MyValidator()
         """
+        # TODO: remove later -Tony
+        error_uri = self.app.config.get('OAUTH2_PROVIDER_ERROR_URI')
+        log.info(f"oauth provider error uri: {error_uri}")
+        error_endpoint = self.app.config.get('OAUTH2_PROVIDER_ERROR_ENDPOINT')
+        log.info(f"oauth provider error endpoint: {error_endpoint}")
+
+        # TODO: be able to set default of one month -Tony
         expires_in = self.app.config.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN')
+        log.info(f"oauth expires in: {expires_in}")
         token_generator = self.app.config.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
+        log.info(f"oauth token generator: {token_generator}")
         if token_generator and not isinstance(token_generator, collections.Callable):
             token_generator = import_string(token_generator)
 
         refresh_token_generator = self.app.config.get(
             'OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None
         )
+        log.info(f"oauth refresh token generator: {refresh_token_generator}")
         if refresh_token_generator and not isinstance(
             refresh_token_generator, collections.Callable
         ):

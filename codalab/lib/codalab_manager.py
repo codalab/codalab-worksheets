@@ -127,8 +127,13 @@ class CodaLabManager(object):
 
         if self.temporary:
             self.config = config
-            self.state = {'auth': {}, 'sessions': {}}
             self.clients = clients
+
+            # Initialize `state` with the content in `self.state.path`, if it exists.
+            if os.path.exists(self.state_path):
+                self.state = read_json_or_die(self.state_path)
+            else:
+                self.state = {'auth': {}, 'sessions': {}}
             return
 
         # Read config file, creating if it doesn't exist.
