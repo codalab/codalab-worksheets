@@ -157,9 +157,7 @@ class OAuth2Provider(object):
         if token_generator and not isinstance(token_generator, collections.Callable):
             token_generator = import_string(token_generator)
 
-        refresh_token_generator = os.environ.get(
-            'OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None
-        )
+        refresh_token_generator = os.environ.get('OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None)
         log.info(f"oauth refresh token generator: {refresh_token_generator}")
         if refresh_token_generator and not isinstance(
             refresh_token_generator, collections.Callable
