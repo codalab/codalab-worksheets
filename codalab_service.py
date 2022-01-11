@@ -25,8 +25,6 @@ import socket
 import subprocess
 import yaml
 
-from codalab.lib.formatting import parse_duration
-
 DEFAULT_SERVICES = [
     'mysql',
     'nginx',
@@ -263,38 +261,6 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='use_ssl', help='Use HTTPS instead of HTTP', type=bool, default=False),
     CodalabArg(name='ssl_cert_file', help='Path to the cert file for SSL'),
     CodalabArg(name='ssl_key_file', help='Path to the key file for SSL'),
-    # OAuth
-    CodalabArg(
-        name='oauth2_provider_token_expires_in',
-        env_var='OAUTH2_PROVIDER_TOKEN_EXPIRES_IN',
-        type=int,
-        default=parse_duration("30d"),
-        help='The length of time the OAuth token is valid (in seconds)',
-    ),
-    CodalabArg(
-        name='oauth2_provider_token_generator',
-        env_var='OAUTH2_PROVIDER_TOKEN_GENERATOR',
-        type=str,
-        help='OAuth token generator',
-    ),
-    CodalabArg(
-        name='oauth2_provider_refresh_token_generator',
-        env_var='OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR',
-        type=str,
-        help='OAuth refresh token generator',
-    ),
-    CodalabArg(
-        name='oauth2_provider_error_uri',
-        env_var='OAUTH2_PROVIDER_ERROR_URI',
-        type=str,
-        help='The error page URI',
-    ),
-    CodalabArg(
-        name='oauth2_provider_error_endpoint',
-        env_var='OAUTH2_PROVIDER_ERROR_ENDPOINT',
-        type=str,
-        help='The error page endpoint',
-    ),
     # Sentry
     CodalabArg(
         name='sentry_ingest_url',
