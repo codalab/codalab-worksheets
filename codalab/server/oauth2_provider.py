@@ -150,8 +150,9 @@ class OAuth2Provider(object):
 
             oauth._validator = MyValidator()
         """
-        expires_in = int(os.environ.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN'))
-        log.info(f"oauth expires in: {expires_in} {type(expires_in)}")
+        # expires_in = int(os.environ.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN'))
+        # log.info(f"oauth expires in: {expires_in} {type(expires_in)}")
+        expires_in = None
         # token_generator = os.environ.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
         token_generator = None
         log.info(f"oauth token generator: {token_generator}")
