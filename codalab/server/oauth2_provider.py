@@ -152,12 +152,14 @@ class OAuth2Provider(object):
         """
         expires_in = int(os.environ.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN'))
         log.info(f"oauth expires in: {expires_in} {type(expires_in)}")
-        token_generator = os.environ.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
+        # token_generator = os.environ.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
+        token_generator = None
         log.info(f"oauth token generator: {token_generator}")
         if token_generator and not isinstance(token_generator, collections.Callable):
             token_generator = import_string(token_generator)
 
-        refresh_token_generator = os.environ.get('OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None)
+        # refresh_token_generator = os.environ.get('OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None)
+        refresh_token_generator = None
         log.info(f"oauth refresh token generator: {refresh_token_generator}")
         if refresh_token_generator and not isinstance(
             refresh_token_generator, collections.Callable
