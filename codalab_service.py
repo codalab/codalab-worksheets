@@ -274,13 +274,13 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='oauth2_provider_token_generator',
         env_var='OAUTH2_PROVIDER_TOKEN_GENERATOR',
-        type=str,
+        default=None,
         help='OAuth token generator',
     ),
     CodalabArg(
         name='oauth2_provider_refresh_token_generator',
         env_var='OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR',
-        type=str,
+        default=None,
         help='OAuth refresh token generator',
     ),
     CodalabArg(
