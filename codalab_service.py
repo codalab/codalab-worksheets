@@ -268,7 +268,7 @@ CODALAB_ARGUMENTS = [
         name='oauth2_provider_token_expires_in',
         env_var='OAUTH2_PROVIDER_TOKEN_EXPIRES_IN',
         type=int,
-        default=parse_duration("30d"),
+        default=int(parse_duration("30d")),
         help='The length of time the OAuth token is valid (in seconds)',
     ),
     CodalabArg(
