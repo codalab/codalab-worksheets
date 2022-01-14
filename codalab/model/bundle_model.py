@@ -23,6 +23,7 @@ from codalab.common import (
     NotFoundError,
     precondition,
     UsageError,
+    PermissionError,
 )
 from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
@@ -2967,6 +2968,8 @@ class BundleModel(object):
             url: self-referential url of the bundle store.
             authentication: the authentication key for accessing the bundle store.
         """
+        if user_id != self.root_user_id:
+            raise PermissionError("Only root user can create bundle stores.")
         uuid = spec_util.generate_uuid()
         with self.engine.begin() as connection:
             bundle_store_value = {
