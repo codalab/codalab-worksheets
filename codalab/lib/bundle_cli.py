@@ -2452,9 +2452,7 @@ class BundleCLI(object):
                     bundle_locations = str(bundle_locations)
                     lines.append(self.key_value_str(key, bundle_locations))
                 else:
-                    bundle_locations = [
-                        location.get('bundle_store_uuid') for location in bundle_locations
-                    ]
+                    bundle_locations = [location.get('name') for location in bundle_locations]
                     lines.append(self.key_value_str(key, ','.join(bundle_locations)))
             else:
                 lines.append(self.key_value_str(key, value))
