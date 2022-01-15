@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import { worksheetItemPropsChanged, getAfterSortKey } from '../../../util/worksheet_utils';
-import marked from 'marked';
+import { marked } from 'marked';
 import ReactDOM from 'react-dom';
 import { withStyles } from '@material-ui/core/styles';
 import IconButton from '@material-ui/core/IconButton';
@@ -53,7 +53,7 @@ class MarkdownItem extends React.Component {
         // 'we have $x^2$' => 'we have @MATH@'
         text = this.removeMathJax(text, mathSegments);
         // 'we have @ppp@' => '<p>we have @MATH@</p>'
-        text = marked(text, { sanitize: true });
+        text = marked.parse(text, { sanitize: true });
         // '<p>we have @ppp@</p>' => '<p>we have @x^2@</p>'
         text = this.restoreMathJax(text, mathSegments);
         return text;
