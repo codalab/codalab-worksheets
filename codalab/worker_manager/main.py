@@ -133,12 +133,6 @@ def main():
         KubernetesWorkerManager.NAME: KubernetesWorkerManager,
         SlurmBatchWorkerManager.NAME: SlurmBatchWorkerManager,
     }
-    for worker_manager_name, worker_manager_type in worker_manager_types.items():
-        # This lets each worker manager class to define its own arguments
-        worker_manager_subparser = subparsers.add_parser(
-            worker_manager_name, description=worker_manager_type.DESCRIPTION
-        )
-        worker_manager_type.add_arguments_to_subparser(worker_manager_subparser)
     args = parser.parse_args()
 
     # Set up logging.
@@ -152,6 +146,12 @@ def main():
             % (args.min_workers, args.max_workers)
         )
 
+    worker_manager_type = worker_manager_types[args.worker_manager_name]
+    # This lets the worker manager class to define its own arguments
+    worker_manager_subparser = subparsers.add_parser(
+        args.worker_manager_name, description=worker_manager_type.DESCRIPTION
+    )
+    worker_manager_type.add_arguments_to_subparser(worker_manager_subparser)
     manager = worker_manager_types[args.worker_manager_name](args)
     manager.run_loop()
 
