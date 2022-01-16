@@ -34,7 +34,7 @@ class SlurmBatchWorkerManager(WorkerManager):
     def add_arguments_to_subparser(subparser):
         try:
             user_id = getpass.getuser()
-        except:
+        except Exception:
             # Sometimes getpass.getuser() doesn't work.
             user_id = ""
         subparser.add_argument(
