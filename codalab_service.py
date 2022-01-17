@@ -445,7 +445,6 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name='worker_manager_{}_tag'.format(worker_manager_type),
             help='Tag of worker for {} jobs'.format(worker_manager_type),
-            default='codalab-{}'.format(worker_manager_type),
         ),
         CodalabArg(
             name='worker_manager_max_{}_workers'.format(worker_manager_type),
@@ -714,6 +713,7 @@ class CodalabServiceManager(object):
             self.compose_files.append('docker-compose.ssl.yml')
 
         self.compose_env = self.resolve_env_vars(args)
+        raise Exception(self.compose_env)
         ensure_directory_exists(self.args.codalab_home)
         ensure_directory_exists(self.args.monitor_dir)
         ensure_directory_exists(self.args.worker_dir)
