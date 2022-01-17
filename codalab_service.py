@@ -445,6 +445,7 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name='worker_manager_{}_tag'.format(worker_manager_type),
             help='Tag of worker for {} jobs'.format(worker_manager_type),
+            default='',
         ),
         CodalabArg(
             name='worker_manager_max_{}_workers'.format(worker_manager_type),
