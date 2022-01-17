@@ -302,9 +302,9 @@ services:
       --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
       --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
       --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
-      --worker-tag ${CODALAB_WORKER_MANAGER_GPU_TAG}
+      # --worker-tag ${CODALAB_WORKER_MANAGER_GPU_TAG}
+      # --worker-tag-exclusive
       --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
-      --worker-tag-exclusive
       ${CODALAB_WORKER_MANAGER_TYPE}
       --cluster-host ${CODALAB_WORKER_MANAGER_KUBERNETES_CLUSTER_HOST}
       --auth-token ${CODALAB_WORKER_MANAGER_KUBERNETES_AUTH_TOKEN}
