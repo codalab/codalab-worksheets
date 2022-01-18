@@ -130,6 +130,10 @@ class CodaLabManager(object):
             self.clients = clients
 
             # Initialize `state` with the content in `self.state.path`, if it exists.
+            # Usually, a temp session is created when running cl-worker-manager. In this case, we want to have
+            # a temp session so that we don't interfere with state stored by "cl" processes.
+            # However, we want to initialize the temp session state with the state stored from the CodaLab CLI "cl",
+            # so that the user is not prompted again for their credentials.
             if os.path.exists(self.state_path):
                 self.state = read_json_or_die(self.state_path)
             else:

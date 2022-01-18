@@ -34,6 +34,10 @@ class CodalabManagerTest(unittest.TestCase):
             del os.environ['CODALAB_HOME']
 
     def test_temp_codalab_manager(self):
+        """
+        A codalab manager with temporary state should initialize its state from an existing
+        state.json file if it is present.
+        """
         manager: CodaLabManager = CodaLabManager(temporary=True)
         self.assertEqual(manager.state, {'auth': {}, 'sessions': {}})
         manager.save_state()
