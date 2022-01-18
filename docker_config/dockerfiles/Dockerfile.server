@@ -3,8 +3,6 @@ MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN echo hi
-
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common && \
   add-apt-repository ppa:deadsnakes/ppa && \
