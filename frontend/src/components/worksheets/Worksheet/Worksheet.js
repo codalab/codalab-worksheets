@@ -461,8 +461,7 @@ class Worksheet extends React.Component {
     };
 
     moveFocusToBottom = () => {
-        const container = document.querySelector('#worksheet_container');
-        container.scrollTop = container.scrollHeight;
+        window.scrollTo(0, document.body.scrollHeight);
         this.setFocus(this.state.ws.info.blocks.length - 1, 'end');
     };
 
@@ -1204,7 +1203,8 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             })
-            .catch(() => {
+            .catch((e) => {
+                console.error(e);
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: 'Failed to update run bundles.',

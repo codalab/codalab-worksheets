@@ -43,6 +43,9 @@ class RunBundle(DerivedBundle):
 
     METADATA_SPECS.append(MetadataSpec('exclude_patterns', list, 'Exclude these file patterns from being saved into the bundle contents.', default=[]))
 
+    METADATA_SPECS.append(MetadataSpec('store', str, 'The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal '
+                                                     'available bundle store will be chosen.', default=None, hidden=True, optional=True))
+
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 
     METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of wall clock time (seconds) used by this run in total. '

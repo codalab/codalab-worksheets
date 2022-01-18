@@ -867,6 +867,64 @@ def test_upload2(ctx):
 
 @TestModule.register('upload3')
 def test_upload3(ctx):
+    # Create a new bundle store and upload to it
+    bundle_store_name = random_name()
+    bundle_store_uuid = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Names should be unique
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ],
+        expected_exit_code=1,
+    )
+    # Run bundle that outputs to bundle store
+    uuid_run = _run_command([cl, 'run', 'echo hello', '--store', bundle_store_name])
+
+    # List bundle stores
+    list_output = _run_command([cl, "store", "ls"])
+    check_contains(bundle_store_name, list_output)
+    check_contains(bundle_store_uuid, list_output)
+    check_contains("disk", list_output)
+    check_contains("uncompressed", list_output)
+
+    # Upload file to bundle store
+    uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
+    check_equals('hello', _run_command([cl, 'cat', uuid]))
+
+    # Check that uuid_run finished and uploaded results properly.
+    wait(uuid_run)
+    check_equals('hello', _run_command([cl, 'cat', f'{uuid_run}/stdout']))
+
+    # A bundle with a BundleLocation should be able to be deleted
+    _run_command([cl, 'rm', uuid])
+    _run_command([cl, 'rm', uuid_run])
+
+    # Delete bundle store
+    check_equals(bundle_store_uuid, _run_command([cl, "store", "rm", bundle_store_uuid]))
+    list_output = _run_command([cl, "store", "ls"])
+    check_not_contains(bundle_store_name, list_output)
+    check_not_contains(bundle_store_uuid, list_output)
+
     # Upload URL
     uuid = _run_command([cl, 'upload', 'https://www.wikipedia.org'])
     check_contains('<title>Wikipedia</title>', _run_command([cl, 'cat', uuid]))
