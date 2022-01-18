@@ -4,8 +4,8 @@ import tempfile
 
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
-from typing import Union, Tuple, IO, cast
-from ratarmountcore import SQLiteIndexedTar
+from typing import Any, Union, Tuple, IO, cast
+from codalab.lib.beam.ratarmount import SQLiteIndexedTar
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
@@ -20,9 +20,10 @@ class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
     non-implemented methods that perform the uploads to a bundle store."""
 
-    def __init__(self, bundle_model, bundle_store):
+    def __init__(self, bundle_model, bundle_store, destination_bundle_store=None):
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
+        self.destination_bundle_store = destination_bundle_store
 
     @property
     def storage_type(self):
@@ -96,10 +97,24 @@ class Uploader:
         Returns:
             str: Bundle location.
         """
-        self._bundle_model.update_bundle(
-            bundle, {'storage_type': self.storage_type, 'is_dir': is_directory,},
-        )
-        return self._bundle_store.get_bundle_location(bundle.uuid)
+        if self.destination_bundle_store is not None:
+            # In this case, we are using the new BundleStore / BundleLocation model to track the bundle location.
+            # Create the appropriate bundle location.
+            self._bundle_model.add_bundle_location(
+                bundle.uuid, self.destination_bundle_store["uuid"]
+            )
+            self._bundle_model.update_bundle(
+                bundle, {'is_dir': is_directory},
+            )
+            return self._bundle_store.get_bundle_location(
+                bundle.uuid, bundle_store_uuid=self.destination_bundle_store["uuid"]
+            )
+        else:
+            # Else, continue to set the legacy "storage_type" column.
+            self._bundle_model.update_bundle(
+                bundle, {'storage_type': self.storage_type, 'is_dir': is_directory,},
+            )
+            return self._bundle_store.get_bundle_location(bundle.uuid)
 
     def _interpret_source(self, source: Source):
         """Interprets the given source.
@@ -176,7 +191,7 @@ class BlobStorageUploader(Uploader):
                 tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
+                indexFileName=tmp_index_file.name,
             )
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_path).index_path,
@@ -196,7 +211,13 @@ class UploadManager(object):
         self._bundle_store = bundle_store
 
     def upload_to_bundle_store(
-        self, bundle: Bundle, source: Source, git: bool, unpack: bool, use_azure_blob_beta: bool,
+        self,
+        bundle: Bundle,
+        source: Source,
+        git: bool,
+        unpack: bool,
+        use_azure_blob_beta: bool,
+        destination_bundle_store=None,
     ):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -207,15 +228,26 @@ class UploadManager(object):
         |git|: for URLs, whether |source| is a git repo to clone.
         |unpack|: whether to unpack |source| if it's an archive.
         |use_azure_blob_beta|: whether to use Azure Blob Storage.
+        |destination_bundle_store|: BundleStore to upload to. If specified, uploads to the given BundleStore.
 
         Exceptions:
         - If |git|, then the bundle contains the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
-        UploaderCls = BlobStorageUploader if use_azure_blob_beta else DiskStorageUploader
-        return UploaderCls(self._bundle_model, self._bundle_store).upload_to_bundle_store(
-            bundle, source, git, unpack
-        )
+        UploaderCls: Any = DiskStorageUploader
+        if destination_bundle_store:
+            # Set the uploader class based on which bundle store is specified.
+            if destination_bundle_store["storage_type"] in (
+                StorageType.AZURE_BLOB_STORAGE.value,
+                StorageType.GCS_STORAGE.value,
+            ):
+                UploaderCls = BlobStorageUploader
+        elif use_azure_blob_beta:
+            # Legacy "-a" flag without specifying a bundle store.
+            UploaderCls = BlobStorageUploader
+        return UploaderCls(
+            self._bundle_model, self._bundle_store, destination_bundle_store
+        ).upload_to_bundle_store(bundle, source, git, unpack)
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.

@@ -8,7 +8,12 @@ import { BundleEditableField } from '../EditableField';
 import { FileBrowser } from '../FileBrowser/FileBrowser';
 import './Bundle.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
-import { fetchBundleContents, fetchBundleMetadata, fetchFileSummary } from '../../util/apiWrapper';
+import {
+    fetchBundleContents,
+    fetchBundleMetadata,
+    fetchFileSummary,
+    fetchBundleStores,
+} from '../../util/apiWrapper';
 
 class Bundle extends React.Component<
     {
@@ -125,6 +130,17 @@ class Bundle extends React.Component<
         fetchBundleContents(this.props.uuid)
             .then(callback)
             .catch(errorHandler);
+
+        callback = (storeInfo) => {
+            if (!storeInfo || storeInfo.length == 0) return;
+            this.setState({ storeInfo });
+        };
+
+        fetchBundleStores(this.props.uuid)
+            .then(callback)
+            // TODO: Add error handling when the migration #3802 is ready.
+            // Right now legacy bundles will have errors, which is expected.
+            .catch(() => {});
     };
 
     componentDidMount() {
@@ -135,7 +151,7 @@ class Bundle extends React.Component<
 
     /** Renderer. */
     render() {
-        const bundleInfo = this.state.bundleInfo;
+        const { storeInfo, bundleInfo } = this.state;
         if (!bundleInfo) {
             // Error
             if (this.state.errorMessages.length > 0) {
@@ -169,6 +185,7 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
+                {storeInfo && renderStoreInfo(storeInfo)}
             </div>
         );
 
@@ -517,6 +534,39 @@ function renderHostWorksheets(bundleInfo) {
                 <div className='host-worksheets-table'>
                     <table className='bundle-meta table'>
                         <tbody>{hostWorksheetRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function renderStoreInfo(storeInfo) {
+    let rows = [];
+    storeInfo.forEach(({ bundle_store_uuid, url }) => {
+        rows.push(
+            <tr>
+                <td>
+                    <a href={`/stores/${bundle_store_uuid}`}>{bundle_store_uuid}</a>
+                </td>
+                <td>
+                    <span>{url}</span>
+                </td>
+            </tr>,
+        );
+    });
+
+    return (
+        <div>
+            <div className='collapsible-header'>
+                <span>
+                    <p>bundle store &#x25BE;</p>
+                </span>
+            </div>
+            <div className='collapsible-content'>
+                <div className='host-worksheets-table'>
+                    <table className='bundle-meta table'>
+                        <tbody>{rows}</tbody>
                     </table>
                 </div>
             </div>
