@@ -1341,10 +1341,6 @@ class BundleCLI(object):
                 action='store_true',
                 default=False,
             ),
-            Commands.Argument(
-                '--store',
-                help='The name of the bundle store where the bundle should be uploaded to. If unspecified, the CLI will pick the optimal available bundle store.',
-            ),
         )
         + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
@@ -1401,7 +1397,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
-                    'store': args.store or '',
+                    'store': metadata.get('store') or '',
                 },
             )
 
@@ -1422,7 +1418,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
-                    'store': args.store or '',
+                    'store': metadata.get('store') or '',
                 },
             )
 
@@ -1488,7 +1484,7 @@ class BundleCLI(object):
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': args.store or '',
+                        'store': metadata.get('store') or '',
                     },
                     progress_callback=progress.update,
                 )
@@ -1802,10 +1798,6 @@ class BundleCLI(object):
                 '--interactive',
                 help='Beta feature - Start an interactive session to construct your run command.',
                 action='store_true',
-            ),
-            Commands.Argument(
-                '--store',
-                help='The name of the bundle store where results should be uploaded. If unspecified, the worker will pick the optimal available bundle store.',
             ),
         )
         + Commands.metadata_arguments([RunBundle])

@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.3.0_
+_version 1.4.1_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -382,6 +382,18 @@ JSON parameters:
     - `authentication`: key for authentication that the bundle store uses.
 Returns the data of the created bundle store.
 
+### `GET /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
+
+Fetch the bundle store corresponding to the specified uuid.
+
+Returns a single bundle store, with the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+
 ### `DELETE /bundle_stores`
 
 Delete the specified bundle stores.
@@ -498,14 +510,14 @@ Fetch locations of bundles.
 Query parameters:
 - `uuids`: List of bundle UUID's to get the locations for
 
-### `GET /bundles/<bundle_uuid:re:%s>/locations/`
+### `GET /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
 Returns a list of BundleLocations associated with the given bundle.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the locations for
 
-### `POST /bundles/<bundle_uuid:re:%s>/locations/`
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
 Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
 

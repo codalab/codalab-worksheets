@@ -1,4 +1,5 @@
 import http.client
+import json
 import logging
 import mimetypes
 import os
@@ -429,7 +430,10 @@ def _fetch_locations():
     return dict(data=uuids_to_locations)
 
 
-@get('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+@get(
+    '/bundles/<bundle_uuid:re:%s>/locations/' % spec_util.UUID_STR,
+    apply=AuthenticatedProtectedPlugin(),
+)
 def _fetch_bundle_locations(bundle_uuid: str):
     """
     Returns a list of BundleLocations associated with the given bundle.
@@ -438,10 +442,13 @@ def _fetch_bundle_locations(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID to get the locations for
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
-    return BundleLocationListSchema(many=True).dump(bundle_locations).data
+    return json.dumps(bundle_locations)
 
 
-@post('/bundles/<bundle_uuid:re:%s>/locations/', apply=AuthenticatedProtectedPlugin())
+@post(
+    '/bundles/<bundle_uuid:re:%s>/locations/' % spec_util.UUID_STR,
+    apply=AuthenticatedProtectedPlugin(),
+)
 def _add_bundle_location(bundle_uuid: str):
     """
     Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
@@ -543,22 +550,28 @@ def _add_bundle_store():
 #     updated_bundle_store = local.model.update_bundle_store(request.user.user_id, uuid, update)
 #     return BundleStoreSchema(many=True).dump(updated_bundle_store).data
 
-# TODO: Endpoint not tested / used, reenable when we use it.
-# @get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
-# def _fetch_bundle_store(uuid):
-#     """
-#     Fetch the bundle store corresponding to the specified uuid.
 
-#     Returns a single bundle store, with the following parameters:
-#     - `uuid`: bundle store UUID
-#     - `owner_id`: owner of bundle store
-#     - `name`: name of bundle store
-#     - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-#     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-#     - `url`: a self-referential URL that points to the bundle store.
-#     """
-#     bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
-#     return BundleStoreSchema(many=True).dump(bundle_store).data
+@get('/bundle_stores/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin())
+def _fetch_bundle_store(uuid):
+    """
+    Fetch the bundle store corresponding to the specified uuid.
+
+    Returns a single bundle store, with the following parameters:
+    - `uuid`: bundle store UUID
+    - `owner_id`: owner of bundle store
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+    - `url`: a self-referential URL that points to the bundle store.
+    """
+    bundle_store = local.model.get_bundle_store(request.user.user_id, uuid)
+    data = BundleStoreSchema().dump(bundle_store).data
+
+    # Fetch username instead of user_id for display on the front end.
+    data['data']['attributes']['owner'] = local.model.get_user(
+        user_id=data['data']['attributes']['owner']
+    ).user_name
+    return data
 
 
 @delete('/bundle_stores', apply=AuthenticatedProtectedPlugin())

@@ -837,7 +837,7 @@ class CodalabServiceManager(object):
     def bring_up_service(self, service):
         if should_run_service(self.args, service):
             print_header('Bringing up {}'.format(service))
-            self._run_compose_cmd('up -d --no-deps %s' % service)
+            self._run_compose_cmd('up --force-recreate -d --no-deps %s' % service)
 
     def run_service_cmd(self, cmd, root=False, service='rest-server'):
         if root:

@@ -1203,7 +1203,8 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             })
-            .catch(() => {
+            .catch((e) => {
+                console.error(e);
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: 'Failed to update run bundles.',

@@ -34,11 +34,12 @@ First, make sure you start Azurite locally by running `codalab-service start -bd
 ```
 cl store add --name blob --storage-type azure_blob --url azfs://devstoreaccount1/bundles
 cl upload --store blob mkdocs.yml
+cl run --store blob "echo hello"
 ```
 
 ## Steps to set up and test with GCP
 
-First, make sure the `CODALAB_GOOGLE_APPLICATION_CREDENTIALS` env var is set on the server that runs the REST server. It should be set to a path to a credentials JSON file.
+First, make sure the `CODALAB_GOOGLE_APPLICATION_CREDENTIALS` env var is set on the server that runs the REST server. It should be set to a path to a credentials JSON file (see this page for more information on how to create it: https://cloud.google.com/iam/docs/creating-managing-service-account-keys#iam-service-account-keys-create-console).
 
 ```
 export CODALAB_GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
@@ -50,4 +51,10 @@ Then make a bucket on your GCP account (in this case, it's called `ashwin1231231
 ```
 cl store add --name gcp2 --storage-type gcs --url gs://ashwin123123123
 cl upload --store gcp2 mkdocs.yml
+cl run --store gcp2 "echo hello"
 ```
+
+## Todo (unreleased features)
+
+- cl replicate
+- Later: by default it should always use Blob / GCS instead of disk if someone just runs `cl upload mkdocs.yml`.
