@@ -13,7 +13,7 @@ import json
 from dateutil import parser
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, not_, select, union, desc, func
+from sqlalchemy import and_, or_, not_, select, union, desc, func, distinct
 from sqlalchemy.sql.expression import literal, true
 
 from codalab.bundles import get_bundle_subclass
@@ -638,6 +638,14 @@ class BundleModel(object):
             )
             # Sum the numbers
             query = select([func.sum(query.c.num)])
+        # Count
+        elif count:
+            query = (
+                select([func.count(distinct(cl_bundle.c.uuid))])
+                .where(clause)
+                .offset(offset)
+                .limit(limit)
+            )
         else:
             query = (
                 select([cl_bundle.c.uuid] + aux_fields)
@@ -651,10 +659,7 @@ class BundleModel(object):
         if sort_key[0] is not None:
             query = query.order_by(sort_key[0])
 
-        # Count
-        if count:
-            query = alias(query).count()
-
+        print(str(query))
         result = self._execute_query(query)
         if count or sum_key[0] is not None:  # Just returning a single number
             result = worksheet_util.apply_func(format_func, result[0])

@@ -7,6 +7,7 @@ x-non-blocking-logging: &non-blocking-logging
 
 # Synchronize with codalab_service.py
 x-codalab-env: &codalab-env
+  - PYTHONUNBUFFERED=1
   - HOSTNAME=${HOSTNAME}
   - CODALAB_VERSION=${CODALAB_VERSION}
   - CODALAB_PROTECTED_MODE=${CODALAB_PROTECTED_MODE}
