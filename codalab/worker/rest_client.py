@@ -88,7 +88,9 @@ class RestClient(object):
         request_url = self._base_url + path
 
         # Make the actual request
-        request = urllib.request.Request(request_url, data=data, headers=headers)
+        request = urllib.request.Request(request_url, data=data)
+        for k, v in headers.items():
+            request.add_unredirected_header(k, v)
         request.get_method = lambda: method
         if return_response:
             # Return a file-like object containing the contents of the response
