@@ -1,6 +1,9 @@
+import json
 import os
+import tempfile
 import unittest
 from pathlib import Path
+from typing import Dict
 
 from codalab.lib.codalab_manager import CodaLabManager
 
@@ -31,6 +34,10 @@ class CodalabManagerTest(unittest.TestCase):
             del os.environ['CODALAB_HOME']
 
     def test_temp_codalab_manager(self):
+        """
+        A codalab manager with temporary state should initialize its state from an existing
+        state.json file if it is present.
+        """
         manager: CodaLabManager = CodaLabManager(temporary=True)
         self.assertEqual(manager.state, {'auth': {}, 'sessions': {}})
         manager.save_state()
@@ -38,3 +45,19 @@ class CodalabManagerTest(unittest.TestCase):
             os.path.exists(manager.state_path),
             msg='Assert that the current state is not written out to state_path for a temporary CodaLabManager',
         )
+
+    def test_temp_codalab_manager_initialize_state(self):
+        initial_state: Dict = {
+            'auth': {"https://worksheets.codalab.org": {"token_info": {"access_token": "secret"}}},
+            'sessions': {},
+        }
+
+        cache_file = tempfile.NamedTemporaryFile(delete=False)
+        with open(cache_file.name, "w") as f:
+            json.dump(initial_state, f)
+        os.environ["CODALAB_STATE"] = cache_file.name
+
+        manager: CodaLabManager = CodaLabManager(temporary=True)
+
+        self.assertEqual(manager.state, initial_state)
+        os.remove(cache_file.name)
