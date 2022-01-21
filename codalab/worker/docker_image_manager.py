@@ -138,6 +138,9 @@ class DockerImageManager(ImageManager):
             for line in self._docker.api.pull(image_spec, stream=True, decode=True):
                 self._downloading[image_spec]['status'] = ''
                 # Set the status to the percent completed
+                if 'status' not in line:
+                    logger.info(f"HERE: {line}")
+
                 if (
                     line['status'] == 'Downloading'
                     and 'total' in line['progressDetail']
