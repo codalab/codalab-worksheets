@@ -245,6 +245,8 @@ class BundleLocationSchema(Schema):
 
 
 class BundleLocationListSchema(Schema):
+    id = fields.String(validate=validate_uuid, attribute='bundle_store_uuid')
+    bundle_store_uuid = fields.String(attribute='bundle_store_uuid')
     name = fields.String()
     storage_type = fields.String()
     storage_format = fields.String()

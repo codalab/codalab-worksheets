@@ -1,5 +1,4 @@
 import http.client
-import json
 import logging
 import mimetypes
 import os
@@ -442,7 +441,7 @@ def _fetch_bundle_locations(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID to get the locations for
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
-    return json.dumps(bundle_locations)
+    return {"data": BundleLocationListSchema(many=True).dump(bundle_locations).data}
 
 
 @post(
