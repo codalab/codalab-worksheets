@@ -1,4 +1,4 @@
-# Worker Manager Setup (WIP)
+# Worker Manager Setup
 
 ## AWS Worker Manager
 

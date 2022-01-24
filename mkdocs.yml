@@ -43,7 +43,7 @@ nav:
   - Contributing:
     - Code Overview: Code-Overview.md
     - Server Setup: Server-Setup.md
-    - Worker Managers (in development): Worker-Managers.md
+    - Worker Managers: Worker-Managers.md
     - Multiple Bundle Stores (in development): Multiple-Bundle-Stores.md
   - About:
     - About: About.md
