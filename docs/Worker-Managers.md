@@ -1,4 +1,4 @@
-# Worker Manager Setup
+# Worker Managers
 
 [Worker Managers](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker_manager/main.py) 
 allow you to automatically spin up VMs and start CodaLab workers on them to run your staged jobs.
