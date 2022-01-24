@@ -1,13 +1,25 @@
 # Worker Manager Setup
 
-## AWS Worker Manager
+[Worker Managers](https://github.com/codalab/codalab-worksheets/blob/master/codalab/worker_manager/main.py) 
+allow you to automatically spin up VMs and start CodaLab workers on them to run your staged jobs.
+
+We support the following Worker Managers:
+
+| Name             | Description                                                  |
+|------------------|--------------------------------------------------------------|
+| aws-batch        | Worker manager for submitting jobs to AWS Batch.             | 
+| azure-batch      | Worker manager for submitting jobs to Azure Batch.           | 
+| slurm-batch      | Worker manager for submitting jobs using Slurm Batch.        | 
+| kubernetes       | Worker manager for submitting jobs to a Kubernetes cluster.  |
+
+
+## AWS Batch Worker Manager
 
 ### Configure AWS Batch (one-time setup)
 
-1. Authenticate AWS on the command-line.
+1. Authenticate AWS on the command-line:
     1. Install the CLI: `pip install awscli`.
     1. Authenticate by running `aws configure` and fill out the form.
-    1. Check that `config` and `credentials` at `~/.aws` is correctly populated.
 1. Create a [launch template](https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html) 
    for EC2 instances by running:
    
@@ -26,7 +38,7 @@
                     "DeviceName": "/dev/xvda",
                     "Ebs": {
                         "Encrypted": true,
-                        "VolumeSize": <Desired volume size in GB>,
+                        "VolumeSize": <Desired volume size in GB as an integer>,
                         "VolumeType": "gp2"
                     }
                 }
