@@ -1,7 +1,6 @@
 import math
 import os
 import stat
-import tarfile
 import logging
 import traceback
 from typing import Any, Iterable, Generator, Optional, Union, cast, Dict
@@ -10,7 +9,7 @@ from typing_extensions import TypedDict
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
 from codalab.worker.file_util import OpenIndexedArchiveFile
-from codalab.lib.beam.ratarmount import FileInfo
+from ratarmountcore import FileInfo
 
 
 class PathException(Exception):
@@ -219,13 +218,9 @@ def _compute_target_info_blob(
     with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
         islink = lambda finfo: stat.S_ISLNK(finfo.mode)
         readlink = lambda finfo: finfo.linkname
-
-        tobytes = (
-            lambda x: x if type(x) is bytes else str(x).encode()
-        )  # finfo.type is an int such as 5, and we need to convert it to bytes such as b"5" before comparing it with the types defined in tarfile.
-        isfile = lambda finfo: tobytes(finfo.type) in tarfile.REGULAR_TYPES
-        isdir = lambda finfo: tobytes(finfo.type) == tarfile.DIRTYPE
-        listdir = lambda path: cast(Dict[str, FileInfo], tf.getFileInfo(path, listDir=True) or {})
+        isfile = lambda finfo: not stat.S_ISDIR(finfo.mode)
+        isdir = lambda finfo: stat.S_ISDIR(finfo.mode)
+        listdir = lambda path: cast(Dict[str, FileInfo], tf.listDir(path) or {})
 
         def _get_info(path: str, depth: Union[int, float]) -> TargetInfo:
             """This function is called to get the target info of the specified path.

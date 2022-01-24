@@ -73,15 +73,29 @@ class TestBase:
         self.bundle_manager = BundleManager(self.codalab_manager)
         self.download_manager = self.codalab_manager.download_manager()
         self.upload_manager = self.codalab_manager.upload_manager()
+
+        # Create a standard user
         self.user_id = generate_uuid()
         self.bundle_manager._model.add_user(
-            "codalab",
-            "noreply@codalab.org",
+            "codalab_standard",
+            "noreply+standard@worksheets.codalab.org",
             "Test",
             "User",
             "password",
             "Stanford",
             user_id=self.user_id,
+        )
+
+        # Create a root user
+        self.root_user_id = self.codalab_manager.root_user_id()
+        self.bundle_manager._model.add_user(
+            "codalab_root",
+            "noreply+root@worksheets.codalab.org",
+            "Test",
+            "User",
+            "password",
+            "Stanford",
+            user_id=self.root_user_id,
         )
 
     def create_make_bundle(self, state=State.MAKING):
