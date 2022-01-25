@@ -2446,16 +2446,15 @@ class BundleCLI(object):
         show_hidden = client.fetch('user')['is_root_user']
 
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
-            if key == 'store':
-                bundle_locations = client.get_multiple_bundle_locations((info.get('uuid')))
-                if raw:
-                    bundle_locations = str(bundle_locations)
-                    lines.append(self.key_value_str(key, bundle_locations))
-                else:
-                    bundle_locations = [location.get('name') for location in bundle_locations]
-                    lines.append(self.key_value_str(key, ','.join(bundle_locations)))
-            else:
-                lines.append(self.key_value_str(key, value))
+            lines.append(self.key_value_str(key, value))
+
+        bundle_locations = client.get_multiple_bundle_locations((info.get('uuid')))
+        if raw:
+            bundle_locations = str(bundle_locations)
+            lines.append(self.key_value_str(key, bundle_locations))
+        else:
+            bundle_locations = [location.get('name') for location in bundle_locations]
+            lines.append(self.key_value_str(key, ','.join(bundle_locations)))
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
