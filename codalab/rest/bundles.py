@@ -970,7 +970,7 @@ def _update_bundle_contents_blob(uuid):
     use_azure_blob_beta = os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") or query_get_bool(
         'use_azure_blob_beta', default=False
     )
-    store_name = request.query.get('store')
+    store_name = request.query.get('store', os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME'))
     store = (
         local.model.get_bundle_store(request.user.user_id, name=store_name) if store_name else None
     )

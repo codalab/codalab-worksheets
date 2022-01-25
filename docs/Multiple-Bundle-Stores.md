@@ -54,6 +54,14 @@ cl upload --store gcp2 mkdocs.yml
 cl run --store gcp2 "echo hello"
 ```
 
+## Setting a default bundle store
+
+Once a bundle store is created, you can restart the server and set the `CODALAB_DEFAULT_BUNDLE_STORE` environment variable. This will make bundles be uploaded, by default, to the specified bundle store.
+
+```
+CODALAB_DEFAULT_BUNDLE_STORE=blob codalab-service start ...
+```
+
 ## Todo (unreleased features)
 
 - cl replicate
