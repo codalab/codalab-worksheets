@@ -25,7 +25,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common curl && \
-  add-apt-repository ppa:deadsnakes/ppa && \
+  add-apt-repository ppa:fkrull/deadsnakes && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
