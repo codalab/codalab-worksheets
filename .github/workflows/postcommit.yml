@@ -1,0 +1,29 @@
+# Build Docker files from scratch after each commit to master.
+# We do this in case there are any issues with the Dockerfiles
+# that were missed in the Test CI pipelines by Docker caching.
+name: Postcommit
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [rest-server, worker, frontend]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
+      - run: python3 codalab_service.py build
