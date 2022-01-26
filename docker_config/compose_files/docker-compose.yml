@@ -388,7 +388,7 @@ services:
       --server http://rest-server:${CODALAB_REST_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
-      --id ${HOSTNAME}
+      --id ${HOSTNAME}-worker2
       --verbose
     <<: *codalab-base
     <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
