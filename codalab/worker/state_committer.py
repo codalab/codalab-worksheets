@@ -35,7 +35,6 @@ class JsonStateCommitter(BaseStateCommitter):
                 return pyjson.load(json_data)
         except (ValueError, EnvironmentError) as e:
             if default is not None:
-                # content = open(self._state_file).read()
                 logger.warning(f"Failed to load state due to {e}. Returning default: {default}.")
                 return default
             logger.error(f"Failed to load state: {e}", exc_info=True)
