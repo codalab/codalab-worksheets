@@ -569,6 +569,10 @@ class NFSDependencyManager(DependencyManager):
             dependency_state.dependency_key in self._downloading
             and self._downloading[dependency_state.dependency_key].is_alive()
         ):
+            logger.info(
+                f"This dependency manager ({dependency_state.downloading_by}) "
+                f"is downloading dependency: {dependency_state.dependency_key}"
+            )
             state = self._downloading[dependency_state.dependency_key]['state']
             # Copy over the values of the non-critical fields of the state in memory
             # that is being updated by the download thread.
