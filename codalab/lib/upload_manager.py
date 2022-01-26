@@ -5,7 +5,7 @@ import tempfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from typing import Any, Union, Tuple, IO, cast
-from codalab.lib.beam.ratarmount import SQLiteIndexedTar
+from ratarmountcore import SQLiteIndexedTar
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
@@ -191,7 +191,7 @@ class BlobStorageUploader(Uploader):
                 tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
-                indexFileName=tmp_index_file.name,
+                indexFilePath=tmp_index_file.name,
             )
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_path).index_path,

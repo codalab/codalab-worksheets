@@ -1,4 +1,4 @@
-from codalab.common import StorageType, StorageFormat, UsageError
+from codalab.common import StorageType, StorageFormat, UsageError, PermissionError
 from tests.unit.server.bundle_manager import BaseBundleManagerTest
 
 
@@ -7,19 +7,29 @@ class BundleStoreTest(BaseBundleManagerTest):
         """
         Tests the workflow for creating bundles
         """
-        # first, make sure there are already no bundles in the bundle store
+        # First, make sure there are already no bundles in the bundle store
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 0)
-        # add a bundle store
+        # Non-root users cannot create bundle stores
+        with self.assertRaises(PermissionError):
+            bundle_store_uuid = self.bundle_manager._model.create_bundle_store(
+                user_id=self.user_id,
+                name="store1",
+                storage_type=StorageType.DISK_STORAGE.value,
+                storage_format=StorageFormat.UNCOMPRESSED.value,
+                url="http://url",
+                authentication="authentication",
+            )
+        # Add a bundle store
         bundle_store_uuid = self.bundle_manager._model.create_bundle_store(
-            user_id=self.user_id,
+            user_id=self.root_user_id,
             name="store1",
             storage_type=StorageType.DISK_STORAGE.value,
             storage_format=StorageFormat.UNCOMPRESSED.value,
             url="http://url",
             authentication="authentication",
         )
-        # it should now exist
+        # Bundle store should now exist
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 1)
         self.assertEqual(bundle_stores[0].get("uuid"), bundle_store_uuid)
@@ -38,14 +48,24 @@ class BundleStoreTest(BaseBundleManagerTest):
         self.assertEqual(bundle_store.get("storage_format"), StorageFormat.UNCOMPRESSED.value)
         # update one of the bundle store fields
         self.bundle_manager._model.update_bundle_store(
-            self.user_id, bundle_store_uuid, {"name": "im-not-a-store"}
+            self.root_user_id, bundle_store_uuid, {"name": "store2"}
+        )
+        bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
+        self.assertEqual(len(bundle_stores), 1)
+        self.assertEqual(bundle_stores[0].get("name"), "store2")
+        # update one of the bundle store fields from a non-owner user should fail
+        self.bundle_manager._model.update_bundle_store(
+            self.user_id, bundle_store_uuid, {"name": "store3"}
         )
         # check if the field has been updated
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 1)
-        self.assertEqual(bundle_stores[0].get("name"), "im-not-a-store")
+        self.assertEqual(bundle_stores[0].get("name"), "store2")
+        # Deletion should fail if done from a user who is not the owner of the bundle store
+        with self.assertRaises(Exception):
+            self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid)
         # Deletion should succeed since there are bundle locations associated with the bundle store
-        self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid)
+        self.bundle_manager._model.delete_bundle_store(self.root_user_id, bundle_store_uuid)
         bundle_stores = self.bundle_manager._model.get_bundle_stores(self.user_id)
         self.assertEqual(len(bundle_stores), 0)
 
@@ -59,7 +79,7 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Create first bundle store
         bundle_store_uuid = self.bundle_manager._model.create_bundle_store(
-            user_id=self.user_id,
+            user_id=self.root_user_id,
             name="store1",
             storage_type=StorageType.DISK_STORAGE.value,
             storage_format=StorageFormat.UNCOMPRESSED.value,
@@ -102,7 +122,7 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Create second bundle store
         bundle_store_uuid_2 = self.bundle_manager._model.create_bundle_store(
-            user_id=self.user_id,
+            user_id=self.root_user_id,
             name="store2",
             storage_type=StorageType.DISK_STORAGE.value,
             storage_format=StorageFormat.UNCOMPRESSED.value,
@@ -152,4 +172,4 @@ class BundleStoreTest(BaseBundleManagerTest):
 
         # Deletion of bundle store should fail because there are still BundleLocations associated with the BundleStore.
         with self.assertRaises(UsageError):
-            self.bundle_manager._model.delete_bundle_store(self.user_id, bundle_store_uuid_2)
+            self.bundle_manager._model.delete_bundle_store(self.root_user_id, bundle_store_uuid_2)
