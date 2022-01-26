@@ -267,11 +267,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         else:
             work_dir_prefix = Path()
 
-        work_dir_name = (
-            f"{self.username}-codalab-slurm-worker-shared"
-            if self.args.worker_use_shared_cache
-            else worker_id
-        )
+        work_dir_name = f"{self.username}-codalab-slurm-worker-shared"
         worker_work_dir = work_dir_prefix.joinpath(
             Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), work_dir_name)
         )

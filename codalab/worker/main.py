@@ -192,11 +192,6 @@ def parse_args():
         default=1,
         help='The shared memory size of the run container in GB (defaults to 1).',
     )
-    parser.add_argument(
-        '--use-shared-cache',
-        action='store_true',
-        help="If set, this worker will share a cache with other workers.",
-    )
     return parser.parse_args()
 
 
@@ -272,11 +267,7 @@ def main():
         dependency_manager = None
     else:
         local_bundles_dir = os.path.join(args.work_dir, 'runs')
-        # TODO: Roll out the shared cache feature incrementally.
-        #       Once we are confident with the NFS locking, replace DependencyManager with NFSDependencyManager.
-        dependency_manager_type = (
-            NFSDependencyManager if args.use_shared_cache else DependencyManager
-        )
+        dependency_manager_type = NFSDependencyManager
         dependency_manager = dependency_manager_type(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,

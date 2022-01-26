@@ -114,11 +114,6 @@ def main():
         type=int,
         help="The shared memory size in GB of the run container started by the CodaLab Workers.",
     )
-    parser.add_argument(
-        '--worker-use-shared-cache',
-        action='store_true',
-        help='If set, workers share a cache to store dependencies.',
-    )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
         description='Which worker manager to run (AWS Batch etc.)',
