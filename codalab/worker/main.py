@@ -315,7 +315,7 @@ def main():
     worker = Worker(
         image_manager,
         dependency_manager,
-        os.path.join(args.work_dir, 'worker-state.json'),
+        os.path.join(args.work_dir, f'worker-state-{args.id}.json'),
         args.cpuset,
         args.gpuset,
         args.max_memory,
