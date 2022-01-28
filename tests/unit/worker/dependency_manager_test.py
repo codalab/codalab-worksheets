@@ -122,7 +122,6 @@ def task(work_dir, state_path, random_file_path):
     dependency_key = DependencyKey(parent_uuid="0x1", parent_path="parent")
     run_uuid = f"0x{process_id}"
     state = dependency_manager.get(run_uuid, dependency_key)
-    # print(f"{process_id}: Dependents={state.dependents}")
     assert (
         run_uuid in state.dependents
     ), f"{process_id}: Expected {run_uuid} as one of the dependents."
