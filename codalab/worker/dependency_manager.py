@@ -55,6 +55,7 @@ class NFSLock:
         self._lock.lifetime = timedelta(minutes=30)
 
         # Ensure multiple threads within a process run NFSLock operations one at a time.
+        # Multiple threads accessing flufl lock can cause slow performance.
         self._r_lock = threading.RLock()
 
     @property
@@ -88,7 +89,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
     This dependency manager downloads dependency bundles from Codalab server
     to the local filesystem. It caches all downloaded dependencies but cleans up the
     old ones if the disk use hits the given threshold. It's also NFS-safe.
-    For this class, dependencies are uniquely identified by DependencyKey.
+    In this class, dependencies are uniquely identified by DependencyKey.
     """
 
     DEPENDENCIES_DIR_NAME = 'dependencies'
@@ -126,7 +127,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             logger.info('{} doesn\'t exist, creating.'.format(self.dependencies_dir))
             os.makedirs(self.dependencies_dir, 0o770)
 
-        # Lock for concurrency over NFS
+        # Create a lock for concurrency over NFS
         # Create a separate locks directory to hold the lock files.
         # Each lock file is created when a process tries to claim the main lock.
         locks_claims_dir: str = os.path.join(worker_dir, 'locks_claims')
@@ -373,8 +374,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
     def has(self, dependency_key):
         """
-        Takes a DependencyKey
-        Returns true if the manager has processed this dependency
+        Takes a DependencyKey and returns true if the manager has processed this dependency
         """
         with self._state_lock:
             dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies()
@@ -418,7 +418,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                     killed=False,
                 )
 
-            # update last_used as long as it isn't in FAILED
+            # Update last_used as long as it isn't in a FAILED stage
             if dependencies[dependency_key].stage != DependencyStage.FAILED:
                 dependencies[dependency_key].dependents.add(uuid)
                 dependencies[dependency_key] = dependencies[dependency_key]._replace(last_used=now)
@@ -493,7 +493,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
                 Note: This function needs to be fast, since it's called every time fileobj.read is called.
                       Therefore, we keep a copy of the state in memory and copy over non-critical fields
-                      (last_downloading, size_bytes and message) when the download transition function.
+                      (last_downloading, size_bytes and message) when the download transition function is executed.
                 """
                 state = self._downloading[dependency_state.dependency_key]['state']
                 if state.killed:
