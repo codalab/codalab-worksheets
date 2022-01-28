@@ -20,7 +20,7 @@ from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, usin
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from . import docker_utils
 from .worker import Worker
-from codalab.worker.nfs_dependency_manager import NFSDependencyManager
+from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
 
@@ -266,7 +266,7 @@ def main():
         dependency_manager = None
     else:
         local_bundles_dir = os.path.join(args.work_dir, 'runs')
-        dependency_manager = NFSDependencyManager(
+        dependency_manager = DependencyManager(
             os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
             args.work_dir,

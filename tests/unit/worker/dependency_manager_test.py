@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 from codalab.worker.bundle_state import DependencyKey
 
 try:
-    from codalab.worker.nfs_dependency_manager import NFSDependencyManager
+    from codalab.worker.dependency_manager import DependencyManager
 
     module_failed = False
 except ImportError:
@@ -23,7 +23,7 @@ class DependencyManagerTest(unittest.TestCase):
 
         self.work_dir = tempfile.mkdtemp()
         self.state_path = os.path.join(self.work_dir, "dependencies-state.json")
-        self.dependency_manager = NFSDependencyManager(
+        self.dependency_manager = DependencyManager(
             commit_file=self.state_path,
             bundle_service=None,
             worker_dir=self.work_dir,
@@ -108,7 +108,7 @@ def task(work_dir, state_path, random_file_path):
     # Create and start a dependency manager
     process_id = os.getpid()
     print(f"{process_id}: Starting a DependencyManager...")
-    dependency_manager = NFSDependencyManager(
+    dependency_manager = DependencyManager(
         commit_file=state_path,
         bundle_service=mock_bundle_service,
         worker_dir=work_dir,

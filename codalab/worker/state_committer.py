@@ -30,6 +30,9 @@ class JsonStateCommitter(BaseStateCommitter):
         return os.path.isfile(self._state_file)
 
     def load(self, default=None):
+        """
+        Loads and reads from state file. If an error occurs, `default` will be returned, if it exists.
+        """
         try:
             with open(self._state_file) as json_data:
                 return pyjson.load(json_data)
