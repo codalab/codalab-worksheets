@@ -1,6 +1,8 @@
 import logging
-
 import os
+import tempfile
+import shutil
+
 from . import pyjson
 
 
@@ -38,21 +40,25 @@ class JsonStateCommitter(BaseStateCommitter):
                 return pyjson.load(json_data)
         except (ValueError, EnvironmentError) as e:
             if default is not None:
-                logger.warning(f"Failed to load state due to {e}. Returning default: {default}.")
+                logger.warning(
+                    f"Failed to load state from {self.path} due to {e}. Returning default: {default}.",
+                    exc_info=True,
+                )
                 return default
-            logger.error(f"Failed to load state: {e}", exc_info=True)
+            logger.error(f"Failed to load state from {self.path}: {e}", exc_info=True)
             raise e
 
     def commit(self, state):
-        """
-        Write out the state in JSON format to the state file with an immediate flush and fsync
-        to deal with file buffering.
-        """
-        try:
-            with open(self._state_file, 'w+') as f:
-                f.write(pyjson.dumps(state))
+        """ Write out the state in JSON format to a temporary file and rename it into place """
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            try:
+                f.write(pyjson.dumps(state).encode())
                 f.flush()
-                os.fsync(f)
-        except Exception as e:
-            logger.error(f"Failed to commit state: {e}", exc_info=True)
-            raise e
+                shutil.copyfile(f.name, self._state_file)
+            finally:
+                try:
+                    os.unlink(f.name)
+                except FileNotFoundError:
+                    logger.error(
+                        "Problem occurred in deleting temp file {} via os.unlink".format(f.name)
+                    )
