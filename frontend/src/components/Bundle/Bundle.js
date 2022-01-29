@@ -544,14 +544,14 @@ function renderHostWorksheets(bundleInfo) {
 
 function renderStoreInfo(storeInfo) {
     let rows = [];
-    storeInfo.forEach(({ bundle_store_uuid, url }) => {
+    storeInfo.forEach(({ bundle_store_uuid, name, url }) => {
         rows.push(
             <tr>
                 <td>
-                    <a href={`/stores/${bundle_store_uuid}`}>{bundle_store_uuid}</a>
+                    <span>{name}</span>
                 </td>
                 <td>
-                    <span>{url}</span>
+                    <a href={`/stores/${bundle_store_uuid}`}>{bundle_store_uuid}</a>
                 </td>
             </tr>,
         );
