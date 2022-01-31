@@ -910,6 +910,8 @@ def test_upload3(ctx):
     # Upload file to bundle store
     uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
     check_equals('hello', _run_command([cl, 'cat', uuid]))
+    info_output = _run_command([cl, "info", uuid])
+    check_contains(bundle_store_name, info_output)
 
     # Check that uuid_run finished and uploaded results properly.
     wait(uuid_run)
@@ -1039,6 +1041,32 @@ def test_blob(ctx):
         # When client is from a web browser, should redirect
         response = fetch_contents_blob_from_web_browser(uuid)
         assert response.headers['Location'].startswith("http://localhost")
+
+
+@TestModule.register('default_bundle_store')
+def test_upload3(ctx):
+    """Tests the CODALAB_DEFAULT_BUNDLE_STORE_NAME environment
+    variable. Should only be called when
+    CODALAB_DEFAULT_BUNDLE_STORE_NAME is set."""
+    # Create a new bundle store and upload to it
+    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    bundle_store_uuid = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Run bundle, which should output to bundle store by default
+    uuid_run = _run_command([cl, 'run', 'echo hello'])
+    info_output = _run_command([cl, "info", uuid_run])
+    check_contains(bundle_store_name, info_output)
 
 
 @TestModule.register('download')
