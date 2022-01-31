@@ -407,6 +407,10 @@ CODALAB_ARGUMENTS = [
         name='always_use_azure_blob_beta',
         help='If set, Azure Blob Storage is always used to store uploads, regardless of the use_azure_blob_beta parameter.',
     ),
+    CodalabArg(
+        name='default_bundle_store_name',
+        help='If set, bundles are uploaded by default to the bundle store with this name if no bundle store is provided.',
+    ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
     CodalabArg(
