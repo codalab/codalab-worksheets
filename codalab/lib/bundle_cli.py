@@ -2448,7 +2448,7 @@ class BundleCLI(object):
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             lines.append(self.key_value_str(key, value))
 
-        bundle_locations = client.get_multiple_bundle_locations((info.get('uuid')))
+        bundle_locations = client.get_bundle_locations((info.get('uuid')))
         if len(bundle_locations) > 0:
             if raw:
                 bundle_locations = str(bundle_locations)
