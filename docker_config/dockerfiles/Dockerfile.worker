@@ -62,7 +62,8 @@ RUN mkdir ${WORKDIR}/scripts
 
 # Install dependencies
 COPY requirements.txt requirements.txt
-RUN python3.6 -m pip install setuptools --upgrade; \
+RUN python3.6 -m pip install --user --upgrade pip==18.1; \
+    python3.6 -m pip install setuptools --upgrade; \
     python3.6 -m pip install --no-cache-dir -r requirements.txt;
 
 # Install code
