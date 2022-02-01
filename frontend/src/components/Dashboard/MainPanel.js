@@ -287,6 +287,7 @@ class MainPanel extends React.Component<{
                                 {this.props.ownDashboard ? (
                                     <Tooltip title='New Worksheet'>
                                         <Button
+                                            disabled={this.props.userInfo.has_access === 'False'}
                                             variant='contained'
                                             className={classes.button}
                                             startIcon={<NewWorksheetIcon />}

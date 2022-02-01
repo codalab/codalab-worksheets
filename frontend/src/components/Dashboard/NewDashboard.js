@@ -56,6 +56,14 @@ class NewDashboard extends React.Component<{
             };
             if (ownDashboard) {
                 getUser().then(callback);
+                const {
+                    data: {
+                        attributes: { has_access },
+                    },
+                } = data;
+                if (has_access === 'False') {
+                    alert('Please conatact admin to get access to this server.');
+                }
             } else {
                 getUsers(this.props.username).then(callback);
             }

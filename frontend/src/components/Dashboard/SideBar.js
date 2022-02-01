@@ -234,6 +234,7 @@ class SideBar extends React.Component {
                         <Button
                             variant='contained'
                             color='primary'
+                            disabled={this.props.userInfo.has_access == 'False'}
                             onClick={() => (window.location.href = '/worksheets?name=dashboard')}
                         >
                             View Dashboard

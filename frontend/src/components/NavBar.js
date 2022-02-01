@@ -376,6 +376,10 @@ class NavBar extends React.Component<{
                                 </Link>
                                 <Tooltip title='New Worksheet'>
                                     <IconButton
+                                        disabled={
+                                            !this.state.userInfo ||
+                                            this.state.userInfo.has_access == 'False'
+                                        }
                                         onClick={() =>
                                             this.setState({ newWorksheetShowDialog: true })
                                         }
