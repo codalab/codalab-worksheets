@@ -56,26 +56,23 @@ class NFSLock:
 
         # Ensure multiple threads within a process run NFSLock operations one at a time.
         # Multiple threads accessing flufl lock can cause slow performance.
+        # We must acquire the reentrant lock before acquiring the flufl lock and only release after
+        # the flufl lock is released.
         self._r_lock = threading.RLock()
 
-    @property
-    def is_locked(self):
-        with self._r_lock:
-            return self._lock.is_locked
-
     def acquire(self):
-        with self._r_lock:
-            try:
-                self._lock.lock()
-            except AlreadyLockedError:
-                pass
+        self._r_lock.acquire()
+        try:
+            self._lock.lock()
+        except AlreadyLockedError:
+            pass
 
     def release(self):
-        with self._r_lock:
-            try:
-                self._lock.unlock(unconditionally=False)
-            except NotLockedError:
-                pass
+        try:
+            self._lock.unlock(unconditionally=False)
+        except NotLockedError:
+            pass
+        self._r_lock.release()
 
     def __enter__(self):
         self.acquire()
