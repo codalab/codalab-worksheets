@@ -68,8 +68,6 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        console.log(this.state.userInfo);
-        console.log(this.state.userInfo && this.state.userInfo.has_access == 'False');
         if (this.state.userInfo && this.state.userInfo.has_access === 'False') {
             return (
                 <ErrorMessage
