@@ -5,6 +5,7 @@ import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 import { withRouter } from 'react-router';
 import { defaultErrorHandler, getUser, getUsers } from '../../util/apiWrapper';
+import ErrorMessage from '../worksheets/ErrorMessage';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -56,14 +57,6 @@ class NewDashboard extends React.Component<{
             };
             if (ownDashboard) {
                 getUser().then(callback);
-                const {
-                    data: {
-                        attributes: { has_access },
-                    },
-                } = data;
-                if (has_access === 'False') {
-                    alert('Please conatact admin to get access to this server.');
-                }
             } else {
                 getUsers(this.props.username).then(callback);
             }
@@ -75,7 +68,15 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        if (this.state.userInfo) {
+        console.log(this.state.userInfo);
+        console.log(this.state.userInfo && this.state.userInfo.has_access == 'False');
+        if (this.state.userInfo && this.state.userInfo.has_access === 'False') {
+            return (
+                <ErrorMessage
+                    message={'No access to this server, please contact the administrators.'}
+                />
+            );
+        } else if (this.state.userInfo) {
             return (
                 <div>
                     <Grid container spacing={30}>
