@@ -910,6 +910,7 @@ def test_upload3(ctx):
     # Upload file to bundle store
     uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
     check_equals('hello', _run_command([cl, 'cat', uuid]))
+    check_contains(bundle_store_name, _run_command([cl, 'info', uuid]))
 
     # Check that uuid_run finished and uploaded results properly.
     wait(uuid_run)
