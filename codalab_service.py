@@ -407,6 +407,10 @@ CODALAB_ARGUMENTS = [
         name='always_use_azure_blob_beta',
         help='If set, Azure Blob Storage is always used to store uploads, regardless of the use_azure_blob_beta parameter.',
     ),
+    CodalabArg(
+        name='default_bundle_store_name',
+        help='If set, bundles are uploaded by default to the bundle store with this name if no bundle store is provided.',
+    ),
     # Public workers
     CodalabArg(name='public_workers', help='Comma-separated list of worker ids to monitor'),
     CodalabArg(
@@ -837,7 +841,7 @@ class CodalabServiceManager(object):
     def bring_up_service(self, service):
         if should_run_service(self.args, service):
             print_header('Bringing up {}'.format(service))
-            self._run_compose_cmd('up -d --no-deps %s' % service)
+            self._run_compose_cmd('up --force-recreate -d --no-deps %s' % service)
 
     def run_service_cmd(self, cmd, root=False, service='rest-server'):
         if root:

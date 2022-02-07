@@ -102,8 +102,9 @@ class BundleServiceClient(RestClient):
         request_to_send = urllib.request.Request(
             self._base_url + '/oauth2/token',
             data=urllib.parse.urlencode(request_data).encode('utf-8'),
-            headers=headers,
         )
+        for k, v in headers.items():
+            request_to_send.add_unredirected_header(k, v)
 
         with closing(urlopen_with_retry(request_to_send)) as response:
             response_data = response.read().decode()

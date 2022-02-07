@@ -1,5 +1,4 @@
 import http.client
-import json
 import logging
 import mimetypes
 import os
@@ -442,7 +441,7 @@ def _fetch_bundle_locations(bundle_uuid: str):
     - `bundle_uuid`: Bundle UUID to get the locations for
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
-    return json.dumps(bundle_locations)
+    return {"data": BundleLocationListSchema(many=True).dump(bundle_locations).data}
 
 
 @post(
@@ -968,10 +967,10 @@ def _update_bundle_contents_blob(uuid):
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     finalize_on_success = query_get_bool('finalize_on_success', default=True)
-    use_azure_blob_beta = os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") or query_get_bool(
-        'use_azure_blob_beta', default=False
-    )
-    store_name = request.query.get('store')
+    use_azure_blob_beta = query_get_bool('use_azure_blob_beta', default=False)
+    if os.getenv("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == "1":
+        use_azure_blob_beta = True
+    store_name = request.query.get('store') or os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
     store = (
         local.model.get_bundle_store(request.user.user_id, name=store_name) if store_name else None
     )

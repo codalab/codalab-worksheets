@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.3.0_
+_version 1.4.2_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -201,6 +201,8 @@ Name | Type
 
 Name | Type
 --- | ---
+`id` | String
+`bundle_store_uuid` | String
 `name` | String
 `storage_type` | String
 `storage_format` | String

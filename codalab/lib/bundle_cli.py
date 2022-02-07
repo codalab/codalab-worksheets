@@ -2087,7 +2087,7 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
-            # TODO: this feature is not implemented yet, implement as part of https://github.com/codalab/codalab-worksheets/issues/3803.
+            # TODO: this feature is not implemented yet, implement as part of https://github.com/codalab/codalab-worksheets/issues/3923.
             # Commands.Argument(
             #     '-b',
             #     '--store',
