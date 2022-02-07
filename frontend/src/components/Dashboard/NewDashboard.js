@@ -68,7 +68,7 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        if (this.state.userInfo && this.state.userInfo.has_access === 'False') {
+        if (this.state.userInfo && !this.state.userInfo.has_access) {
             return (
                 <ErrorMessage
                     message={'No access to this server, please contact the administrators.'}
