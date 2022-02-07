@@ -1091,7 +1091,7 @@ class BundleModel(object):
             if data_size > disk_left:
                 raise UsageError(
                     "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (formatting.size_str(data_size), formatting.size_str(disk_left))
+                    % (data_size, disk_left)
                 )
 
         bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
