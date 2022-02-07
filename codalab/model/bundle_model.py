@@ -25,7 +25,7 @@ from codalab.common import (
     UsageError,
     PermissionError,
 )
-from codalab.lib import crypt_util, spec_util, worksheet_util, path_util, formatting
+from codalab.lib import crypt_util, spec_util, worksheet_util, path_util
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
