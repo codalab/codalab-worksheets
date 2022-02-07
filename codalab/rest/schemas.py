@@ -306,6 +306,7 @@ class UserSchema(Schema):
     url = fields.Url(allow_none=True)
     date_joined = fields.LocalDateTime("%c")
     avatar_id = fields.String(allow_none=True)
+    has_access = fields.Bool()
 
     class Meta:
         type_ = 'users'
