@@ -34,7 +34,7 @@ class UserTest(BaseTestCase):
                     "first_name": "",
                     "affiliation": "",
                     "email": "",
-                    "has_access": "True",
+                    "has_access": True,
                     "notifications": 2,
                     "user_name": "codalab",
                     "url": None,
