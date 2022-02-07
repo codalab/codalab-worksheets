@@ -544,7 +544,7 @@ function renderHostWorksheets(bundleInfo) {
 
 function renderStoreInfo(storeInfo) {
     let rows = [];
-    storeInfo.forEach(({ bundle_store_uuid, name, url }) => {
+    storeInfo.forEach(({ attributes: { bundle_store_uuid, name, url } }) => {
         rows.push(
             <tr>
                 <td>

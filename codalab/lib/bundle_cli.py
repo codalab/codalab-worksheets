@@ -2454,7 +2454,9 @@ class BundleCLI(object):
                 bundle_locations = str(bundle_locations)
                 lines.append(self.key_value_str('bundle stores', bundle_locations))
             else:
-                bundle_locations = [location.get('name') for location in bundle_locations]
+                bundle_locations = [
+                    location.get('attributes').get('name') for location in bundle_locations
+                ]
                 lines.append(self.key_value_str('bundle stores', ','.join(bundle_locations)))
 
         # Metadata fields (non-standard)

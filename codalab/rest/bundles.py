@@ -442,10 +442,7 @@ def _fetch_bundle_locations(bundle_uuid: str):
     """
     bundle_locations = local.model.get_bundle_locations(bundle_uuid)
 
-    # dumping an empty list causes issues with response format so return the correct format.
-    if len(bundle_locations) == 0:
-        return {"data": []}
-    return {"data": BundleLocationListSchema(many=True).dump(bundle_locations).data}
+    return BundleLocationListSchema(many=True).dump(bundle_locations).data
 
 
 @post(

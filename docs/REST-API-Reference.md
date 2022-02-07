@@ -206,7 +206,7 @@ Name | Type
 `name` | String
 `storage_type` | String
 `storage_format` | String
-`url` | Url
+`url` | String
 
 ## bundle_locations
 
