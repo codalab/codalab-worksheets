@@ -160,7 +160,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
-`has_access` | String
+`has_access` | Boolean
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -294,7 +294,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
-`has_access` | String
+`has_access` | Boolean
 
 ## worksheet-items
 
