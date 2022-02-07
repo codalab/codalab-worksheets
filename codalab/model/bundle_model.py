@@ -1089,11 +1089,9 @@ class BundleModel(object):
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:
-                formatted_data_size = formatting.size_str(data_size)
-                formatted_disk_left_size = formatting.size_str(disk_left)
                 raise UsageError(
-                    "Upload failed: Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (formatted_data_size, formatted_disk_left_size)
+                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                    % (formatting.size_str(data_size), formatting.size_str(disk_left))
                 )
 
         bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
