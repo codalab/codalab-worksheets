@@ -2,7 +2,8 @@ import os
 import re
 import sys
 from collections import OrderedDict
-from typing import Callable, Any
+from typing import Callable, Any, Tuple
+from typing_extensions import TypedDict
 
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
@@ -392,6 +393,11 @@ class _MultiDiskBundleStoreBase(BundleStore):
             )
 
 
+BundleLocation = TargetInfo = TypedDict(
+    'BundleLocation', {"storage_type": str, "storage_format": str,}, total=False,
+)
+
+
 class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
     """
     A multi-disk bundle store that also supports storing bundles in a CodaLab-managed
@@ -422,14 +428,16 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
 
         self._azure_blob_account_name = azure_blob_account_name
 
-    def get_bundle_location(self, uuid, bundle_store_uuid=None):
+    def get_bundle_location_full_info(
+        self, uuid, bundle_store_uuid=None
+    ) -> Tuple[BundleLocation, str]:
         """
         Get the bundle location.
         Arguments:
             uuid (str): uuid of the bundle.
             bundle_store_uuid (str): uuid of a specific BundleLocation to use when retrieving the bundle's location.
                 If unspecified, will pick an optimal location.
-        Returns: a string with the path to the bundle.
+        Returns: Tuple (BundleLocation object with location info for the bundle, resolved path to access bundle)
         """
         bundle_locations = self._bundle_model.get_bundle_locations(uuid)
         if bundle_store_uuid:
@@ -474,7 +482,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
                 file_name = "contents.tar.gz" if is_dir else "contents.gz"
                 url = selected_location["url"]  # Format: "azfs://[container name]/bundles"
                 assert url.startswith("azfs://")
-                return f"{url}/{uuid}/{file_name}"
+                return selected_location, f"{url}/{uuid}/{file_name}"
             elif selected_location["storage_type"] == StorageType.GCS_STORAGE.value:
                 assert (
                     selected_location["storage_format"] == StorageFormat.COMPRESSED_V1.value
@@ -482,14 +490,39 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
                 file_name = "contents.tar.gz" if is_dir else "contents.gz"
                 url = selected_location["url"]  # Format: "gs://[bucket name]"
                 assert url.startswith("gs://")
-                return f"{url}/{uuid}/{file_name}"
+                return selected_location, f"{url}/{uuid}/{file_name}"
             else:
                 assert (
                     selected_location["storage_format"] == StorageFormat.UNCOMPRESSED.value
                 )  # Only supported format on disk
-                return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
+                return selected_location, _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
         # If no BundleLocations are available, use the legacy "storage_type" column to determine where the bundle is stored.
         elif storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             file_name = "contents.tar.gz" if is_dir else "contents.gz"
-            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}"
-        return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
+            return (
+                {
+                    "storage_type": StorageType.AZURE_BLOB_STORAGE,
+                    "storage_format": StorageFormat.COMPRESSED_V1,
+                },
+                f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}",
+            )
+        # Otherwise, we're on the default disk storage.
+        return (
+            {
+                "storage_type": StorageType.DISK_STORAGE,
+                "storage_format": StorageFormat.UNCOMPRESSED,
+            },
+            _MultiDiskBundleStoreBase.get_bundle_location(self, uuid),
+        )
+
+    def get_bundle_location(self, uuid, bundle_store_uuid=None):
+        """
+        Get the path to the specified bundle location.
+        Arguments:
+            uuid (str): uuid of the bundle.
+            bundle_store_uuid (str): uuid of a specific BundleLocation to use when retrieving the bundle's location.
+                If unspecified, will pick an optimal location.
+        Returns: a string with the path to the bundle.
+        """
+        _, path = self.get_bundle_location_full_info(uuid, bundle_store_uuid)
+        return path
