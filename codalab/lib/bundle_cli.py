@@ -1438,8 +1438,8 @@ class BundleCLI(object):
             disk_left = user['disk_quota'] - user['disk_used']
             if disk_left - total_bundle_size <= 0:
                 raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
-                    % (total_bundle_size, disk_left)
+                    'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
+                    % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
                 )
 
             print("Preparing upload archive...", file=self.stderr)
@@ -2447,6 +2447,17 @@ class BundleCLI(object):
 
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             lines.append(self.key_value_str(key, value))
+
+        bundle_locations = client.get_bundle_locations((info.get('uuid')))
+        if len(bundle_locations) > 0:
+            if raw:
+                bundle_locations = str(bundle_locations)
+                lines.append(self.key_value_str('bundle stores', bundle_locations))
+            else:
+                bundle_locations = [
+                    location.get('attributes').get('name') for location in bundle_locations
+                ]
+                lines.append(self.key_value_str('bundle stores', ','.join(bundle_locations)))
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
