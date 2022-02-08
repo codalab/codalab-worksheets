@@ -394,7 +394,7 @@ class _MultiDiskBundleStoreBase(BundleStore):
 
 
 BundleLocation = TypedDict(
-    'BundleLocation', {"storage_type": str, "storage_format": str,}, total=False,
+    'BundleLocation', {"storage_type": StorageType, "storage_format": StorageFormat,}, total=False,
 )
 
 
@@ -502,7 +502,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
             return (
                 {
                     "storage_type": StorageType.AZURE_BLOB_STORAGE.value,
-                    "storage_format": StorageFormat.COMPRESSED_V1,
+                    "storage_format": StorageFormat.COMPRESSED_V1.value,
                 },
                 f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}",
             )
@@ -510,7 +510,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
         return (
             {
                 "storage_type": StorageType.DISK_STORAGE.value,
-                "storage_format": StorageFormat.UNCOMPRESSED,
+                "storage_format": StorageFormat.UNCOMPRESSED.value,
             },
             _MultiDiskBundleStoreBase.get_bundle_location(self, uuid),
         )
