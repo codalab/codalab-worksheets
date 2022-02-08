@@ -393,7 +393,7 @@ class _MultiDiskBundleStoreBase(BundleStore):
             )
 
 
-BundleLocation = TargetInfo = TypedDict(
+BundleLocation = TypedDict(
     'BundleLocation', {"storage_type": str, "storage_format": str,}, total=False,
 )
 
