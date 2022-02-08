@@ -1011,6 +1011,7 @@ class BundleModel(object):
                 return False
 
             if getattr(bundle.metadata, "preemptible", False):
+                # If the bundle is preemptible, move the bundle to the STAGED state instead.
                 bundle_update = {
                     'state': State.STAGED,
                     'metadata': {'last_updated': int(time.time())},
