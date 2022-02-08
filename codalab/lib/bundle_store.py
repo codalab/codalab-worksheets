@@ -501,7 +501,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
             file_name = "contents.tar.gz" if is_dir else "contents.gz"
             return (
                 {
-                    "storage_type": StorageType.AZURE_BLOB_STORAGE,
+                    "storage_type": StorageType.AZURE_BLOB_STORAGE.value,
                     "storage_format": StorageFormat.COMPRESSED_V1,
                 },
                 f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}",
@@ -509,7 +509,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
         # Otherwise, we're on the default disk storage.
         return (
             {
-                "storage_type": StorageType.DISK_STORAGE,
+                "storage_type": StorageType.DISK_STORAGE.value,
                 "storage_format": StorageFormat.UNCOMPRESSED,
             },
             _MultiDiskBundleStoreBase.get_bundle_location(self, uuid),
