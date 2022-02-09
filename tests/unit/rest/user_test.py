@@ -5,7 +5,7 @@ from .base import BaseTestCase
 class UserTest(BaseTestCase):
     def test_user_unauthenticated(self):
         os.environ["CODALAB_TEST_USER"] = ""
-        response = self.app.get("/rest/user")
+        response = self.app.get('/rest/user')
         self.assertEqual(response.status_int, 302)
         self.assertEqual(
             response.headers["Location"],
@@ -14,7 +14,7 @@ class UserTest(BaseTestCase):
 
     def test_user_authenticated(self):
         os.environ["CODALAB_TEST_USER"] = "codalab"
-        response = self.app.get("/rest/user")
+        response = self.app.get('/rest/user')
         self.assertEqual(response.status_int, 200)
         data = response.json["data"]
         # These variables can change due to other tests.
@@ -24,23 +24,21 @@ class UserTest(BaseTestCase):
         del data["attributes"]["last_login"]
         del data["attributes"]["disk_quota"]
         del data["attributes"]["time_quota"]
-
         self.assertEqual(
             data,
             {
                 "type": "users",
                 "attributes": {
-                    "last_name": "",
-                    "first_name": "",
-                    "affiliation": "",
                     "email": "",
-                    "has_access": True,
+                    "first_name": "",
+                    "parallel_run_quota": 100,
+                    "last_name": "",
+                    "url": None,
                     "notifications": 2,
                     "user_name": "codalab",
-                    "url": None,
-                    "parallel_run_quota": 100,
+                    "affiliation": "",
                     "avatar_id": None,
-                    "is_root_user": True,
+                    'is_root_user': True,
                 },
                 "id": "0",
             },
