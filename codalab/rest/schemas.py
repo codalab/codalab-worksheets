@@ -19,7 +19,8 @@ from codalab.objects.permission import parse_permission, permission_str
 
 class CompatibleInteger(fields.Integer):
     def serialize(self, attr, obj, accessor=None):
-        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed."""
+        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed.
+        """
         ret = Field.serialize(self, attr, obj, accessor=accessor)
         return self._to_string(ret) if (self.as_string and ret is not None) else ret
 
@@ -306,7 +307,6 @@ class UserSchema(Schema):
     url = fields.Url(allow_none=True)
     date_joined = fields.LocalDateTime("%c")
     avatar_id = fields.String(allow_none=True)
-    has_access = fields.Bool()
 
     class Meta:
         type_ = 'users'
