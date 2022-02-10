@@ -56,10 +56,10 @@ class RestOAuthHandler(object):
         }
         headers.update(self._extra_headers)
         request = urllib.request.Request(
-            self._address + '/rest/oauth2/token',
-            headers=headers,
-            data=urllib.parse.urlencode(data).encode('utf-8'),
+            self._address + '/rest/oauth2/token', data=urllib.parse.urlencode(data).encode('utf-8'),
         )
+        for k, v in headers.items():
+            request.add_unredirected_header(k, v)
         try:
             response = urlopen_with_retry(request)
             result = json.loads(response.read().decode())

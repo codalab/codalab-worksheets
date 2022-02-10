@@ -10,7 +10,6 @@ import { fetchStores } from '../../util/apiWrapper';
 class Store extends React.Component {
     state = {
         errorMessages: [],
-        storeInfo: null,
     };
     /**
      * Fetch store data and update the state of this component.
@@ -22,7 +21,6 @@ class Store extends React.Component {
                 const {
                     data: { attributes: storeInfo },
                 } = response;
-                console.log('storeInfo', storeInfo);
 
                 this.setState({
                     storeInfo,
@@ -40,7 +38,6 @@ class Store extends React.Component {
     /** Renderer. */
     render = () => {
         const storeInfo = this.state.storeInfo;
-        console.log('storeInfo', storeInfo);
         if (!storeInfo) {
             // Error
             if (this.state.errorMessages.length > 0) {

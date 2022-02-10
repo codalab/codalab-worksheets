@@ -251,7 +251,14 @@ def backup_db():
 
 
 def check_disk_space(paths):
-    lines = run_command(['df'] + paths).split('\n')[1:]
+    """Checks whether there is low disk space in the given paths, and
+    prints out a report of "df -h" run on the given paths."""
+
+    # Run "df -h" first, so that human-readable output is logged in the reports.
+    # We run "df" afterwards (and don't log the output) so that we can numerically
+    # check whether there is low disk space.
+    run_command(['df', '-h'] + paths)
+    lines = run_command(['df'] + paths, include_output=False).split('\n')[1:]
     results = [int(line.split()[3]) for line in lines]
     # Flag an error if disk space running low
     total = sum(results)
