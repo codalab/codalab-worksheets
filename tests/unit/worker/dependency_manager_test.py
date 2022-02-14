@@ -52,13 +52,15 @@ class DependencyManagerTest(unittest.TestCase):
 
         # Release 0x2 as a dependent
         self.dependency_manager.release("0x2", dependency_key)
-        dependencies = self.dependency_manager._fetch_dependencies()
+        with self.dependency_manager._state_lock:
+            dependencies = self.dependency_manager._fetch_dependencies()
         state = dependencies[dependency_key]
         self.assertEqual(state.dependents, {"0x3"})
 
         # Release 0x3 as a dependent - should be left with no dependents
         self.dependency_manager.release("0x3", dependency_key)
-        dependencies = self.dependency_manager._fetch_dependencies()
+        with self.dependency_manager._state_lock:
+            dependencies = self.dependency_manager._fetch_dependencies()
         state = dependencies[dependency_key]
         self.assertEqual(len(state.dependents), 0)
 
