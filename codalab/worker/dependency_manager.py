@@ -20,8 +20,9 @@ from codalab.worker.worker_thread import ThreadDict
 from codalab.worker.bundle_state import DependencyKey
 from codalab.worker.state_committer import JsonStateCommitter
 
-logging.getLogger('flufl.lock').setLevel(logging.WARNING)
 from flufl.lock import Lock, AlreadyLockedError, NotLockedError  # noqa: E402
+
+logging.getLogger('flufl.lock').setLevel(logging.WARNING)
 
 
 logger = logging.getLogger(__name__)
@@ -50,9 +51,9 @@ class NFSLock:
         self._lock = Lock(path)
 
         # Locks have a lifetime (default 15 seconds) which is the period of time that the process expects
-        # to keep the lock once it has been acquired. We set the lifetime to be 30 minutes as we expect
+        # to keep the lock once it has been acquired. We set the lifetime to be 5 minutes as we expect
         # all operations that require locks to be completed within that time.
-        self._lock.lifetime = timedelta(minutes=30)
+        self._lock.lifetime = timedelta(minutes=5)
 
         # Ensure multiple threads within a process run NFSLock operations one at a time.
         # Multiple threads accessing flufl lock can cause slow performance.
@@ -69,7 +70,7 @@ class NFSLock:
 
     def release(self):
         try:
-            self._lock.unlock(unconditionally=False)
+            self._lock.unlock()
         except NotLockedError:
             pass
         self._r_lock.release()
@@ -79,6 +80,10 @@ class NFSLock:
 
     def __exit__(self, t, v, tb):
         self.release()
+
+    @property
+    def is_locked(self):
+        return self._lock.is_locked
 
 
 class DependencyManager(StateTransitioner, BaseDependencyManager):
@@ -99,7 +104,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
     MAX_SERIALIZED_LEN = 60000
 
     # If it has been this long since a worker has downloaded anything, another worker will take over downloading.
-    DEPENDENCY_DOWNLOAD_TIMEOUT_SECONDS = 30 * 60
+    DEPENDENCY_DOWNLOAD_TIMEOUT_SECONDS = 5 * 60
 
     def __init__(
         self,
@@ -170,7 +175,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 dependencies: Dict[DependencyKey, DependencyState] = dict()
                 paths: Set[str] = set()
                 logger.info(
-                    f'State file did not exist. Creating one at path {self._state_committer.path}.'
+                    f'State file did not exist. Will create one at path {self._state_committer.path}.'
                 )
 
             # Get the paths that exist in dependency state, loaded path and
@@ -213,6 +218,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         WARNING: If a value for `default` is specified, errors will be silently handled.
         """
+        assert self._state_lock.is_locked
         state: DependencyManagerState = self._state_committer.load(default)
         dependencies: Dict[DependencyKey, DependencyState] = state['dependencies']
         paths: Set[str] = state['paths']
@@ -224,6 +230,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         WARNING: If a value for `default` is specified, errors will be silently handled.
         """
+        assert self._state_lock.is_locked
         state = self._state_committer.load(default)
         return state['dependencies']
 
@@ -232,6 +239,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         Update state in dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
+        assert self._state_lock.is_locked
         state: DependencyManagerState = {'dependencies': dependencies, 'paths': paths}
         self._state_committer.commit(state)
 
@@ -260,15 +268,17 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
     def _transition_dependencies(self):
         with self._state_lock:
-            dependencies, paths = self._fetch_state(default={'dependencies': {}, 'paths': set()})
-            if len(dependencies) == 0:
-                return
+            try:
+                dependencies, paths = self._fetch_state()
 
-            # Update the class variable _paths as the transition function may update it
-            self._paths = paths
-            for dep_key, dep_state in dependencies.items():
-                dependencies[dep_key] = self.transition(dep_state)
-            self._commit_state(dependencies, self._paths)
+                # Update the class variable _paths as the transition function may update it
+                self._paths = paths
+                for dep_key, dep_state in dependencies.items():
+                    dependencies[dep_key] = self.transition(dep_state)
+                self._commit_state(dependencies, self._paths)
+            except (ValueError, EnvironmentError):
+                # Do nothing if an error is thrown while reading from the state file
+                pass
 
     def _prune_failed_dependencies(self):
         """
@@ -357,6 +367,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         Also delete any known files on the filesystem if any exist
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
+        assert self._state_lock.is_locked
+
         if dep_key in dependencies:
             try:
                 path_to_remove = dependencies[dep_key].path
@@ -477,6 +489,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         Checks if the dependency is downloading or not.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
+        assert self._state_lock.is_locked
 
         def download():
             """

@@ -12,6 +12,11 @@ We support the following Worker Managers:
 | slurm-batch      | Worker manager for submitting jobs using Slurm Batch.        | 
 | kubernetes       | Worker manager for submitting jobs to a Kubernetes cluster.  |
 
+## Setting a shared cache
+
+To use a shared cache among workers, have all the workers use the same working directory by specifying
+the same path for `--work-dir`. The working directory is set by `-worker-work-dir-prefix` when starting 
+a worker manager. The dependency managers can be used over NFS, so a working directory can be on a network disk.
 
 ## AWS Batch Worker Manager
 
