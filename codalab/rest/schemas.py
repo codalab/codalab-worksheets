@@ -19,8 +19,7 @@ from codalab.objects.permission import parse_permission, permission_str
 
 class CompatibleInteger(fields.Integer):
     def serialize(self, attr, obj, accessor=None):
-        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed.
-        """
+        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed."""
         ret = Field.serialize(self, attr, obj, accessor=accessor)
         return self._to_string(ret) if (self.as_string and ret is not None) else ret
 
@@ -221,6 +220,41 @@ class BundleSchema(Schema):
         type_ = 'bundles'
 
 
+class BundleStoreSchema(Schema):
+    id = fields.String(validate=validate_uuid, attribute='uuid')
+    uuid = fields.String(attribute='uuid')
+    owner = fields.Integer(attribute='owner_id')
+    name = fields.String(required=True)
+    storage_type = fields.String(required=True)
+    storage_format = fields.String(allow_none=True)
+    url = fields.String(allow_none=True)
+    authentication = fields.String(allow_none=True)
+    authentication_env = fields.String(allow_none=True)
+
+    class Meta:
+        type_ = 'bundle_stores'
+
+
+class BundleLocationSchema(Schema):
+    bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
+    bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
+
+    class Meta:
+        type_ = 'bundle_locations'
+
+
+class BundleLocationListSchema(Schema):
+    id = fields.String(validate=validate_uuid, attribute='bundle_store_uuid')
+    bundle_store_uuid = fields.String(attribute='bundle_store_uuid')
+    name = fields.String()
+    storage_type = fields.String()
+    storage_format = fields.String()
+    url = fields.String(allow_none=True)
+
+    class Meta:
+        type_ = 'bundle_locations'
+
+
 # Field-update restrictions are specified as lists below because the
 # restrictions differ depending on the action
 
@@ -272,6 +306,7 @@ class UserSchema(Schema):
     url = fields.Url(allow_none=True)
     date_joined = fields.LocalDateTime("%c")
     avatar_id = fields.String(allow_none=True)
+    has_access = fields.Bool()
 
     class Meta:
         type_ = 'users'

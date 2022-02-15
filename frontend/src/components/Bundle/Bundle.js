@@ -8,7 +8,12 @@ import { BundleEditableField } from '../EditableField';
 import { FileBrowser } from '../FileBrowser/FileBrowser';
 import './Bundle.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
-import { fetchBundleContents, fetchBundleMetadata, fetchFileSummary } from '../../util/apiWrapper';
+import {
+    fetchBundleContents,
+    fetchBundleMetadata,
+    fetchFileSummary,
+    fetchBundleStores,
+} from '../../util/apiWrapper';
 
 class Bundle extends React.Component<
     {
@@ -35,11 +40,11 @@ class Bundle extends React.Component<
         this.state = {
             errorMessages: [],
             bundleInfo: null,
+            storeInfo: null,
             fileContents: null,
             stdout: null,
             stderr: null,
             prevUuid: props.uuid,
-            errorCode: null,
         };
     }
 
@@ -70,19 +75,11 @@ class Bundle extends React.Component<
         };
 
         let errorHandler = (error) => {
-            if (error.response && error.response.status === 403) {
+            if (error.response && error.response.status === 404) {
                 this.setState({
                     fileContents: null,
                     stdout: null,
                     stderr: null,
-                    errorCode: 403,
-                });
-            } else if (error.response && error.response.status === 404) {
-                this.setState({
-                    fileContents: null,
-                    stdout: null,
-                    stderr: null,
-                    errorCode: 404,
                 });
             } else {
                 this.setState({
@@ -90,7 +87,7 @@ class Bundle extends React.Component<
                     fileContents: null,
                     stdout: null,
                     stderr: null,
-                    errorMessages: this.state.errorMessages.concat([error.message]),
+                    errorMessages: this.state.errorMessages.concat([error]),
                 });
             }
         };
@@ -134,6 +131,17 @@ class Bundle extends React.Component<
         fetchBundleContents(this.props.uuid)
             .then(callback)
             .catch(errorHandler);
+
+        callback = ({ data: storeInfo }) => {
+            if (!storeInfo) return;
+            this.setState({ storeInfo });
+        };
+
+        fetchBundleStores(this.props.uuid)
+            .then(callback)
+            // TODO: Add error handling when the migration #3802 is ready.
+            // Right now legacy bundles will have errors, which is expected.
+            .catch(() => {});
     };
 
     componentDidMount() {
@@ -144,17 +152,7 @@ class Bundle extends React.Component<
 
     /** Renderer. */
     render() {
-        const bundleInfo = this.state.bundleInfo;
-
-        // Show custom messages based on error code
-        if (this.state.errorCode == 403) {
-            return (
-                <ErrorMessage message={"Permission denied: '/bundles/" + this.props.uuid + "'"} />
-            );
-        } else if (this.state.errorCode == 404) {
-            return <ErrorMessage message={"Not found: '/bundles/" + this.props.uuid + "'"} />;
-        }
-
+        const { storeInfo, bundleInfo } = this.state;
         if (!bundleInfo) {
             // Error
             if (this.state.errorMessages.length > 0) {
@@ -188,6 +186,7 @@ class Bundle extends React.Component<
                 <FileBrowser uuid={bundleInfo.uuid} />
                 {renderMetadata(bundleInfo, bundleMetadataChanged)}
                 {renderHostWorksheets(bundleInfo)}
+                {storeInfo && storeInfo.length > 0 && renderStoreInfo(storeInfo)}
             </div>
         );
 
@@ -536,6 +535,39 @@ function renderHostWorksheets(bundleInfo) {
                 <div className='host-worksheets-table'>
                     <table className='bundle-meta table'>
                         <tbody>{hostWorksheetRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function renderStoreInfo(storeInfo) {
+    let rows = [];
+    storeInfo.forEach(({ attributes: { bundle_store_uuid, name, url } }) => {
+        rows.push(
+            <tr>
+                <td>
+                    <span>{name}</span>
+                </td>
+                <td>
+                    <a href={`/stores/${bundle_store_uuid}`}>{bundle_store_uuid}</a>
+                </td>
+            </tr>,
+        );
+    });
+
+    return (
+        <div>
+            <div className='collapsible-header'>
+                <span>
+                    <p>bundle store &#x25BE;</p>
+                </span>
+            </div>
+            <div className='collapsible-content'>
+                <div className='host-worksheets-table'>
+                    <table className='bundle-meta table'>
+                        <tbody>{rows}</tbody>
                     </table>
                 </div>
             </div>

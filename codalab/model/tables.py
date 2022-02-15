@@ -19,7 +19,7 @@ from sqlalchemy.types import (
     Unicode,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
-from codalab.common import StorageType, StorageFormat
+from codalab.common import StorageType
 
 db_metadata = MetaData()
 
@@ -118,15 +118,9 @@ bundle_store = Table(
     # Name used to refer to this bundle store from the CLI.
     Column('name', String(255), nullable=False),
     # Storage type. This is usually redundant with information already in the url column, but set for efficiency reasons. When updating this column, sync it with codalab.common.StorageType.
-    Column(
-        'storage_type',
-        Enum(StorageType.DISK_STORAGE.value, StorageType.AZURE_BLOB_STORAGE.value),
-        nullable=True,
-    ),
+    Column('storage_type', String(255), nullable=True),
     # The format through which the bundle is stored.
-    Column(
-        'storage_format', Enum(StorageFormat.UNCOMPRESSED.value, StorageFormat.COMPRESSED_V1.value)
-    ),
+    Column('storage_format', String(255), nullable=True),
     # URL that uniquely identifies the bundle store.
     Column('url', String(255), nullable=True),
     # Authentication / password to access the bundle store.
@@ -134,6 +128,7 @@ bundle_store = Table(
     # Name of environment variable through which the authentication variable from above can be passed to codalab-service to access the bundle store.
     Column('authentication_env', String(255), nullable=True),
     UniqueConstraint('uuid', name='uix_1'),
+    UniqueConstraint('name', name='nix_1'),
     Index('bundle_store_name_index', 'name'),
     Index('bundle_store_owner_index', 'owner_id'),
     mysql_charset=TABLE_DEFAULT_CHARSET,

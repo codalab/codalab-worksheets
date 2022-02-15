@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.3.0_
+_version 1.4.2_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -11,6 +11,7 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [API Endpoints](#api-endpoints)
   - [Bundle Actions API](#bundle-actions-api)
   - [Bundle Permissions API](#bundle-permissions-api)
+  - [Bundle_Stores API](#bundle_stores-api)
   - [Bundles API](#bundles-api)
   - [CLI API](#cli-api)
   - [Groups API](#groups-api)
@@ -135,6 +136,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
+`has_access` | Boolean
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -144,7 +146,6 @@ Name | Type
 `disk_used` | Integer
 `last_login` | LocalDateTime
 `is_verified` | Boolean
-`has_access` | Boolean
 
 ## users
 
@@ -159,6 +160,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
+`has_access` | Boolean
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -194,6 +196,26 @@ Name | Type
 `parent_uuid` | String
 `parent_path` | String
 `parent_name` | Method
+
+## bundle_locations
+
+
+Name | Type
+--- | ---
+`id` | String
+`bundle_store_uuid` | String
+`name` | String
+`storage_type` | String
+`storage_format` | String
+`url` | String
+
+## bundle_locations
+
+
+Name | Type
+--- | ---
+`bundle_uuid` | String
+`bundle_store_uuid` | String
 
 ## bundle-permissions
 
@@ -232,6 +254,21 @@ Name | Type
 `permission` | Integer
 `permission_spec` | PermissionSpec
 
+## bundle_stores
+
+
+Name | Type
+--- | ---
+`id` | String
+`uuid` | String
+`owner` | Integer
+`name` | String
+`storage_type` | String
+`storage_format` | String
+`url` | String
+`authentication` | String
+`authentication_env` | String
+
 ## groups
 
 
@@ -257,6 +294,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
+`has_access` | Boolean
 
 ## worksheet-items
 
@@ -321,6 +359,48 @@ Bulk set bundle permissions.
 
 A bundle permission created on a bundle-group pair will replace any
 existing permissions on the same bundle-group pair.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Bundle_Stores API
+### `GET /bundle_stores`
+
+Fetch the bundle stores available to the user. No required arguments.
+
+Returns a list of bundle stores, each having the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: (integer) owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+
+### `POST /bundle_stores`
+
+Add a bundle store that the user can access.
+JSON parameters:
+    - `name`: name of bundle store
+    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc). If unspecified, an optimal default will be set.
+    - `url`: a self-referential URL that points to the bundle store.
+    - `authentication`: key for authentication that the bundle store uses.
+Returns the data of the created bundle store.
+
+### `GET /bundle_stores/<uuid:re:0x[0-9a-f]{32}>`
+
+Fetch the bundle store corresponding to the specified uuid.
+
+Returns a single bundle store, with the following parameters:
+- `uuid`: bundle store UUID
+- `owner_id`: owner of bundle store
+- `name`: name of bundle store
+- `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
+- `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
+- `url`: a self-referential URL that points to the bundle store.
+
+### `DELETE /bundle_stores`
+
+Delete the specified bundle stores.
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -433,6 +513,28 @@ Fetch locations of bundles.
 
 Query parameters:
 - `uuids`: List of bundle UUID's to get the locations for
+
+### `GET /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
+
+Returns a list of BundleLocations associated with the given bundle.
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID to get the locations for
+
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
+
+Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID corresponding to the new location
+
+### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
+
+Get info about a specific BundleLocation.
+
+Query parameters:
+- `bundle_uuid`: Bundle UUID to get the location for
+- `bundle_store_uuid`: Bundle Store UUID to get the location for
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
@@ -647,6 +749,8 @@ Query parameters:
 - `use_azure_blob_beta`: (optional) Use Azure Blob Storage to store the bundle.
   Default is False. If CODALAB_ALWAYS_USE_AZURE_BLOB_BETA is set, this parameter
   is disregarded, as Azure Blob Storage will always be used.
+- `store`: (optional) The name of the bundle store where the bundle should be uploaded to.
+  If unspecified, the CLI will pick the optimal available bundle store.
 
 
 &uarr; [Back to Top](#table-of-contents)
