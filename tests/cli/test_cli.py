@@ -141,7 +141,7 @@ def create_worker(context, user_id, worker_id, tag=None, group_name=None):
     # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
     # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
     worker_model.worker_checkin(
-        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False, False
     )
     context.collect_worker(user_id, worker_id)
 
