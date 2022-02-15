@@ -1,0 +1,85 @@
+# Adapted from the Google Cloud's GKE DaemonSet Tutorial:
+# https://github.com/GoogleCloudPlatform/solutions-gke-init-daemonsets-tutorial.
+#
+# Our changes:
+#
+# Installs Nvidia driver and container runtime following
+# https://docs.nvidia.com/datacenter/cloud-native/kubernetes/install-k8s.html.
+# Both are necessary to access Nvidia GPUs from a container.
+#
+# We set to "default-runtime" to "nvidia". This is a hard prerequisite for the Nvidia
+# device plugin to be properly installed.
+# See https://github.com/NVIDIA/k8s-device-plugin for more information.
+#
+# Added workaround to be able to restart Docker Daemon on the host node
+# from the Kubernetes pod:
+# https://stackoverflow.com/questions/64355482/restarting-docker-daemon-on-host-node-from-within-kubernetes-pod?answertab=votes#tab-top
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: entrypoint
+  labels:
+    app: alternative-init
+data:
+  entrypoint.sh: |
+    #!/usr/bin/env bash
+    DEBIAN_FRONTEND=noninteractive
+    ROOT_MOUNT_DIR="${ROOT_MOUNT_DIR:-/root}"
+
+    echo "Installing gcloud SDK..."
+    apt-get update
+    apt-get install -y \
+      apt-transport-https \
+      curl \
+      gnupg \
+      lsb-release \
+      ssh
+
+    export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
+    echo "deb https://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+    apt-get update
+    apt-get install -y google-cloud-sdk
+
+    CLUSTER_NAME="$(curl -sS http://metadata/computeMetadata/v1/instance/attributes/cluster-name -H "Metadata-Flavor: Google")"
+    NODE_NAME="$(curl -sS http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google')"
+    FULL_ZONE="$(curl -sS http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google' | awk -F  "/" '{print $4}')"
+    MAIN_ZONE=$(echo $FULL_ZONE | sed 's/\(.*\)-.*/\1/')
+
+    echo "Installing nvidia-driver..."
+    chroot "${ROOT_MOUNT_DIR}" sudo apt update
+    chroot "${ROOT_MOUNT_DIR}" sudo DEBIAN_FRONTEND=noninteractive apt-get install -y keyboard-configuration
+    yes Y | gcloud compute ssh \
+      --internal-ip $NODE_NAME \
+      --zone=$FULL_ZONE \
+      -- "sudo apt install -y nvidia-driver-450"
+
+    echo "Installing nvidia-container-runtime..."
+    chroot "${ROOT_MOUNT_DIR}" curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | \
+      chroot "${ROOT_MOUNT_DIR}" sudo apt-key add -
+    chroot "${ROOT_MOUNT_DIR}" curl -s -L https://nvidia.github.io/nvidia-container-runtime/ubuntu18.04/nvidia-container-runtime.list | \
+      chroot "${ROOT_MOUNT_DIR}" sudo tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+    chroot "${ROOT_MOUNT_DIR}" sudo apt-get update
+    chroot "${ROOT_MOUNT_DIR}" sudo apt-get -y install nvidia-container-runtime
+
+    echo "Configuring Docker with nvidia as the default runtime..."
+    chroot "${ROOT_MOUNT_DIR}" sudo tee /etc/docker/daemon.json <<EOF
+    {
+        "default-runtime": "nvidia",
+        "runtimes": {
+            "nvidia": {
+                "path": "/usr/bin/nvidia-container-runtime",
+                "runtimeArgs": []
+            }
+        }
+    }
+    EOF
+
+    echo "Restarting Docker daemon on the host node..."
+    yes Y | gcloud compute ssh \
+      --internal-ip $NODE_NAME \
+      --zone=$FULL_ZONE \
+      -- "sudo systemctl daemon-reload && sudo systemctl restart docker"
+
+    echo "Done."

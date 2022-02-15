@@ -1,0 +1,48 @@
+#
+# Adapted from https://medium.com/platformer-blog/nfs-persistent-volumes-with-kubernetes-a-case-study-ce1ed6e2c266
+#
+# Assuming PersistentVolume was created with:
+#
+#     gcloud compute disks create --size=500GB --zone=us-west1-a --type pd-ssd pd
+#
+# Deploy by running:
+#
+#     kubectl apply -f nfs-server.yaml
+#
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      role: nfs-server
+  template:
+    metadata:
+      labels:
+        role: nfs-server
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
+      containers:
+      - name: nfs-server
+        image: gcr.io/google_containers/volume-nfs:0.8
+        ports:
+          - name: nfs
+            containerPort: 2049
+          - name: mountd
+            containerPort: 20048
+          - name: rpcbind
+            containerPort: 111
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /exports
+            name: pd-domainnet
+      volumes:
+        - name: pd-domainnet
+          gcePersistentDisk:
+            pdName: pd-domainnet
+            fsType: ext4
