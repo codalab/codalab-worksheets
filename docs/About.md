@@ -15,9 +15,8 @@ provided by Microsoft Azure.
 - Percy Liang
 - Ashwin Ramaswami
 - Tony Lee
-- Yuqi Jin
-- Aditya Prerepa
 - Jizhen Wang
+- Pranav Jain
 
 ## Former Developers
 
@@ -40,3 +39,6 @@ provided by Microsoft Azure.
 - Jane Ge
 - Levi Lian
 - Yipeng He
+- Yuqi Jin
+- Aditya Prerepa
+- Andy Jin
