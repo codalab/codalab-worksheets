@@ -41,6 +41,7 @@ ALL_SERVICES = DEFAULT_SERVICES + [
     'worker-manager-cpu',
     'worker-manager-gpu',
     'worker2',
+    'worker-preemptible',
 ]
 
 ALL_NO_SERVICES = [
@@ -59,6 +60,7 @@ SERVICE_TO_IMAGE = {
     'monitor': 'server',
     'worker': 'worker',
     'worker2': 'worker',
+    'worker-preemptible': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
@@ -953,6 +955,7 @@ class CodalabServiceManager(object):
         else:
             self.bring_up_service('worker')
         self.bring_up_service('worker2')
+        self.bring_up_service('worker-preemptible')
 
         self.bring_up_service('monitor')
 

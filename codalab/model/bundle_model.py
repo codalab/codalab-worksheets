@@ -922,6 +922,7 @@ class BundleModel(object):
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,
+                    'on_preemptible_worker': run_row.preemptible,
                     'remote_history': getattr(bundle.metadata, "remote_history", [])
                     + [
                         remote

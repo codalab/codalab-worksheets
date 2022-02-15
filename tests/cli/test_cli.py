@@ -39,6 +39,7 @@ import tempfile
 import time
 import traceback
 import requests
+import docker
 
 
 global cl
@@ -1051,6 +1052,26 @@ def test_blob(ctx):
         # When client is from a web browser, should redirect
         response = fetch_contents_blob_from_web_browser(uuid)
         assert response.headers['Location'].startswith("http://localhost")
+
+
+@TestModule.register('preemptible')
+def test_preemptible(ctx):
+    """Tests preemptible workers to ensure they are functioning
+    properly. Should only be called when both the "worker" and
+    "worker-preemptible" services are running locally."""
+    name = random_name()
+    uuid = _run_command([cl, 'run', 'sleep 10000', '-n', name, '--tag', 'preemptible'])
+    wait_until_state(uuid, State.RUNNING)
+    remote_preemptible_worker = get_info(uuid, 'remote')
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    # Kill worker
+    client = docker.from_env()
+    client.containers.get("codalab_worker-preemptible_1").kill()
+    # Wait for bundle to be re-assigned
+    wait_until_state(uuid, State.STAGED)
+    wait_until_state(uuid, State.RUNNING)
+    # bundle should be resumed on the other worker
+    check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
 
 
 @TestModule.register('download')
