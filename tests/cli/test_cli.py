@@ -171,7 +171,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     Parameters:
         uuid: UUID of bundle to check state for
         expected_state: Expected state of bundle
-        timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
+        timeout_seconds: Maximum timeout to wait for the bundle. Default is 1000 seconds.
     """
     start_time = time.time()
     while True:
@@ -1051,6 +1051,22 @@ def test_blob(ctx):
         # When client is from a web browser, should redirect
         response = fetch_contents_blob_from_web_browser(uuid)
         assert response.headers['Location'].startswith("http://localhost")
+
+
+@TestModule.register('preemptible')
+def test_preemptible(ctx):
+    """Tests preemptible workers to ensure they are functioning
+    properly. Should only be called when both the "worker" and
+    "worker-preemptible" services are running."""
+    name = random_name()
+    uuid = _run_command([cl, 'run', 'echo hi && sleep 10000', '-n', name, '--preemptible', '--tag', 'preemptible'])
+    wait_until_state(uuid, State.RUNNING)
+    remote_preemptible_worker = get_info(uuid, 'remote')
+    # Kill worker
+    # Wait for bundle to be re-assigned
+    wait_until_state(uuid, State.RUNNING)
+    # bundle should be resumed on the other worker
+    check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
 
 
 @TestModule.register('download')

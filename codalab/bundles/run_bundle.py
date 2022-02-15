@@ -75,7 +75,7 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('remote_history', list, 'All workers where this job has been run (internal); multiple values indicate'
                                        'that the bundle was preempted and moved to a different worker.',
                                        generated=True, hide_when_anonymous=True))
-    METADATA_SPECS.append(MetadataSpec('on_preemptible_worker', bool, 'Whether the bundle is currently running / finished on a preemptible worker.', generated=True, hide_when_anonymous=True,
+    METADATA_SPECS.append(MetadataSpec('preemptible', bool, 'Whether the bundle is currently running / finished on a preemptible worker.', generated=True, hide_when_anonymous=True,
                                        default=False))
     # fmt: on
 
