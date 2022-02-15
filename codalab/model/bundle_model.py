@@ -1013,7 +1013,7 @@ class BundleModel(object):
                 # The user deleted the bundle or the bundle finished
                 return False
 
-            if getattr(bundle.metadata, "preemptible", False):
+            if getattr(bundle.metadata, "on_preemptible_worker", False):
                 # If the bundle is running on a preemptible worker, move the bundle to the STAGED state instead.
                 bundle_update = {
                     'state': State.STAGED,
