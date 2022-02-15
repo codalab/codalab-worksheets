@@ -1054,13 +1054,13 @@ def test_blob(ctx):
 
 
 @TestModule.register('default_bundle_store')
-def test_upload3(ctx):
+def test_upload_default_bundle_store(ctx):
     """Tests the CODALAB_DEFAULT_BUNDLE_STORE_NAME environment
     variable. Should only be called when
     CODALAB_DEFAULT_BUNDLE_STORE_NAME is set."""
     # Create a new bundle store and upload to it
     bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
-    bundle_store_uuid = _run_command(
+    _run_command(
         [
             cl,
             "store",
