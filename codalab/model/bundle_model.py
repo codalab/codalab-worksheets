@@ -915,6 +915,11 @@ class BundleModel(object):
             ).fetchone()
             if not run_row or run_row.user_id != user_id or run_row.worker_id != worker_id:
                 return False
+            worker_row = connection.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.worker_id == worker_id)
+                )
+            ).fetchone()
 
             bundle_update = {
                 'state': State.PREPARING,
@@ -922,7 +927,7 @@ class BundleModel(object):
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,
-                    'on_preemptible_worker': run_row.preemptible,
+                    'on_preemptible_worker': worker_row.preemptible,
                     'remote_history': getattr(bundle.metadata, "remote_history", [])
                     + [
                         remote
