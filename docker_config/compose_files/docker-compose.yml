@@ -70,6 +70,8 @@ x-codalab-env: &codalab-env
   - COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}
   - DOCKER_CLIENT_TIMEOUT=${DOCKER_CLIENT_TIMEOUT}
   - CODALAB_AZURE_BLOB_CONNECTION_STRING=${CODALAB_AZURE_BLOB_CONNECTION_STRING}
+  - CODALAB_DEFAULT_BUNDLE_STORE_NAME=${CODALAB_DEFAULT_BUNDLE_STORE_NAME}
+  - GOOGLE_APPLICATION_CREDENTIALS=/google-application-credentials.json
   - CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=${CODALAB_ALWAYS_USE_AZURE_BLOB_BETA}
   - CODALAB_SENTRY_INGEST_URL=${CODALAB_SENTRY_INGEST_URL}
   - CODALAB_SENTRY_ENVIRONMENT=${CODALAB_SENTRY_ENVIRONMENT}
@@ -100,6 +102,7 @@ x-codalab-server: &codalab-server
   - "${CODALAB_HOME}:${CODALAB_HOME}"
   - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
   - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
+  - "${CODALAB_GOOGLE_APPLICATION_CREDENTIALS}:/google-application-credentials.json"
 
 ############################################################
 
@@ -129,11 +132,7 @@ services:
       - rest-server
 
   azurite:
-    # Use a temporary fork of Azurite that implements rscc, rscd, rsce, rscl, rsct query parameter support
-    # in SAS tokens (https://github.com/Azure/Azurite/pull/998).
-    # TODO (Ashwin): Once this PR is merged and release, use the upstream Microsoft Azurite image again.
-    image: llightex/azurite@sha256:e89a564fde7cb4506b6138bb62e97bce7a305d6493e9899ce6dd227205b72e28
-    # image: mcr.microsoft.com/azure-storage/azurite:3.14.0
+    image: mcr.microsoft.com/azure-storage/azurite:3.14.2
     command: "azurite --blobHost 0.0.0.0"
     networks:
       - rest-server
@@ -382,24 +381,22 @@ services:
       - rest-server
     shm_size: '500mb'
 
-  worker-singularity:
+  worker2:
     image: codalab/worker:${CODALAB_VERSION}
-    user: ${CODALAB_UID}
     command: |
       cl-worker
       --server http://rest-server:${CODALAB_REST_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
-      --id ${HOSTNAME}
-      --container-runtime singularity
+      --id ${HOSTNAME}-worker2
       --verbose
     <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
     depends_on:
       - rest-server
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
-      - ${CODALAB_HOME}:${CODALAB_HOME}
-      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
     networks:
       - service
       - worker

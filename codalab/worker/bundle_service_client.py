@@ -102,8 +102,9 @@ class BundleServiceClient(RestClient):
         request_to_send = urllib.request.Request(
             self._base_url + '/oauth2/token',
             data=urllib.parse.urlencode(request_data).encode('utf-8'),
-            headers=headers,
         )
+        for k, v in headers.items():
+            request_to_send.add_unredirected_header(k, v)
 
         with closing(urlopen_with_retry(request_to_send)) as response:
             response_data = response.read().decode()
@@ -152,12 +153,18 @@ class BundleServiceClient(RestClient):
         )
 
     @wrap_exception('Unable to update bundle contents in bundle service')
-    def update_bundle_contents(self, worker_id, uuid, path, exclude_patterns, progress_callback):
+    def update_bundle_contents(
+        self, worker_id, uuid, path, exclude_patterns, store, progress_callback
+    ):
         with closing(tar_gzip_directory(path, exclude_patterns=exclude_patterns)) as fileobj:
             self._upload_with_chunked_encoding(
                 'PUT',
                 '/bundles/' + uuid + '/contents/blob/',
-                query_params={'filename': 'bundle.tar.gz', 'finalize_on_success': 0},
+                query_params={
+                    'filename': 'bundle.tar.gz',
+                    'finalize_on_success': 0,
+                    'store': store or '',
+                },
                 fileobj=fileobj,
                 progress_callback=progress_callback,
             )

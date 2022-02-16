@@ -118,15 +118,22 @@ If you want to delete all the data associated with this, then do:
 
     ./codalab_service.py delete
 
+## Run two workers locally
+
+Sometimes you may want to run two workers locally. In that case, you should run:
+
+    ./codalab_service.py start -bds default worker2
+
+
 ## Azure Blob Storage
 
 To start the server in dev mode with Azurite (an Azure Blob Storage emulator) enabled, run:
 
-    cls start -bds default azurite
+    codalab-service start -bds default azurite
 
 To start the server in dev mode and use Azure Blob by default for all uploads, run:
 
-    CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 cls start -bds default azurite
+    CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=1 codalab-service start -bds default azurite
 
 ## Building Docker images
 

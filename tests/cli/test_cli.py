@@ -763,15 +763,26 @@ def test_upload1(ctx):
     # Upload a file that exceeds the disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
     # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
-    # we reset disk quota so tests added later don't fail on upload
+    _run_command([cl, 'upload', test_path('codalab.png')], expected_exit_code=1)
+    # Reset disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
     # Run the same tests when on a non root user
-    create_user(ctx, 'non_root_user_dq', disk_quota='2')
-    switch_user('non_root_user_dq')
-    # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', 'codalab.png'], expected_exit_code=1)
+    user_name = 'non_root_user_' + random_name()
+    create_user(ctx, user_name, disk_quota='2000')
+    switch_user(user_name)
+    # expect to fail when we upload something more than 2k bytes
+    check_contains(
+        "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
+        _run_command(
+            [cl, 'upload', test_path('codalab.png')],
+            expected_exit_code=1,
+            # To return stderr, we need to include
+            # the following two arguments:
+            include_stderr=True,
+            force_subprocess=True,
+        ),
+    )
     # Switch back to root user
     switch_user('codalab')
 
@@ -867,6 +878,65 @@ def test_upload2(ctx):
 
 @TestModule.register('upload3')
 def test_upload3(ctx):
+    # Create a new bundle store and upload to it
+    bundle_store_name = random_name()
+    bundle_store_uuid = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Names should be unique
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ],
+        expected_exit_code=1,
+    )
+    # Run bundle that outputs to bundle store
+    uuid_run = _run_command([cl, 'run', 'echo hello', '--store', bundle_store_name])
+
+    # List bundle stores
+    list_output = _run_command([cl, "store", "ls"])
+    check_contains(bundle_store_name, list_output)
+    check_contains(bundle_store_uuid, list_output)
+    check_contains("disk", list_output)
+    check_contains("uncompressed", list_output)
+
+    # Upload file to bundle store
+    uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
+    check_equals('hello', _run_command([cl, 'cat', uuid]))
+    check_contains(bundle_store_name, _run_command([cl, 'info', uuid]))
+
+    # Check that uuid_run finished and uploaded results properly.
+    wait(uuid_run)
+    check_equals('hello', _run_command([cl, 'cat', f'{uuid_run}/stdout']))
+
+    # A bundle with a BundleLocation should be able to be deleted
+    _run_command([cl, 'rm', uuid])
+    _run_command([cl, 'rm', uuid_run])
+
+    # Delete bundle store
+    check_equals(bundle_store_uuid, _run_command([cl, "store", "rm", bundle_store_uuid]))
+    list_output = _run_command([cl, "store", "ls"])
+    check_not_contains(bundle_store_name, list_output)
+    check_not_contains(bundle_store_uuid, list_output)
+
     # Upload URL
     uuid = _run_command([cl, 'upload', 'https://www.wikipedia.org'])
     check_contains('<title>Wikipedia</title>', _run_command([cl, 'cat', uuid]))
@@ -1950,7 +2020,9 @@ def test_resources(ctx):
 
     # Test network access
     REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
-    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 1)
+    # Network access is set to true by default
+    wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
+    # --request-network should behave the same as above
     wait(_run_command([cl, 'run', '--request-network', REQUEST_CMD], request_memory="10m"), 0)
 
 
@@ -2038,9 +2110,20 @@ def test_groups(ctx):
     # Try to relegate yourself to non-admin status
     _run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
 
+    # Add a member
+    member_user = random_name()
+    create_user(ctx, member_user)
+    _run_command([cl, 'uadd', member_user, group_name])
+    group_info = _run_command([cl, 'ginfo', group_name])
+    check_contains(member_user, group_info)
+
+    # When member is removed, ginfo should not crash
+    _run_command([cl, 'ufarewell', member_user])
+    group_info = _run_command([cl, 'ginfo', group_name])
+    check_contains('[deleted user]', group_info)
+
     # TODO: Test other group membership semantics:
     # - removing a group
-    # - adding new members
     # - adding an admin
     # - converting member to admin
     # - converting admin to member

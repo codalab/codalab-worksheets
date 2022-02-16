@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import bz2
 import hashlib
+import stat
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
@@ -16,8 +17,7 @@ from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
-import tarfile
-from codalab.lib.beam.ratarmount import SQLiteIndexedTar, FileInfo
+from ratarmountcore import SQLiteIndexedTar, FileInfo
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -221,7 +221,7 @@ class OpenIndexedArchiveFile(object):
             tarFileName="contents",
             writeIndex=False,
             clearIndexCache=False,
-            indexFileName=self.index_file_name,
+            indexFilePath=self.index_file_name,
         )
 
     def __exit__(self, type, value, traceback):
@@ -268,7 +268,7 @@ class OpenFile(object):
                 return FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
             # If a file path is specified within an archive file on Blob Storage, open the specified path within the archive.
             with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-                isdir = lambda finfo: finfo.type == tarfile.DIRTYPE
+                isdir = lambda finfo: stat.S_ISDIR(finfo.mode)
                 # If the archive file is a .tar.gz file, open the specified archive subpath within the archive.
                 # If it is a .gz file, open the "/contents" entry, which represents the actual gzipped file.
                 fpath = (

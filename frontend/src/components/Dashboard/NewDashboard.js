@@ -5,6 +5,7 @@ import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 import { withRouter } from 'react-router';
 import { defaultErrorHandler, getUser, getUsers } from '../../util/apiWrapper';
+import ErrorMessage from '../worksheets/ErrorMessage';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
@@ -67,7 +68,18 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        if (this.state.userInfo) {
+        // If the server is in protected mode and the user does not have access, show error message.
+        if (
+            this.state.userInfo &&
+            this.state.userInfo.protected_mode &&
+            !this.state.userInfo.has_access
+        ) {
+            return (
+                <ErrorMessage
+                    message={'No access to this server, please contact the administrators.'}
+                />
+            );
+        } else if (this.state.userInfo) {
             return (
                 <div>
                     <Grid container spacing={30}>

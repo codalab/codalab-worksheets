@@ -33,7 +33,8 @@ DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument(
-        '--tag', help='Alphanumeric tag that allows for scheduling runs on specific workers.'
+        '--tag',
+        help='Tag (can only contain letters, numbers or hyphens) that allows for scheduling runs on specific workers.',
     )
     parser.add_argument(
         '--server',
@@ -232,16 +233,19 @@ def connect_to_codalab_server(server, password_file):
 def main():
     args = parse_args()
 
-    if args.tag and not args.tag.isalnum():
+    if args.tag and not args.tag.replace("-", "").isalnum():
         raise argparse.ArgumentTypeError(
-            "Worker tag must be alphanumeric (only contain letters and numbers)."
+            "Worker tag must only contain letters, numbers or hyphens."
         )
 
     # Configure logging
-    logging.basicConfig(
-        format='%(asctime)s %(message)s %(pathname)s %(lineno)d',
-        level=(logging.DEBUG if args.verbose else logging.INFO),
-    )
+    log_format: str = '%(asctime)s %(message)s'
+    if args.verbose:
+        log_format += ' %(pathname)s %(lineno)d'
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logging.basicConfig(format=log_format, level=log_level)
 
     logging.getLogger('urllib3').setLevel(logging.INFO)
     # Initialize sentry logging

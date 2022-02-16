@@ -122,6 +122,7 @@ BUNDLE_COMMANDS = (
     'write',
     'mount',
     'netcat',
+    'store',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -1010,6 +1011,69 @@ class BundleCLI(object):
             return
         print(Commands.help_text(args.verbose, args.markdown), file=self.stdout)
 
+    @Commands.command(
+        'store',
+        help=['Add a bundle store.'],
+        arguments=(
+            Commands.Argument(
+                'command',
+                help='Set to "add" to add a new bundle store, "ls" to list bundle stores, and "rm" to remove a bundle store.',
+                nargs='?',
+            ),
+            Commands.Argument(
+                'bundle_store_uuid',
+                help='Bundle store uuid. Specified when running "cl store rm [uuid]".',
+                nargs='?',
+            ),
+            Commands.Argument(
+                '-n', '--name', help='Name of the bundle store; must be globally unique.',
+            ),
+            Commands.Argument(
+                '--storage-type',
+                help='Storage type of the bundle store. Acceptable values are "disk" and "azure_blob".',
+            ),
+            Commands.Argument(
+                '--storage-format',
+                help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.',
+            ),
+            Commands.Argument(
+                '--url', help='A self-referential URL that points to the bundle store.',
+            ),
+            Commands.Argument(
+                '--authentication', help='Key for authentication that the bundle store uses.',
+            ),
+        ),
+    )
+    def do_store_command(self, args):
+        client = self.manager.current_client()
+        if args.command == 'add':
+            bundle_store_info = {
+                "name": args.name,
+                "storage_type": args.storage_type,
+                "storage_format": args.storage_format,
+                "url": args.url,
+                "authentication": args.authentication,
+            }
+            new_bundle_store = client.create('bundle_stores', bundle_store_info)
+            print(new_bundle_store["id"], file=self.stdout)
+        elif args.command == 'ls':
+            bundle_stores = client.fetch('bundle_stores')
+            print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
+            print(
+                "\n".join(
+                    "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
+                    for b in bundle_stores
+                ),
+                file=self.stdout,
+            )
+        elif args.command == 'rm':
+            client.delete('bundle_stores', resource_ids=[args.bundle_store_uuid])
+            print(args.bundle_store_uuid, file=self.stdout)
+        else:
+            raise UsageError(
+                f"cl store {args.command} is not supported. Only the following subcommands are supported: 'cl store add', 'cl store ls', 'cl store rm'."
+            )
+
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -1333,6 +1397,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
+                    'store': metadata.get('store') or '',
                 },
             )
 
@@ -1353,6 +1418,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
+                    'store': metadata.get('store') or '',
                 },
             )
 
@@ -1372,8 +1438,8 @@ class BundleCLI(object):
             disk_left = user['disk_quota'] - user['disk_used']
             if disk_left - total_bundle_size <= 0:
                 raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %d with only %d remaining in user\'s disk quota.'
-                    % (total_bundle_size, disk_left)
+                    'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
+                    % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
                 )
 
             print("Preparing upload archive...", file=self.stderr)
@@ -1418,6 +1484,7 @@ class BundleCLI(object):
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
+                        'store': metadata.get('store') or '',
                     },
                     progress_callback=progress.update,
                 )
@@ -1987,7 +2054,7 @@ class BundleCLI(object):
         help='Remove a bundle (permanent!).',
         arguments=(
             Commands.Argument(
-                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
             ),
             Commands.Argument(
                 '--force',
@@ -2018,6 +2085,12 @@ class BundleCLI(object):
                 help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
             ),
+            # TODO: this feature is not implemented yet, implement as part of https://github.com/codalab/codalab-worksheets/issues/3923.
+            # Commands.Argument(
+            #     '-b',
+            #     '--store',
+            #     help='Keeps the bundle, but removes the bundle contents from the specified bundle store.',
+            # ),
         ),
     )
     def do_rm_command(self, args):
@@ -2374,6 +2447,17 @@ class BundleCLI(object):
 
         for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
             lines.append(self.key_value_str(key, value))
+
+        bundle_locations = client.get_bundle_locations((info.get('uuid')))
+        if len(bundle_locations) > 0:
+            if raw:
+                bundle_locations = str(bundle_locations)
+                lines.append(self.key_value_str('bundle stores', bundle_locations))
+            else:
+                bundle_locations = [
+                    location.get('attributes').get('name') for location in bundle_locations
+                ]
+                lines.append(self.key_value_str('bundle stores', ','.join(bundle_locations)))
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
@@ -3704,11 +3788,17 @@ class BundleCLI(object):
             )
         for member in group['admins']:
             members.append(
-                {'role': 'admin', 'user': '%s(%s)' % (member['user_name'], member['id'])}
+                {
+                    'role': 'admin',
+                    'user': '%s(%s)' % (member.get('user_name', '[deleted user]'), member['id']),
+                }
             )
         for member in group['members']:
             members.append(
-                {'role': 'member', 'user': '%s(%s)' % (member['user_name'], member['id'])}
+                {
+                    'role': 'member',
+                    'user': '%s(%s)' % (member.get('user_name', '[deleted user]'), member['id']),
+                }
             )
 
         print('Members of group %s(%s):' % (group['name'], group['id']), file=self.stdout)

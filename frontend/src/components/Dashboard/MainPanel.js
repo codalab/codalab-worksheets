@@ -189,7 +189,7 @@ class MainPanel extends React.Component<{
 
     componentDidMount() {
         // Fetch worksheets owned by the current user
-        navBarSearch(['owner=' + this.props.userInfo.user_name])
+        navBarSearch(['owner=' + this.props.userInfo.user_name, '.limit=' + 100])
             .then((data) => this.setWorksheets(data))
             .catch(defaultErrorHandler);
         navBarSearch(['.shared', '.notmine', '.limit=' + 100])
@@ -278,9 +278,9 @@ class MainPanel extends React.Component<{
                                 onChange={this.handleTabChange}
                                 aria-label='mainpanel tabs'
                             >
-                                <Tab label='My Worksheets' {...this.a11yProps(0)}></Tab>
+                                <Tab label='Owned by Me' {...this.a11yProps(0)}></Tab>
                                 <Tab
-                                    label='Shared Worksheets with Me'
+                                    label='Shared with Me'
                                     {...this.a11yProps(1)}
                                     disabled={!this.props.ownDashboard}
                                 ></Tab>
