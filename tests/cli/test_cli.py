@@ -1058,9 +1058,10 @@ def test_blob(ctx):
 def test_preemptible(ctx):
     """Tests preemptible workers to ensure they are functioning
     properly. Should only be called when both the "worker" and
-    "worker-preemptible" services are running locally."""
+    "worker-preemptible" services are running locally, and
+    codalab_service.py is started with the "-d" flag."""
     name = random_name()
-    uuid = _run_command([cl, 'run', 'sleep 10000', '-n', name, '--tag', 'preemptible'])
+    uuid = _run_command([cl, 'run', 'sleep 10000', '-n', name, '--request-queue', 'preemptible'])
     wait_until_state(uuid, State.RUNNING)
     remote_preemptible_worker = get_info(uuid, 'remote')
     check_equals("True", get_info(uuid, 'on_preemptible_worker'))
