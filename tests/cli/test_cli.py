@@ -1073,10 +1073,9 @@ def test_upload_default_bundle_store(ctx):
             'uncompressed',
         ]
     )
-    # Run bundle, which should output to bundle store by default
-    uuid_run = _run_command([cl, 'run', 'echo hello'])
-    info_output = _run_command([cl, "info", uuid_run])
-    check_contains(bundle_store_name, info_output)
+    # Upload a bundle, which should output to bundle store by default
+    uuid = _run_command([cl, 'upload', '-c', 'hello'])
+    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
 
 @TestModule.register('download')
