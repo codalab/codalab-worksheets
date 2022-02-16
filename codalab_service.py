@@ -40,7 +40,7 @@ ALL_SERVICES = DEFAULT_SERVICES + [
     'monitor',
     'worker-manager-cpu',
     'worker-manager-gpu',
-    'worker-singularity',
+    'worker2',
 ]
 
 ALL_NO_SERVICES = [
@@ -58,7 +58,7 @@ SERVICE_TO_IMAGE = {
     'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
-    'worker-singularity': 'worker',
+    'worker2': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
@@ -952,7 +952,7 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker-shared-file-system')
         else:
             self.bring_up_service('worker')
-        self.bring_up_service('worker-singularity')
+        self.bring_up_service('worker2')
 
         self.bring_up_service('monitor')
 
