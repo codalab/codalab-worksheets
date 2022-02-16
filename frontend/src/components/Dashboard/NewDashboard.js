@@ -68,7 +68,7 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        // If the ser is in protected mode and the user does not have access, show error message.
+        // If the server is in protected mode and the user does not have access, show error message.
         if (
             this.state.userInfo &&
             this.state.userInfo.protected_mode &&
