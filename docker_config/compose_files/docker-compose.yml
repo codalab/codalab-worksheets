@@ -103,7 +103,6 @@ x-codalab-server: &codalab-server
   - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
   - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
   - "${CODALAB_GOOGLE_APPLICATION_CREDENTIALS}:/google-application-credentials.json"
-  - /var/run/docker.sock:/var/run/docker.sock  # Used only for preemptible test in test_cli.py.
 
 ############################################################
 
@@ -113,7 +112,6 @@ services:
     command: cl-server
     <<: *codalab-base
     <<: *codalab-server
-    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
     depends_on:
       - mysql
     networks:

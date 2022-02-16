@@ -340,7 +340,7 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
-          python3 codalab_service.py start --services default worker-preemptible --version ${VERSION} --protected-mode
+          python3 codalab_service.py start --services default worker-preemptible --version ${VERSION} -d
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
