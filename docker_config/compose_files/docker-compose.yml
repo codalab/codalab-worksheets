@@ -314,7 +314,6 @@ services:
       --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
       --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
       --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
-    command: sleep 10000 # ls -R /var/codalab/codalab-worksheets/var
     <<: *codalab-base
     <<: *codalab-server
     volumes:
