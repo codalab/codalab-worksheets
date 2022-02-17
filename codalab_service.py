@@ -351,21 +351,6 @@ CODALAB_ARGUMENTS = [
         help='Azure Batch service url for the Azure Batch worker manager',
     ),
     CodalabArg(
-        name='worker_manager_kubernetes_cluster_host',
-        type=str,
-        help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_kubernetes_auth_token',
-        type=str,
-        help='Kubernetes cluster authorization token for the Kubernetes worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_kubernetes_cert_path',
-        type=str,
-        help='Path to the generated SSL cert for the Kubernetes worker manager',
-    ),
-    CodalabArg(
         name='worker_manager_aws_region',
         type=str,
         default='us-east-1',
@@ -488,6 +473,21 @@ for worker_manager_type in ['cpu', 'gpu']:
             help='The shared memory size in GB of the run container started by the CodaLab Workers.',
             type=int,
             default=1,
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cluster_host',
+            type=str,
+            help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_auth_token',
+            type=str,
+            help='Kubernetes cluster authorization token for the Kubernetes worker manager',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cert_path',
+            type=str,
+            help='Path to the generated SSL cert for the Kubernetes worker manager',
         ),
     ]
 
