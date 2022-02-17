@@ -287,6 +287,9 @@ services:
     <<: *codalab-base
     <<: *codalab-server
     volumes:
+      - "${CODALAB_HOME}:${CODALAB_HOME}"
+      - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
+      - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
       - ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH}:ro
     networks:
       - rest-server
@@ -317,6 +320,9 @@ services:
     <<: *codalab-base
     <<: *codalab-server
     volumes:
+      - "${CODALAB_HOME}:${CODALAB_HOME}"
+      - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
+      - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
       - ${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH}:ro
     networks:
       - rest-server
