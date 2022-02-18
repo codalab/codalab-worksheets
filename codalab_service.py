@@ -470,7 +470,7 @@ for worker_manager_type in ['cpu', 'gpu']:
         ),
         CodalabArg(
             name=f'worker_manager_{worker_manager_type}_seconds_between_workers',
-            help='Number of seconds to wait between launching two workers',
+            help=f'Number of seconds to wait between launching two {worker_manager_type} workers',
             type=int,
             default=60,
         ),
