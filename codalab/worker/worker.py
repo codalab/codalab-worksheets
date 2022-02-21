@@ -272,7 +272,9 @@ class Worker:
                 self.checkin()
                 last_checkin = time.time()
                 # Process runs until it's time for the next checkin.
-                while not self.terminate and (time.time() - last_checkin <= self.checkin_frequency_seconds):
+                while not self.terminate and (
+                    time.time() - last_checkin <= self.checkin_frequency_seconds
+                ):
                     self.check_termination()
                     self.save_state()
                     if self.check_idle_stop() or self.check_num_runs_stop():
