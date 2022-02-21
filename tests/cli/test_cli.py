@@ -1631,8 +1631,11 @@ def test_run(ctx):
 
 @TestModule.register('time')
 def test_time(ctx):
-    """Various tests that ensure the timing of runs are still fast."""
+    """Various tests that ensure the timing of runs is still fast."""
     uuid = _run_command([cl, 'run', 'echo hello'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
+
+    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
     wait_until_state(uuid, State.READY, timeout_seconds=20)
 
 
