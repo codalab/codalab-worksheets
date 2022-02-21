@@ -995,8 +995,10 @@ class BundleModel(object):
             # Check that it still exists and is running
             row = connection.execute(
                 cl_bundle.select().where(
-                    cl_bundle.c.id == bundle.id
-                    and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING)
+                    and_(
+                        cl_bundle.c.id == bundle.id,
+                        cl_bundle.c.state.in_((State.RUNNING, State.PREPARING, State.FINALIZING)),
+                    )
                 )
             ).fetchone()
             if not row:
@@ -2551,6 +2553,7 @@ class BundleModel(object):
             connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
 
             # Chat
+            # todo fix
             connection.execute(
                 cl_chat.delete().where(
                     cl_chat.c.sender_user_id == user_id or cl_chat.c.recipient_user_id == user_id
