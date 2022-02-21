@@ -5,6 +5,7 @@ import { default as MainPanel } from './MainPanel';
 import $ from 'jquery';
 import { withRouter } from 'react-router';
 import { defaultErrorHandler, getUser, getUsers } from '../../util/apiWrapper';
+import ErrorMessage from '../worksheets/ErrorMessage';
 
 /**
  * This route page displays the new Dashboard, which is the landing page for all the users.
