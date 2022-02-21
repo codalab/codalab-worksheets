@@ -38,6 +38,7 @@ logger.setLevel(logging.WARNING)
 logger = logging.getLogger('apache_beam')
 logger.setLevel(logging.WARNING)
 
+
 class IntegrityError(ValueError):
     """
     Raised by the model when there is a database integrity issue.
