@@ -279,6 +279,7 @@ class Worker:
                     self.save_state()
                     if self.check_idle_stop() or self.check_num_runs_stop():
                         self.terminate = True
+                        break
                     self.process_runs()
                     self.save_state()
             except Exception:
