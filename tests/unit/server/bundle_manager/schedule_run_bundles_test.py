@@ -74,7 +74,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
     def test_reassign_stuck_running_preemptible_bundles(self):
         """If no workers exist to claim a bundle, and the bundle is running on a preemptible worker, it should go to the STAGED state in preparation for being reassigned to another worker."""
         bundle = self.create_run_bundle(
-            State.RUNNING, {"preemptible": True, "remote_history": ["remote1"], "remote": "remote1"}
+            State.RUNNING, {"on_preemptible_worker": True, "remote_history": ["remote1"], "remote": "remote1"}
         )
         self.save_bundle(bundle)
         self.bundle_manager._schedule_run_bundles()

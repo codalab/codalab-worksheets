@@ -30,6 +30,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             slurm_work_dir=None,
             exit_after_num_failed=None,
             worker_shared_memory_size_gb=10,
+            worker_preemptible=False,
         )
 
         worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
@@ -72,6 +73,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
             cpus=3,
             gpus=1,
             worker_shared_memory_size_gb=None,
+            worker_preemptible=False,
         )
 
         worker_manager: SlurmBatchWorkerManager = SlurmBatchWorkerManager(args)
