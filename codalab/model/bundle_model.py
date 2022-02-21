@@ -2553,7 +2553,6 @@ class BundleModel(object):
             connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
 
             # Chat
-            # todo fix
             connection.execute(
                 cl_chat.delete().where(
                     cl_chat.c.sender_user_id == user_id or cl_chat.c.recipient_user_id == user_id
