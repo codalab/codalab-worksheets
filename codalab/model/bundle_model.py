@@ -916,9 +916,7 @@ class BundleModel(object):
             if not run_row or run_row.user_id != user_id or run_row.worker_id != worker_id:
                 return False
             worker_row = connection.execute(
-                cl_worker.select().where(
-                    and_(cl_worker.c.worker_id == worker_id)
-                )
+                cl_worker.select().where(and_(cl_worker.c.worker_id == worker_id))
             ).fetchone()
 
             bundle_update = {
