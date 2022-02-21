@@ -472,7 +472,6 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            logger.info(f'Checking resource utilization for bundle. uuid: {run_state.bundle.uuid}')
             cpu_usage, memory_usage = docker_utils.get_container_stats_with_docker_stats(
                 run_state.container
             )
@@ -522,7 +521,6 @@ class RunStateMachine(StateTransitioner):
             return run_state
 
         def check_disk_utilization():
-            logger.info(f'Checking disk utilization for bundle. uuid: {run_state.bundle.uuid}')
             running = True
             while running:
                 start_time = time.time()

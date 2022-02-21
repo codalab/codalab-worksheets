@@ -425,8 +425,7 @@ class Worker:
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
-            if not self.last_checkin_successful:
-                logger.info('Connected! Successful check in!')
+            logger.info('Connected! Successful check in!')
             self.last_checkin_successful = True
         except BundleServiceException as ex:
             logger.warning("Disconnected from server! Failed check in: %s", ex)
