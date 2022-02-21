@@ -1505,7 +1505,6 @@ def test_run(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
-    return
     check_contains('0x', get_info(uuid, 'data_hash'))
     check_not_equals('0s', get_info(uuid, 'time_preparing'))
     check_not_equals('0s', get_info(uuid, 'time_running'))
