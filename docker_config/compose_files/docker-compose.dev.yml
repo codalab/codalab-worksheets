@@ -25,3 +25,6 @@ services:
 
       # Used only for preemptible test in test_cli.py, so that we can start / stop Docker containers from the test.
       - /var/run/docker.sock:/var/run/docker.sock
+  bundle-manager:
+    # bundle-manager also needs to run as root so it can read sockets created by rest-server (which runs as root).
+    user: 0:0
