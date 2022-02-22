@@ -1053,6 +1053,31 @@ def test_blob(ctx):
         assert response.headers['Location'].startswith("http://localhost")
 
 
+@TestModule.register('default_bundle_store')
+def test_upload_default_bundle_store(ctx):
+    """Tests the CODALAB_DEFAULT_BUNDLE_STORE_NAME environment
+    variable. Should only be called when
+    CODALAB_DEFAULT_BUNDLE_STORE_NAME is set."""
+    # Create a new bundle store and upload to it
+    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Upload a bundle, which should output to bundle store by default
+    uuid = _run_command([cl, 'upload', '-c', 'hello'])
+    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
+
+
 @TestModule.register('download')
 def test_download(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation
