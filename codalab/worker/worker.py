@@ -281,7 +281,6 @@ class Worker:
                         self.terminate = True
                         break
                     self.process_runs()
-                    time.sleep(0.003)
                     self.save_state()
             except Exception:
                 self.last_checkin_successful = False
