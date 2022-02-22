@@ -33,6 +33,7 @@ const BundleDetail = ({
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
@@ -61,22 +62,28 @@ const BundleDetail = ({
         return () => clearInterval(timer);
     }, []);
 
-    const fetcherMetadata = (url) =>
-        fetch(url, {
-            type: 'GET',
-            url: url,
-            dataType: 'json',
-        })
-            .then((r) => {
-                return r.json();
+    const fetcherMetadata = (url) => {
+        if (!refreshing) {
+            setRefreshing(true);
+            return fetch(url, {
+                type: 'GET',
+                url: url,
+                dataType: 'json',
             })
-            .catch((error) => {
-                setBundleInfo(null);
-                setFileContents(null);
-                setStderr(null);
-                setStdout(null);
-                setErrorMessages((errorMessages) => errorMessages.concat([error]));
-            });
+                .then((r) => {
+                    setRefreshing(false);
+                    return r.json();
+                })
+                .catch((error) => {
+                    setRefreshing(false);
+                    setBundleInfo(null);
+                    setFileContents(null);
+                    setStderr(null);
+                    setStdout(null);
+                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                });
+        }
+    };
 
     const urlMetadata =
         '/rest/bundles/' +
@@ -100,7 +107,7 @@ const BundleDetail = ({
     });
 
     const fetcherContents = (url) =>
-        apiWrapper.get(url).catch(( error) => {
+        apiWrapper.get(url).catch((error) => {
             // If contents aren't available yet, then also clear stdout and stderr.
             setFileContents(null);
             setStderr(null);
