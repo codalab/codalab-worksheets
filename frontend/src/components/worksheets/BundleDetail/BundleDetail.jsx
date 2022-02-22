@@ -33,7 +33,8 @@ const BundleDetail = ({
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    const [fetchingMetadata, setFetchingMetadata] = useState(false);
+    const [fetchingFileSummary, setFetchingFileSummary] = useState(false);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
@@ -63,8 +64,8 @@ const BundleDetail = ({
     }, []);
 
     const fetcherMetadata = (url) => {
-        if (!refreshing) {
-            setRefreshing(true);
+        if (!fetchingMetadata) {
+            setFetchingMetadata(true);
             return fetch(url, {
                 type: 'GET',
                 url: url,
@@ -72,7 +73,7 @@ const BundleDetail = ({
             })
                 .then((r) => r.json())
                 .catch((error) => {
-                    setRefreshing(false);
+                    setFetchingMetadata(false);
                     setBundleInfo(null);
                     setFileContents(null);
                     setStderr(null);
@@ -116,10 +117,13 @@ const BundleDetail = ({
         '/rest/bundles/' + uuid + '/contents/info/' + '?' + new URLSearchParams({ depth: 1 });
 
     const updateBundleDetail = (response) => {
+        console.log('updateBundleDetail');
         const info = response.data;
-        if (!info) return;
+        if (!info || fetchingFileSummary) return;
+        setFetchingFileSummary(true);
         if (info.type === 'file' || info.type === 'link') {
             return fetchFileSummary(uuid, '/').then(function(blob) {
+                setFetchingFileSummary(false);
                 setFileContents(blob);
                 setStderr(null);
                 setStdout(null);
@@ -130,18 +134,26 @@ const BundleDetail = ({
             let stateUpdate = {
                 fileContents: null,
             };
+
             ['stdout', 'stderr'].forEach(function(name) {
                 if (info.contents.some((entry) => entry.name === name)) {
                     fetchRequests.push(
-                        fetchFileSummary(uuid, '/' + name).then(function(blob) {
-                            stateUpdate[name] = blob;
-                        }),
+                        fetchFileSummary(uuid, '/' + name)
+                            .then(function(blob) {
+                                stateUpdate[name] = blob;
+                            })
+                            .catch((e) => {
+                                console.log('setFetchingMetadata to false 2');
+                                setFetchingFileSummary(false);
+                            }),
                     );
                 } else {
                     stateUpdate[name] = null;
                 }
             });
             Promise.all(fetchRequests).then((r) => {
+                console.log('setFetchingMetadata to false 3');
+                setFetchingFileSummary(false);
                 setFileContents(stateUpdate['fileContents']);
                 if ('stdout' in stateUpdate) {
                     setStdout(stateUpdate['stdout']);
@@ -156,7 +168,7 @@ const BundleDetail = ({
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
-            setRefreshing(false);
+            setFetchingMetadata(false);
             updateBundleDetail(response);
         },
     });
@@ -176,6 +188,9 @@ const BundleDetail = ({
     if (bundleInfo.bundle_type === 'private') {
         return <div>Detail not available for this bundle</div>;
     }
+
+    console.log('fetchingMetadata', fetchingMetadata);
+    console.log('fetchingFileSummary', fetchingFileSummary);
 
     return (
         <ConfigurationPanel
