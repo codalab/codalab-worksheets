@@ -1,3 +1,28 @@
+import unittest
+from tests.unit.server.bundle_manager import TestBase
+from codalab.worker.bundle_state import State
+
+
+class BundleModelTest(TestBase, unittest.TestCase):
+    def test_ready_bundle_should_not_transition_worker_offline(self):
+        """transition_bundle_worker_offline should not transition a READY bundle to worker_offline."""
+        bundle = self.create_run_bundle(State.READY)
+        self.save_bundle(bundle)
+        result = self.bundle_manager._model.transition_bundle_worker_offline(bundle)
+        self.assertEqual(result, False)
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.READY)
+
+    def test_finalizing_bundle_should_not_transition_worker_offline(self):
+        """transition_bundle_worker_offline should transition a FINALIZING bundle to worker_offline."""
+        bundle = self.create_run_bundle(State.FINALIZING)
+        self.save_bundle(bundle)
+        result = self.bundle_manager._model.transition_bundle_worker_offline(bundle)
+        self.assertEqual(result, True)
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.WORKER_OFFLINE)
+
+
 def metadata_to_dicts(uuid, metadata):
     return [
         {'bundle_uuid': uuid, 'metadata_key': key, 'metadata_value': value}

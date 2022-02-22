@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.4.3_
+_version 1.4.5_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -136,6 +136,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
+`has_access` | Boolean
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -145,7 +146,6 @@ Name | Type
 `disk_used` | Integer
 `last_login` | LocalDateTime
 `is_verified` | Boolean
-`has_access` | Boolean
 
 ## users
 
@@ -160,6 +160,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
+`has_access` | Boolean
 `email` | String
 `notifications` | Integer
 `time_quota` | Integer
@@ -293,6 +294,7 @@ Name | Type
 `url` | Url
 `date_joined` | LocalDateTime
 `avatar_id` | String
+`has_access` | Boolean
 
 ## worksheet-items
 
