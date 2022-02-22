@@ -12,6 +12,7 @@ import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 const BundleDetail = ({
     uuid,
@@ -70,10 +71,7 @@ const BundleDetail = ({
                 url: url,
                 dataType: 'json',
             })
-                .then((r) => {
-                    setRefreshing(false);
-                    return r.json();
-                })
+                .then((r) => r.json())
                 .catch((error) => {
                     setRefreshing(false);
                     setBundleInfo(null);
@@ -159,6 +157,7 @@ const BundleDetail = ({
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
+            setRefreshing(false);
             updateBundleDetail(response);
         },
     });
@@ -202,12 +201,16 @@ const BundleDetail = ({
                 />
             }
         >
-            <MainContent
-                bundleInfo={bundleInfo}
-                stdout={stdout}
-                stderr={stderr}
-                fileContents={fileContents}
-            />
+            {refreshing ? (
+                <CircularProgress />
+            ) : (
+                <MainContent
+                    bundleInfo={bundleInfo}
+                    stdout={stdout}
+                    stderr={stderr}
+                    fileContents={fileContents}
+                />
+            )}
         </ConfigurationPanel>
     );
 };
