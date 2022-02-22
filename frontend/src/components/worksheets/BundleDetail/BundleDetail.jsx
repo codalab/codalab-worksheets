@@ -12,7 +12,6 @@ import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
-import CircularProgress from '@material-ui/core/CircularProgress';
 
 const BundleDetail = ({
     uuid,
@@ -201,16 +200,12 @@ const BundleDetail = ({
                 />
             }
         >
-            {refreshing ? (
-                <CircularProgress />
-            ) : (
-                <MainContent
-                    bundleInfo={bundleInfo}
-                    stdout={stdout}
-                    stderr={stderr}
-                    fileContents={fileContents}
-                />
-            )}
+            <MainContent
+                bundleInfo={bundleInfo}
+                stdout={stdout}
+                stderr={stderr}
+                fileContents={fileContents}
+            />
         </ConfigurationPanel>
     );
 };
