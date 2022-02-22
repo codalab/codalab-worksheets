@@ -1058,14 +1058,7 @@ class BundleCLI(object):
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':
             bundle_stores = client.fetch('bundle_stores')
-            print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
-            print(
-                "\n".join(
-                    "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
-                    for b in bundle_stores
-                ),
-                file=self.stdout,
-            )
+            self.print_table(["id", "name", "storage_type", "storage_format"], bundle_stores)
         elif args.command == 'rm':
             client.delete('bundle_stores', resource_ids=[args.bundle_store_uuid])
             print(args.bundle_store_uuid, file=self.stdout)
