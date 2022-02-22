@@ -1364,7 +1364,7 @@ def test_worksheet_freeze_unfreeze(ctx):
 @TestModule.register('bundle_freeze_unfreeze')
 def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
-    uuid = _run_command([cl, 'run', 'date', '-n', name])
+    uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
     wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
@@ -1652,6 +1652,16 @@ def test_run(ctx):
     check_num_lines(
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('time')
+def test_time(ctx):
+    """Various tests that ensure the timing of runs is still fast."""
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
+
+    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
 
 
 @TestModule.register('link')
