@@ -117,7 +117,6 @@ const BundleDetail = ({
         '/rest/bundles/' + uuid + '/contents/info/' + '?' + new URLSearchParams({ depth: 1 });
 
     const updateBundleDetail = (response) => {
-        console.log('updateBundleDetail');
         const info = response.data;
         if (!info || fetchingFileSummary) return;
         setFetchingFileSummary(true);
@@ -143,7 +142,6 @@ const BundleDetail = ({
                                 stateUpdate[name] = blob;
                             })
                             .catch((e) => {
-                                console.log('setFetchingMetadata to false 2');
                                 setFetchingFileSummary(false);
                             }),
                     );
@@ -152,7 +150,6 @@ const BundleDetail = ({
                 }
             });
             Promise.all(fetchRequests).then((r) => {
-                console.log('setFetchingMetadata to false 3');
                 setFetchingFileSummary(false);
                 setFileContents(stateUpdate['fileContents']);
                 if ('stdout' in stateUpdate) {
@@ -188,9 +185,6 @@ const BundleDetail = ({
     if (bundleInfo.bundle_type === 'private') {
         return <div>Detail not available for this bundle</div>;
     }
-
-    console.log('fetchingMetadata', fetchingMetadata);
-    console.log('fetchingFileSummary', fetchingFileSummary);
 
     return (
         <ConfigurationPanel
