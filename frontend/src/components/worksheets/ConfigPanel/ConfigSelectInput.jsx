@@ -5,7 +5,6 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 
-
 class ConfigSelectInput extends React.Component<{
     placeholder?: string,
     multiline?: boolean,
@@ -22,7 +21,7 @@ class ConfigSelectInput extends React.Component<{
                 onChange={(e) => onValueChange(e.target.value)}
                 placeholder={placeholder}
                 multiline={multiline}
-                margin="none"
+                margin='none'
                 fullWidth
                 InputProps={{
                     classes: {
@@ -35,7 +34,6 @@ class ConfigSelectInput extends React.Component<{
         );
     }
 }
-
 
 // To inject styles into component
 // -------------------------------

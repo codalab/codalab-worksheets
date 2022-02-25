@@ -100,7 +100,7 @@ const BundleDetail = ({
     });
 
     const fetcherContents = (url) =>
-        apiWrapper.get(url).catch(( error) => {
+        apiWrapper.get(url).catch((error) => {
             // If contents aren't available yet, then also clear stdout and stderr.
             setFileContents(null);
             setStderr(null);
