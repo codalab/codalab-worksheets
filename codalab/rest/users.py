@@ -43,6 +43,9 @@ def fetch_authenticated_user():
     user_info['data']['attributes']['is_root_user'] = (
         request.user.user_id == local.model.root_user_id
     )
+    user_info['data']['attributes']['protected_mode'] = (
+        os.environ.get('CODALAB_PROTECTED_MODE') == 'True'
+    )
     return user_info
 
 
