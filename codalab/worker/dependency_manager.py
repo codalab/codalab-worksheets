@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 DependencyState = namedtuple(
     'DependencyState',
+    # downloading_by - worker id of which worker is downloading / has downloaded the dependency
     'stage downloading_by dependency_key path size_bytes dependents last_used last_downloading message killed',
 )
 
@@ -56,7 +57,6 @@ class NFSLock:
         self._lock.lifetime = timedelta(minutes=5)
 
         # Ensure multiple threads within a process run NFSLock operations one at a time.
-        # Multiple threads accessing flufl lock can cause slow performance.
         # We must acquire the reentrant lock before acquiring the flufl lock and only release after
         # the flufl lock is released.
         self._r_lock = threading.RLock()
@@ -66,12 +66,14 @@ class NFSLock:
         try:
             self._lock.lock()
         except AlreadyLockedError:
+            # Safe to re-attempt to acquire a lock
             pass
 
     def release(self):
         try:
             self._lock.unlock()
         except NotLockedError:
+            # Safe to re-attempt to acquire a lock
             pass
         self._r_lock.release()
 
@@ -226,13 +228,13 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
     def _fetch_dependencies(self, default=None) -> Dict[DependencyKey, DependencyState]:
         """
-        Fetch dependencies JSON file stored on disk.
+        Fetch dependencies from JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         WARNING: If a value for `default` is specified, errors will be silently handled.
         """
         assert self._state_lock.is_locked
-        state = self._state_committer.load(default)
-        return state['dependencies']
+        dependencies, _ = self._fetch_state(default)
+        return dependencies
 
     def _commit_state(self, dependencies: Dict[DependencyKey, DependencyState], paths: Set[str]):
         """
@@ -364,7 +366,9 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
     def _delete_dependency(self, dep_key, dependencies, paths):
         """
         Remove the given dependency from the manager's state
-        Also delete any known files on the filesystem if any exist
+        Modifies `dependencies` and `paths` that are passed in.
+        Also deletes any known files on the filesystem if any exist.
+
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
         assert self._state_lock.is_locked
@@ -399,26 +403,11 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             now = time.time()
             # Add dependency state if it does not exist
             if dependency_key not in dependencies:
-                # Determine dependency path
-                path = (
-                    os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
-                    if dependency_key.parent_path
-                    else dependency_key.parent_uuid
-                )
-                path = path.replace(os.path.sep, '_')
-
-                # Normalize the path for the dependency by replacing / with _, avoiding conflicts
-                while path in paths:
-                    path = path + '_'
-
-                # Add to the new path to the list of dependency state paths
-                paths.add(path)
-
                 dependencies[dependency_key] = DependencyState(
                     stage=DependencyStage.DOWNLOADING,
                     downloading_by=None,
                     dependency_key=dependency_key,
-                    path=path,
+                    path=self._assign_path(paths, dependency_key),
                     size_bytes=0,
                     dependents={uuid},
                     last_used=now,
@@ -452,6 +441,26 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                     dependencies[dependency_key] = dep_state
                 self._commit_state(dependencies, paths)
 
+    def _assign_path(self, paths: Set[str], dependency_key: DependencyKey) -> str:
+        """
+        Checks the current path against `paths`.
+        Normalize the path for the dependency by replacing / with _, avoiding conflicts.
+        Adds the new path to `paths`.
+        """
+        path: str = (
+            os.path.join(dependency_key.parent_uuid, dependency_key.parent_path)
+            if dependency_key.parent_path
+            else dependency_key.parent_uuid
+        )
+        path = path.replace(os.path.sep, '_')
+
+        # You could have a conflict between, for example a/b_c and a_b/c
+        while path in paths:
+            path = path + '_'
+
+        paths.add(path)
+        return path
+
     def _store_dependency(self, dependency_path, fileobj, target_type):
         """
         Copy the dependency fileobj to its path on the local filesystem
@@ -484,7 +493,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             )
             return list(dependencies.keys())
 
-    def _transition_from_DOWNLOADING(self, dependency_state):
+    def _transition_from_DOWNLOADING(self, dependency_state: DependencyState):
         """
         Checks if the dependency is downloading or not.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
@@ -502,8 +511,9 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 raises DownloadAbortedException if download is killed by dep. manager
 
                 Note: This function needs to be fast, since it's called every time fileobj.read is called.
-                      Therefore, we keep a copy of the state in memory and copy over non-critical fields
-                      (last_downloading, size_bytes and message) when the download transition function is executed.
+                      Therefore, we keep a copy of the state in memory (self._downloading) and copy over
+                      non-critical fields (last_downloading, size_bytes and message) when the download transition
+                      function is executed.
                 """
                 state = self._downloading[dependency_state.dependency_key]['state']
                 if state.killed:
@@ -544,7 +554,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                         fileobj.read = interruptable_read
 
                         # Start copying the fileobj to filesystem dependency path
-                        # Note: overwrites if something already exists at dependency_path
+                        # Note: Overwrites if something already exists at dependency_path, such as when
+                        #       another worker partially downloads a dependency and then goes offline.
                         self._store_dependency(dependency_path, fileobj, target_type)
 
                     logger.debug(
@@ -598,10 +609,10 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             self._downloading[dependency_state.dependency_key]['state'] = dependency_state
             dependency_state = dependency_state._replace(downloading_by=self._id)
 
-        # If there is already a thread or another dependency manager downloading the dependency,
+        # If there is already another worker downloading the dependency,
         # just return the dependency state as downloading is in progress.
         if dependency_state.downloading_by != self._id:
-            logger.info(
+            logger.debug(
                 f"Waiting for {dependency_state.downloading_by} "
                 f"to download dependency: {dependency_state.dependency_key}"
             )
@@ -611,7 +622,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             dependency_state.dependency_key in self._downloading
             and self._downloading[dependency_state.dependency_key].is_alive()
         ):
-            logger.info(
+            logger.debug(
                 f"This dependency manager ({dependency_state.downloading_by}) "
                 f"is downloading dependency: {dependency_state.dependency_key}"
             )
@@ -624,16 +635,16 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 message=state.message,
             )
 
-        # At this point, no thread is downloading the dependency. Check the status of the download.
-        success = self._downloading[dependency_state.dependency_key]['success']
-        failure_message = self._downloading[dependency_state.dependency_key]['failure_message']
+        # At this point, no thread is downloading the dependency, but the dependency is still
+        # assigned to the current worker. Check if the download finished.
+        success: bool = self._downloading[dependency_state.dependency_key]['success']
+        failure_message: str = self._downloading[dependency_state.dependency_key]['failure_message']
 
-        if dependency_state.downloading_by == self._id:
-            dependency_state = dependency_state._replace(downloading_by=None)
-            self._downloading.remove(dependency_state.dependency_key)
-            logger.info(
-                f"Download complete. Removing downloading thread for {dependency_state.dependency_key}."
-            )
+        dependency_state = dependency_state._replace(downloading_by=None)
+        self._downloading.remove(dependency_state.dependency_key)
+        logger.info(
+            f"Download complete. Removing downloading thread for {dependency_state.dependency_key}."
+        )
 
         if success:
             return dependency_state._replace(

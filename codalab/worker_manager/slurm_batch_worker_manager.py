@@ -267,9 +267,8 @@ class SlurmBatchWorkerManager(WorkerManager):
         else:
             work_dir_prefix = Path()
 
-        work_dir_name = f"{self.username}-codalab-slurm-worker-shared"
         worker_work_dir = work_dir_prefix.joinpath(
-            Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), work_dir_name)
+            Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), "workdir")
         )
         command = self.build_command(worker_id, str(worker_work_dir))
 

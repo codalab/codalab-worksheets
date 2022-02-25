@@ -18,6 +18,12 @@ To use a shared cache among workers, have all the workers use the same working d
 the same path for `--work-dir`. The working directory is set by `-worker-work-dir-prefix` when starting 
 a worker manager. The dependency managers can be used over NFS, so a working directory can be on a network disk.
 
+```commandline
+cl-worker-manager --worker-work-dir-prefix /juice  slurm-batch --cpus 4 --gpus 1 --memory-mb 16000 
+```
+
+In the example worker manager command above, `juice` is a directory on a network disk.
+
 ## AWS Batch Worker Manager
 
 ### Configure AWS Batch (one-time setup)
