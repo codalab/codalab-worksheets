@@ -39,6 +39,7 @@ class UserTest(BaseTestCase):
                     "user_name": "codalab",
                     "url": None,
                     "parallel_run_quota": 100,
+                    'protected_mode': False,
                     "avatar_id": None,
                     "is_root_user": True,
                 },
