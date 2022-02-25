@@ -994,8 +994,10 @@ class BundleModel(object):
             # Check that it still exists and is running
             row = connection.execute(
                 cl_bundle.select().where(
-                    cl_bundle.c.id == bundle.id
-                    and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING)
+                    and_(
+                        cl_bundle.c.id == bundle.id,
+                        cl_bundle.c.state.in_((State.RUNNING, State.PREPARING, State.FINALIZING)),
+                    )
                 )
             ).fetchone()
             if not row:
