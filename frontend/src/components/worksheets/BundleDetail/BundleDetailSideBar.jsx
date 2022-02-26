@@ -169,7 +169,7 @@ class BundleDetailSideBar extends React.Component<{
                             </div>
                         </CopyToClipboard>
                         <div style={{ flexWrap: 'wrap', flexShrink: 1 }}>
-                            <pre style={{ whiteSpace: 'pre-wrap' }}>{bundleInfo.command} </pre>
+                            <pre style={{ whiteSpace: 'pre-wrap' }}>{bundleInfo.command}</pre>
                         </div>
                     </Grid>
                 )}
