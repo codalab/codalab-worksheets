@@ -268,7 +268,7 @@ class RunStateMachine(StateTransitioner):
                         self.dependency_manager.dependencies_dir, dependency_state.path
                     )
                 except Exception:
-                    status_messages.append(f'Downloading dependency {dep.child_path}')
+                    status_messages.append(f'Downloading dependency {dep.child_path} failed')
                     dependencies_ready = False
                     continue
 
@@ -325,7 +325,7 @@ class RunStateMachine(StateTransitioner):
                 if run_state.bundle_dir_wait_num_tries == 0:
                     message = (
                         "Bundle directory cannot be found on the shared filesystem. "
-                        "Please ensure the shared fileystem between the server and "
+                        "Please ensure the shared filesystem between the server and "
                         "your worker is mounted properly or contact your administrators."
                     )
                     log_bundle_transition(
