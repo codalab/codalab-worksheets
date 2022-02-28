@@ -34,7 +34,7 @@ const BundleDetail = ({
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
-    const [fetchingFileSummary, setFetchingFileSummary] = useState(false);
+    const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
@@ -118,11 +118,11 @@ const BundleDetail = ({
 
     const updateBundleDetail = (response) => {
         const info = response.data;
-        if (!info || fetchingFileSummary) return;
-        setFetchingFileSummary(true);
+        if (!info || pendingFileSummaryFetches > 0) return;
         if (info.type === 'file' || info.type === 'link') {
+            setPendingFileSummaryFetches((f) => f + 1);
             return fetchFileSummary(uuid, '/').then(function(blob) {
-                setFetchingFileSummary(false);
+                setPendingFileSummaryFetches((f) => f - 1);
                 setFileContents(blob);
                 setStderr(null);
                 setStdout(null);
@@ -136,13 +136,14 @@ const BundleDetail = ({
 
             ['stdout', 'stderr'].forEach(function(name) {
                 if (info.contents.some((entry) => entry.name === name)) {
+                    setPendingFileSummaryFetches((f) => f + 1);
                     fetchRequests.push(
                         fetchFileSummary(uuid, '/' + name)
                             .then(function(blob) {
                                 stateUpdate[name] = blob;
                             })
                             .catch((e) => {
-                                setFetchingFileSummary(false);
+                                setPendingFileSummaryFetches((f) => f - 1);
                             }),
                     );
                 } else {
@@ -150,7 +151,7 @@ const BundleDetail = ({
                 }
             });
             Promise.all(fetchRequests).then((r) => {
-                setFetchingFileSummary(false);
+                setPendingFileSummaryFetches((f) => f - 1);
                 setFileContents(stateUpdate['fileContents']);
                 if ('stdout' in stateUpdate) {
                     setStdout(stateUpdate['stdout']);
