@@ -73,12 +73,14 @@ const BundleDetail = ({
             })
                 .then((r) => r.json())
                 .catch((error) => {
-                    setFetchingMetadata(false);
                     setBundleInfo(null);
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
                     setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                })
+                .finally(() => {
+                    setFetchingMetadata(false);
                 });
         }
     };
@@ -121,12 +123,15 @@ const BundleDetail = ({
         if (!info || pendingFileSummaryFetches > 0) return;
         if (info.type === 'file' || info.type === 'link') {
             setPendingFileSummaryFetches((f) => f + 1);
-            return fetchFileSummary(uuid, '/').then(function(blob) {
-                setPendingFileSummaryFetches((f) => f - 1);
-                setFileContents(blob);
-                setStderr(null);
-                setStdout(null);
-            });
+            return fetchFileSummary(uuid, '/')
+                .then(function(blob) {
+                    setFileContents(blob);
+                    setStderr(null);
+                    setStdout(null);
+                })
+                .finally(() => {
+                    setPendingFileSummaryFetches((f) => f - 1);
+                });
         } else if (info.type === 'directory') {
             // Get stdout/stderr (important to set things to null).
             let fetchRequests = [];
@@ -142,7 +147,7 @@ const BundleDetail = ({
                             .then(function(blob) {
                                 stateUpdate[name] = blob;
                             })
-                            .catch((e) => {
+                            .finally(() => {
                                 setPendingFileSummaryFetches((f) => f - 1);
                             }),
                     );
@@ -151,7 +156,6 @@ const BundleDetail = ({
                 }
             });
             Promise.all(fetchRequests).then((r) => {
-                setPendingFileSummaryFetches((f) => f - 1);
                 setFileContents(stateUpdate['fileContents']);
                 if ('stdout' in stateUpdate) {
                     setStdout(stateUpdate['stdout']);
@@ -166,7 +170,6 @@ const BundleDetail = ({
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
-            setFetchingMetadata(false);
             updateBundleDetail(response);
         },
     });
