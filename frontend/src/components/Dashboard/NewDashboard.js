@@ -68,7 +68,12 @@ class NewDashboard extends React.Component<{
 
     /** Renderer. */
     render() {
-        if (this.state.userInfo && !this.state.userInfo.has_access) {
+        // If the server is in protected mode and the user does not have access, show error message.
+        if (
+            this.state.userInfo &&
+            this.state.userInfo.protected_mode &&
+            !this.state.userInfo.has_access
+        ) {
             return (
                 <ErrorMessage
                     message={'No access to this server, please contact the administrators.'}

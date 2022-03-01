@@ -76,8 +76,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom-fifteen --coverage",
     "eject": "react-scripts eject",
-    "check-ci": "CI=true eslint src && prettier --config ./.prettierrc --check 'src/**/*.js'",
-    "format": "CI=true eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.js' --write"
+    "check-ci": "CI=true eslint src && prettier --config ./.prettierrc --check 'src/**/*.{js,jsx}'",
+    "format": "CI=true eslint src --fix && prettier --config ./.prettierrc --check 'src/**/*.{js,jsx}' --write"
   },
   "husky": {
     "hooks": {
