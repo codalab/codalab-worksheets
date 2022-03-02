@@ -73,7 +73,7 @@ class NFSLock:
         try:
             self._lock.unlock()
         except NotLockedError:
-            # Safe to re-attempt to acquire a lock
+            # Safe to re-attempt to release a lock
             pass
         self._r_lock.release()
 
@@ -280,6 +280,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 self._commit_state(dependencies, self._paths)
             except (ValueError, EnvironmentError):
                 # Do nothing if an error is thrown while reading from the state file
+                logging.exception("error reading from state file")
                 pass
 
     def _prune_failed_dependencies(self):
