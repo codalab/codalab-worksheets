@@ -33,6 +33,7 @@ const BundleDetail = ({
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
+    const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
     const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
 
@@ -106,14 +107,23 @@ const BundleDetail = ({
         },
     });
 
-    const fetcherContents = (url) =>
-        apiWrapper.get(url).catch((error) => {
-            // If contents aren't available yet, then also clear stdout and stderr.
-            setFileContents(null);
-            setStderr(null);
-            setStdout(null);
-            setErrorMessages((errorMessages) => errorMessages.concat([error]));
-        });
+    const fetcherContents = (url) => {
+        if (!fetchingContent) {
+            setFetchingContent(true);
+            return apiWrapper
+                .get(url)
+                .catch((error) => {
+                    // If contents aren't available yet, then also clear stdout and stderr.
+                    setFileContents(null);
+                    setStderr(null);
+                    setStdout(null);
+                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                })
+                .finally(() => {
+                    setFetchingContent(false);
+                });
+        }
+    };
 
     const urlContents =
         '/rest/bundles/' + uuid + '/contents/info/' + '?' + new URLSearchParams({ depth: 1 });
