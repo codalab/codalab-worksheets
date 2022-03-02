@@ -73,7 +73,7 @@ class NFSLock:
         try:
             self._lock.unlock()
         except NotLockedError:
-            # Safe to re-attempt to acquire a lock
+            # Safe to re-attempt to release a lock
             pass
         self._r_lock.release()
 
