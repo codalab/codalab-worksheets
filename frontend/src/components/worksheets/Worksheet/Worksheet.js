@@ -138,6 +138,17 @@ class Worksheet extends React.Component {
                         info,
                     },
                 });
+                if (info.blocks) {
+                    for (let block of info.blocks) {
+                        if (
+                            block.sort_keys &&
+                            Object.values(block.sort_keys).some((sort_key) => sort_key == null)
+                        ) {
+                            this.saveAndUpdateWorksheet(false);
+                            break;
+                        }
+                    }
+                }
                 props.success(info);
             })
             .catch((error) => props.error(error));
