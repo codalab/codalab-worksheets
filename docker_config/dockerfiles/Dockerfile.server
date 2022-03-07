@@ -1,11 +1,11 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
+  add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
@@ -20,20 +20,20 @@ RUN apt-get update && \
     python3.6-dev \
     python3-pip \
     python3-setuptools \
-    python-virtualenv \
+    python3-virtualenv \
     python3-software-properties \
     zip \
     unzip \
     rsync && \
     rm -rf /var/lib/apt/lists/*;
-
+ 
 # Set Python3.6 as the default python3 version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
 
-RUN python3 -m pip install --no-cache-dir --upgrade pip==20.3.4
+RUN python3 -m pip install --no-cache-dir --upgrade pip
 RUN mkdir /opt/codalab-worksheets
 WORKDIR /opt/codalab-worksheets
 
