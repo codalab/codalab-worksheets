@@ -19,13 +19,13 @@ RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/dock
 WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
 
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common curl && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
+  add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
@@ -62,7 +62,7 @@ RUN mkdir ${WORKDIR}/scripts
 
 # Install dependencies
 COPY requirements.txt requirements.txt
-RUN python3.6 -m pip install --user --upgrade pip==20.3.4; \
+RUN python3.6 -m pip install --user --upgrade pip; \
     python3.6 -m pip install setuptools --upgrade; \
     python3.6 -m pip install --no-cache-dir -r requirements.txt;
 
