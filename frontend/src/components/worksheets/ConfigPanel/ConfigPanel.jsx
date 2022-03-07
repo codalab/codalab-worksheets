@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
 
+
 /** This reusable components displays a panel with a main content area, control buttons (optional), and sidebar
     (optional). Using this component ensures aesthetic consistency across parts of the UI. */
 class ConfigPanel extends React.Component<{
@@ -20,6 +21,7 @@ class ConfigPanel extends React.Component<{
     /** React components for bottom buttons. */
     buttons?: React.Node,
 }> {
+
     /**
      * Renderer.
      */
@@ -28,42 +30,31 @@ class ConfigPanel extends React.Component<{
         return (
             <Grid container direction='row' className={classes.container}>
                 {/* Column 1: Main content area ================================================ */}
-                <Grid
-                    item
-                    xs={12}
-                    md={sidebar ? 9 : 12}
-                    container
-                    direction='column'
-                    justify='space-between'
-                    wrap='nowrap'
-                    className={classes.content}
-                >
+                <Grid item xs={12} md={sidebar ? 9 : 12}
+                      container direction='column' justify='space-between' wrap='nowrap'
+                      className={classes.content}>
                     <Grid item container direction='column'>
-                        {children}
+                        { children }
                     </Grid>
-                    {!buttons ? null : (
+                    { !buttons ? null : (
                         <Grid item container className={classes.buttons} justify='flex-start'>
-                            {buttons}
+                            { buttons }
                         </Grid>
                     )}
                 </Grid>
                 {/* Column 2: Sidebar ========================================================== */}
-                {!sidebar ? null : (
-                    <Grid
-                        item
-                        xs={12}
-                        md={3}
-                        container
-                        direction='column'
-                        className={classes.sidebar}
-                    >
-                        {sidebar}
+                { !sidebar ? null : (
+                    <Grid item xs={12} md={3}
+                          container direction='column'
+                          className={classes.sidebar}>
+                        { sidebar }
                     </Grid>
                 )}
             </Grid>
         );
     }
 }
+
 
 // To inject styles into component
 // -------------------------------
@@ -98,7 +89,7 @@ const styles = (theme) => ({
         paddingBottom: theme.spacing.large,
         paddingTop: theme.spacing.larger,
         maxWidth: '90%',
-    },
+    }
 });
 
 export default withStyles(styles)(ConfigPanel);

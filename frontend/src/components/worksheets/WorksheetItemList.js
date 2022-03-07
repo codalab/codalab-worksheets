@@ -119,6 +119,7 @@ class WorksheetItemList extends React.Component {
         super(props);
         this.state = Immutable({
             newUploadKey: Math.random() + '',
+            syntaxHighlight: true,
         });
     }
 
@@ -253,6 +254,7 @@ class WorksheetItemList extends React.Component {
                         onAsyncItemLoad: (item) => this.props.onAsyncItemLoad(index, item),
                         updateSchemaItem: this.props.updateSchemaItem,
                         setDeleteSchemaItemCallback: this.props.setDeleteSchemaItemCallback,
+                        syntaxHighlight: this.props.syntaxHighlight,
                     };
                     addWorksheetItems(
                         props,

@@ -106,6 +106,7 @@ class Worksheet extends React.Component {
             showUpdateProgress: false,
             showWorksheetContent: false,
             showWorksheetContainer: true,
+            syntaxhighlight: true,
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -1203,8 +1204,7 @@ class Worksheet extends React.Component {
                     startTime = endTime;
                 }
             })
-            .catch((e) => {
-                console.error(e);
+            .catch(() => {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: 'Failed to update run bundles.',
@@ -1715,6 +1715,10 @@ class Worksheet extends React.Component {
         );
     };
 
+    syntaxHighlight = (toggleon) => {
+        this.setState({syntaxhighlight: toggleon});
+    }
+
     render() {
         console.log(this.state);
         const { classes } = this.props;
@@ -1887,6 +1891,7 @@ class Worksheet extends React.Component {
                 updateSchemaItem={this.updateSchemaItem}
                 setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
                 addImageDisplay={this.addImageDisplay}
+                syntaxHighlight={this.state.syntaxhighlight}
             />
         );
 
@@ -1931,6 +1936,7 @@ class Worksheet extends React.Component {
                     showPasteButton={this.state.showPasteButton}
                     toggleWorksheetSize={this.toggleWorksheetSize}
                     showBundleContent={this.showBundleContent}
+                    syntaxHighlight={this.syntaxHighlight}
                 />
                 {terminalDisplay}
                 <ToastContainer

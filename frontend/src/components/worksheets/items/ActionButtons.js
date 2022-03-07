@@ -12,6 +12,8 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Tooltip from '@material-ui/core/Tooltip';
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd';
 import AddPhotoAlternateIcon from '@material-ui/icons/AddPhotoAlternate';
+import ToggleOnIcon from '@material-ui/icons/ToggleOn';
+import ToggleOffIcon from '@material-ui/icons/ToggleOff';
 
 const StyledMenuItem = withStyles((theme) => ({
     root: {
@@ -25,6 +27,10 @@ class ActionButtons extends React.Component<{
     onShowNewText: () => void,
     showUploadMenu: () => void,
 }> {
+    constructor(props) {
+        super(props);
+        this.state = {toggleon: true};
+    }
     handleClick = (event) => {
         this.setState({ anchorEl: event.currentTarget });
     };
@@ -36,6 +42,11 @@ class ActionButtons extends React.Component<{
     uploadNewImage = (e) => {
         document.querySelector('label[for=codalab-image-upload-input]').click();
     };
+
+    handleHighlight = () => {
+        this.setState({toggleon: !this.state.toggleon})
+        this.props.syntaxHighlight(this.state.toggleon);
+    }
 
     render() {
         const {
@@ -53,6 +64,7 @@ class ActionButtons extends React.Component<{
             info,
             showPasteButton,
             showBundleContent,
+            syntaxHighlight,
         } = this.props;
         let editPermission = info && info.edit_permission;
         return (
@@ -184,6 +196,23 @@ class ActionButtons extends React.Component<{
                         <label htmlFor='codalab-image-upload-input'></label>
                         <AddPhotoAlternateIcon className={classes.buttonIcon} />
                         Image
+                    </Button>
+                </Tooltip>
+                <Tooltip title='Syntax Highlighting'>
+                    <Button
+                        size='small'
+                        color='inherit'
+                        aria-label='image'
+                        onClick={this.handleHighlight}
+                        disabled={!editPermission}
+                        id='syntax-highlighting-button'
+                    >
+                        {this.state.toggleon ?
+                        <ToggleOnIcon className={classes.buttonIcon} />  
+                        :
+                        <ToggleOffIcon className={classes.buttonIcon} />
+                        }  
+                        Syntax Highlighting
                     </Button>
                 </Tooltip>
             </div>

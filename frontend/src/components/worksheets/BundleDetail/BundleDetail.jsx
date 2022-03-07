@@ -33,9 +33,6 @@ const BundleDetail = ({
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
-    const [fetchingContent, setFetchingContent] = useState(false);
-    const [fetchingMetadata, setFetchingMetadata] = useState(false);
-    const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
@@ -64,27 +61,22 @@ const BundleDetail = ({
         return () => clearInterval(timer);
     }, []);
 
-    const fetcherMetadata = (url) => {
-        if (!fetchingMetadata) {
-            setFetchingMetadata(true);
-            return fetch(url, {
-                type: 'GET',
-                url: url,
-                dataType: 'json',
+    const fetcherMetadata = (url) =>
+        fetch(url, {
+            type: 'GET',
+            url: url,
+            dataType: 'json',
+        })
+            .then((r) => {
+                return r.json();
             })
-                .then((r) => r.json())
-                .catch((error) => {
-                    setBundleInfo(null);
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
-                })
-                .finally(() => {
-                    setFetchingMetadata(false);
-                });
-        }
-    };
+            .catch((error) => {
+                setBundleInfo(null);
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
+                setErrorMessages((errorMessages) => errorMessages.concat([error]));
+            });
 
     const urlMetadata =
         '/rest/bundles/' +
@@ -107,59 +99,39 @@ const BundleDetail = ({
         },
     });
 
-    const fetcherContents = (url) => {
-        if (!fetchingContent) {
-            setFetchingContent(true);
-            return apiWrapper
-                .get(url)
-                .catch((error) => {
-                    // If contents aren't available yet, then also clear stdout and stderr.
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
-                })
-                .finally(() => {
-                    setFetchingContent(false);
-                });
-        }
-    };
+    const fetcherContents = (url) =>
+        apiWrapper.get(url).catch(( error) => {
+            // If contents aren't available yet, then also clear stdout and stderr.
+            setFileContents(null);
+            setStderr(null);
+            setStdout(null);
+            setErrorMessages((errorMessages) => errorMessages.concat([error]));
+        });
 
     const urlContents =
         '/rest/bundles/' + uuid + '/contents/info/' + '?' + new URLSearchParams({ depth: 1 });
 
     const updateBundleDetail = (response) => {
         const info = response.data;
-        if (!info || pendingFileSummaryFetches > 0) return;
+        if (!info) return;
         if (info.type === 'file' || info.type === 'link') {
-            setPendingFileSummaryFetches((f) => f + 1);
-            return fetchFileSummary(uuid, '/')
-                .then(function(blob) {
-                    setFileContents(blob);
-                    setStderr(null);
-                    setStdout(null);
-                })
-                .finally(() => {
-                    setPendingFileSummaryFetches((f) => f - 1);
-                });
+            return fetchFileSummary(uuid, '/').then(function(blob) {
+                setFileContents(blob);
+                setStderr(null);
+                setStdout(null);
+            });
         } else if (info.type === 'directory') {
             // Get stdout/stderr (important to set things to null).
             let fetchRequests = [];
             let stateUpdate = {
                 fileContents: null,
             };
-
             ['stdout', 'stderr'].forEach(function(name) {
                 if (info.contents.some((entry) => entry.name === name)) {
-                    setPendingFileSummaryFetches((f) => f + 1);
                     fetchRequests.push(
-                        fetchFileSummary(uuid, '/' + name)
-                            .then(function(blob) {
-                                stateUpdate[name] = blob;
-                            })
-                            .finally(() => {
-                                setPendingFileSummaryFetches((f) => f - 1);
-                            }),
+                        fetchFileSummary(uuid, '/' + name).then(function(blob) {
+                            stateUpdate[name] = blob;
+                        }),
                     );
                 } else {
                     stateUpdate[name] = null;
