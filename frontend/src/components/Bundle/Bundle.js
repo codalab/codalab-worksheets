@@ -102,7 +102,12 @@ class Bundle extends React.Component<
             if (!info) return;
             if (info.type === 'file' || info.type === 'link') {
                 return fetchFileSummary(this.props.uuid, '/').then((blob) => {
-                    this.setState({ fileContents: blob, stdout: null, stderr: null });
+                    this.setState({
+                        fileContents:
+                            typeof blob === 'object' ? JSON.stringify(blob, null, 2) : blob,
+                        stdout: null,
+                        stderr: null,
+                    });
                 });
             } else if (info.type === 'directory') {
                 // Get stdout/stderr (important to set things to null).
@@ -494,7 +499,7 @@ function renderContents(bundleInfo, fileContents, stdout, stderr) {
                     </span>
                 </div>
                 <div className='collapsible-content bundle-meta'>
-                    <pre>{JSON.stringify(fileContents, null, 2)}</pre>
+                    <pre>{fileContents}</pre>
                 </div>
             </div>
         );
