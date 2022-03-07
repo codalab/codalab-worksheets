@@ -12,11 +12,19 @@ import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 import Tooltip from '@material-ui/core/Tooltip';
 import { addItems } from '../../../util/apiWrapper';
+import ToggleOnIcon from '@material-ui/icons/ToggleOn';
+import ToggleOffIcon from '@material-ui/icons/ToggleOff';
+
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github.css'
+import { NonceProvider } from 'react-select';
+
+
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({ showEdit: false, deleting: false });
+        this.state = Immutable({ showEdit: false, deleting: false});
         this.placeholderText = '@MATH@';
     }
 
@@ -53,11 +61,38 @@ class MarkdownItem extends React.Component {
         // 'we have $x^2$' => 'we have @MATH@'
         text = this.removeMathJax(text, mathSegments);
         // 'we have @ppp@' => '<p>we have @MATH@</p>'
-        text = marked(text, { sanitize: true });
+        if (this.props.syntaxHighlight) {
+            marked.setOptions({
+                renderer: new marked.Renderer(),
+                highlight: function (code, lang) {
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language }).value;
+                },
+                langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
+                pedantic: false,
+                gfm: true,
+                breaks: false,
+                sanitize: false,
+                smartLists: true,
+                smartypants: false,
+                xhtml: false,
+            });
+        } else {
+            marked.setOptions({
+                highlight: undefined,
+            });
+        }
+        console.log("processMarkdown----", this.state.toggleon);
+        text = marked.parse(text, { sanitize: true });
         // '<p>we have @ppp@</p>' => '<p>we have @x^2@</p>'
         text = this.restoreMathJax(text, mathSegments);
         return text;
     };
+
+    handleHighlight = () => {
+        this.setState({ toggleon: !this.state.toggleon });
+        console.log(this.state.toggleon);
+    }
 
     toggleEdit = () => {
         this.setState({ showEdit: !this.state.showEdit });
@@ -125,6 +160,7 @@ class MarkdownItem extends React.Component {
     };
 
     render() {
+        console.log("rerender");
         const { classes, item } = this.props;
         var { showEdit } = this.state;
         var contents = item.text;
@@ -149,7 +185,7 @@ class MarkdownItem extends React.Component {
                 }}
             />
         ) : (
-            <div className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
+            <div key={this.props.syntaxHighlight} className={'ws-item ' + classes.textContainer} onClick={this.handleClick}>
                 <div
                     className={`${className} ${classes.textRender}`}
                     dangerouslySetInnerHTML={{ __html: contents }}
@@ -185,7 +221,7 @@ class MarkdownItem extends React.Component {
         // Replace math (e.g., $x^2$ or $$x^2$$) with placeholder so that it
         // doesn't interfere with Markdown.
         var newText = '';
-        for (;;) {
+        for (; ;) {
             // Figure out next block of math from current position.
             // Example:
             //   0123456 [indices]

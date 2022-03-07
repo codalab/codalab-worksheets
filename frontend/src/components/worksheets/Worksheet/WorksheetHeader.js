@@ -45,6 +45,7 @@ export default ({
     showPasteButton,
     toggleWorksheetSize,
     showBundleContent,
+    syntaxHighlight,
 }) => (
     <Sticky top='#codalab-app-bar' innerZ={1059}>
         <div className='worksheet_content' style={styles}>
@@ -158,6 +159,7 @@ export default ({
                                 copiedBundleIds={copiedBundleIds}
                                 showPasteButton={showPasteButton}
                                 showBundleContent={showBundleContent}
+                                syntaxHighlight={syntaxHighlight}
                             />
                         </Grid>
                         <Grid item>

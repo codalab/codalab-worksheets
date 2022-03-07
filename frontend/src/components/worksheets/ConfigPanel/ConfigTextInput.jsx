@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 
+
 class ConfigTextInput extends React.Component<{
     placeholder?: string,
     multiline?: boolean,
@@ -15,17 +16,7 @@ class ConfigTextInput extends React.Component<{
     autoFocus?: boolean,
 }> {
     render() {
-        const {
-            classes,
-            placeholder,
-            multiline,
-            maxRows,
-            value,
-            onValueChange,
-            disabled,
-            autoFocus,
-            customInputProps,
-        } = this.props;
+        const { classes, placeholder, multiline, maxRows, value, onValueChange, disabled, autoFocus, customInputProps } = this.props;
 
         const defaultInputProps = {
             classes: {
@@ -33,7 +24,7 @@ class ConfigTextInput extends React.Component<{
                 input: classes.inputNative,
             },
             rowsMax: maxRows,
-        };
+        }
 
         return (
             <TextField
@@ -44,13 +35,14 @@ class ConfigTextInput extends React.Component<{
                 multiline={multiline}
                 autoFocus={autoFocus}
                 disabled={disabled}
-                margin='none'
+                margin="none"
                 fullWidth
                 InputProps={customInputProps ? customInputProps : defaultInputProps}
             />
         );
-    }
+    } 
 }
+
 
 // To inject styles into component
 // -------------------------------

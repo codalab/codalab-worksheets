@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import ChipInput from 'material-ui-chip-input';
 
+
 class ConfigChipInput extends React.Component<{
     values: string[],
     onValueAdd: (string) => void,
@@ -23,10 +24,13 @@ class ConfigChipInput extends React.Component<{
     }
 }
 
+
 // To inject styles into component
 // -------------------------------
 
 /** CSS-in-JS styling function. */
-const styles = (theme) => ({});
+const styles = (theme) => ({
+
+});
 
 export default withStyles(styles)(ConfigChipInput);
