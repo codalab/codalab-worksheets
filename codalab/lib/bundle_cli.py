@@ -123,6 +123,7 @@ BUNDLE_COMMANDS = (
     'mount',
     'netcat',
     'store',
+    'ancestors'
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -3039,6 +3040,48 @@ class BundleCLI(object):
         # Headless client should fire OpenBundle UI action
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+
+    @Commands.command(
+        'ancestors',
+        help = 'Print all ancestors of bundle spec',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+
+    def do_ancestors_command(self, args):
+        """
+        Print all ancestors of bundle spec
+        """
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        bundles = client.fetch(
+            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+        )
+
+        def print_ancestor(parent_bundle_spec, level = 1):
+            parent_bundles = client.fetch(
+                'bundles', params={'specs': parent_bundle_spec, 'worksheet': worksheet_uuid},
+            )
+
+            for parent_bundle in parent_bundles:
+                print('{}- {}({})'.format('  ' * level, parent_bundle['metadata']['name'], (parent_bundle['uuid'])[:8]))
+                for dep in parent_bundle.get('dependencies', []):
+                    print_ancestor(dep['parent_name'], level + 1)
+
+        for bundle in bundles:
+            print('- {}({})'.format(bundle['metadata']['name'], (bundle['uuid'])[:8]))
+            for dep in bundle.get('dependencies', []):
+                print_ancestor(dep['parent_name'])
 
     def bundle_url(self, bundle_uuid):
         return '%s%s%s' % (self.manager.session()['address'], BUNDLES_URL_SEPARATOR, bundle_uuid)
