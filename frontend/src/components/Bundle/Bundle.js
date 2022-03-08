@@ -494,7 +494,7 @@ function renderContents(bundleInfo, fileContents, stdout, stderr) {
                     </span>
                 </div>
                 <div className='collapsible-content bundle-meta'>
-                    <pre>{JSON.stringify(fileContents, null, 2)}</pre>
+                    <pre>{fileContents}</pre>
                 </div>
             </div>
         );
