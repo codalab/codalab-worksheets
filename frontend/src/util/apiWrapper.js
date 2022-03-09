@@ -135,7 +135,7 @@ export const fetchFileSummary = (uuid, path) => {
         {
             headers: { Accept: 'text/plain' },
         },
-        // need to define transformResponse to prevent json being parsed due to the issue discussed in: https://github.com/axios/axios/issues/811
+        // Get the raw text response and don't parse JSON. Need to define transformResponse to prevent JSON being parsed due to the issue discussed in: https://github.com/axios/axios/issues/811
         { responseType: 'text', transformResponse: (data) => data },
     );
 };
