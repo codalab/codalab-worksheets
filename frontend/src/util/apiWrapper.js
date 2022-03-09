@@ -2,7 +2,7 @@ import { Semaphore } from 'await-semaphore';
 import axios from 'axios';
 import { createDefaultBundleName, pathIsArchive, getArchiveExt } from './worksheet_utils';
 
-export const get = (url, params, options) => {
+export const get = (url, params, options = {}) => {
     const requestOptions = {
         params,
         ...options,
