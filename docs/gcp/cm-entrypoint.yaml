@@ -20,7 +20,7 @@ kind: ConfigMap
 metadata:
   name: entrypoint
   labels:
-    app: alternative-init
+    app: nvidia-init
 data:
   entrypoint.sh: |
     #!/usr/bin/env bash

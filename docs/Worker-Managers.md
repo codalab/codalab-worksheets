@@ -140,7 +140,9 @@ you would select `Standard D3_v2 (4 vCPUs, 14 GB Memory)` for example. For a gpu
 
 1. Go to `Jobs` and select `Add`.
 
-1. For `Job ID`, give your Job a unique ID.
+1. For `Job ID`, give your Job a unique ID. For example, you can give it name with the format 
+   `{environment}-{resource type}`, where `environment` is either `prod` or `dev` and resource type 
+   is either `gpu` or `cpu` (e.g. `prod-cpu`).
 
 1. For `Pool`, select the corresponding Batch Pool.
 
@@ -270,6 +272,10 @@ n1-standard machine at initialization with the option to auto-scale up to 8
 By not specifying a cluster version with the `--cluster-version` argument, GCP will create a cluster 
 with the default version in the
 [Stable channel](https://cloud.google.com/kubernetes-engine/docs/release-notes-stable).
+
+Setting `--scopes=cloud-platform,gke-default` is required to configure Nvidia drivers and dependencies for the nodes.
+Also, note that only 74% of memory is available to a CodaLab worker on the VM 
+(see [the following documentation](https://learnk8s.io/allocatable-resources) for more information).
 
 Next, run `yes Y | gcloud beta container clusters update codalab-worker-manager-cluster 
 --autoscaling-profile optimize-utilization --region us-west1-a` to ensure that

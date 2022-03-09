@@ -40,9 +40,9 @@ spec:
           privileged: true
         volumeMounts:
           - mountPath: /exports
-            name: pd-domainnet
+            name: pd
       volumes:
-        - name: pd-domainnet
+        - name: pd
           gcePersistentDisk:
-            pdName: pd-domainnet
+            pdName: pd
             fsType: ext4

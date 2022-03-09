@@ -19,18 +19,18 @@ kind: DaemonSet
 metadata:
   name: node-initializer
   labels:
-    app: alternative-init
+    app: nvidia-init
 spec:
   selector:
     matchLabels:
-      app: alternative-init
+      app: nvidia-init
   updateStrategy:
     type: RollingUpdate
   template:
     metadata:
       labels:
         name: node-initializer
-        app: alternative-init
+        app: nvidia-init
     spec:
       tolerations:
         - key: nvidia.com/gpu
