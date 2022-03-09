@@ -107,6 +107,7 @@ x-codalab-server: &codalab-server
   - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
   - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
   - "${CODALAB_GOOGLE_APPLICATION_CREDENTIALS}:/google-application-credentials.json"
+  - /mnt/disks:/mnt/disks
 
 ############################################################
 
