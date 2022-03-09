@@ -337,6 +337,9 @@ def container_exists(container):
     try:
         client.containers.get(container.id)
         return True
+    except AttributeError:
+        # container is None
+        return False
     except docker.errors.NotFound:
         return False
 
