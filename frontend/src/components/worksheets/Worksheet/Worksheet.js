@@ -28,6 +28,7 @@ import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
 import UndoIcon from '@material-ui/icons/UndoOutlined';
+import CodeIcon from '@material-ui/icons/Code';
 import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
@@ -72,6 +73,7 @@ class Worksheet extends React.Component {
             inSourceEditMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
+            highlightSyntax: true, // Determines if code syntax is highlighted
             focusIndex: -1, // Which worksheet items to be on (-1 is none)
             subFocusIndex: 0, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
@@ -886,6 +888,14 @@ class Worksheet extends React.Component {
                 }.bind(this),
             );
 
+            // Highlight/unhighlight code syntax
+            Mousetrap.bind(
+                ['shift+h'],
+                function(e) {
+                    this.toggleHighlightSyntax();
+                }.bind(this),
+            );
+
             // Focus on web terminal
             Mousetrap.bind(
                 ['c c'],
@@ -1331,6 +1341,10 @@ class Worksheet extends React.Component {
         }
     }
 
+    toggleHighlightSyntax() {
+        this.setState({ highlightSyntax: !this.state.highlightSyntax });
+    }
+
     toggleTerminal() {
         this.setState({ showTerminal: !this.state.showTerminal });
     }
@@ -1731,6 +1745,10 @@ class Worksheet extends React.Component {
         let info = this.state.ws.info;
         let rawWorksheet = info && info.source.join('\n');
         const editPermission = this.hasEditPermission();
+        const showTerminalText = this.state.showTerminal ? 'HIDE TERMINAL' : 'SHOW TERMINAL';
+        const highlightSyntaxText = this.state.highlightSyntax
+            ? 'UNHIGHLIGHT SYNTAX'
+            : 'HIGHLIGHT SYNTAX';
 
         let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
         let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
@@ -1763,7 +1781,18 @@ class Worksheet extends React.Component {
                     ) : (
                         <ExpandIcon className={classes.buttonIcon} />
                     )}
-                    {this.state.showTerminal ? 'HIDE TERMINAL' : 'SHOW TERMINAL'}
+                    {showTerminalText}
+                </Button>
+                <Button
+                    onClick={(e) => this.toggleHighlightSyntax()}
+                    size='small'
+                    color='inherit'
+                    aria-label='Highlight Syntax'
+                    id='highlight-syntax-button'
+                    disabled={!info}
+                >
+                    <CodeIcon className={classes.buttonIcon} />
+                    {highlightSyntaxText}
                 </Button>
                 <Button
                     onClick={(e) =>
@@ -1887,6 +1916,7 @@ class Worksheet extends React.Component {
                 updateSchemaItem={this.updateSchemaItem}
                 setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
                 addImageDisplay={this.addImageDisplay}
+                highlightSyntax={this.state.highlightSyntax}
             />
         );
 

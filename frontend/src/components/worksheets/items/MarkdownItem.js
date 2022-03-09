@@ -12,6 +12,8 @@ import TextEditorItem from './TextEditorItem';
 import { createAlertText } from '../../../util/worksheet_utils';
 import Tooltip from '@material-ui/core/Tooltip';
 import { addItems } from '../../../util/apiWrapper';
+import { highlightSyntax } from '../../../util';
+
 class MarkdownItem extends React.Component {
     /** Constructor. */
     constructor(props) {
@@ -38,12 +40,14 @@ class MarkdownItem extends React.Component {
         this.processMathJax();
         if (this.props.focused) this.capture_keys();
     }
+
     shouldComponentUpdate(nextProps, nextState) {
         return (
             worksheetItemPropsChanged(this.props, nextProps) ||
             this.state.showEdit !== nextState.showEdit
         );
     }
+
     handleClick = () => {
         this.props.setFocus(this.props.focusIndex, 0);
     };
@@ -56,6 +60,11 @@ class MarkdownItem extends React.Component {
         text = marked(text, { sanitize: true });
         // '<p>we have @ppp@</p>' => '<p>we have @x^2@</p>'
         text = this.restoreMathJax(text, mathSegments);
+
+        if (this.props.highlightSyntax) {
+            return highlightSyntax(text);
+        }
+
         return text;
     };
 

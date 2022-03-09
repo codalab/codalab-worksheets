@@ -182,7 +182,8 @@ export function worksheetItemPropsChanged(props, nextProps) {
         props.focusIndex !== nextProps.focusIndex ||
         props.ws.info.blocks.length !== nextProps.ws.info.blocks.length ||
         (nextProps.focused && props.subFocusIndex !== nextProps.subFocusIndex) ||
-        props.version !== nextProps.version
+        props.version !== nextProps.version ||
+        props.highlightSyntax !== nextProps.highlightSyntax
     );
 }
 

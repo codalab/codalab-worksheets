@@ -371,6 +371,37 @@ Object {
                         />
                       </button>
                       <button
+                        aria-label="Highlight Syntax"
+                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        id="highlight-syntax-button"
+                        tabindex="0"
+                        type="button"
+                      >
+                        <span
+                          class="MuiButton-label-116"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-144 Worksheet-buttonIcon-10"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M0 0h24v24H0V0z"
+                              fill="none"
+                            />
+                            <path
+                              d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"
+                            />
+                          </svg>
+                          UNHIGHLIGHT SYNTAX
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-237"
+                        />
+                      </button>
+                      <button
                         aria-label="Delete Worksheet"
                         class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
                         tabindex="0"
@@ -1190,6 +1221,37 @@ Object {
                           />
                         </svg>
                         SHOW TERMINAL
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-237"
+                      />
+                    </button>
+                    <button
+                      aria-label="Highlight Syntax"
+                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                      id="highlight-syntax-button"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-116"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-144 Worksheet-buttonIcon-10"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0V0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"
+                          />
+                        </svg>
+                        UNHIGHLIGHT SYNTAX
                       </span>
                       <span
                         class="MuiTouchRipple-root-237"
