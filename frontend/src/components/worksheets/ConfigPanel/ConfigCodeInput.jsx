@@ -5,7 +5,6 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import TextField from '@material-ui/core/TextField';
 
-
 class ConfigCodeInput extends React.Component<{
     placeholder?: string,
     multiline?: boolean,
@@ -21,7 +20,16 @@ class ConfigCodeInput extends React.Component<{
     }
 
     render() {
-        const { classes, placeholder, multiline, maxRows, value, onValueChange, onKeyDown, autoFocus } = this.props;
+        const {
+            classes,
+            placeholder,
+            multiline,
+            maxRows,
+            value,
+            onValueChange,
+            onKeyDown,
+            autoFocus,
+        } = this.props;
         return (
             <TextField
                 value={value}
@@ -31,8 +39,8 @@ class ConfigCodeInput extends React.Component<{
                 autoFocus={autoFocus}
                 onFocus={this.moveFocusToEnd}
                 onKeyDown={onKeyDown}
-                margin="dense"
-                variant="filled"
+                margin='dense'
+                variant='filled'
                 fullWidth
                 InputProps={{
                     classes: {
@@ -45,7 +53,6 @@ class ConfigCodeInput extends React.Component<{
         );
     }
 }
-
 
 // To inject styles into component
 // -------------------------------
