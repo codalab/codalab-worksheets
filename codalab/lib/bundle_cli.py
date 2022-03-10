@@ -1833,6 +1833,9 @@ class BundleCLI(object):
         params = {'worksheet': worksheet_uuid}
         if args.after_sort_key:
             params['after_sort_key'] = args.after_sort_key
+        else:
+            # if after_sort_key is not specified, insert at the beginning of the worksheet
+            params['after_sort_key'] = -1
         if args.memoize:
             dependencies = [
                 {'child_path': key, 'parent_uuid': bundle_target.bundle_uuid}
