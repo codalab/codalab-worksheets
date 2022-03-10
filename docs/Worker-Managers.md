@@ -202,7 +202,9 @@ Note: this will kill all other bundles that are running on this worker, so only 
 1. Follow the steps in the previous section to get the worker ID of the running bundle, then navigate to 
    the corresponding task on the Azure Console.
 2. Click "Terminate" to terminate the worker.
-3. Look through the logs, if useful, and file an issue related to the problem that this particular worker was having.
+3. Look through the logs, if useful, and file a 
+   [GitHub issue](https://github.com/codalab/codalab-worksheets/issues/new/choose) 
+   related to the problem that this particular worker was having.
 
 ## Kubernetes Batch Worker Manager
 
