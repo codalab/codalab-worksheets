@@ -1617,7 +1617,7 @@ class BundleModel(object):
                 # Nothing to insert, return
                 return
 
-            # if after_sort_key not specified, insert the bundle to the end of the worksheet
+            # if after_sort_key not specified, insert the bundle at the end of the worksheet
             if after_sort_key is None:
                 clause = cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
                 query = select([func.max(cl_worksheet_item.c.sort_key)]).where(clause)
