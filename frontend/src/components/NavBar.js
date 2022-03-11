@@ -320,7 +320,7 @@ class NavBar extends React.Component<{
 
         return (
             <MuiThemeProvider theme={overrideMedia}>
-                <AppBar id='codalab-app-bar' color='default'>
+                <AppBar id='codalab-app-bar' className={classes.header} color='default'>
                     <Toolbar>
                         <div className={classes.logoContainer}>
                             <Link to='/home'>
@@ -562,6 +562,10 @@ const overrideMedia = createMuiTheme({
 });
 
 const styles = (theme) => ({
+    header: {
+        paddingTop: theme.spacing.large,
+        paddingBottom: theme.spacing.large,
+    },
     logoContainer: {
         marginRight: 40,
     },
