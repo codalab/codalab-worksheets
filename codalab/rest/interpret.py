@@ -30,12 +30,13 @@ from codalab.lib.worksheet_util import (
     bundle_item,
     subworksheet_item,
     get_command,
+    parse_worksheet_form,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.server.authenticated_plugin import ProtectedPlugin
-from codalab.rest.worksheets import get_worksheet_info, search_worksheets
+from codalab.rest.worksheets import get_worksheet_info, search_worksheets, update_worksheet_items
 from codalab.rest.bundles import search_bundles
 from codalab.rest.worksheet_block_schemas import (
     BlockModes,
@@ -247,8 +248,8 @@ def fetch_interpreted_worksheet(uuid):
 
     for item in worksheet_info['items']:
         if item[-1] is None:
-            lines = worksheet_info['source'].split(os.linesep)
-            new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
+            lines = worksheet_info['source']
+            new_items = parse_worksheet_form(lines, local.model, request.user, uuid)
             worksheet_info = get_worksheet_info(uuid, fetch_items=True)
             update_worksheet_items(worksheet_info, new_items)
             return fetch_interpreted_worksheet(uuid)
