@@ -175,14 +175,10 @@ cl-worker-manager --server https://worksheets.codalab.org --min-workers 0 --max-
 The remote field is in form `<hostname>-<worker ID>`.
 
 1. Login to `portal.azure.com` and go to your Batch account.
-
-1. Under `Features`, select `Jobs`.
-
-1. Select the Batch Job your worker was running on.
-
-1. Search for the task by typing `cl_worker_<worker ID>` into the search bar.
-
-1. Open the task for the log files of the running worker.
+2. Under `Features`, select `Jobs`.
+3. Select the Batch Job your worker was running on.
+4. Search for the task by typing `cl_worker_<worker ID>` into the search bar.
+5. Open the task for the log files of the running worker.
 
 
 ##### For a failed bundle
@@ -191,16 +187,24 @@ The remote field is in form `<hostname>-<worker ID>`.
 The remote field is in form `<hostname>-<worker ID>`.
 
 1. Login to `portal.azure.com` and go to the storage account.
-
-1. Under `Blob service`, select `Containers`.
-
-1. Select the Batch Job your worker was running on.
-
-1. Search for the blob by typing `cl_worker_<worker ID>` into the search bar.
-
-1. Open the blob and select `Edit` to view the logs in the browser. Select `Download` to
+2. Under `Blob service`, select `Containers`.
+3. Select the Batch Job your worker was running on.
+4. Search for the blob by typing `cl_worker_<worker ID>` into the search bar.
+5. Open the blob and select `Edit` to view the logs in the browser. Select `Download` to
 download the file.
-   
+
+### Force kill an Azure Batch worker
+
+Sometimes, if a bundle cannot be killed, you may want to force kill the Azure Batch worker. 
+Note: this will kill all other bundles that are running on this worker, so only do this if you absolutely need to 
+(if the bundle cannot be stopped otherwise). To do so,
+
+1. Follow the steps in the previous section to get the worker ID of the running bundle, then navigate to 
+   the corresponding task on the Azure Console.
+2. Click "Terminate" to terminate the worker.
+3. Look through the logs, if useful, and file a 
+   [GitHub issue](https://github.com/codalab/codalab-worksheets/issues/new/choose) 
+   related to the problem that this particular worker was having.
 
 ## Kubernetes Batch Worker Manager
 
@@ -393,3 +397,11 @@ cl-worker-manager --server https://worksheets.codalab.org --min-workers 0 --max-
 --cert-path <Path to gke.crt> --auth-token <Auth token> --cluster-host <Endpoint URL of cluster host>
 --cpus <Number of CPUs on VM> --gpus <Number of GPUS on VM>  --memory-mb <Amount of memory on VM in MB>
 ```
+
+### Checking worker logs in GCP
+
+1. Go to the bundle view page of the bundle and get the worker ID from the `remote` field.
+2. Go to the [GKE console](https://console.cloud.google.com/kubernetes/workload).
+3. In the `Cluster` dropdown menu, specify the GKE cluster the worker is running on.
+4. Click on the pod with the name `cl-worker-<ID of worker from step 1>`. 
+5. Click on the `Logs` tab to view the worker logs.
