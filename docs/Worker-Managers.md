@@ -401,7 +401,7 @@ cl-worker-manager --server https://worksheets.codalab.org --min-workers 0 --max-
 ### Checking worker logs in GCP
 
 1. Go to the bundle view page of the bundle and get the worker ID from the `remote` field.
-2. Go to  [GKE console](https://console.cloud.google.com/kubernetes/workload).
+2. Go to the [GKE console](https://console.cloud.google.com/kubernetes/workload).
 3. In the `Cluster` dropdown menu, specify the GKE cluster the worker is running on.
-4. Click on the pod with the name `cl-worker-<ID of worker from step 1> `. 
+4. Click on the pod with the name `cl-worker-<ID of worker from step 1>`. 
 5. Click on the `Logs` tab to view the worker logs.
