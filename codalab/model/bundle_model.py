@@ -1616,6 +1616,14 @@ class BundleModel(object):
             if len(items) == 0:
                 # Nothing to insert, return
                 return
+
+            # if after_sort_key not specified, insert the bundle to the end of the worksheet
+            if after_sort_key is None:
+                clause = cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
+                query = select([func.max(cl_worksheet_item.c.sort_key)]).where(clause)
+                max_row = connection.execute(query).fetchone()
+                after_sort_key = -1 if max_row is None else max_row[0]
+
             if after_sort_key is not None:
                 after_sort_key = int(after_sort_key)
                 # Shift existing items' sort_keys for items that originally came after
