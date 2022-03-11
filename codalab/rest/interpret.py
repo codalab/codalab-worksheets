@@ -245,6 +245,14 @@ def fetch_interpreted_worksheet(uuid):
     # Fetch items.
     worksheet_info['source'] = get_worksheet_lines(worksheet_info)
 
+    for item in worksheet_info['items']:
+        if item[-1] is None:
+            lines = worksheet_info['source'].split(os.linesep)
+            new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
+            worksheet_info = get_worksheet_info(uuid, fetch_items=True)
+            update_worksheet_items(worksheet_info, new_items)
+            return fetch_interpreted_worksheet(uuid)
+
     if not directive and not brief:
         expanded_items = []
         for index, raw_item in enumerate(worksheet_info['items']):
