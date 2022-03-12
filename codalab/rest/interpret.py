@@ -16,6 +16,7 @@ import json
 import yaml
 from bottle import get, post, local, request, abort, httplib
 
+from codalab.objects.worksheet import Worksheet
 from codalab.common import UsageError, NotFoundError, PermissionError
 from codalab.lib import formatting, spec_util
 from codalab.lib.worksheet_util import (
@@ -234,6 +235,19 @@ def fetch_interpreted_worksheet(uuid):
 
     worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
+    # Fix worksheet if there are items with null sort_key.
+    fix_sort_key = False
+    for ind, item in enumerate(worksheet_info['items']):
+        if item['sort_key'] is None:
+            fix_sort_key = True
+            item['sort_key'] = local.model.get_max_sort_key(uuid) + 1
+    if fix_sort_key:
+        update_worksheet_items(
+            worksheet_info,
+            [Worksheet.Item.as_tuple(i) for i in worksheet_info['items']],
+            convert_items=False,
+        )
+
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
 
@@ -245,14 +259,6 @@ def fetch_interpreted_worksheet(uuid):
 
     # Fetch items.
     worksheet_info['source'] = get_worksheet_lines(worksheet_info)
-
-    for item in worksheet_info['items']:
-        if item[-1] is None:
-            lines = worksheet_info['source']
-            new_items = parse_worksheet_form(lines, local.model, request.user, uuid)
-            worksheet_info = get_worksheet_info(uuid, fetch_items=True)
-            update_worksheet_items(worksheet_info, new_items)
-            return fetch_interpreted_worksheet(uuid)
 
     if not directive and not brief:
         expanded_items = []

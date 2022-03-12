@@ -1602,6 +1602,13 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
 
+    def get_max_sort_key(self, worksheet_uuid):
+        with self.engine.begin() as connection:
+            clause = cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
+            query = select([func.max(cl_worksheet_item.c.sort_key)]).where(clause)
+            max_row = connection.execute(query).fetchone()
+            return -1 if max_row is None else max_row[0]
+
     def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
         """
         Add worksheet items *items* to the position *after_sort_key* to the worksheet,
@@ -1619,10 +1626,7 @@ class BundleModel(object):
 
             # if after_sort_key not specified, insert the bundle at the end of the worksheet
             if after_sort_key is None:
-                clause = cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
-                query = select([func.max(cl_worksheet_item.c.sort_key)]).where(clause)
-                max_row = connection.execute(query).fetchone()
-                after_sort_key = -1 if max_row is None else max_row[0]
+                after_sort_key = self.get_max_sort_key(worksheet_uuid)
 
             if after_sort_key is not None:
                 after_sort_key = int(after_sort_key)
