@@ -31,7 +31,6 @@ from codalab.lib.worksheet_util import (
     bundle_item,
     subworksheet_item,
     get_command,
-    parse_worksheet_form,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
