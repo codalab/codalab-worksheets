@@ -1607,7 +1607,7 @@ class BundleModel(object):
             clause = cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
             query = select([func.max(cl_worksheet_item.c.sort_key)]).where(clause)
             max_row = connection.execute(query).fetchone()
-            return -1 if max_row is None else max_row[0]
+            return -1 if (max_row is None or max_row[0] is None) else max_row[0]
 
     def add_worksheet_items(self, worksheet_uuid, items, after_sort_key=None, replace=[]):
         """
