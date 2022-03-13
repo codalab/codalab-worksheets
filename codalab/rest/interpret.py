@@ -236,10 +236,12 @@ def fetch_interpreted_worksheet(uuid):
 
     # Fix worksheet if there are items with null sort_key.
     fix_sort_key = False
+    max_sort_key = local.model.get_max_sort_key(uuid)
     for ind, item in enumerate(worksheet_info['items']):
         if item['sort_key'] is None:
             fix_sort_key = True
-            item['sort_key'] = local.model.get_max_sort_key(uuid) + 1
+            max_sort_key += 1
+            item['sort_key'] = max_sort_key
     if fix_sort_key:
         update_worksheet_items(
             worksheet_info,
