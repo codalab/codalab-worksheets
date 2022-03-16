@@ -13,4 +13,4 @@ echo ">> docker kill codalab_worker-preemptible2_1"
 docker kill codalab_worker-preemptible2_1
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-timeout 1m ${__dir}/test-setup-preemptible-background.sh # &
+CODALAB_USERNAME=$CODALAB_USERNAME CODALAB_PASSWORD=$CODALAB_PASSWORD timeout 1m ${__dir}/test-setup-preemptible-background.sh &
