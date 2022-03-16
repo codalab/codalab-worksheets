@@ -1060,7 +1060,7 @@ def test_preemptible(ctx):
     test-setup-preemptible.sh is run first. See the GitHub Actions test file preemptible
     section for an example of how to set up this test.
     """
-    uuid = _run_command([cl, 'run', 'sleep 60', '--request-queue', 'preemptible'])
+    uuid = _run_command([cl, 'run', 'sleep 120', '--request-queue', 'preemptible'])
     wait_until_state(uuid, State.RUNNING)
     remote_preemptible_worker = get_info(uuid, 'remote')
     check_equals("True", get_info(uuid, 'on_preemptible_worker'))
