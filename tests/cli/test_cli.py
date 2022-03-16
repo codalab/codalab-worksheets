@@ -39,7 +39,6 @@ import tempfile
 import time
 import traceback
 import requests
-import docker
 
 
 global cl
