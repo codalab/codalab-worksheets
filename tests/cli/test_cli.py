@@ -1073,6 +1073,30 @@ def test_preemptible(ctx):
     # bundle should be resumed on the other worker
     check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
 
+@TestModule.register('default_bundle_store')
+def test_upload_default_bundle_store(ctx):
+    """Tests the CODALAB_DEFAULT_BUNDLE_STORE_NAME environment
+    variable. Should only be called when
+    CODALAB_DEFAULT_BUNDLE_STORE_NAME is set."""
+    # Create a new bundle store and upload to it
+    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Upload a bundle, which should output to bundle store by default
+    uuid = _run_command([cl, 'upload', '-c', 'hello'])
+    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
+
 
 @TestModule.register('download')
 def test_download(ctx):
@@ -1360,7 +1384,7 @@ def test_worksheet_freeze_unfreeze(ctx):
 @TestModule.register('bundle_freeze_unfreeze')
 def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
-    uuid = _run_command([cl, 'run', 'date', '-n', name])
+    uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
     wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
@@ -1648,6 +1672,16 @@ def test_run(ctx):
     check_num_lines(
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('time')
+def test_time(ctx):
+    """Various tests that ensure the timing of runs is still fast."""
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
+
+    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
 
 
 @TestModule.register('link')

@@ -7,7 +7,6 @@ import HelpIcon from '@material-ui/icons/Help';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
 
-
 class ConfigLabel extends React.Component<{
     label: string,
     tooltip?: string,
@@ -18,18 +17,19 @@ class ConfigLabel extends React.Component<{
         const { classes, label, tooltip, inline, optional } = this.props;
         const contents = (
             <span className={classes.label}>
-                <Typography variant='subtitle2' inline>{label}</Typography>
+                <Typography variant='subtitle2' inline>
+                    {label}
+                </Typography>
                 {!optional ? null : (
                     <Typography variant='subtitle2' inline className={classes.optional}>
-                        {"(optional)"}
+                        {'(optional)'}
                     </Typography>
                 )}
                 {!tooltip ? null : (
-                    <Tooltip title={tooltip}
-                             classes={{ tooltip: classes.tooltipBox }}>
-                            <span className={classes.tooltipIcon}>
-                                <HelpIcon fontSize='inherit' style={{ verticalAlign: 'middle' }}/>
-                            </span>
+                    <Tooltip title={tooltip} classes={{ tooltip: classes.tooltipBox }}>
+                        <span className={classes.tooltipIcon}>
+                            <HelpIcon fontSize='inherit' style={{ verticalAlign: 'middle' }} />
+                        </span>
                     </Tooltip>
                 )}
             </span>
@@ -37,7 +37,6 @@ class ConfigLabel extends React.Component<{
         return inline === true ? contents : <div>{contents}</div>;
     }
 }
-
 
 // To inject styles into component
 // -------------------------------

@@ -345,7 +345,7 @@ class WorkerModel(object):
                     sock.connect(self._socket_path(socket_id))
                     success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                 except socket.error:
-                    pass
+                    logging.exception("socket error when calling send_stream")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -393,7 +393,7 @@ class WorkerModel(object):
                     else:
                         success = True
                 except socket.error:
-                    pass
+                    logging.exception("socket error when calling send_json_message")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.

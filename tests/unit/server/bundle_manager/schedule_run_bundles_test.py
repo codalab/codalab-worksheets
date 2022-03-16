@@ -63,7 +63,7 @@ class BundleManagerScheduleRunBundlesTest(BaseBundleManagerTest):
         self.assertEqual(bundle.state, State.WORKER_OFFLINE)
 
     def test_finalizing_bundle_goes_offline_if_no_worker_claims(self):
-        """If no worker claims a FINALIZING bundle, it should go to the WORKER_OFFLINE_STATE."""
+        """If no worker claims a FINALIZING bundle, it should go to the WORKER_OFFLINE state."""
         bundle = self.create_run_bundle(State.FINALIZING)
         self.save_bundle(bundle)
         self.bundle_manager._schedule_run_bundles()

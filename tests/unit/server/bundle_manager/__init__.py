@@ -158,8 +158,10 @@ class TestBase:
             uuid=generate_uuid(),
             state=state,
         )
-        bundle.is_frozen = None
+        bundle.frozen = None
         bundle.is_anonymous = False
+        bundle.storage_type = None
+        bundle.is_dir = False
         return bundle
 
     def create_bundle_single_dep(
