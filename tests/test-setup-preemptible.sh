@@ -10,4 +10,4 @@ else
 fi
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-timeout 1m ${__dir}/test-setup-preemptible-background.sh # &
+CODALAB_USERNAME=$CODALAB_USERNAME CODALAB_PASSWORD=$CODALAB_PASSWORD timeout 1m ${__dir}/test-setup-preemptible-background.sh &
