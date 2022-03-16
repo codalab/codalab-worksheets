@@ -1056,22 +1056,23 @@ def test_blob(ctx):
 
 @TestModule.register('preemptible')
 def test_preemptible(ctx):
-    """Tests preemptible workers to ensure they are functioning
-    properly. Should only be called when both the "worker" and
-    "worker-preemptible" services are running locally, and
-    codalab_service.py is started with the "-d" flag."""
+    """Tests preemptible workers to ensure they are functioning properly. Should only be
+    called when both the "worker" and "worker-preemptible" services are running locally, and
+    test-setup-preemptible.sh is run first. See the GitHub Actions test file preemptible
+    section for an example of how to set up this test.
+    """
     uuid = _run_command([cl, 'run', 'sleep 60', '--request-queue', 'preemptible'])
     wait_until_state(uuid, State.RUNNING)
     remote_preemptible_worker = get_info(uuid, 'remote')
     check_equals("True", get_info(uuid, 'on_preemptible_worker'))
-    # Kill worker
-    client = docker.from_env()
-    client.containers.get("codalab_worker-preemptible_1").kill()
+    # Bundle should be killed by the test-setup-preemptible.sh script now.
     # Wait for bundle to be re-assigned
     wait_until_state(uuid, State.STAGED)
     wait_until_state(uuid, State.RUNNING)
     # bundle should be resumed on the other worker
     check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
+    check_equals("False", get_info(uuid, 'on_preemptible_worker'))
+
 
 @TestModule.register('default_bundle_store')
 def test_upload_default_bundle_store(ctx):

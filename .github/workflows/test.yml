@@ -381,6 +381,7 @@ jobs:
           restore-keys: |
             pip-
       - run: pip install -r requirements.txt
+      - run: pip install -e .
       - name: Setup tests
         run: |
           sudo service mysql stop
@@ -389,11 +390,15 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Run tests
         run: |
-          python3 codalab_service.py start --services default worker-preemptible --version ${VERSION} -d
+          python3 codalab_service.py start --services default worker-preemptible --version ${VERSION}
+          cl work localhost::
+          ./test-setup-preemptible.sh
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_USERNAME: codalab
+          CODALAB_PASSWORD: codalab
       - name: Save logs
         if: always()
         run: |
