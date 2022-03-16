@@ -431,6 +431,30 @@ services:
       - rest-server
     shm_size: '500mb'
 
+  worker-preemptible2:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}-worker-preemptible2
+      --verbose
+      --preemptible
+      --tag preemptible
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+    networks:
+      - service
+      - worker
+      - rest-server
+    shm_size: '500mb'
+
   worker-shared-file-system:
     image: codalab/worker:${CODALAB_VERSION}
     command: |

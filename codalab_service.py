@@ -42,6 +42,7 @@ ALL_SERVICES = DEFAULT_SERVICES + [
     'worker-manager-gpu',
     'worker2',
     'worker-preemptible',
+    'worker-preemptible2',
 ]
 
 ALL_NO_SERVICES = [
@@ -61,6 +62,7 @@ SERVICE_TO_IMAGE = {
     'worker': 'worker',
     'worker2': 'worker',
     'worker-preemptible': 'worker',
+    'worker-preemptible2': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
