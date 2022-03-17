@@ -1055,12 +1055,28 @@ def test_blob(ctx):
 
 @TestModule.register('preemptible')
 def test_preemptible(ctx):
-    """Tests preemptible workers to ensure they are functioning properly. Should only be
-    called when both the "worker" and "worker-preemptible" services are running locally, and
-    test-setup-preemptible.sh is run first. See the GitHub Actions test file preemptible
-    section for an example of how to set up this test.
+    """Tests preemptible workers to ensure they are functioning properly. A bundle
+    that is preemptible should be run on a preemptible worker, and when that worker is killed,
+    should go back to staged and transfer to another worker.
+    
+    This test should only be called when the "worker-preemptible" and "worker-preemptible2" services are
+    running locally, and test-setup-preemptible.sh should be run first. See the GitHub Actions test file
+    "preemptible" test for an example of how to set up this test.
     """
-    uuid = _run_command([cl, 'run', '(mkdir first-run || mkdir second-run); sleep 120', '--request-queue', 'preemptible'])
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            '(mkdir first-run || mkdir second-run); sleep 120',
+            '--request-queue',
+            'preemptible',
+        ]
+    )
+    # We run (mkdir first-run || mkdir second-run) to ensure that the working directory is shared between
+    # worker runs for a preemptible bundle. The first worker this runs on, the directory "first-run" should be created.
+    # The second worker should create the directory "second-run" because "first-run" should already exist in
+    # the working directory (so mkdir first-run will fail and thus mkdir second-run will run).
+
     wait_until_state(uuid, State.RUNNING)
     remote_preemptible_worker = get_info(uuid, 'remote')
     check_equals("True", get_info(uuid, 'on_preemptible_worker'))
@@ -1068,11 +1084,11 @@ def test_preemptible(ctx):
     # Wait for bundle to be re-assigned
     wait_until_state(uuid, State.STAGED)
     wait_until_state(uuid, State.RUNNING)
-    # bundle should be resumed on the other worker
+    # Bundle should be resumed on the other worker
     check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
     check_equals("False", get_info(uuid, 'on_preemptible_worker'))
-    check_contains("first-run",  _run_command([cl, 'cat', uuid]))
-    check_contains("second-run",  _run_command([cl, 'cat', uuid]))
+    check_contains("first-run", _run_command([cl, 'cat', uuid]))
+    check_contains("second-run", _run_command([cl, 'cat', uuid]))
 
 
 @TestModule.register('default_bundle_store')
