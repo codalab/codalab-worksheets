@@ -5,6 +5,8 @@
 # and finally starts another preemptible worker where the bundle can finish
 # running on.
 
+cl work localhost::
+
 while : ; do
     echo ">> cl search request_queue=preemptible state=running .count"
     num_bundles=$(cl search request_queue=preemptible state=running .count)
