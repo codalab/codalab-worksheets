@@ -13,8 +13,9 @@ while : ; do
         echo "Bundle is running! Stopping the worker and bundle container now."
         echo ">> docker kill codalab_worker-preemptible_1"
         docker kill codalab_worker-preemptible_1
-        echo ">> docker kill $(docker ps -f name=codalab_run -q)"
-        docker kill $(docker ps -f name=codalab_run -q)
+        run_container=$(docker ps -f name=codalab_run -q)
+        echo ">> docker kill $run_container && docker rm $run_container"
+        docker kill $run_container && docker rm $run_container
         echo "Worker stopped successfully. Starting another preemptible worker..."
         echo ">> docker start codalab_worker-preemptible2_1"
         docker start codalab_worker-preemptible2_1
