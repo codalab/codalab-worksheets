@@ -1058,7 +1058,7 @@ def test_preemptible(ctx):
     """Tests preemptible workers to ensure they are functioning properly. A bundle
     that is preemptible should be run on a preemptible worker, and when that worker is killed,
     should go back to staged and transfer to another worker.
-    
+
     This test should only be called when the "worker-preemptible" and "worker-preemptible2" services are
     running locally, and test-setup-preemptible.sh should be run first. See the GitHub Actions test file
     "preemptible" test for an example of how to set up this test.
