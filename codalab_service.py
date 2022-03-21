@@ -958,6 +958,7 @@ class CodalabServiceManager(object):
             self.bring_up_service('worker')
         self.bring_up_service('worker2')
         self.bring_up_service('worker-preemptible')
+        self.bring_up_service('worker-preemptible2')
 
         self.bring_up_service('monitor')
 
