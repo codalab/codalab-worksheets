@@ -354,7 +354,7 @@ jobs:
   #       if: always()
   #       uses: actions/upload-artifact@v1
   #       with:
-  #         name: logs-test-protectedmode-${{ matrix.test }}
+  #         name: logs-test-${{ matrix.test }}
   #         path: /tmp/logs
 
   test_backend_preemptible_worker:
@@ -409,7 +409,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v1
         with:
-          name: logs-test-protectedmode-${{ matrix.test }}
+          name: logs-test-${{ matrix.test }}
           path: /tmp/logs
 
 #   test_backend_azure_blob:
