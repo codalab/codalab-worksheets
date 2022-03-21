@@ -1086,7 +1086,7 @@ def test_preemptible(ctx):
     wait_until_state(uuid, State.RUNNING)
     # Bundle should be resumed on the other worker
     check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
-    check_equals("False", get_info(uuid, 'on_preemptible_worker'))
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
     check_contains("first-run", _run_command([cl, 'cat', uuid]))
     check_contains("second-run", _run_command([cl, 'cat', uuid]))
 
