@@ -391,6 +391,7 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default worker-preemptible --version ${VERSION}
+          sleep 20
           python3 codalab_service.py start --services worker-preemptible2 --version ${VERSION}
           ./tests/test-setup-preemptible.sh
           python3 test_runner.py --version ${VERSION} ${TEST}
