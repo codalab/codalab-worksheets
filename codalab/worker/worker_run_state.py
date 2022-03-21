@@ -330,8 +330,12 @@ class RunStateMachine(StateTransitioner):
                     bundle_dir_wait_num_tries=next_bundle_dir_wait_num_tries,
                 )
         else:
-            remove_path(run_state.bundle_path)
-            os.makedirs(run_state.bundle_path)
+            if len(run_state.bundle.metadata.get("remotes", [])) > 1:
+                # If the bundle already ran on a previous (preemptible) worker, we want to
+                # reuse bundle directories if they already exist, so progress can be continued
+                # and any checkpoints within the bundle directory can be reused.
+                remove_path(run_state.bundle_path)
+            os.makedirs(run_state.bundle_path, exist_ok=True)
 
         # 2) Set up symlinks
         docker_dependencies = []
