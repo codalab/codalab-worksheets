@@ -11,8 +11,6 @@ services:
     stdin_open: true
     tty: true
   rest-server:
-    # Used only for preemptible test in test_cli.py, so that we can start / stop Docker containers from the test.
-    # user: 0:0
     volumes:
       # Mount the alembic directory so that we can create new database migrations with the alembic version files mounted.
       - ./../../alembic/:/opt/codalab-worksheets/alembic/
@@ -22,9 +20,3 @@ services:
 
       # Mount the scripts directory so that we can modify the competitiond.py script without needing to rebuild the Docker image.
       - ./../../scripts/:/opt/codalab-worksheets/scripts/
-
-      # # Used only for preemptible test in test_cli.py, so that we can start / stop Docker containers from the test.
-      # - /var/run/docker.sock:/var/run/docker.sock
-  # bundle-manager:
-  #   # bundle-manager also needs to run as root so it can read sockets created by rest-server (which runs as root).
-  #   user: 0:0
