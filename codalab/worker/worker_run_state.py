@@ -331,9 +331,8 @@ class RunStateMachine(StateTransitioner):
                 )
         else:
             if len(run_state.bundle.metadata.get("remotes", [])) > 1:
-                # If the bundle already ran on a previous (preemptible) worker, we want to
-                # reuse bundle directories if they already exist, so progress can be continued
-                # and any checkpoints within the bundle directory can be reused.
+                # If the bundle already ran on a previous (preemptible) worker, don't run remove_path,
+                # so that any checkpoints in the bundle directory from the first run can be reused.
                 remove_path(run_state.bundle_path)
             os.makedirs(run_state.bundle_path, exist_ok=True)
 
