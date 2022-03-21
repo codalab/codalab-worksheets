@@ -1067,7 +1067,7 @@ def test_preemptible(ctx):
         [
             cl,
             'run',
-            '(mkdir first-run || mkdir second-run) && sleep 120',
+            'bash -c "(mkdir first-run || mkdir second-run) && sleep 120"',
             '--request-queue',
             'preemptible',
         ]
