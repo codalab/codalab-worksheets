@@ -78,7 +78,7 @@ class HomePage extends React.Component<{
     render() {
         const { classes, auth } = this.props;
         return (
-            <Grid container style={{ marginTop: -30 }}>
+            <Grid container>
                 <Helmet>
                     <meta
                         id='meta-description'

@@ -20,6 +20,10 @@
   font-weight: 600;
   font-style: normal;
 }
+
+$header-height-mobile: 48px;
+$header-height-desktop: 58px;
+
 .btn-secondary {
   color: #fff;
   background-color: #225ea8;
@@ -256,8 +260,11 @@ footer .navbar-nav.navbar-right:last-child {
   margin-right: 0;
 }
 body {
-  padding-top: 48px;
+  padding-top: $header-height-mobile;
   padding-bottom: 25px;
+  @media screen and (min-width: 600px) {
+    padding-top: $header-height-desktop;
+  }
 }
 body > .container {
   padding-bottom: 36px;
