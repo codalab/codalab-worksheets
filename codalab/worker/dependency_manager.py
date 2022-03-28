@@ -8,7 +8,7 @@ import uuid
 from collections import namedtuple
 from contextlib import closing
 from datetime import timedelta
-from typing import Dict, Set, Union
+from typing import Dict, Set, Union, List
 
 import codalab.worker.pyjson
 from .bundle_service_client import BundleServiceClient
@@ -280,7 +280,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
                 self._commit_state(dependencies, self._paths)
             except (ValueError, EnvironmentError):
                 # Do nothing if an error is thrown while reading from the state file
-                logging.exception("error reading from state file")
+                logging.exception("Error reading from state file while transitioning dependencies")
                 pass
 
     def _prune_failed_dependencies(self):
@@ -290,20 +290,27 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         failed dependency would automatically fail indefinitely.
         """
         with self._state_lock:
-            dependencies, paths = self._fetch_state(default={'dependencies': {}, 'paths': set()})
-            failed_deps: Dict[DependencyKey, DependencyState] = {
-                dep_key: dep_state
-                for dep_key, dep_state in dependencies.items()
-                if dep_state.stage == DependencyStage.FAILED
-                and time.time() - dep_state.last_used
-                > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
-            }
-            if len(failed_deps) == 0:
-                return
+            try:
+                dependencies, paths = self._fetch_state()
+                failed_deps: Dict[DependencyKey, DependencyState] = {
+                    dep_key: dep_state
+                    for dep_key, dep_state in dependencies.items()
+                    if dep_state.stage == DependencyStage.FAILED
+                    and time.time() - dep_state.last_used
+                    > DependencyManager.DEPENDENCY_FAILURE_COOLDOWN
+                }
+                if len(failed_deps) == 0:
+                    return
 
-            for dep_key, dep_state in failed_deps.items():
-                self._delete_dependency(dep_key, dependencies, paths)
-            self._commit_state(dependencies, paths)
+                for dep_key, dep_state in failed_deps.items():
+                    self._delete_dependency(dep_key, dependencies, paths)
+                self._commit_state(dependencies, paths)
+            except (ValueError, EnvironmentError):
+                # Do nothing if an error is thrown while reading from the state file
+                logging.exception(
+                    "Error reading from state file while pruning failed dependencies."
+                )
+                pass
 
     def _cleanup(self):
         """
@@ -316,9 +323,15 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
         while True:
             with self._state_lock:
-                dependencies, paths = self._fetch_state(
-                    default={'dependencies': {}, 'paths': set()}
-                )
+                try:
+                    dependencies, paths = self._fetch_state()
+                except (ValueError, EnvironmentError):
+                    # Do nothing if an error is thrown while reading from the state file
+                    logging.exception(
+                        "Error reading from state file when cleaning up dependencies. Trying again..."
+                    )
+                    continue
+
                 bytes_used = sum(dep_state.size_bytes for dep_state in dependencies.values())
                 serialized_length = len(codalab.worker.pyjson.dumps(dependencies))
                 if (
@@ -428,7 +441,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
     def release(self, uuid, dependency_key):
         """
         Register that the run with uuid is no longer dependent on this dependency
-        If no more runs are dependent on this dependency, kill it
+        If no more runs are dependent on this dependency, kill it.
         """
         with self._state_lock:
             dependencies, paths = self._fetch_state()
@@ -487,7 +500,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             raise
 
     @property
-    def all_dependencies(self):
+    def all_dependencies(self) -> List[DependencyKey]:
         with self._state_lock:
             dependencies: Dict[DependencyKey, DependencyState] = self._fetch_dependencies(
                 default={'dependencies': {}, 'paths': set()}

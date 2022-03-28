@@ -624,7 +624,11 @@ class RunStateMachine(StateTransitioner):
                 if not self.shared_file_system:  # No dependencies if shared fs worker
                     dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
                     self.dependency_manager.release(run_state.bundle.uuid, dep_key)
-        except Exception:
+        except (ValueError, EnvironmentError):
+            # Do nothing if an error is thrown while reading from the state file
+            logging.exception(
+                f"Error reading from dependencies state file while releasing a dependency from {run_state.bundle.uuid}"
+            )
             return run_state
 
         # Clean up dependencies paths
