@@ -18,7 +18,8 @@ while : ; do
         run_container=$(docker ps -f name=codalab_run -q)
         echo ">> docker kill $run_container && docker rm $run_container"
         docker kill $run_container && docker rm $run_container
-        echo "Worker stopped successfully. Starting another preemptible worker..."
+        echo "Worker stopped successfully. Starting another preemptible worker in 1 minute..."
+        sleep 60
         echo ">> docker start codalab_worker-preemptible2_1"
         docker start codalab_worker-preemptible2_1
         break
