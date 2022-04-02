@@ -1,0 +1,26 @@
+#
+# Adapted from https://medium.com/platformer-blog/nfs-persistent-volumes-with-kubernetes-a-case-study-ce1ed6e2c266
+#
+# Deploy by running:
+#
+#     kubectl apply -f nfs-service.yaml
+#
+# After creating get the cluster IP by running:
+#
+#     kubectl get svc nfs-server
+#
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-server
+spec:
+  ports:
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
+  selector:
+    role: nfs-server

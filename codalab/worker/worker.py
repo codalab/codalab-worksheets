@@ -269,15 +269,20 @@ class Worker:
             self.dependency_manager.start()
         while not self.terminate:
             try:
-                self.process_runs()
-                self.save_state()
                 self.checkin()
-                self.check_termination()
-                self.save_state()
-                if self.check_idle_stop() or self.check_num_runs_stop():
-                    self.terminate = True
-                else:
-                    time.sleep(self.checkin_frequency_seconds)
+                last_checkin = time.time()
+                # Process runs until it's time for the next checkin.
+                while not self.terminate and (
+                    time.time() - last_checkin <= self.checkin_frequency_seconds
+                ):
+                    self.check_termination()
+                    self.save_state()
+                    if self.check_idle_stop() or self.check_num_runs_stop():
+                        self.terminate = True
+                        break
+                    self.process_runs()
+                    time.sleep(0.003)
+                    self.save_state()
             except Exception:
                 self.last_checkin_successful = False
                 if using_sentry():
