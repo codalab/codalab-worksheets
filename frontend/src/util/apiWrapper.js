@@ -2,9 +2,10 @@ import { Semaphore } from 'await-semaphore';
 import axios from 'axios';
 import { createDefaultBundleName, pathIsArchive, getArchiveExt } from './worksheet_utils';
 
-export const get = (url, params) => {
+export const get = (url, params, options = {}) => {
     const requestOptions = {
         params,
+        ...options,
     };
     return axios.get(url, requestOptions).then((res) => res.data);
 };
@@ -129,7 +130,14 @@ export const fetchFileSummary = (uuid, path) => {
     };
     const url =
         '/rest/bundles/' + uuid + '/contents/blob' + path + '?' + new URLSearchParams(params);
-    return get(url, { headers: { Accept: 'text/plain' } });
+    return get(
+        url,
+        {
+            headers: { Accept: 'text/plain' },
+        },
+        // Get the raw text response and don't parse JSON. Need to define transformResponse to prevent JSON being parsed due to the issue discussed in: https://github.com/axios/axios/issues/811
+        { responseType: 'text', transformResponse: (data) => data },
+    );
 };
 
 export async function createFileBundle(url, data, errorHandler) {

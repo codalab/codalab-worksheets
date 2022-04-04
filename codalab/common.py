@@ -26,12 +26,16 @@ from codalab.lib.beam.filesystems import (
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '1.4.5'
+CODALAB_VERSION = '1.4.6'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
-# Silence verbose HTTP output from Azure Blob
+# Silence verbose log outputs from certain libraries
 logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
+logger.setLevel(logging.WARNING)
+logger = logging.getLogger('docker')
+logger.setLevel(logging.WARNING)
+logger = logging.getLogger('apache_beam')
 logger.setLevel(logging.WARNING)
 
 
