@@ -5,6 +5,7 @@ import os
 import threading
 import time
 import traceback
+from typing import Dict
 
 import codalab.worker.docker_utils as docker_utils
 
@@ -251,13 +252,26 @@ class RunStateMachine(StateTransitioner):
 
         dependencies_ready = True
         status_messages = []
+        dependency_keys_to_paths: Dict[DependencyKey, str] = dict()
 
         if not self.shared_file_system:
             # No need to download dependencies if we're in the shared FS,
             # since they're already in our FS
             for dep in run_state.bundle.dependencies:
                 dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
-                dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
+
+                try:
+                    # Fetching dependencies from the Dependency Manager can fail.
+                    # Just update the download status on the next iteration of this transition function.
+                    dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
+                    dependency_keys_to_paths[dep_key] = os.path.join(
+                        self.dependency_manager.dependencies_dir, dependency_state.path
+                    )
+                except Exception:
+                    status_messages.append(f'Downloading dependency {dep.child_path} failed')
+                    dependencies_ready = False
+                    continue
+
                 if dependency_state.stage == DependencyStage.DOWNLOADING:
                     status_messages.append(
                         'Downloading dependency %s: %s done (archived size)'
@@ -311,7 +325,7 @@ class RunStateMachine(StateTransitioner):
                 if run_state.bundle_dir_wait_num_tries == 0:
                     message = (
                         "Bundle directory cannot be found on the shared filesystem. "
-                        "Please ensure the shared fileystem between the server and "
+                        "Please ensure the shared filesystem between the server and "
                         "your worker is mounted properly or contact your administrators."
                     )
                     log_bundle_transition(
@@ -344,7 +358,13 @@ class RunStateMachine(StateTransitioner):
         for dep in run_state.bundle.dependencies:
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             to_mount = []
-            dependency_path = self._get_dependency_path(run_state, dep)
+            if self.shared_file_system:
+                # TODO(Ashwin): make this not fs-specific.
+                # On a shared FS, we know where the dependency is stored and can get the contents directly
+                dependency_path = os.path.realpath(os.path.join(dep.location, dep.parent_path))
+            else:
+                dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
+                dependency_path = dependency_keys_to_paths[dep_key]
 
             if dep.child_path == RunStateMachine._CURRENT_DIRECTORY:
                 # Mount all the content of the dependency_path to the top-level of the bundle
@@ -440,19 +460,6 @@ class RunStateMachine(StateTransitioner):
             cpuset=cpuset,
             gpuset=gpuset,
         )
-
-    def _get_dependency_path(self, run_state, dependency):
-        if self.shared_file_system:
-            # TODO(Ashwin): make this not fs-specific.
-            # On a shared FS, we know where the dependency is stored and can get the contents directly
-            return os.path.realpath(os.path.join(dependency.location, dependency.parent_path))
-        else:
-            # On a dependency_manager setup, ask the manager where the dependency is
-            dep_key = DependencyKey(dependency.parent_uuid, dependency.parent_path)
-            return os.path.join(
-                self.dependency_manager.dependencies_dir,
-                self.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
-            )
 
     def _transition_from_RUNNING(self, run_state):
         """
@@ -608,10 +615,19 @@ class RunStateMachine(StateTransitioner):
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 
-        for dep in run_state.bundle.dependencies:
-            if not self.shared_file_system:  # No dependencies if shared fs worker
-                dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
-                self.dependency_manager.release(run_state.bundle.uuid, dep_key)
+        try:
+            # Fetching dependencies from the Dependency Manager can fail.
+            # Finish cleaning up on the next iteration of this transition function.
+            for dep in run_state.bundle.dependencies:
+                if not self.shared_file_system:  # No dependencies if shared fs worker
+                    dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
+                    self.dependency_manager.release(run_state.bundle.uuid, dep_key)
+        except (ValueError, EnvironmentError):
+            # Do nothing if an error is thrown while reading from the state file
+            logging.exception(
+                f"Error reading from dependencies state file while releasing a dependency from {run_state.bundle.uuid}"
+            )
+            return run_state
 
         # Clean up dependencies paths
         for path in run_state.paths_to_remove or []:
