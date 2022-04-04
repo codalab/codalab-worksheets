@@ -194,7 +194,8 @@ class Worker:
         self.state_committer.commit(runs)
 
     def load_state(self):
-        runs = self.state_committer.load()
+        # If the state file doesn't exist yet, have the state committer return an empty state.
+        runs = self.state_committer.load(default=dict())
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
             if run_state.container_id:
