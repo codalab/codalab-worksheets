@@ -1077,6 +1077,7 @@ def test_upload_default_bundle_store(ctx):
     uuid = _run_command([cl, 'upload', '-c', 'hello'])
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
+
 @TestModule.register('store_add')
 def test_store_add(ctx):
     """
@@ -1131,10 +1132,11 @@ def test_store_add(ctx):
             'disk',  # the type does not aligns with url
             '--url',
             'azfs://devstoreaccount1/bundles',
-        ], 
+        ],
         expected_exit_code=1,
     )
-    
+
+
 @TestModule.register('download')
 def test_download(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation
