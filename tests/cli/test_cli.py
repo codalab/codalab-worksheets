@@ -1085,27 +1085,55 @@ def test_store_add(ctx):
     2. Specify url but not specify storage type
     3. Specify wrong storage type and url: expected exit -1
     """
-    # Create a new azure_blob bundle store
-    _run_command(
+    # Create a new azure_blob bundle store, then delete it
+    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    blob_id = _run_command(
         [
             cl,
             "store",
             "add",
             "--name",
-            "azure_blob1"
+            bundle_store_name,
             '--storage-type',
             'azure_blob',
             '--url',
             'azfs://devstoreaccount1/bundles',
         ]
     )
-    
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
     # TODO: set CODALAB_GOOGLE_APPLICATION_CREDENTIALS and test gcp blob storage
 
-    
-    
+    # create a new azure_blob but not specify storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
 
-
+    # create a new azure_blob but specify wrong type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',  # the type does not aligns with url
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ], expected_exit_code=1
+    )
+    
 @TestModule.register('download')
 def test_download(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation

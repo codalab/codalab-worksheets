@@ -511,12 +511,6 @@ def _add_bundle_store():
     new_bundle_store = BundleStoreSchema(strict=True, many=True).load(request.json).data[0]
     storage_type = new_bundle_store.get('storage_type')
     storage_format = new_bundle_store.get('storage_format')
-    url = new_bundle_store.get('url')
-    if storage_type is None:
-        if url.startswith("azfs://"):
-            storage_type = StorageType.AZURE_BLOB_STORAGE.value
-        elif url.startswith("gs://"):
-            storage_type = StorageType.GCS_STORAGE.value
     if storage_format is None: 
         if storage_type in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value):
             storage_format = StorageFormat.COMPRESSED_V1.value
