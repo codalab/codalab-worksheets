@@ -50,6 +50,8 @@ from codalab.common import (
     UsageError,
     ensure_str,
     DiskQuotaExceededError,
+    StorageType,
+    StorageURLScheme,
 )
 from codalab.lib import (
     file_util,
@@ -1055,17 +1057,17 @@ class BundleCLI(object):
                 "authentication": args.authentication,
             }
             if args.url is not None:
-                if args.url.startswith("azfs://"):
+                if args.url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE):
                     if args.storage_type is None:
-                        bundle_store_info["storage_type"] = "azure_blob"
-                    elif args.storage_type != "azure_blob":
+                        bundle_store_info["storage_type"] = StorageType.AZURE_BLOB_STORAGE
+                    elif args.storage_type != StorageType.AZURE_BLOB_STORAGE:
                         raise UsageError(
                             f"cl store storage type '{args.storage_format}' conflicts with storage format."
                         )
-                elif args.url.startswith("gs://"):
+                elif args.url.startswith(StorageURLScheme.GCS_STORAGE):
                     if args.storage_type is None:
-                        bundle_store_info["storage_type"] = "gcs"
-                    elif args.storage_type != "gcs":
+                        bundle_store_info["storage_type"] = StorageType.GCS_STORAGE
+                    elif args.storage_type != StorageType.GCS_STORAGE:
                         raise UsageError(
                             f"cl store storage type '{args.storage_format}' conflicts with storage format."
                         )
