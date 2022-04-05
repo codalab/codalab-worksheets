@@ -1131,7 +1131,8 @@ def test_store_add(ctx):
             'disk',  # the type does not aligns with url
             '--url',
             'azfs://devstoreaccount1/bundles',
-        ], expected_exit_code=1
+        ], 
+        expected_exit_code=1,
     )
     
 @TestModule.register('download')
