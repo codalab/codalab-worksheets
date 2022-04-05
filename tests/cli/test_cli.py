@@ -1128,7 +1128,7 @@ def test_store_add(ctx):
             "--name",
             bundle_store_name,
             '--storage-type',
-            'disk',  # the type does not aligns with url
+            'disk',  # the type does not align with url
             '--url',
             'azfs://devstoreaccount1/bundles',
         ], 
