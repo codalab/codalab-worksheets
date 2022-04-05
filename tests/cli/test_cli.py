@@ -1077,6 +1077,34 @@ def test_upload_default_bundle_store(ctx):
     uuid = _run_command([cl, 'upload', '-c', 'hello'])
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
+@TestModule.register('store_add')
+def test_store_add(ctx):
+    """
+    Tests of command `cl store add` on different blob storage. (Not test --storage-format yet)
+    1. Specify storage type and url
+    2. Specify url but not specify storage type
+    3. Specify wrong storage type and url: expected exit -1
+    """
+    # Create a new azure_blob bundle store
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            "azure_blob1"
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    
+    # TODO: set CODALAB_GOOGLE_APPLICATION_CREDENTIALS and test gcp blob storage
+
+    
+    
+
 
 @TestModule.register('download')
 def test_download(ctx):

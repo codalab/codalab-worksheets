@@ -1054,20 +1054,6 @@ class BundleCLI(object):
                 "url": args.url,
                 "authentication": args.authentication,
             }
-            if args.url.startswith("azfs://"):
-                if args.storage_type is None:
-                    bundle_store_info["storage_type"] = "azure_blob"
-                elif args.storage_format != "azure_blob":
-                    raise UsageError(
-                        f"cl store storage type '{args.storage_format}' conflicts with storage format."
-                    )
-            elif args.url.startswith("gs://"):
-                if args.storage_type is None:
-                    bundle_store_info["storage_type"] = "gcs"
-                elif args.storage_format != "gcs":
-                    raise UsageError(
-                        f"cl store storage type '{args.storage_format}' conflicts with storage format."
-                    )
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':
