@@ -199,7 +199,7 @@ storage_url_type_dict = {
 
 
 def storage_url_to_type(url: str):
-    """Return the storage type (e.g., 'azure_blob') corresponding to the 
+    """Return the storage type (e.g., 'azure_blob') corresponding to the
     storage URL scheme (e.g., 'azfs://') given by url (e.g., 'azfs://devstoreaccount1/bundles').
     If we cannot find it, return DISK_STORAGE.
     """
