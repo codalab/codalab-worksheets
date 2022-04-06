@@ -50,8 +50,6 @@ from codalab.common import (
     UsageError,
     ensure_str,
     DiskQuotaExceededError,
-    StorageType,
-    StorageURLScheme,
     storage_url_to_type,
 )
 from codalab.lib import (
