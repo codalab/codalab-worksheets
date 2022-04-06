@@ -198,15 +198,16 @@ storage_url_type_dict = {
 }
 
 
-def storage_url_to_type(url):
+def storage_url_to_type(url: str):
     """Find corresponding StorageType by StorageURLScheme.
-    If can not find, return DISK_STORAGE by default.
+    If we cannot find it, return DISK_STORAGE.
+    eg, 'azfs://xxx' indicates the storage type should be 'azure_blob'
+    eg, 'gs://xxx' indicates the storage type should be 'gcs'
     """
     if url is None:
         return StorageType.DISK_STORAGE.value
-    # Iterate over non-disk storage type
+    # Iterate over non-disk storage types
     for (storage_url_scheme, storage_type) in storage_url_type_dict.items():
-        print(storage_url_scheme.value, storage_type.value)
         if storage_url_scheme.value != "" and url.startswith(storage_url_scheme.value):
             return storage_type.value
     return StorageType.DISK_STORAGE.value
