@@ -1103,7 +1103,6 @@ def test_store_add(ctx):
     )
     check_contains("azure_blob", _run_command([cl, "store", "ls"]))
     _run_command([cl, "store", "rm", blob_id])
-    # TODO: set CODALAB_GOOGLE_APPLICATION_CREDENTIALS and test gcp blob storage
 
     # create a new azure_blob but not specify storage type
     blob_id = _run_command(
@@ -1132,6 +1131,52 @@ def test_store_add(ctx):
             'disk',  # the type does not align with url
             '--url',
             'azfs://devstoreaccount1/bundles',
+        ],
+        expected_exit_code=1,
+    )
+    # Test 3 kinds of conditions on GCP storage
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'gcs',
+            '--url',
+            'gs://codalab-test',
+        ]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--url',
+            'gs://codalab-test',
+        ]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # create a new azure_blob but specify wrong type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',  # the type does not align with url
+            '--url',
+            'gs://codalab-test',
         ],
         expected_exit_code=1,
     )
