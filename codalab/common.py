@@ -190,7 +190,7 @@ class StorageURLScheme(Enum):
     GCS_STORAGE = "gs://"
 
 
-# A Dict mapping to
+# A Dict mapping from StorageURLSchema to StorageType
 storage_url_type_dict = {
     StorageURLScheme.DISK_STORAGE: StorageType.DISK_STORAGE,
     StorageURLScheme.AZURE_BLOB_STORAGE: StorageType.AZURE_BLOB_STORAGE,
