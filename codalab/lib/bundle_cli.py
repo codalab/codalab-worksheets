@@ -52,6 +52,7 @@ from codalab.common import (
     DiskQuotaExceededError,
     StorageType,
     StorageURLScheme,
+    storage_url_to_type,
 )
 from codalab.lib import (
     file_util,
@@ -1057,20 +1058,13 @@ class BundleCLI(object):
                 "authentication": args.authentication,
             }
             if args.url is not None:
-                if args.url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                    if args.storage_type is None:
-                        bundle_store_info["storage_type"] = StorageType.AZURE_BLOB_STORAGE.value
-                    elif args.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
-                        raise UsageError(
-                            f"cl store storage type '{args.storage_format}' conflicts with storage format."
-                        )
-                elif args.url.startswith(StorageURLScheme.GCS_STORAGE.value):
-                    if args.storage_type is None:
-                        bundle_store_info["storage_type"] = StorageType.GCS_STORAGE.value
-                    elif args.storage_type != StorageType.GCS_STORAGE.value:
-                        raise UsageError(
-                            f"cl store storage type '{args.storage_format}' conflicts with storage format."
-                        )
+                inferred_type = storage_url_to_type(args.url)
+                if args.storage_type is None:
+                    bundle_store_info["storage_type"] = inferred_type
+                elif args.storage_type != inferred_type:
+                    raise UsageError(
+                        f"cl store storage type '{args.storage_format}' conflicts with storage URL."
+                    )
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':

@@ -190,6 +190,27 @@ class StorageURLScheme(Enum):
     GCS_STORAGE = "gs://"
 
 
+# A Dict mapping to
+storage_url_type_dict = {
+    StorageURLScheme.DISK_STORAGE: StorageType.DISK_STORAGE,
+    StorageURLScheme.AZURE_BLOB_STORAGE: StorageType.AZURE_BLOB_STORAGE,
+    StorageURLScheme.GCS_STORAGE: StorageType.GCS_STORAGE,
+}
+
+
+def storage_url_to_type(url):
+    """Find corresponding StorageType by StorageURLScheme.
+    If can not find, return DISK_STORAGE by default.
+    """
+    if url is None:
+        return StorageType.DISK_STORAGE.value
+    # Iterat
+    for storage_url_scheme, storage_type in storage_url_type_dict:
+        if storage_url_scheme.value != "" and url.startswith(storage_url_scheme.value):
+            return storage_type.value
+    return StorageType.DISK_STORAGE.value
+
+
 class StorageFormat(Enum):
     """Possible storage formats for bundles.
     When updating this enum, sync it with with the enum in the storage_format column
