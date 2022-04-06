@@ -205,7 +205,8 @@ def storage_url_to_type(url):
     if url is None:
         return StorageType.DISK_STORAGE.value
     # Iterate over non-disk storage type
-    for storage_url_scheme, storage_type in storage_url_type_dict.items():
+    for (storage_url_scheme, storage_type) in storage_url_type_dict.items():
+        print(storage_url_scheme.value, storage_type.value)
         if storage_url_scheme.value != "" and url.startswith(storage_url_scheme.value):
             return storage_type.value
     return StorageType.DISK_STORAGE.value
