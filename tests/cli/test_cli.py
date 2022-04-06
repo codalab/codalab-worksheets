@@ -1152,15 +1152,7 @@ def test_store_add(ctx):
     _run_command([cl, "store", "rm", blob_id])
 
     blob_id = _run_command(
-        [
-            cl,
-            "store",
-            "add",
-            "--name",
-            bundle_store_name,
-            '--url',
-            'gs://codalab-test',
-        ]
+        [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
     )
     check_contains("gcs", _run_command([cl, "store", "ls"]))
     _run_command([cl, "store", "rm", blob_id])
