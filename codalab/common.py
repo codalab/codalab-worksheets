@@ -190,28 +190,6 @@ class StorageURLScheme(Enum):
     GCS_STORAGE = "gs://"
 
 
-# A Dict mapping from StorageURLSchema to StorageType
-storage_url_type_dict = {
-    StorageURLScheme.DISK_STORAGE: StorageType.DISK_STORAGE,
-    StorageURLScheme.AZURE_BLOB_STORAGE: StorageType.AZURE_BLOB_STORAGE,
-    StorageURLScheme.GCS_STORAGE: StorageType.GCS_STORAGE,
-}
-
-
-def storage_url_to_type(url: str):
-    """Return the storage type (e.g., 'azure_blob') corresponding to the
-    storage URL scheme (e.g., 'azfs://') given by url (e.g., 'azfs://devstoreaccount1/bundles').
-    If we cannot find it, return DISK_STORAGE.
-    """
-    if url is None:
-        return StorageType.DISK_STORAGE.value
-    # Iterate over non-disk storage types
-    for (storage_url_scheme, storage_type) in storage_url_type_dict.items():
-        if storage_url_scheme.value != "" and url.startswith(storage_url_scheme.value):
-            return storage_type.value
-    return StorageType.DISK_STORAGE.value
-
-
 class StorageFormat(Enum):
     """Possible storage formats for bundles.
     When updating this enum, sync it with with the enum in the storage_format column
@@ -303,7 +281,7 @@ def parse_linked_bundle_url(url):
             storage_type = StorageType.AZURE_BLOB_STORAGE.value
             url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
             storage_account, container, *remainder = url.split("/", 2)
-            if len(remainder):
+            if len(remainder) and len(remainder[0].split("/")) >= 2:
                 bundle_uuid, contents_file, *remainder = remainder[0].split("/", 2)
                 bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
             else:  # deal with short urls, eg: "azfs://devstoreaccount1/bundles"
@@ -313,7 +291,7 @@ def parse_linked_bundle_url(url):
             storage_type = StorageType.GCS_STORAGE.value
             url = url[len(StorageURLScheme.GCS_STORAGE.value) :]
             bucket_name, *remainder = url.split("/", 1)
-            if len(remainder):
+            if len(remainder) and len(remainder[0].split("/")) >= 2:
                 bundle_uuid, contents_file, *remainder = remainder[0].split("/", 2)
                 bundle_path = f"{StorageURLScheme.GCS_STORAGE.value}{bucket_name}/{bundle_uuid}/{contents_file}"
             else:  # deal with short urls, eg: "gs://codalab-test"
