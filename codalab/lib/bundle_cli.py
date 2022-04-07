@@ -50,7 +50,7 @@ from codalab.common import (
     UsageError,
     ensure_str,
     DiskQuotaExceededError,
-    storage_url_to_type,
+    parse_linked_bundle_url,
 )
 from codalab.lib import (
     file_util,
@@ -1056,7 +1056,7 @@ class BundleCLI(object):
                 "authentication": args.authentication,
             }
             if args.url is not None:
-                inferred_type = storage_url_to_type(args.url)
+                inferred_type = parse_linked_bundle_url(args.url).storage_type
                 if args.storage_type is None:
                     bundle_store_info["storage_type"] = inferred_type
                 elif args.storage_type != inferred_type:
