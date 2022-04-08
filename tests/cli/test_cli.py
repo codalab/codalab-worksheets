@@ -1081,10 +1081,7 @@ def test_upload_default_bundle_store(ctx):
 @TestModule.register('store_add')
 def test_store_add(ctx):
     """
-    Tests of command `cl store add` on different blob storage. (Not test --storage-format yet)
-    1. Specify storage type and url
-    2. Specify url but not specify storage type
-    3. Specify wrong storage type and url: expected exit -1
+    Tests of command `cl store add` on different bundle stores. (Not testing --storage-format yet)
     """
     # Create a new azure_blob bundle store, then delete it
     bundle_store_name = "blob_test"
@@ -1119,7 +1116,7 @@ def test_store_add(ctx):
     check_contains("azure_blob", _run_command([cl, "store", "ls"]))
     _run_command([cl, "store", "rm", blob_id])
 
-    # create a new azure_blob but specify wrong type
+    # Create a new azure_blob bundle store and specify the wrong storage type
     blob_id = _run_command(
         [
             cl,
@@ -1134,7 +1131,7 @@ def test_store_add(ctx):
         ],
         expected_exit_code=1,
     )
-    # Test 3 kinds of conditions on GCP storage
+    # Test these 3 conditions on GCS
     blob_id = _run_command(
         [
             cl,
@@ -1157,7 +1154,6 @@ def test_store_add(ctx):
     check_contains("gcs", _run_command([cl, "store", "ls"]))
     _run_command([cl, "store", "rm", blob_id])
 
-    # create a new gcs storage but specify wrong storage-type
     blob_id = _run_command(
         [
             cl,

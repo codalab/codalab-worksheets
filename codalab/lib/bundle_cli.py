@@ -1061,7 +1061,7 @@ class BundleCLI(object):
                     bundle_store_info["storage_type"] = inferred_type
                 elif args.storage_type != inferred_type:
                     raise UsageError(
-                        f"cl store storage type '{args.storage_format}' conflicts with storage URL."
+                        f"Bundle store {args.url} only supports storage type: {inferred_type}"
                     )
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
