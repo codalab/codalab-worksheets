@@ -87,7 +87,7 @@ In our example, the `data` and `code` directories have the following contents:
 
     import sys
     for line in sorted(sys.stdin.readlines()):
-    	  print line,
+    	  print(line)
 
 We can upload the `data` and `code` as two separate bundles.  Each command outputs the UUID of the bundle that was created,
 a globally unique identifier that you can use to refer to that particular bundle.
