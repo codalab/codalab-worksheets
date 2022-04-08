@@ -1087,7 +1087,7 @@ def test_store_add(ctx):
     3. Specify wrong storage type and url: expected exit -1
     """
     # Create a new azure_blob bundle store, then delete it
-    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    bundle_store_name = "blob_test"
     blob_id = _run_command(
         [
             cl,
@@ -1157,7 +1157,7 @@ def test_store_add(ctx):
     check_contains("gcs", _run_command([cl, "store", "ls"]))
     _run_command([cl, "store", "rm", blob_id])
 
-    # create a new azure_blob but specify wrong type
+    # create a new gcs storage but specify wrong storage-type
     blob_id = _run_command(
         [
             cl,

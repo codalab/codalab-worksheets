@@ -284,7 +284,7 @@ def parse_linked_bundle_url(url):
             if len(remainder) and len(remainder[0].split("/")) >= 2:
                 bundle_uuid, contents_file, *remainder = remainder[0].split("/", 2)
                 bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
-            else:  # deal with short urls, eg: "azfs://devstoreaccount1/bundles"
+            else:  # url refers to continer, eg: "azfs://{storage_account}/{container}"
                 bundle_uuid, contents_file, remainder = None, None, []
                 bundle_path = url
         if url.startswith(StorageURLScheme.GCS_STORAGE.value):
@@ -294,7 +294,7 @@ def parse_linked_bundle_url(url):
             if len(remainder) and len(remainder[0].split("/")) >= 2:
                 bundle_uuid, contents_file, *remainder = remainder[0].split("/", 2)
                 bundle_path = f"{StorageURLScheme.GCS_STORAGE.value}{bucket_name}/{bundle_uuid}/{contents_file}"
-            else:  # deal with short urls, eg: "gs://codalab-test"
+            else:  # url refers to bucket, eg: "gs://{bucket_name}"
                 bundle_uuid, contents_file, remainder = None, None, []
                 bundle_path = url
         is_archive = contents_file is not None and (

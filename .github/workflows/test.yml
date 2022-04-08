@@ -112,6 +112,7 @@ jobs:
           - copy netcat netcurl
           - edit
           - open wopen
+          - store_add
     steps:
       - name: Clear free space
         run: |
