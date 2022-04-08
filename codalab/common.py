@@ -280,21 +280,25 @@ def parse_linked_bundle_url(url):
         if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
             storage_type = StorageType.AZURE_BLOB_STORAGE.value
             url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
-            storage_account, container, *remainder = url.split("/", 2)
-            if len(remainder) and len(remainder[0].split("/")) >= 2:
-                bundle_uuid, contents_file, *remainder = remainder[0].split("/", 2)
+            try:
+                storage_account, container, bundle_uuid, contents_file, *remainder = url.split(
+                    "/", 4
+                )
                 bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
-            else:  # url refers to continer, eg: "azfs://{storage_account}/{container}"
+            except ValueError:
+                # url refers to bucket, e.g. azfs://{storage_account}/{container}
+                storage_account, container, *remainder = url.split("/", 2)
                 bundle_uuid, contents_file, remainder = None, None, []
                 bundle_path = url
         if url.startswith(StorageURLScheme.GCS_STORAGE.value):
             storage_type = StorageType.GCS_STORAGE.value
             url = url[len(StorageURLScheme.GCS_STORAGE.value) :]
-            bucket_name, *remainder = url.split("/", 1)
-            if len(remainder) and len(remainder[0].split("/")) >= 2:
-                bundle_uuid, contents_file, *remainder = remainder[0].split("/", 2)
+            try:
+                bucket_name, bundle_uuid, contents_file, *remainder = url.split("/", 3)
                 bundle_path = f"{StorageURLScheme.GCS_STORAGE.value}{bucket_name}/{bundle_uuid}/{contents_file}"
-            else:  # url refers to bucket, eg: "gs://{bucket_name}"
+            except ValueError:
+                # url refers to bucket, e.g. gs://{bucket_name}
+                bucket_name, *remainder = url.split("/", 1)
                 bundle_uuid, contents_file, remainder = None, None, []
                 bundle_path = url
         is_archive = contents_file is not None and (
