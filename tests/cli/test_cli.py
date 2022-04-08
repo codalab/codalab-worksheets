@@ -1078,6 +1078,98 @@ def test_upload_default_bundle_store(ctx):
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
 
+@TestModule.register('store_add')
+def test_store_add(ctx):
+    """
+    Tests of command `cl store add` on different bundle stores. (Not testing --storage-format yet)
+    """
+    # Create a new azure_blob bundle store, then delete it
+    bundle_store_name = "blob_test"
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # create a new azure_blob but not specify storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # Create a new azure_blob bundle store and specify the wrong storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',  # the type does not align with url
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ],
+        expected_exit_code=1,
+    )
+    # Test these 3 conditions on GCS
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'gcs',
+            '--url',
+            'gs://codalab-test',
+        ]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',  # the type does not align with url
+            '--url',
+            'gs://codalab-test',
+        ],
+        expected_exit_code=1,
+    )
+
+
 @TestModule.register('download')
 def test_download(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation

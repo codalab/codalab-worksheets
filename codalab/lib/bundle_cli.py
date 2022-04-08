@@ -50,6 +50,7 @@ from codalab.common import (
     UsageError,
     ensure_str,
     DiskQuotaExceededError,
+    parse_linked_bundle_url,
 )
 from codalab.lib import (
     file_util,
@@ -1054,6 +1055,14 @@ class BundleCLI(object):
                 "url": args.url,
                 "authentication": args.authentication,
             }
+            if args.url is not None:
+                inferred_type = parse_linked_bundle_url(args.url).storage_type
+                if args.storage_type is None:
+                    bundle_store_info["storage_type"] = inferred_type
+                elif args.storage_type != inferred_type:
+                    raise UsageError(
+                        f"Bundle store {args.url} only supports storage type: {inferred_type}"
+                    )
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':

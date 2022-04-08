@@ -269,6 +269,7 @@ def parse_linked_bundle_url(url):
     """Parses a linked bundle URL. This bundle URL usually refers to:
         - an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz" (contents.gz for files, contents.tar.gz for directories)
         - a single file that is stored within a subpath of an archive file on Blob Storage: "azfs://storageclwsdev0/bundles/uuid/contents.tar.gz/file1"
+        - a container or bucket: "azfs://devstoreaccount1/bundles". Used in "cl store add" command.
 
         Returns a LinkedBundlePath instance to encode this information.
     """
@@ -279,18 +280,31 @@ def parse_linked_bundle_url(url):
         if url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
             storage_type = StorageType.AZURE_BLOB_STORAGE.value
             url = url[len(StorageURLScheme.AZURE_BLOB_STORAGE.value) :]
-            storage_account, container, bundle_uuid, contents_file, *remainder = url.split("/", 4)
-            bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
+            try:
+                storage_account, container, bundle_uuid, contents_file, *remainder = url.split(
+                    "/", 4
+                )
+                bundle_path = f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{storage_account}/{container}/{bundle_uuid}/{contents_file}"
+            except ValueError:
+                # url refers to bucket, e.g. azfs://{storage_account}/{container}
+                storage_account, container, *remainder = url.split("/", 2)
+                bundle_uuid, contents_file, remainder = None, None, []
+                bundle_path = url
         if url.startswith(StorageURLScheme.GCS_STORAGE.value):
             storage_type = StorageType.GCS_STORAGE.value
             url = url[len(StorageURLScheme.GCS_STORAGE.value) :]
-            bucket_name, bundle_uuid, contents_file, *remainder = url.split("/", 3)
-            bundle_path = (
-                f"{StorageURLScheme.GCS_STORAGE.value}{bucket_name}/{bundle_uuid}/{contents_file}"
-            )
-
-        is_archive = contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
-        is_archive_dir = contents_file.endswith(".tar.gz")
+            try:
+                bucket_name, bundle_uuid, contents_file, *remainder = url.split("/", 3)
+                bundle_path = f"{StorageURLScheme.GCS_STORAGE.value}{bucket_name}/{bundle_uuid}/{contents_file}"
+            except ValueError:
+                # url refers to bucket, e.g. gs://{bucket_name}
+                bucket_name, *remainder = url.split("/", 1)
+                bundle_uuid, contents_file, remainder = None, None, []
+                bundle_path = url
+        is_archive = contents_file is not None and (
+            contents_file.endswith(".gz") or contents_file.endswith(".tar.gz")
+        )
+        is_archive_dir = contents_file is not None and contents_file.endswith(".tar.gz")
         index_path = None
         if is_archive:
             # Archive index is stored as an "index.sqlite" file in the same folder as the archive file.

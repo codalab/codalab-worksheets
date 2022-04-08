@@ -190,3 +190,10 @@ class ParseBundleUrl(unittest.TestCase):
             linked_bundle_path.bundle_path, "/tmp/storageclwsdev0/bundles/uuid/contents.txt"
         )
         self.assertEqual(linked_bundle_path.is_archive, False)
+
+    def test_container(self):
+        """Parse a URL referring to a container or bucket."""
+        linked_bundle_path = parse_linked_bundle_url("gs://codalab-test")
+        self.assertEqual(linked_bundle_path.storage_type, StorageType.GCS_STORAGE.value)
+        linked_bundle_path = parse_linked_bundle_url("azfs://devstoreaccount1/bundles")
+        self.assertEqual(linked_bundle_path.storage_type, StorageType.AZURE_BLOB_STORAGE.value)
