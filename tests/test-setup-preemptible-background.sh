@@ -5,6 +5,8 @@
 # and finally starts another preemptible worker where the bundle can finish
 # running on.
 
+set -e
+
 cl work localhost::
 
 while : ; do
