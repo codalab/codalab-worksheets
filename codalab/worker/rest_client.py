@@ -88,9 +88,13 @@ class RestClient(object):
         request_url = self._base_url + path
 
         # Make the actual request
+        print("request_url is {}".format(request_url))
         request = urllib.request.Request(request_url, data=data)
         for k, v in headers.items():
             request.add_unredirected_header(k, v)
+        request.add_header("Accept-Encoding", "gzip")  ## wwwjn: add test for GCS
+        request.add_header("Content-Encoding", "gzip")
+        print("After add header, {}".format(request.headers))
         request.get_method = lambda: method
         if return_response:
             # Return a file-like object containing the contents of the response
@@ -98,9 +102,10 @@ class RestClient(object):
             # Content-Encoding header.
             response = urlopen_with_retry(request, timeout=timeout_seconds)
             encoding = response.headers.get('Content-Encoding')
+            print("Encoding is of file_like object is {}".format(encoding))
             if not encoding or encoding == 'identity':
-                return response
-            elif encoding == 'gzip':
+                return response  ## wwwjn: but now the response from signed_url has no Content-Encoding
+            elif encoding == 'gzip':  ## wwwjn: Neet to go to this branch
                 return un_gzip_stream(response)
             else:
                 raise RestClientException('Unsupported Content-Encoding: ' + encoding, False)
@@ -109,6 +114,8 @@ class RestClient(object):
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.
+            encoding = response.headers.get('Content-Encoding')
+            print("Encoding of info is {}".format(encoding))
             if response.headers.get('Content-Type') == 'application/json':
                 response_data = response.read().decode()
                 try:

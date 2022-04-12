@@ -204,6 +204,7 @@ class OpenIndexedArchiveFile(object):
 
     def __init__(self, path: str):
         self.f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
+        logging.info("In file_util.OpenIndexedArchiveFile.__enter__, path is {}".format(path))
         self.path = path
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as index_fileobj:
             self.index_file_name = index_fileobj.name
@@ -216,7 +217,8 @@ class OpenIndexedArchiveFile(object):
             )
 
     def __enter__(self) -> SQLiteIndexedTar:
-        return SQLiteIndexedTar(
+        # logging.info("In file_util.OpenIndexedArchiveFile.__enter__, index_file_name is {}".format(self.index_file_name))
+        return SQLiteIndexedTar(  ## wwwjn: What does this do here? Does it connect to GCS and try to decompress contents.gz???
             fileObject=self.f,
             tarFileName="contents",
             writeIndex=False,

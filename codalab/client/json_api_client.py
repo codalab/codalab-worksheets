@@ -597,6 +597,7 @@ class JsonApiClient(RestClient):
             urllib.parse.quote(target.subpath),
         )
         response = self._make_request('GET', request_path, query_params={'depth': depth})
+        print(response)
         # Deserialize the target. See /rest/bundles/_fetch_contents_info for serialization side
         response['data']['resolved_target'] = BundleTarget.from_dict(
             response['data']['resolved_target']
@@ -628,7 +629,8 @@ class JsonApiClient(RestClient):
             params['tail'] = tail
         if truncation_text is not None:
             params['truncation_text'] = truncation_text
-        return self._make_request(
+        print("Headers: {}".format(headers))
+        return self._make_request(  ## actually return file here
             'GET', request_path, headers=headers, query_params=params, return_response=True
         )
 

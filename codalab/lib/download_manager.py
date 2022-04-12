@@ -109,6 +109,7 @@ class DownloadManager(object):
         ).get(target.bundle_uuid)
         if bundle_link_url:
             bundle_link_url = self._transform_link_path(bundle_link_url)
+        logging.info("_get_target_info_within_bundle(): state {}, link_url {}".format(bundle_state, bundle_link_url))
         # Raises NotFoundException if uuid is invalid
         if bundle_state == State.PREPARING:
             raise NotFoundError(
@@ -121,9 +122,10 @@ class DownloadManager(object):
                 target.bundle_uuid
             )
             try:
+                ### wwwjn: I guess I'm here. States: Ready
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
-                raise NotFoundError(str(err))
+                raise NotFoundError("Here is error1: {} ".format(target.bundle_uuid) + str(err))
         else:
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
@@ -349,8 +351,8 @@ class DownloadManager(object):
         except download_util.PathException as e:
             raise UsageError(str(e))
 
-    def get_target_sas_url(self, target, **kwargs):
-        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_sas_url(**kwargs)
+    def get_target_download_url(self, target, **kwargs):
+        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_download_url(**kwargs)
 
     def _send_read_message(self, worker, response_socket_id, target, read_args):
         message = {

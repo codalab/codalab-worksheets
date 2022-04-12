@@ -85,19 +85,20 @@ def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> Targe
     If reading the given path is not secure, raises a PathException.
     """
     final_path = _get_normalized_target_path(bundle_path, target)
+    logging.info("In download_util.get_target_info(), final_path is {}".format(final_path))
     if parse_linked_bundle_url(final_path).uses_beam:
         # If the target is on Blob Storage, use a Blob-specific method
         # to get the target info.
         try:
             info = _compute_target_info_blob(final_path, depth)
-        except Exception:
+        except Exception as err:
             logging.error(
-                "Path '{}' in bundle {} not found: {}".format(
-                    target.subpath, target.bundle_uuid, traceback.format_exc()
+                "Path '{}' in bundle {} not found: {}. Exception: {}".format(
+                    target.subpath, target.bundle_uuid, traceback.format_exc(), str(err)
                 )
             )
             raise PathException(
-                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
+                "Path '{}' in bundle {} not found. Exception: {}".format(target.subpath, target.bundle_uuid, str(err))
             )
     else:
         if not os.path.islink(final_path) and not os.path.exists(final_path):
@@ -202,7 +203,10 @@ def _compute_target_info_blob(
     """
 
     linked_bundle_path = parse_linked_bundle_url(path)
+    logging.info("In download_util._compute_target_info_blob(), info {} {} {}".format(
+        linked_bundle_path.is_archive, linked_bundle_path.storage_type, linked_bundle_path.bundle_path))
     if not FileSystems.exists(linked_bundle_path.bundle_path):
+        logging.info("In _compute_target_info_blob, path not exsit")
         raise PathException(linked_bundle_path.bundle_path)
     if not linked_bundle_path.is_archive:
         # Single file

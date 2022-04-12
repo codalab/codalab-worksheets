@@ -619,6 +619,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
     """
     depth = query_get_type(int, 'depth', default=0)
     target = BundleTarget(uuid, path)
+    logging.info("_fetch_bundle_contents_info()")
     if depth < 0:
         abort(http.client.BAD_REQUEST, "Depth must be at least 0")
 
@@ -627,6 +628,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
         info = local.download_manager.get_target_info(target, depth)
         # Object is not JSON serializable so submit its dict in API response
         # The client is responsible for deserializing it
+        logging.info("Info in _fetch_bundle_contents_info: {}".format(info))
         info['resolved_target'] = info['resolved_target'].__dict__
     except NotFoundError as e:
         abort(http.client.NOT_FOUND, str(e))
@@ -833,7 +835,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
         support_redirect == 1
-        and location_info["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        and (location_info["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        or location_info["storage_type"] == StorageType.GCS_STORAGE.value)
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
         and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
@@ -910,7 +913,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if should_redirect_url:
         # Redirect to SAS URL on Blob Storage.
         assert fileobj is None  # We should not be returning any other contents.
-        sas_url = local.download_manager.get_target_sas_url(
+        download_url = local.download_manager.get_target_download_url(
             target,
             # We pass these parameters to set the Content-Type, Content-Encoding, and
             # Content-Disposition headers that are set on the Blob Storage response.
@@ -918,14 +921,16 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             content_encoding=response.get_header('Content-Encoding'),
             content_disposition=response.get_header('Content-Disposition'),
         )
+        print(download_url)
+        print("Headers: {} {} {}".format(response.get_header('Content-Type'),response.get_header('Content-Encoding'),response.get_header('Content-Disposition')))
         # Quirk when running CodaLab locally -- if this endpoint was called from within a Docker container
         # such as the REST server or the worker, we need to redirect to http://azurite. This is because
         # of the way Docker networking is set up, as local Docker containers doesn't have access to
         # Azurite through http://localhost, but rather only through http://azurite.
         if LOCAL_USING_AZURITE:
             if get_request_source() == RequestSource.LOCAL_DOCKER:
-                sas_url = sas_url.replace("localhost", "azurite", 1)
-        return redirect(sas_url)
+                download_url = download_url.replace("localhost", "azurite", 1)
+        return redirect(download_url)  # the client receive http 303, and send the request to new url
     return fileobj
 
 
