@@ -196,7 +196,8 @@ class Worker:
         self.state_committer.commit(runs)
 
     def load_state(self):
-        runs = self.state_committer.load()
+        # If the state file doesn't exist yet, have the state committer return an empty state.
+        runs = self.state_committer.load(default=dict())
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
             if run_state.container_id:
@@ -433,8 +434,7 @@ class Worker:
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
-            if not self.last_checkin_successful:
-                logger.info('Connected! Successful check in!')
+            logger.info('Connected! Successful check in!')
             self.last_checkin_successful = True
         except BundleServiceException as ex:
             logger.warning("Disconnected from server! Failed check in: %s", ex)

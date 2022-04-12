@@ -112,6 +112,7 @@ jobs:
   #         - copy netcat netcurl
   #         - edit
   #         - open wopen
+  #         - store_add
   #   steps:
   #     - name: Clear free space
   #       run: |
@@ -154,7 +155,7 @@ jobs:
   #       with:
   #         name: logs-test-${{ matrix.test }}
   #         path: /tmp/logs
-
+  #
   # test_backend_on_worker_restart:
   #   name: Test backend - on worker restart
   #   runs-on: ubuntu-latest

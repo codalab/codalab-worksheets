@@ -307,7 +307,9 @@ def main():
     worker = Worker(
         image_manager,
         dependency_manager,
-        os.path.join(args.work_dir, 'worker-state.json'),
+        # Include the worker ID in the worker state JSON path, so multiple workers
+        # sharing the same work directory maintain their own state.
+        os.path.join(args.work_dir, f'worker-state-{args.id}.json'),
         args.cpuset,
         args.gpuset,
         args.max_memory,
