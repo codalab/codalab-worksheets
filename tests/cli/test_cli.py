@@ -1082,11 +1082,11 @@ def test_preemptible(ctx):
     check_equals("True", get_info(uuid, 'on_preemptible_worker'))
     # Bundle should be killed by the test-setup-preemptible.sh script now.
     # Wait for bundle to be re-assigned
-    
+
     # test
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'info', uuid])
-    
+
     wait_until_state(uuid, State.PREPARING)
     wait_until_state(uuid, State.RUNNING)
     # Bundle should be resumed on the other worker
