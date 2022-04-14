@@ -1067,15 +1067,15 @@ def test_preemptible(ctx):
         [
             cl,
             'run',
-            'bash -c "(mkdir first-run || mkdir second-run) && sleep 120"',
+            'bash -c "(mkdir checkpoint1 || mkdir checkpoint2) && sleep 120"',
             '--request-queue',
             'preemptible',
         ]
     )
-    # We run (mkdir first-run || mkdir second-run) to ensure that the working directory is shared between
-    # worker runs for a preemptible bundle. The first worker this runs on, the directory "first-run" should be created.
-    # The second worker should create the directory "second-run" because "first-run" should already exist in
-    # the working directory (so mkdir first-run will fail and thus mkdir second-run will run).
+    # We run (mkdir checkpoint1 || mkdir checkpoint2) to ensure that the working directory is shared between
+    # worker runs for a preemptible bundle. The first worker this runs on, the directory "checkpoint1" should be created.
+    # The second worker should create the directory "checkpoint2" because "checkpoint1" should already exist in
+    # the working directory (so mkdir checkpoint1 will fail and thus mkdir checkpoint2 will run).
 
     wait_until_state(uuid, State.RUNNING)
     remote_preemptible_worker = get_info(uuid, 'remote')
@@ -1087,8 +1087,8 @@ def test_preemptible(ctx):
     # Bundle should have resumed on the other worker
     check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
     check_equals("True", get_info(uuid, 'on_preemptible_worker'))
-    check_contains("first-run", _run_command([cl, 'cat', uuid]))
-    check_contains("second-run", _run_command([cl, 'cat', uuid]))
+    check_contains("checkpoint1", _run_command([cl, 'cat', uuid]))
+    check_contains("checkpoint2", _run_command([cl, 'cat', uuid]))
 
 
 @TestModule.register('default_bundle_store')
