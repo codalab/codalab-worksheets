@@ -114,6 +114,11 @@ def main():
         type=int,
         help="The shared memory size in GB of the run container started by the CodaLab Workers.",
     )
+    parser.add_argument(
+        '--worker-preemptible',
+        action='store_true',
+        help='Whether the CodaLab workers are preemptible.',
+    )
     subparsers = parser.add_subparsers(
         title='Worker Manager to run',
         description='Which worker manager to run (AWS Batch etc.)',

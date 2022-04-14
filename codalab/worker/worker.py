@@ -79,6 +79,7 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
+        preemptible=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -114,6 +115,7 @@ class Worker:
         self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
+        self.preemptible = preemptible
 
         self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin_successful = False
@@ -428,6 +430,7 @@ class Worker:
             'tag_exclusive': self.tag_exclusive,
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
             'is_terminating': self.terminate or self.terminate_and_restage,
+            'preemptible': self.preemptible,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
