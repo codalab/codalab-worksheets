@@ -344,10 +344,6 @@ class RunStateMachine(StateTransitioner):
                     bundle_dir_wait_num_tries=next_bundle_dir_wait_num_tries,
                 )
         else:
-            if len(run_state.bundle.metadata.get("remote_history", [])) <= 1:
-                # If the bundle already ran on a previous (preemptible) worker, don't run remove_path,
-                # so that any checkpoints in the bundle directory from the first run can be reused.
-                remove_path(run_state.bundle_path)
             os.makedirs(run_state.bundle_path, exist_ok=True)
 
         # 2) Set up symlinks
