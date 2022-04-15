@@ -914,10 +914,22 @@ class BundleModel(object):
             ).fetchone()
             if not run_row or run_row.user_id != user_id or run_row.worker_id != worker_id:
                 return False
+            worker_row = connection.execute(
+                cl_worker.select().where(and_(cl_worker.c.worker_id == worker_id))
+            ).fetchone()
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
+                'metadata': {
+                    'started': start_time,
+                    'last_updated': start_time,
+                    'remote': remote,
+                    'on_preemptible_worker': worker_row.preemptible,
+                    'remote_history': getattr(bundle.metadata, "remote_history", [])
+                    + [
+                        remote
+                    ],  # Store the history of which workers ran this bundle before in the bundle metadata.
+                },
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -989,6 +1001,8 @@ class BundleModel(object):
         Transitions bundle to WORKER_OFFLINE state:
             Updates the last_updated metadata.
             Removes the corresponding row from worker_run if it exists.
+
+        If the bundle is preemptible, move the bundle to the STAGED state instead.
         """
         with self.engine.begin() as connection:
             # Check that it still exists and is running
@@ -1004,15 +1018,21 @@ class BundleModel(object):
                 # The user deleted the bundle or the bundle finished
                 return False
 
+            if getattr(bundle.metadata, "on_preemptible_worker", False):
+                # If the bundle is running on a preemptible worker, move the bundle to the STAGED state instead.
+                bundle_update = {
+                    'state': State.STAGED,
+                    'metadata': {'last_updated': int(time.time())},
+                }
+            else:
+                bundle_update = {
+                    'state': State.WORKER_OFFLINE,
+                    'metadata': {'last_updated': int(time.time())},
+                }
             # Delete row in worker_run
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
-
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {'last_updated': int(time.time())},
-            }
             self.update_bundle(bundle, bundle_update, connection)
         return True
 

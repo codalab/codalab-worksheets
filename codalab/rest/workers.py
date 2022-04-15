@@ -39,6 +39,7 @@ def checkin(worker_id):
         request.json.get("tag_exclusive", False),
         request.json.get("exit_after_num_runs", DEFAULT_EXIT_AFTER_NUM_RUNS),
         request.json.get("is_terminating", False),
+        request.json.get("preemptible", False),
     )
 
     for run in request.json["runs"]:

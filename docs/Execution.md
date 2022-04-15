@@ -97,7 +97,7 @@ You can tag workers and run jobs on workers with those tags.  To tag a worker, s
 
 To run a job, simply pass the tag in:
 
-    cl run date --request-queue tag=<worker_tag>
+    cl run date --request-queue <worker_tag>
 
 **Other flags**. Run `cl-worker --help` for information on all the supported flags. Aside
 from the `--server`, other important flags include `--work-dir`
