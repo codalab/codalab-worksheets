@@ -15,6 +15,7 @@ class BundlesTest(BaseTestCase):
                         'command': 'echo TEST',
                         'metadata': {
                             'name': 'run-echo',
+                            'remote_history': [],
                             'description': '',
                             'tags': [''],
                             'allow_failed_dependencies': False,
@@ -60,6 +61,7 @@ class BundlesTest(BaseTestCase):
                             "actions": [],
                             "created": 1326499200,
                             "name": "run-echo",
+                            "remote_history": [],
                             "request_time": "",
                             "request_cpus": 1,
                             "request_gpus": 0,

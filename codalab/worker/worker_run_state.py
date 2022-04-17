@@ -344,8 +344,7 @@ class RunStateMachine(StateTransitioner):
                     bundle_dir_wait_num_tries=next_bundle_dir_wait_num_tries,
                 )
         else:
-            remove_path(run_state.bundle_path)
-            os.makedirs(run_state.bundle_path)
+            os.makedirs(run_state.bundle_path, exist_ok=True)
 
         # 2) Set up symlinks
         docker_dependencies = []

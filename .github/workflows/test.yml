@@ -112,6 +112,7 @@ jobs:
           - copy netcat netcurl
           - edit
           - open wopen
+          - store_add
     steps:
       - name: Clear free space
         run: |
@@ -354,7 +355,62 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v1
         with:
-          name: logs-test-protectedmode-${{ matrix.test }}
+          name: logs-test-${{ matrix.test }}
+          path: /tmp/logs
+
+  test_backend_preemptible_worker:
+    name: Test backend - preemptible workers
+    runs-on: ubuntu-latest
+    needs: [build]
+    strategy:
+      matrix:
+        test:
+          - preemptible
+    steps:
+      - name: Clear free space
+        run: |
+          sudo rm -rf /opt/ghc
+          df -h
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
+      - run: pip install -e .
+      - name: Setup tests
+        run: |
+          sudo service mysql stop
+          python3 codalab_service.py build services --version ${VERSION} --pull
+        env:
+          VERSION: ${{ github.head_ref || 'master' }}
+      - name: Run tests
+        run: |
+          python3 codalab_service.py start --services default no-worker worker-preemptible --version ${VERSION}
+          sleep 20
+          python3 codalab_service.py start --services worker-preemptible2 --version ${VERSION}
+          ./tests/test-setup-preemptible.sh
+          python3 test_runner.py --version ${VERSION} ${TEST}
+        env:
+          TEST: ${{ matrix.test }}
+          VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_USERNAME: codalab
+          CODALAB_PASSWORD: codalab
+      - name: Save logs
+        if: always()
+        run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v1
+        with:
+          name: logs-test-${{ matrix.test }}
           path: /tmp/logs
 
   test_backend_azure_blob:
@@ -370,7 +426,7 @@ jobs:
           - run time
           - run2
           - search read kill write mimic workers edit_user sharing_workers
-#           - search link read kill write mimic workers edit_user sharing_workers
+          # - search link read kill write mimic workers edit_user sharing_workers
           - resources
           - memoize
           - copy netcat netcurl
