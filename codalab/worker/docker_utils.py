@@ -5,7 +5,9 @@ Most are wrappers around the official Docker python client.
 A preexisting client may be passed as a keyword parameter to all functions but one is automatically
 created if not.
 """
+from typing import List
 
+from docker.types.services import Mount  # type: ignore
 import logging
 import os
 import docker
@@ -172,6 +174,12 @@ def start_bundle_container(
     docker_command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
+    mounts: List[Mount] = get_bundle_container_mounts(bundle_path, docker_bundle_path, dependencies)
+
+    # TODO: debug -Tony
+    logger.info(f"Tony - volumes: {volumes}")
+    logger.info(f"Tony - mounts: {mounts}")
+
     environment = {'HOME': docker_bundle_path, 'CODALAB': 'true'}
     working_dir = docker_bundle_path
     # Unset entrypoint regardless of image
@@ -205,7 +213,9 @@ def start_bundle_container(
             environment=environment,
             working_dir=working_dir,
             entrypoint=entrypoint,
-            volumes=volumes,
+            # TODO: add a flag that allows switching between volumes vs. mounts -Tony
+            # volumes=volumes,
+            mounts=mounts,
             user=user,
             detach=detach,
             runtime=runtime,
@@ -237,6 +247,19 @@ def get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependenc
     }
     binds[bundle_path] = {'bind': docker_bundle_path, 'mode': 'rw'}
     return binds
+
+
+def get_bundle_container_mounts(bundle_path, docker_bundle_path, dependencies) -> List[Mount]:
+    """
+    Returns mounts for the given bundle path and dependencies.
+    """
+    mounts: List[Mount] = [
+        # `target` represents the container path and `source` sis the volume name or host path
+        Mount(target=docker_dep_path, source=os.path.abspath(dep_path), read_only=True)
+        for dep_path, docker_dep_path in dependencies
+    ]
+    mounts.append(Mount(target=docker_bundle_path, source=bundle_path))
+    return mounts
 
 
 @wrap_exception("Can't get container stats")
