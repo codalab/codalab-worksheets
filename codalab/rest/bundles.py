@@ -839,7 +839,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
     
-#   # We don't support bypassing server for single-file bundles located on GCS
+    # We don't support bypassing server for single-file bundles located on GCS requested through the web browser (because we're not able to enable transparent decompression)
     if target_info['type'] == 'file' and get_request_source() == RequestSource.WEB_BROWSER and location_info["storage_type"] == StorageType.GCS_STORAGE.value:
         should_redirect_url = False
 
