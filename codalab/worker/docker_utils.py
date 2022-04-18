@@ -254,11 +254,11 @@ def get_bundle_container_mounts(bundle_path, docker_bundle_path, dependencies) -
     Returns mounts for the given bundle path and dependencies.
     """
     mounts: List[Mount] = [
-        # `target` represents the container path and `source` sis the volume name or host path
+        # `target` represents the container path and `source` is the volume name or host path
         Mount(target=docker_dep_path, source=os.path.abspath(dep_path), read_only=True)
         for dep_path, docker_dep_path in dependencies
     ]
-    mounts.append(Mount(target=docker_bundle_path, source=bundle_path))
+    mounts.append(Mount(target=docker_bundle_path, source=bundle_path, type="bind"))
     return mounts
 
 
