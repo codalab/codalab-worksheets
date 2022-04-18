@@ -50,6 +50,7 @@ from codalab.common import (
     UsageError,
     ensure_str,
     DiskQuotaExceededError,
+    parse_linked_bundle_url,
 )
 from codalab.lib import (
     file_util,
@@ -1054,18 +1055,19 @@ class BundleCLI(object):
                 "url": args.url,
                 "authentication": args.authentication,
             }
+            if args.url is not None:
+                inferred_type = parse_linked_bundle_url(args.url).storage_type
+                if args.storage_type is None:
+                    bundle_store_info["storage_type"] = inferred_type
+                elif args.storage_type != inferred_type:
+                    raise UsageError(
+                        f"Bundle store {args.url} only supports storage type: {inferred_type}"
+                    )
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':
             bundle_stores = client.fetch('bundle_stores')
-            print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
-            print(
-                "\n".join(
-                    "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
-                    for b in bundle_stores
-                ),
-                file=self.stdout,
-            )
+            self.print_table(["id", "name", "storage_type", "storage_format"], bundle_stores)
         elif args.command == 'rm':
             client.delete('bundle_stores', resource_ids=[args.bundle_store_uuid])
             print(args.bundle_store_uuid, file=self.stdout)

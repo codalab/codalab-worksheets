@@ -45,7 +45,6 @@ from codalab.model.tables import (
     worksheet_tag as cl_worksheet_tag,
     worksheet_item as cl_worksheet_item,
     user as cl_user,
-    chat as cl_chat,
     user_verification as cl_user_verification,
     user_reset_code as cl_user_reset_code,
     oauth2_client,
@@ -915,10 +914,22 @@ class BundleModel(object):
             ).fetchone()
             if not run_row or run_row.user_id != user_id or run_row.worker_id != worker_id:
                 return False
+            worker_row = connection.execute(
+                cl_worker.select().where(and_(cl_worker.c.worker_id == worker_id))
+            ).fetchone()
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
+                'metadata': {
+                    'started': start_time,
+                    'last_updated': start_time,
+                    'remote': remote,
+                    'on_preemptible_worker': worker_row.preemptible,
+                    'remote_history': getattr(bundle.metadata, "remote_history", [])
+                    + [
+                        remote
+                    ],  # Store the history of which workers ran this bundle before in the bundle metadata.
+                },
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -990,28 +1001,38 @@ class BundleModel(object):
         Transitions bundle to WORKER_OFFLINE state:
             Updates the last_updated metadata.
             Removes the corresponding row from worker_run if it exists.
+
+        If the bundle is preemptible, move the bundle to the STAGED state instead.
         """
         with self.engine.begin() as connection:
             # Check that it still exists and is running
             row = connection.execute(
                 cl_bundle.select().where(
-                    cl_bundle.c.id == bundle.id
-                    and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING)
+                    and_(
+                        cl_bundle.c.id == bundle.id,
+                        cl_bundle.c.state.in_((State.RUNNING, State.PREPARING, State.FINALIZING)),
+                    )
                 )
             ).fetchone()
             if not row:
                 # The user deleted the bundle or the bundle finished
                 return False
 
+            if getattr(bundle.metadata, "on_preemptible_worker", False):
+                # If the bundle is running on a preemptible worker, move the bundle to the STAGED state instead.
+                bundle_update = {
+                    'state': State.STAGED,
+                    'metadata': {'last_updated': int(time.time())},
+                }
+            else:
+                bundle_update = {
+                    'state': State.WORKER_OFFLINE,
+                    'metadata': {'last_updated': int(time.time())},
+                }
             # Delete row in worker_run
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
-
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {'last_updated': int(time.time())},
-            }
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
@@ -2166,76 +2187,6 @@ class BundleModel(object):
         """
         return obj.isoformat() if isinstance(obj, (datetime.date, datetime.datetime)) else None
 
-    def add_chat_log_info(self, query_info):
-        """
-        Add the given chat into the database
-        Return a list of chats that the sender have had
-        """
-        sender_user_id = query_info.get('sender_user_id')
-        recipient_user_id = query_info.get('recipient_user_id')
-        message = query_info.get('message')
-        worksheet_uuid = query_info.get('worksheet_uuid')
-        bundle_uuid = query_info.get('bundle_uuid')
-        with self.engine.begin() as connection:
-            info = {
-                'time': datetime.datetime.fromtimestamp(time.time()),
-                'sender_user_id': sender_user_id,
-                'recipient_user_id': recipient_user_id,
-                'message': message,
-                'worksheet_uuid': worksheet_uuid,
-                'bundle_uuid': bundle_uuid,
-            }
-            connection.execute(cl_chat.insert().values(info))
-        result = self.get_chat_log_info({'user_id': sender_user_id})
-        return result
-
-    def get_chat_log_info(self, query_info):
-        """
-        |query_info| specifies the user_id of the user that you are querying about.
-        Example: query_info = {
-            user_id: 2,   // get the chats sent by and received by the user with user_id 2
-            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
-        }
-        Return a list of chats that the user have had given the user_id
-        """
-        user_id1 = query_info.get('user_id')
-        if user_id1 is None:
-            return None
-        limit = query_info.get('limit')
-        with self.engine.begin() as connection:
-            query = select(
-                [
-                    cl_chat.c.time,
-                    cl_chat.c.sender_user_id,
-                    cl_chat.c.recipient_user_id,
-                    cl_chat.c.message,
-                ]
-            )
-            clause = []
-            # query all chats that this user sends or receives
-            clause.append(cl_chat.c.sender_user_id == user_id1)
-            clause.append(cl_chat.c.recipient_user_id == user_id1)
-            if user_id1 == self.root_user_id:
-                # if this user is root user, also query all chats that system user sends or receives
-                clause.append(cl_chat.c.sender_user_id == self.system_user_id)
-                clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
-            clause = or_(*clause)
-            query = query.where(clause)
-            if limit is not None:
-                query = query.limit(limit)
-            # query = query.order_by(cl_chat.c.id.desc())
-            rows = connection.execute(query).fetchall()
-            result = [
-                {
-                    'message': row.message,
-                    'time': row.time.strftime("%Y-%m-%d %H:%M:%S"),
-                    'sender_user_id': row.sender_user_id,
-                    'recipient_user_id': row.recipient_user_id,
-                }
-                for row in rows
-            ]
-            return result
-
     # ===========================================================================
     # User-related methods follow!
     # ===========================================================================
@@ -2549,13 +2500,6 @@ class BundleModel(object):
 
             # User Groups
             connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
-
-            # Chat
-            connection.execute(
-                cl_chat.delete().where(
-                    cl_chat.c.sender_user_id == user_id or cl_chat.c.recipient_user_id == user_id
-                )
-            )
 
             # Delete User
             connection.execute(cl_user.delete().where(cl_user.c.user_id == user_id))

@@ -5,7 +5,6 @@ import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 import Switch from '@material-ui/core/Switch';
 
-
 class ConfigSwitchInput extends React.Component<{
     value: string,
     onValueChange: (boolean) => void,
@@ -17,12 +16,11 @@ class ConfigSwitchInput extends React.Component<{
                 className={classes.switchInput}
                 checked={value}
                 onChange={(e) => onValueChange(e.target.checked)}
-                color="primary"
+                color='primary'
             />
         );
     }
 }
-
 
 // To inject styles into component
 // -------------------------------
@@ -30,7 +28,7 @@ class ConfigSwitchInput extends React.Component<{
 /** CSS-in-JS styling function. */
 const styles = (theme) => ({
     switchInput: {
-        marginLeft: -8,  // Remove default space on left
+        marginLeft: -8, // Remove default space on left
     },
 });
 

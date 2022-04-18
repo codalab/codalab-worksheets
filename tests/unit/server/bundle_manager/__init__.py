@@ -158,8 +158,10 @@ class TestBase:
             uuid=generate_uuid(),
             state=state,
         )
-        bundle.is_frozen = None
+        bundle.frozen = None
         bundle.is_anonymous = False
+        bundle.storage_type = None
+        bundle.is_dir = False
         return bundle
 
     def create_bundle_single_dep(
@@ -258,6 +260,7 @@ class TestBase:
             tag_exclusive=False,
             exit_after_num_runs=999999999,
             is_terminating=False,
+            preemptible=False,
         )
         # Mock a reply from the worker
         self.bundle_manager._worker_model.send_json_message = Mock(return_value=True)

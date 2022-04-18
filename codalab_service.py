@@ -41,6 +41,8 @@ ALL_SERVICES = DEFAULT_SERVICES + [
     'worker-manager-cpu',
     'worker-manager-gpu',
     'worker2',
+    'worker-preemptible',
+    'worker-preemptible2',
 ]
 
 ALL_NO_SERVICES = [
@@ -59,6 +61,8 @@ SERVICE_TO_IMAGE = {
     'monitor': 'server',
     'worker': 'worker',
     'worker2': 'worker',
+    'worker-preemptible': 'worker',
+    'worker-preemptible2': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
@@ -318,12 +322,6 @@ CODALAB_ARGUMENTS = [
         default=10 * 60,
     ),
     CodalabArg(
-        name='worker_manager_seconds_between_workers',
-        help='Number of seconds to wait between launching two workers',
-        type=int,
-        default=60,
-    ),
-    CodalabArg(
         name='worker_manager_sleep_time_seconds',
         help='Number of seconds to wait between checks',
         type=int,
@@ -473,6 +471,12 @@ for worker_manager_type in ['cpu', 'gpu']:
             help='The shared memory size in GB of the run container started by the CodaLab Workers.',
             type=int,
             default=1,
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_seconds_between_workers',
+            help=f'Number of seconds to wait between launching two {worker_manager_type} workers',
+            type=int,
+            default=60,
         ),
         CodalabArg(
             name=f'worker_manager_{worker_manager_type}_kubernetes_cluster_host',
@@ -953,6 +957,8 @@ class CodalabServiceManager(object):
         else:
             self.bring_up_service('worker')
         self.bring_up_service('worker2')
+        self.bring_up_service('worker-preemptible')
+        self.bring_up_service('worker-preemptible2')
 
         self.bring_up_service('monitor')
 

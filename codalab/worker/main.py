@@ -191,6 +191,9 @@ def parse_args():
         default=1,
         help='The shared memory size of the run container in GB (defaults to 1).',
     )
+    parser.add_argument(
+        '--preemptible', action='store_true', help='Whether the worker is preemptible.',
+    )
     return parser.parse_args()
 
 
@@ -304,7 +307,9 @@ def main():
     worker = Worker(
         image_manager,
         dependency_manager,
-        os.path.join(args.work_dir, 'worker-state.json'),
+        # Include the worker ID in the worker state JSON path, so multiple workers
+        # sharing the same work directory maintain their own state.
+        os.path.join(args.work_dir, f'worker-state-{args.id}.json'),
         args.cpuset,
         args.gpuset,
         args.max_memory,
@@ -326,6 +331,7 @@ def main():
         delete_work_dir_on_exit=args.delete_work_dir_on_exit,
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
+        preemptible=args.preemptible,
     )
 
     # Register a signal handler to ensure safe shutdown.

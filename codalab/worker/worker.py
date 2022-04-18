@@ -79,6 +79,7 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
+        preemptible=False,  # type: bool
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -114,6 +115,7 @@ class Worker:
         self.terminate_and_restage = False
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
+        self.preemptible = preemptible
 
         self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin_successful = False
@@ -194,7 +196,8 @@ class Worker:
         self.state_committer.commit(runs)
 
     def load_state(self):
-        runs = self.state_committer.load()
+        # If the state file doesn't exist yet, have the state committer return an empty state.
+        runs = self.state_committer.load(default=dict())
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in runs.items():
             if run_state.container_id:
@@ -269,15 +272,20 @@ class Worker:
             self.dependency_manager.start()
         while not self.terminate:
             try:
-                self.process_runs()
-                self.save_state()
                 self.checkin()
-                self.check_termination()
-                self.save_state()
-                if self.check_idle_stop() or self.check_num_runs_stop():
-                    self.terminate = True
-                else:
-                    time.sleep(self.checkin_frequency_seconds)
+                last_checkin = time.time()
+                # Process runs until it's time for the next checkin.
+                while not self.terminate and (
+                    time.time() - last_checkin <= self.checkin_frequency_seconds
+                ):
+                    self.check_termination()
+                    self.save_state()
+                    if self.check_idle_stop() or self.check_num_runs_stop():
+                        self.terminate = True
+                        break
+                    self.process_runs()
+                    time.sleep(0.003)
+                    self.save_state()
             except Exception:
                 self.last_checkin_successful = False
                 if using_sentry():
@@ -422,11 +430,11 @@ class Worker:
             'tag_exclusive': self.tag_exclusive,
             'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
             'is_terminating': self.terminate or self.terminate_and_restage,
+            'preemptible': self.preemptible,
         }
         try:
             response = self.bundle_service.checkin(self.id, request)
-            if not self.last_checkin_successful:
-                logger.info('Connected! Successful check in!')
+            logger.info('Connected! Successful check in!')
             self.last_checkin_successful = True
         except BundleServiceException as ex:
             logger.warning("Disconnected from server! Failed check in: %s", ex)

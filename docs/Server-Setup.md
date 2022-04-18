@@ -125,6 +125,14 @@ Sometimes you may want to run two workers locally. In that case, you should run:
     ./codalab_service.py start -bds default worker2
 
 
+## Run a preemptible worker (for development / testing)
+
+If you want to run a preemptible worker locally (for development / testing), you should run:
+
+    ./codalab_service.py start -bds worker-preemptible
+
+This worker will automatically run bundles with tag `preemptible`.
+
 ## Azure Blob Storage
 
 To start the server in dev mode with Azurite (an Azure Blob Storage emulator) enabled, run:

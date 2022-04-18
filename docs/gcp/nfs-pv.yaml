@@ -1,0 +1,40 @@
+#
+# Adapted from https://medium.com/platformer-blog/nfs-persistent-volumes-with-kubernetes-a-case-study-ce1ed6e2c266
+#
+# Persistent Volume (PV) is a piece of storage in the cluster that has been provisioned by an administrator.
+# It is a resource in the cluster where as a Persistent Volume Claim (PVC) is a request for storage by a user.
+#
+# Deploy by running:
+#
+#     kubectl apply -f nfs-pv.yaml
+#
+# You are now ready to use the shared volume between your pods.
+#
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs
+spec:
+  capacity:
+    storage: 300Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    # Update according to your cluster IP
+    server: <Your Cluster IP Address here>
+    path: "/"
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nfs-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      # You can have any storage value for PVC as long as you don’t exceed the storage value defined in PV.
+      storage: 300Gi

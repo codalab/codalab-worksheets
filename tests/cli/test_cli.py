@@ -141,7 +141,7 @@ def create_worker(context, user_id, worker_id, tag=None, group_name=None):
     # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
     # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
     worker_model.worker_checkin(
-        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False, False
     )
     context.collect_worker(user_id, worker_id)
 
@@ -1053,6 +1053,161 @@ def test_blob(ctx):
         assert response.headers['Location'].startswith("http://localhost")
 
 
+@TestModule.register('preemptible')
+def test_preemptible(ctx):
+    """Tests preemptible workers to ensure they are functioning properly. A bundle
+    that is preemptible should be run on a preemptible worker, and when that worker is killed,
+    should go back to staged and transfer to another worker.
+
+    This test should only be called when the "worker-preemptible" and "worker-preemptible2" services are
+    running locally, and test-setup-preemptible.sh should be run first. See the GitHub Actions test file
+    "preemptible" test for an example of how to set up this test.
+    """
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'bash -c "(mkdir checkpoint1 || mkdir checkpoint2) && sleep 120"',
+            '--request-queue',
+            'preemptible',
+        ]
+    )
+    # We run (mkdir checkpoint1 || mkdir checkpoint2) to ensure that the working directory is shared between
+    # worker runs for a preemptible bundle. The first worker this runs on, the directory "checkpoint1" should be created.
+    # The second worker should create the directory "checkpoint2" because "checkpoint1" should already exist in
+    # the working directory (so mkdir checkpoint1 will fail and thus mkdir checkpoint2 will run).
+
+    wait_until_state(uuid, State.RUNNING)
+    remote_preemptible_worker = get_info(uuid, 'remote')
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    # Bundle should be killed by the test-setup-preemptible.sh script now.
+    # Wait for bundle to be re-assigned
+
+    wait_until_state(uuid, State.READY)
+    # Bundle should have resumed on the other worker
+    check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    check_contains("checkpoint1", _run_command([cl, 'cat', uuid]))
+    check_contains("checkpoint2", _run_command([cl, 'cat', uuid]))
+
+
+@TestModule.register('default_bundle_store')
+def test_upload_default_bundle_store(ctx):
+    """Tests the CODALAB_DEFAULT_BUNDLE_STORE_NAME environment
+    variable. Should only be called when
+    CODALAB_DEFAULT_BUNDLE_STORE_NAME is set."""
+    # Create a new bundle store and upload to it
+    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Upload a bundle, which should output to bundle store by default
+    uuid = _run_command([cl, 'upload', '-c', 'hello'])
+    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
+
+
+@TestModule.register('store_add')
+def test_store_add(ctx):
+    """
+    Tests of command `cl store add` on different bundle stores. (Not testing --storage-format yet)
+    """
+    # Create a new azure_blob bundle store, then delete it
+    bundle_store_name = "blob_test"
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # create a new azure_blob but not specify storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # Create a new azure_blob bundle store and specify the wrong storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',  # the type does not align with url
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ],
+        expected_exit_code=1,
+    )
+    # Test these 3 conditions on GCS
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'gcs',
+            '--url',
+            'gs://codalab-test',
+        ]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',  # the type does not align with url
+            '--url',
+            'gs://codalab-test',
+        ],
+        expected_exit_code=1,
+    )
+
+
 @TestModule.register('download')
 def test_download(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation
@@ -1339,7 +1494,7 @@ def test_worksheet_freeze_unfreeze(ctx):
 @TestModule.register('bundle_freeze_unfreeze')
 def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
-    uuid = _run_command([cl, 'run', 'date', '-n', name])
+    uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
     wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
@@ -1627,6 +1782,16 @@ def test_run(ctx):
     check_num_lines(
         2 + 2 + 1, _run_command([cl, 'cat', remote_uuid])
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
+
+
+@TestModule.register('time')
+def test_time(ctx):
+    """Various tests that ensure the timing of runs is still fast."""
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
+
+    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
 
 
 @TestModule.register('link')
