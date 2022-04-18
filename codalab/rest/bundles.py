@@ -833,11 +833,15 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
         support_redirect == 1
-        and location_info["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        and location_info["storage_type"] in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value)
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
         and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
+    
+#   # We don't support bypassing server for single-file bundles located on GCS
+    if target_info['type'] == 'file' and get_request_source() == RequestSource.WEB_BROWSER and location_info["storage_type"] == StorageType.GCS_STORAGE.value:
+        should_redirect_url = False
 
     if target_info['type'] == 'directory':
         if byte_range:
