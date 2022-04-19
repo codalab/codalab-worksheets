@@ -641,7 +641,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
     """
     depth = query_get_type(int, 'depth', default=0)
     target = BundleTarget(uuid, path)
-    logging.info("_fetch_bundle_contents_info()")
     if depth < 0:
         abort(http.client.BAD_REQUEST, "Depth must be at least 0")
 
@@ -650,7 +649,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
         info = local.download_manager.get_target_info(target, depth)
         # Object is not JSON serializable so submit its dict in API response
         # The client is responsible for deserializing it
-        logging.info("Info in _fetch_bundle_contents_info: {}".format(info))
         info['resolved_target'] = info['resolved_target'].__dict__
     except NotFoundError as e:
         abort(http.client.NOT_FOUND, str(e))
@@ -863,12 +861,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
 
-    # We don't support bypassing server for single-file bundles located on GCS requested through the web browser (because we're not able to enable transparent decompression)
-    if (target_info['type'] == 'file' or get_request_source() == RequestSource.WEB_BROWSER) and location_info["storage_type"] == StorageType.GCS_STORAGE.value:
+    # We don't support bypassing server for single-file bundles located on GCS requested
+    if (target_info['type'] == 'file') and location_info["storage_type"] == StorageType.GCS_STORAGE.value:
         should_redirect_url = False
 
-    if target_info['type'] == 'directory':
-        if byte_range:
     if target_info['type'] == 'directory':
         if byte_range:
             abort(http.client.BAD_REQUEST, 'Range not supported for directory blobs.')
@@ -948,9 +944,6 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             content_encoding=response.get_header('Content-Encoding'),
             content_disposition=response.get_header('Content-Disposition'),
         )
-        print(download_url)
-        print("Response Headers: {} {} {}".format(response.get_header('Content-Type'),response.get_header('Content-Encoding'),response.get_header('Content-Disposition')))
-        print("Request Headers: {}".format(request.headers))
         # Quirk when running CodaLab locally -- if this endpoint was called from within a Docker container
         # such as the REST server or the worker, we need to redirect to http://azurite. This is because
         # of the way Docker networking is set up, as local Docker containers doesn't have access to
@@ -958,6 +951,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         if LOCAL_USING_AZURITE:
             if get_request_source() == RequestSource.LOCAL_DOCKER:
                 download_url = download_url.replace("localhost", "azurite", 1)
+        logging.info("REDIRECTED!")
         return redirect(download_url) # the client receive http 303, and send the request to new url
     return fileobj
 

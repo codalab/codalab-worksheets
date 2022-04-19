@@ -273,17 +273,10 @@ class LinkedBundlePath:
         ).split("/", 1)
         bucket = client.get_bucket(bucket_name)
         blob = bucket.get_blob(blob_name)
-        headers = {}  # headers which needs to be contained in request.
-        # headers["Content-Type"] = kwargs["content_type"] 
-        # headers["Content-Encoding"] = "gzip"
-        # headers["x-goog-meta-test"] = "gzip"
-        # headers["Content-Disposition"] = kwargs["content_disposition"] 
         signed_url = blob.generate_signed_url(
             version="v4",
             expiration=datetime.timedelta(hours=1),
-            method="GET", # Allow GET requests using this URL.
-            # headers=headers,
-            # content_type = "application/gzip",
+            method="GET",
             response_disposition=kwargs["content_disposition"],
             response_type=kwargs["content_type"],  # kwargs["content_type"] is text/plain
         )

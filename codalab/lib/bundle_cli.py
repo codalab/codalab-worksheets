@@ -1550,7 +1550,6 @@ class BundleCLI(object):
         target_info = client.fetch_contents_info(target, 0)
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
-        print("Target info: {} {}".format(target_info, info))
         print(
             'Downloading %s/%s => %s' % (self.simple_bundle_str(info), target.subpath, final_path),
             file=self.stdout,
@@ -1564,15 +1563,6 @@ class BundleCLI(object):
             if target_info['type'] == 'directory':
                 un_tar_directory(contents, final_path, 'gz', force=args.force)
             elif target_info['type'] == 'file':
-                # If download a file from GCP, need to manually unzip. 
-                # Since the response header
-                # get bundle store type: check if need to redirect
-                bundle_store_name = info.get('metadata').get('store')  # eg, 'gcs'
-                if(bundle_store_name != ''):
-                    bundle_store = client.fetch('bundle_stores', info['id'])
-                    import gzip
-                    print(bundle_store.get('store_type'))
-                    contents = gzip.GzipFile(fileobj=contents)
                 with open(final_path, 'wb') as out:
                     shutil.copyfileobj(contents, out)
 

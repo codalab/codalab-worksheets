@@ -203,10 +203,7 @@ def _compute_target_info_blob(
     """
 
     linked_bundle_path = parse_linked_bundle_url(path)
-    logging.info("In download_util._compute_target_info_blob(), info {} {} {}".format(
-        linked_bundle_path.is_archive, linked_bundle_path.storage_type, linked_bundle_path.bundle_path))
     if not FileSystems.exists(linked_bundle_path.bundle_path):
-        logging.info("In _compute_target_info_blob, path not exsit")
         raise PathException(linked_bundle_path.bundle_path)
     if not linked_bundle_path.is_archive:
         # Single file

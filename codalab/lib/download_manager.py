@@ -109,7 +109,6 @@ class DownloadManager(object):
         ).get(target.bundle_uuid)
         if bundle_link_url:
             bundle_link_url = self._transform_link_path(bundle_link_url)
-        logging.info("_get_target_info_within_bundle(): state {}, link_url {}".format(bundle_state, bundle_link_url))
         # Raises NotFoundException if uuid is invalid
         if bundle_state == State.PREPARING:
             raise NotFoundError(
@@ -122,7 +121,6 @@ class DownloadManager(object):
                 target.bundle_uuid
             )
             try:
-                ### wwwjn: I guess I'm here. States: Ready
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
                 raise NotFoundError("Here is error1: {} ".format(target.bundle_uuid) + str(err))
