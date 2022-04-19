@@ -20,6 +20,10 @@ import tempfile
 from ratarmountcore import SQLiteIndexedTar, FileInfo
 from typing import IO, cast
 
+# import httplib2
+# import codalab.lib.httplib2
+# httplib2.__init__._decompressContent = codalab.lib.httplib2._decompressContent
+
 NONE_PLACEHOLDER = '<none>'
 
 # Patterns to always ignore when zipping up directories
@@ -204,7 +208,6 @@ class OpenIndexedArchiveFile(object):
 
     def __init__(self, path: str):
         self.f = FileSystems.open(path, compression_type=CompressionTypes.UNCOMPRESSED)
-        logging.info("In file_util.OpenIndexedArchiveFile.__enter__, path is {}".format(path))
         self.path = path
         with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as index_fileobj:
             self.index_file_name = index_fileobj.name
@@ -217,7 +220,6 @@ class OpenIndexedArchiveFile(object):
             )
 
     def __enter__(self) -> SQLiteIndexedTar:
-        # logging.info("In file_util.OpenIndexedArchiveFile.__enter__, index_file_name is {}".format(self.index_file_name))
         return SQLiteIndexedTar(  ## wwwjn: What does this do here? Does it connect to GCS and try to decompress contents.gz???
             fileObject=self.f,
             tarFileName="contents",

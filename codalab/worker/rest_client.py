@@ -92,8 +92,8 @@ class RestClient(object):
         request = urllib.request.Request(request_url, data=data)
         for k, v in headers.items():
             request.add_unredirected_header(k, v)
-        request.add_header("Accept-Encoding", "gzip")  ## wwwjn: add test for GCS
-        request.add_header("Content-Encoding", "gzip")
+        # request.add_header("Accept-Encoding", "gzip")  ## wwwjn: add test for GCS
+        # request.add_header("Content-Encoding", "gzip")
         print("After add header, {}".format(request.headers))
         request.get_method = lambda: method
         if return_response:
