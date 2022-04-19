@@ -481,17 +481,17 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name=f'worker_manager_{worker_manager_type}_kubernetes_cluster_host',
             type=str,
-            help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
+            help=f'Host address of the Kubernetes cluster for the {worker_manager_type} Kubernetes worker manager',
         ),
         CodalabArg(
             name=f'worker_manager_{worker_manager_type}_kubernetes_auth_token',
             type=str,
-            help='Kubernetes cluster authorization token for the Kubernetes worker manager',
+            help=f'Kubernetes cluster authorization token for the {worker_manager_type} Kubernetes worker manager',
         ),
         CodalabArg(
             name=f'worker_manager_{worker_manager_type}_kubernetes_cert_path',
             type=str,
-            help='Path to the generated SSL cert for the Kubernetes worker manager',
+            help=f'Path to the generated SSL cert for the {worker_manager_type} Kubernetes worker manager',
         ),
     ]
 
