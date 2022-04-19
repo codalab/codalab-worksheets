@@ -262,7 +262,6 @@ class LinkedBundlePath:
 
     def _get_signed_url(self, path, **kwargs):
         """Generate GCS signed url that can be used to download the blob for 1 hour."""
-        print(kwargs, type(kwargs))
         if self.storage_type != StorageType.GCS_STORAGE.value:
             raise ValueError(
                 f"Signed URLs can only be retrieved for bundles on Google Cloud Storage. Storage type is: {self.storage_type}."
