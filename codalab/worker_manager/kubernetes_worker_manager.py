@@ -131,13 +131,13 @@ class KubernetesWorkerManager(WorkerManager):
                         },
                         'volumeMounts': [
                             {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
-                            {'name': 'workdir', 'mountPath': work_dir},
+                            # {'name': 'workdir', 'mountPath': work_dir},
                         ],
                     }
                 ],
                 'volumes': [
                     {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
-                    {'name': 'workdir', 'hostPath': {'path': work_dir}},
+                    # {'name': 'workdir', 'hostPath': {'path': work_dir}},
                 ],
                 'restartPolicy': 'Never',  # Only run a job once
             },
@@ -153,6 +153,7 @@ class KubernetesWorkerManager(WorkerManager):
             config['spec']['containers'][0]['volumeMounts'].append(
                 {"name": self.nfs_server, "mountPath": self.nfs_work_dir},
             )
+            logger.info(config['spec'])
 
         # Start a worker pod on the k8s cluster
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
