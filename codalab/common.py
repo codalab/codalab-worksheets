@@ -279,7 +279,7 @@ class LinkedBundlePath:
             expiration=datetime.timedelta(hours=1),
             method="GET",
             response_disposition=kwargs["content_disposition"],
-            response_type=kwargs["content_type"],  # kwargs["content_type"] is text/plain
+            response_type=kwargs["content_type"],
         )
         return signed_url
 
