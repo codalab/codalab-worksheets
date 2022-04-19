@@ -2380,7 +2380,6 @@ class BundleCLI(object):
         )
 
         for i, info in enumerate(bundles):
-            print(info)
             if args.field:
                 # Display individual fields (arbitrary genpath)
                 values = []

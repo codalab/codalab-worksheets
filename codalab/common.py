@@ -246,7 +246,8 @@ class LinkedBundlePath:
                 f"SAS URLs can only be retrieved for bundles on Azure Blob Storage. Storage type is: {self.storage_type}."
             )
         blob_name = path.replace(
-            f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
+            f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/",
+            "",
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
         sas_token = generate_blob_sas(
             **kwargs,
@@ -268,9 +269,9 @@ class LinkedBundlePath:
             )
         client = storage.Client()
         # parse parameters from path, eg: "gs://{bucket_name}/{bundle_uuid}/{contents_file}"
-        bucket_name, blob_name = path.replace(
-            f"{StorageURLScheme.GCS_STORAGE.value}", ""
-        ).split("/", 1)
+        bucket_name, blob_name = path.replace(f"{StorageURLScheme.GCS_STORAGE.value}", "").split(
+            "/", 1
+        )
         bucket = client.get_bucket(bucket_name)
         blob = bucket.get_blob(blob_name)
         signed_url = blob.generate_signed_url(
@@ -280,26 +281,24 @@ class LinkedBundlePath:
             response_disposition=kwargs["content_disposition"],
             response_type=kwargs["content_type"],  # kwargs["content_type"] is text/plain
         )
-        logging.info(signed_url)
         return signed_url
-        
+
     def bundle_path_sas_url(self, **kwargs):
         return self._get_sas_url(self.bundle_path, **kwargs)
 
     def index_path_sas_url(self, **kwargs):
         return self._get_sas_url(self.index_path, **kwargs)
-    
+
     def bundle_path_signed_url(self, **kwargs):
         return self._get_signed_url(self.bundle_path, **kwargs)
-    
+
     def bundle_path_download_url(self, **kwargs):
-        if(self.storage_type == StorageType.AZURE_BLOB_STORAGE.value):
+        if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return self._get_sas_url(self.bundle_path, **kwargs)
-        elif(self.storage_type == StorageType.GCS_STORAGE.value):
+        elif self.storage_type == StorageType.GCS_STORAGE.value:
             return self._get_signed_url(self.bundle_path, **kwargs)
         else:
             raise UsageError(f"Does not support current storage type: {self.storage_type}")
-            
 
 
 def parse_linked_bundle_url(url):

@@ -574,28 +574,6 @@ def _fetch_bundle_store(uuid):
     return data
 
 
-@get('/bundle_stores/<name>', apply=AuthenticatedProtectedPlugin())
-def _fetch_bundle_store(name):
-    """
-    Fetch the bundle store corresponding to the specified uuid.
-
-    Returns a single bundle store, with the following parameters:
-    - `uuid`: bundle store UUID
-    - `owner_id`: owner of bundle store
-    - `name`: name of bundle store
-    - `storage_type`: type of storage being used for bundle store (GCP, AWS, etc)
-    - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
-    - `url`: a self-referential URL that points to the bundle store.
-    """
-    bundle_store = local.model.get_bundle_store(request.user.user_id, name=name)
-    data = BundleStoreSchema().dump(bundle_store).data
-
-    # Fetch username instead of user_id for display on the front end.
-    data['data']['attributes']['owner'] = local.model.get_user(
-        user_id=data['data']['attributes']['owner']
-    ).user_name
-    return data
-
 @delete('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _delete_bundle_stores():
     """
@@ -855,14 +833,17 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
         support_redirect == 1
-        and location_info["storage_type"] in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value)
+        and location_info["storage_type"]
+        in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value)
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
         and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
 
     # We don't support bypassing server for single-file bundles located on GCS requested
-    if (target_info['type'] == 'file') and location_info["storage_type"] == StorageType.GCS_STORAGE.value:
+    if (target_info['type'] == 'file') and location_info[
+        "storage_type"
+    ] == StorageType.GCS_STORAGE.value:
         should_redirect_url = False
 
     if target_info['type'] == 'directory':
@@ -952,7 +933,9 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             if get_request_source() == RequestSource.LOCAL_DOCKER:
                 download_url = download_url.replace("localhost", "azurite", 1)
         logging.info("REDIRECTED!")
-        return redirect(download_url) # the client receive http 303, and send the request to new url
+        return redirect(
+            download_url
+        )  # the client receive http 303, and send the request to new url
     return fileobj
 
 

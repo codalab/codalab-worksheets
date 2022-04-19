@@ -123,7 +123,7 @@ class DownloadManager(object):
             try:
                 return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
-                raise NotFoundError("Here is error1: {} ".format(target.bundle_uuid) + str(err))
+                raise NotFoundError(str(err))
         else:
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
@@ -350,7 +350,9 @@ class DownloadManager(object):
             raise UsageError(str(e))
 
     def get_target_download_url(self, target, **kwargs):
-        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_download_url(**kwargs)
+        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_download_url(
+            **kwargs
+        )
 
     def _send_read_message(self, worker, response_socket_id, target, read_args):
         message = {

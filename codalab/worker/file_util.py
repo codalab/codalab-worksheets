@@ -20,9 +20,6 @@ import tempfile
 from ratarmountcore import SQLiteIndexedTar, FileInfo
 from typing import IO, cast
 
-# import httplib2
-# import codalab.lib.httplib2
-# httplib2.__init__._decompressContent = codalab.lib.httplib2._decompressContent
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -220,7 +217,7 @@ class OpenIndexedArchiveFile(object):
             )
 
     def __enter__(self) -> SQLiteIndexedTar:
-        return SQLiteIndexedTar(  ## wwwjn: What does this do here? Does it connect to GCS and try to decompress contents.gz???
+        return SQLiteIndexedTar(
             fileObject=self.f,
             tarFileName="contents",
             writeIndex=False,

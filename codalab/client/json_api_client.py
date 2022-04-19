@@ -628,7 +628,7 @@ class JsonApiClient(RestClient):
             params['tail'] = tail
         if truncation_text is not None:
             params['truncation_text'] = truncation_text
-        return self._make_request(  ## actually return file here
+        return self._make_request(
             'GET', request_path, headers=headers, query_params=params, return_response=True
         )
 

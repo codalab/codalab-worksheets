@@ -85,20 +85,19 @@ def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> Targe
     If reading the given path is not secure, raises a PathException.
     """
     final_path = _get_normalized_target_path(bundle_path, target)
-    logging.info("In download_util.get_target_info(), final_path is {}".format(final_path))
     if parse_linked_bundle_url(final_path).uses_beam:
         # If the target is on Blob Storage, use a Blob-specific method
         # to get the target info.
         try:
             info = _compute_target_info_blob(final_path, depth)
-        except Exception as err:
+        except Exception:
             logging.error(
-                "Path '{}' in bundle {} not found: {}. Exception: {}".format(
-                    target.subpath, target.bundle_uuid, traceback.format_exc(), str(err)
+                "Path '{}' in bundle {} not found: {}".format(
+                    target.subpath, target.bundle_uuid, traceback.format_exc()
                 )
             )
             raise PathException(
-                "Path '{}' in bundle {} not found. Exception: {}".format(target.subpath, target.bundle_uuid, str(err))
+                "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
             )
     else:
         if not os.path.islink(final_path) and not os.path.exists(final_path):
