@@ -20,7 +20,6 @@ import tempfile
 from ratarmountcore import SQLiteIndexedTar, FileInfo
 from typing import IO, cast
 
-
 NONE_PLACEHOLDER = '<none>'
 
 # Patterns to always ignore when zipping up directories

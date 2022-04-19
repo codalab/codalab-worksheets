@@ -1550,6 +1550,7 @@ class BundleCLI(object):
         target_info = client.fetch_contents_info(target, 0)
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
+
         print(
             'Downloading %s/%s => %s' % (self.simple_bundle_str(info), target.subpath, final_path),
             file=self.stdout,

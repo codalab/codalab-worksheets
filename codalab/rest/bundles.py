@@ -841,9 +841,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     )
 
     # We don't support bypassing server for single-file bundles located on GCS requested
-    if (target_info['type'] == 'file') and location_info[
-        "storage_type"
-    ] == StorageType.GCS_STORAGE.value:
+    if (
+        target_info['type'] == 'file'
+        and location_info["storage_type"] == StorageType.GCS_STORAGE.value
+    ):
         should_redirect_url = False
 
     if target_info['type'] == 'directory':
@@ -932,7 +933,6 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         if LOCAL_USING_AZURITE:
             if get_request_source() == RequestSource.LOCAL_DOCKER:
                 download_url = download_url.replace("localhost", "azurite", 1)
-        logging.info("REDIRECTED!")
         return redirect(
             download_url
         )  # the client receive http 303, and send the request to new url

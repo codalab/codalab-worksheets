@@ -109,7 +109,6 @@ class RestClient(object):
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.
-            encoding = response.headers.get('Content-Encoding')
             if response.headers.get('Content-Type') == 'application/json':
                 response_data = response.read().decode()
                 try:
