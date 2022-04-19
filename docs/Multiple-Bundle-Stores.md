@@ -63,14 +63,14 @@ CODALAB_DEFAULT_BUNDLE_STORE_NAME=blob codalab-service start ...
 ```
 
 ## Infer store type from url
-To add a new Azure/GCS bundle store, we can have different ways to specify. To simplify the `cl store add` command, you can only specify the url without specifying `--store_type` in the command.
+To add a new Azure/GCS bundle store, we can have simplified ways to specify. To simplify the `cl store add` command, you can only specify the URL without specifying `--store_type` in the command.
 For example, you can add a new bundle store on GCP using the following command:
 ```bash
 cl store add --name gcp2 --url gs://ashwin123123123
 ```
-The `--store_type` parameter is inferred from the url.
+The `--store_type` parameter is inferred from the URL.
 
-You can also use following simplified command to add a new bundle store on Azure.
+You can also use the following simplified command to add a new bundle store on Azure.
 ```bash
 cl store add --name blob --url azfs://devstoreaccount1/bundles
 ```
