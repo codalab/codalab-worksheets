@@ -62,7 +62,7 @@ Once a bundle store is created, you can restart the server and set the `CODALAB_
 CODALAB_DEFAULT_BUNDLE_STORE_NAME=blob codalab-service start ...
 ```
 
-## Infer store type from url
+## Infer store type from URL
 To add a new Azure/GCS bundle store, we can have simplified ways to specify. To simplify the `cl store add` command, you can only specify the URL without specifying `--store_type` in the command.
 For example, you can add a new bundle store on GCP using the following command:
 ```bash
