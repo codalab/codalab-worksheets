@@ -32,7 +32,7 @@ cl store rm [bundle store uuid]
 First, make sure you start Azurite locally by running `codalab-service start -bds default azurite`. Then run:
 
 ```
-cl store add --name blob --storage-type azure_blob --url azfs://devstoreaccount1/bundles
+cl store add --name blob --url azfs://devstoreaccount1/bundles
 cl upload --store blob mkdocs.yml
 cl run --store blob "echo hello"
 ```
@@ -49,7 +49,7 @@ codalab-service start -bd
 Then make a bucket on your GCP account (in this case, it's called `ashwin123123123`). You can then store bundles on GCP:
 
 ```
-cl store add --name gcp2 --storage-type gcs --url gs://ashwin123123123
+cl store add --name gcp2 --url gs://ashwin123123123
 cl upload --store gcp2 mkdocs.yml
 cl run --store gcp2 "echo hello"
 ```
@@ -62,18 +62,6 @@ Once a bundle store is created, you can restart the server and set the `CODALAB_
 CODALAB_DEFAULT_BUNDLE_STORE_NAME=blob codalab-service start ...
 ```
 
-## Infer store type from URL
-To add a new Azure/GCS bundle store, we can have simplified ways to specify. To simplify the `cl store add` command, you can only specify the URL without specifying `--store_type` in the command.
-For example, you can add a new bundle store on GCP using the following command:
-```bash
-cl store add --name gcp2 --url gs://ashwin123123123
-```
-The `--store_type` parameter is inferred from the URL.
-
-You can also use the following simplified command to add a new bundle store on Azure.
-```bash
-cl store add --name blob --url azfs://devstoreaccount1/bundles
-```
 
 ## Todo (unreleased features)
 
