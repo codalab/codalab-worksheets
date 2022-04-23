@@ -15,6 +15,7 @@ from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import StorageType, StorageFormat, precondition, UsageError, NotFoundError
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
+from codalab.lib.beam.gcsio import *
 from codalab.lib.server_util import (
     RequestSource,
     bottle_patch as patch,
