@@ -273,6 +273,7 @@ class NewRun extends React.Component<
             networkAccess,
             failedDependencies,
             queue,
+            exclude_patterns,
         } = this.state;
         const { after_sort_key } = this.props;
 
@@ -290,6 +291,8 @@ class NewRun extends React.Component<
         if (queue) args.push(`--request-queue=${queue}`);
         if (networkAccess) args.push(`--request-network`);
         if (failedDependencies) args.push(`--allow-failed-dependencies`);
+        console.log(exclude_patterns)
+        if (exclude_patterns) args.push(`--exclude-patterns ${exclude_patterns.join(' ')}`);
 
         for (let dep of dependencies) {
             const key = dep.alias;
@@ -299,6 +302,7 @@ class NewRun extends React.Component<
         }
 
         if (command) args.push(command);
+        console.log(args)
 
         return buildTerminalCommand(args);
     }

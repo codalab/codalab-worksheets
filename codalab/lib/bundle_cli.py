@@ -1808,6 +1808,7 @@ class BundleCLI(object):
     )
     def do_run_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        print(args)
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
         targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
