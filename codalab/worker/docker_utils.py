@@ -254,7 +254,7 @@ def get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependenc
 
 def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
     def generate_volume_name(volume_path: str) -> str:
-        return volume_path.replace(os.path.sep, "_")
+        return volume_path.replace(os.path.sep, "").replace("-", "")
 
     binds = {}
     for dep_path, docker_dep_path in dependencies:
