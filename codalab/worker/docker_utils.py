@@ -175,10 +175,12 @@ def start_bundle_container(
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
     mounts: List[Mount] = get_bundle_container_mounts(bundle_path, docker_bundle_path, dependencies)
+    nfs_volumes = create_nfs_volumes(bundle_path, docker_bundle_path, dependencies)
 
     # TODO: debug -Tony
     logger.info(f"Tony - volumes: {volumes}")
     logger.info(f"Tony - mounts: {mounts}")
+    logger.info(f"Tony - nfs_volumes: {nfs_volumes}")
 
     environment = {'HOME': docker_bundle_path, 'CODALAB': 'true'}
     working_dir = docker_bundle_path
@@ -215,7 +217,8 @@ def start_bundle_container(
             entrypoint=entrypoint,
             # TODO: add a flag that allows switching between volumes vs. mounts -Tony
             # volumes=volumes,
-            mounts=mounts,
+            # mounts=mounts,
+            volumes=nfs_volumes,
             user=user,
             detach=detach,
             runtime=runtime,
@@ -249,11 +252,56 @@ def get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependenc
     return binds
 
 
+def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
+    binds = {}
+    for dep_path, docker_dep_path in dependencies:
+        dep_abs_path: str = os.path.abspath(dep_path)
+        dep_volume_name: str = dep_abs_path.replace(os.pathsep, "_")
+        client.volumes.create(
+            name=dep_volume_name,
+            driver='local',
+            driver_opts={
+                'type': 'nfs',
+                'o': {'addr': '10.24.11.180,vers=4,soft'},
+                'device': dep_abs_path,
+            },
+        )
+        binds[dep_volume_name] = {'bind': docker_dep_path, 'mode': 'ro'}
+
+    bundle_volume_name: str = bundle_path.replace(os.pathsep, "_")
+    client.volumes.create(
+        name=bundle_volume_name,
+        driver='local',
+        driver_opts={
+            'type': 'nfs',
+            'o': {'addr': '10.24.11.180,vers=4,soft'},
+            'device': bundle_path,
+        },
+    )
+    binds[bundle_volume_name] = {'bind': docker_bundle_path, 'mode': 'rw'}
+    return binds
+
+
 def get_bundle_container_mounts(bundle_path, docker_bundle_path, dependencies) -> List[Mount]:
     """
     Returns mounts for the given bundle path and dependencies.
     """
     os.makedirs(bundle_path, exist_ok=True)
+    """
+    export NFS_VOL_NAME=mynfs
+    export NFS_LOCAL_MNT=/mnt/mynfs
+    export NFS_SERVER=my.nfs.server.com
+    export NFS_SHARE=/my/server/path
+    export NFS_OPTS=vers=4,soft
+    """
+    #  "src=$NFS_VOL_NAME,
+    #  dst=$NFS_LOCAL_MNT,
+    #  volume-opt=device=:$NFS_SHARE,
+    #  \"volume-opt=o=addr=$NFS_SERVER,
+    #  $NFS_OPTS\",
+    #  type=volume,
+    #  volume-driver=local,
+    #  volume-opt=type=nfs" \
     mounts: List[Mount] = [
         # `target` represents the container path and `source` is the volume name or host path
         Mount(target=docker_dep_path, source=os.path.abspath(dep_path), type="bind", read_only=True)
