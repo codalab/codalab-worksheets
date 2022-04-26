@@ -300,9 +300,9 @@ class NewRun extends React.Component<
         }
 
         if (command) args.push(command);
-        
+
         // exclude_patterns a list of arguments, so put it at the end of commands
-        if (exclude_patterns) {  
+        if (exclude_patterns) {
             args.push(`--exclude-patterns`);
             for (let i = 0; i < exclude_patterns.length; i++) {
                 args.push(`${exclude_patterns[i]}`);
