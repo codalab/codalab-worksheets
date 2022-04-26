@@ -129,8 +129,11 @@ jobs:
           restore-keys: |
             pip-
       - run: pip install -r requirements.txt
+      - name: Set up containerd
+        uses: crazy-max/ghaction-setup-containerd@v1
       - name: Setup tests
         run: |
+          sudo service docker stop
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
