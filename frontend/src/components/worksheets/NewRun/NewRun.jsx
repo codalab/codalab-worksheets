@@ -273,6 +273,7 @@ class NewRun extends React.Component<
             networkAccess,
             failedDependencies,
             queue,
+            exclude_patterns,
         } = this.state;
         const { after_sort_key } = this.props;
 
@@ -299,6 +300,12 @@ class NewRun extends React.Component<
         }
 
         if (command) args.push(command);
+
+        // exclude_patterns can take a list of arguments, so put it at the end
+        if (exclude_patterns) {
+            args.push(`--exclude-patterns`);
+            args.push(...exclude_patterns);
+        }
 
         return buildTerminalCommand(args);
     }
