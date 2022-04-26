@@ -271,7 +271,7 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
                 'device': dep_abs_path,
             },
         )
-        logger.info(f"name={dep_volume_name}, device={dep_abs_path}, volume={volume}")
+        logger.info(f"name={dep_volume_name}, device={dep_abs_path}, volume={volume.attrs}")
         binds[dep_volume_name] = {'bind': docker_dep_path, 'mode': 'ro'}
 
     bundle_volume_name: str = generate_volume_name(bundle_path)
@@ -282,7 +282,7 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
         driver_opts={'type': 'nfs', 'o': 'addr=10.24.11.180,vers=4,soft', 'device': bundle_path},
         # driver_opts={'type': 'nfs', 'device': bundle_path},
     )
-    logger.info(f"name={bundle_volume_name}, device={bundle_path}, volume={volume}")
+    logger.info(f"name={bundle_volume_name}, device={bundle_path}, volume={volume.attrs}")
     binds[bundle_volume_name] = {'bind': docker_bundle_path, 'mode': 'rw'}
 
     return binds
