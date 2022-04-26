@@ -267,8 +267,8 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
             driver='local',
             driver_opts={
                 'type': 'nfs',
-                # 'o': 'addr=10.24.11.180,vers=4,soft',
-                'o': 'addr=10.24.11.180,ro',
+                'o': 'addr=10.24.11.180,vers=4,soft',
+                # 'o': 'addr=10.24.11.180,ro',
                 'device': dep_abs_path,
             },
         )
@@ -280,7 +280,7 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
     client.volumes.create(
         name=bundle_volume_name,
         driver='local',
-        driver_opts={'type': 'nfs', 'o': 'addr=10.24.11.180,rw', 'device': bundle_path},
+        driver_opts={'type': 'nfs', 'o': 'addr=10.24.11.180,vers=4,soft', 'device': bundle_path},
         # driver_opts={'type': 'nfs', 'device': bundle_path},
     )
     binds[bundle_volume_name] = {'bind': docker_bundle_path, 'mode': 'rw'}
