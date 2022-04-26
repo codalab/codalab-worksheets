@@ -304,9 +304,7 @@ class NewRun extends React.Component<
         // exclude_patterns can take a list of arguments, so put it at the end
         if (exclude_patterns) {
             args.push(`--exclude-patterns`);
-            for (let i = 0; i < exclude_patterns.length; i++) {
-                args.push(`${exclude_patterns[i]}`);
-            }
+            args.push(...exclude_patterns);
         }
 
         return buildTerminalCommand(args);
