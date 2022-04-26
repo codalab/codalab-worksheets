@@ -266,7 +266,7 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
             driver='local',
             driver_opts={
                 'type': 'nfs',
-                'o': 'addr=10.24.11.180,vers=4,soft',
+                # 'o': 'addr=10.24.11.180,vers=4,soft',
                 'device': dep_abs_path,
             },
         )
@@ -288,7 +288,6 @@ def get_bundle_container_mounts(bundle_path, docker_bundle_path, dependencies) -
     """
     Returns mounts for the given bundle path and dependencies.
     """
-    os.makedirs(bundle_path, exist_ok=True)
     """
     export NFS_VOL_NAME=mynfs
     export NFS_LOCAL_MNT=/mnt/mynfs
