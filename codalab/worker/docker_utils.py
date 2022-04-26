@@ -261,8 +261,7 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
         dep_abs_path: str = os.path.abspath(dep_path)
         dep_volume_name: str = generate_volume_name(dep_abs_path)
         dep_abs_path = dep_abs_path.replace("/exports", "")
-        logger.info(f"name={dep_volume_name}, device={dep_abs_path}")
-        client.volumes.create(
+        volume = client.volumes.create(
             name=dep_volume_name,
             driver='local',
             driver_opts={
@@ -272,17 +271,18 @@ def create_nfs_volumes(bundle_path, docker_bundle_path, dependencies):
                 'device': dep_abs_path,
             },
         )
+        logger.info(f"name={dep_volume_name}, device={dep_abs_path}, volume={volume}")
         binds[dep_volume_name] = {'bind': docker_dep_path, 'mode': 'ro'}
 
     bundle_volume_name: str = generate_volume_name(bundle_path)
     bundle_path = bundle_path.replace("/exports", "")
-    logger.info(f"name={bundle_volume_name}, device={bundle_path}")
-    client.volumes.create(
+    volume = client.volumes.create(
         name=bundle_volume_name,
         driver='local',
         driver_opts={'type': 'nfs', 'o': 'addr=10.24.11.180,vers=4,soft', 'device': bundle_path},
         # driver_opts={'type': 'nfs', 'device': bundle_path},
     )
+    logger.info(f"name={bundle_volume_name}, device={bundle_path}, volume={volume}")
     binds[bundle_volume_name] = {'bind': docker_bundle_path, 'mode': 'rw'}
 
     return binds
