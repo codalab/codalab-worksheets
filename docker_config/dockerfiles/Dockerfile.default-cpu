@@ -4,9 +4,6 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN (curl https://pyenv.run | bash) && pyenv install 3.6.13 && pyenv global 3.6.13
 
-RUN python --version && exit 1
-
-
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
 
