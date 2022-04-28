@@ -2,10 +2,9 @@ FROM nvidia/cuda:11.1.1-cudnn8-devel-ubuntu20.04
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y \
-    software-properties-common && \
-    rm -rf /var/lib/apt/lists/*
-RUN add-apt-repository ppa:deadsnakes/ppa 
+RUN (curl https://pyenv.run | bash) && pyenv install 3.6.13 && pyenv global 3.6.13
+
+RUN python --version && exit 1
 
 ############################################################
 # Common steps (must be the same in the CPU and GPU images)
@@ -20,10 +19,6 @@ RUN apt-get update && apt-get install -y \
     libhdf5-dev \
     swig \
     wget \
-    python3.6 \
-    python3.6-venv \
-    python3.6-dev \
-    python3-pip \
     python3-software-properties \
     openjdk-8-jdk && \
     rm -rf /var/lib/apt/lists/*

@@ -19,20 +19,17 @@ RUN go get -u github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/dock
 WORKDIR /root/go/src/github.com/awslabs/amazon-ecr-credential-helper
 RUN make
 
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN (curl https://pyenv.run | bash) && pyenv install 3.6.13 && pyenv global 3.6.13
+
+RUN python --version && exit 1
+
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends software-properties-common curl && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
-  apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
-    python3.6 \
-    python3.6-dev \
-    python3-pip \
-    python3-setuptools \
     libssl-dev \
     uuid-dev \
     libgpgme11-dev \

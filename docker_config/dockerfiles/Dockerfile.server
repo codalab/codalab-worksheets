@@ -1,12 +1,13 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN (curl https://pyenv.run | bash) && pyenv install 3.6.13 && pyenv global 3.6.13
+
+RUN python --version && exit 1
+
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends software-properties-common && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
-  apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -16,10 +17,6 @@ RUN apt-get update && \
     libmysqlclient-dev \
     libssl-dev \
     mysql-client \
-    python3.6 \
-    python3.6-dev \
-    python3-pip \
-    python3-setuptools \
     python-virtualenv \
     python3-software-properties \
     zip \
