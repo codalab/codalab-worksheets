@@ -99,7 +99,7 @@ def main():
     parser.add_argument(
         '--worker-tag-exclusive',
         action='store_true',
-        help="If set, the CodaLab worker will only run bundles that match the worker\'s tag.",
+        help="If set, the CodaLab worker will only run bundles that match the worker\'s tag. Only has an effect when --worker-tag is set.",
     )
     parser.add_argument(
         '--worker-group',

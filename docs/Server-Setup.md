@@ -375,6 +375,7 @@ export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
+export CODALAB_WORKER_MANAGER_CPU_TAG=
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
 codalab-service start -bds default no-worker worker-manager-cpu
 ```
@@ -399,7 +400,7 @@ kind delete cluster --name codalab
 - Running:
 
 ```
-cl run "echo hi" --request-queue codalab-cpu --request-memory 10m --request-docker-image python:3.6.10-slim-buster
+cl run "echo hi" --request-memory 10m --request-docker-image python:3.6.10-slim-buster
 ```
 
 - ssl / auth for local k8s

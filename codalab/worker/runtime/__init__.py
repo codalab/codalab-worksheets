@@ -4,6 +4,7 @@ from codalab.common import BundleRuntime
 from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 from codalab.worker.docker_utils import DEFAULT_RUNTIME, DockerRuntime
 
+
 def get_runtime(runtime_name: str):
     """Gets the appropriate runtime."""
     if runtime_name == BundleRuntime.KUBERNETES.value:
@@ -52,7 +53,7 @@ class Runtime:
     def get_container_stats(self, container):
         raise NotImplementedError
 
-    def get_container_stats_with_docker_stats(self, container: docker.models.containers.Container):
+    def get_container_stats_with_docker_stats(self, container):
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
         raise NotImplementedError
 

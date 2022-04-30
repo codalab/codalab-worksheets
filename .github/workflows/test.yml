@@ -113,6 +113,7 @@ jobs:
           - edit
           - open wopen
           - store_add
+        runtime: [docker, kubernetes]
     steps:
       - name: Clear free space
         run: |
@@ -135,10 +136,21 @@ jobs:
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
           VERSION: ${{ github.head_ref || 'master' }}
-      - name: Run tests
+      - name: Run tests using Docker runtime
+        if: matrix.runtime == 'docker'
         run: |
           sh ./tests/test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION}
+          python3 test_runner.py --version ${VERSION} ${TEST}
+        env:
+          TEST: ${{ matrix.test }}
+          VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_LINK_MOUNTS: /tmp
+      - name: Run tests using Kubernetes runtime
+        if: matrix.runtime == 'kubernetes'
+        run: |
+          sh ./tests/test-setup.sh
+          sh ./scripts/local-k8s/setup-ci.sh
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
