@@ -186,6 +186,31 @@ In sum, to start an instance and run tests on it:
 
 These must pass before you submit a PR.
 
+### Manually test using GCS
+For now, GCS does not have end-to-end testing. If you need to test upload/download with GCS, you can follow these steps:
+1. Create a test bucket on GCS, and make sure you have the credential to the test bucket.
+2. Set the environment variable:
+
+    export CODALAB_GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentail.json
+
+3. Start the codalab server, and manually create a bundle store using GCS.
+
+    ./codalab_service start -bds default
+    cl work http:://localhost::   # make sure it works using local instance
+    cl store add --name {your_bundle_store_name} --url gs://{test_bucket_name}
+    cl store ls  # make sure you have succcessfully add the 
+
+4. Set the environment variable `CODALAB_DEFAULT_BUNDLE_STORE_NAME`. This environment variable will set the default bundle store used in test cases. The bundle store name should match the name in step3.
+
+    export CODALAB_DEFAULT_BUNDLE_STORE_NAME={your_bundle_store_name}
+
+5. Restart the server and run the test cases. This script will run all the test cases in `test_cli.py`.
+    
+    ./codalab_service start -bds default
+    python test_runner.py default
+
+About the test result: the `default_bundle_store` test is expected to fail because it wants to create a new disk bundle storage that has the same name as our manually created one.
+    
 ## Pre-commit
 
 Before you commit, you should run the following script that makes automated
