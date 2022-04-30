@@ -361,7 +361,7 @@ You should repeat this step each time you change the worker docker image and wan
 
 ```bash
 codalab-service build -s worker
-``` 
+```
 
 ### Run codalab and worker managers
 
@@ -392,3 +392,14 @@ You can remove the kind cluster by running:
 kind delete cluster --name codalab
 ```
 
+### Todo
+
+- Set up CI: https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml
+
+- Running:
+
+```
+cl run "echo hi" --request-queue codalab-cpu --request-memory 10m --request-docker-image python:3.6.10-slim-buster
+```
+
+- ssl / auth for local k8s
