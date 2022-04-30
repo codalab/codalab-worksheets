@@ -35,6 +35,7 @@ class BundleActions extends React.Component<{
         run.networkAccess = bundleInfo.metadata.request_network;
         run.failedDependencies = bundleInfo.metadata.allow_failed_dependencies;
         run.queue = bundleInfo.metadata.request_queue;
+        run.exclude_patterns = bundleInfo.metadata.exclude_patterns;
         this.props.rerunItem(run);
     };
 
