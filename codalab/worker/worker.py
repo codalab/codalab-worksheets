@@ -13,13 +13,14 @@ from typing import Optional, Set, Dict
 import psutil
 
 import docker
+from codalab.common import BundleRuntime
 from codalab.lib.telemetry_util import capture_exception, using_sentry
-import codalab.worker.docker_utils as docker_utils
+from codalab.worker.runtime import get_runtime
 import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
-from .docker_utils import DEFAULT_DOCKER_TIMEOUT
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME
 from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
@@ -70,7 +71,7 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
-        docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
+        docker_runtime=DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
         pass_down_termination=False,  # type: bool
@@ -80,6 +81,7 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool
+        bundle_runtime=BundleRuntime.DOCKER.value,  # type: str
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -116,6 +118,7 @@ class Worker:
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
         self.preemptible = preemptible
+        self.bundle_runtime = bundle_runtime
 
         self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin_successful = False
@@ -135,6 +138,7 @@ class Worker:
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
             shared_memory_size_gb=shared_memory_size_gb,
+            bundle_runtime=bundle_runtime,
         )
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
@@ -670,6 +674,7 @@ class Worker:
                 cpu_usage=0.0,
                 memory_usage=0.0,
                 paths_to_remove=[],
+                bundle_runtime=self.bundle_runtime,
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
@@ -731,7 +736,7 @@ class Worker:
         def netcat_fn():
             try:
                 run_state = self.runs[uuid]
-                container_ip = docker_utils.get_container_ip(
+                container_ip = get_runtime(run_state.bundle_runtime).get_container_ip(
                     self.worker_docker_network.name, run_state.container
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -12,18 +12,17 @@ import socket
 import stat
 import sys
 import psutil
-import requests
 
 from codalab.common import BundleRuntime
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
-from . import docker_utils
 from .worker import Worker
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
 from codalab.worker.noop_image_manager import NoopImageManager
+from codalab.worker.runtime import get_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -317,7 +316,7 @@ def main():
             args.max_image_cache_size,
             args.max_image_size,
         )
-        docker_runtime = docker_utils.DockerRuntime().get_available_runtime()
+        docker_runtime = get_runtime(args.bundle_runtime).get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -354,7 +353,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
-        bundle_runtime=bundle_runtime,
+        bundle_runtime=args.bundle_runtime,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -415,7 +414,9 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = docker_utils.DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+        all_gpus = get_runtime(
+            BundleRuntime.DOCKER.value
+        ).get_nvidia_devices()  # Dict[GPU index: GPU UUID]
     except Exception:
         all_gpus = {}
         # TODO: do this same check for the Kubernetes runtime.
