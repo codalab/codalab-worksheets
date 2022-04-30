@@ -351,7 +351,7 @@ cfssl version # cfssl should be installed
 ./scripts/local-k8s/setup.sh
 ```
 
-If all is successful, your dashboard should look something like this. Make sure at least one node has at least 1000m CPU available (so that it can run a minimal CodaLab bundle):
+If all is successful, you should be able to log into your dashboard. You should have one node running (codalab-control-plane). After you follow the steps below, you should also be able to view each pod (which corresponds to each worker) and then check their logs by clicking on the icon in the top-right.
 
 ![Local Kubernetes Dashboard](../images/local-k8s-dashboard.png)
 
