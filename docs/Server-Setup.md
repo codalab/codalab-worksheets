@@ -209,7 +209,7 @@ For now, GCS does not have end-to-end testing. If you need to test upload/downlo
     ./codalab_service start -bds default
     python test_runner.py default
 
-About the test result: the `default_bundle_store` test is expected to fail because it wants to create a new disk bundle storage that has the same name as our manually created one.
+About the test result: the `default_bundle_store` test is expected to fail because it wants to create a new disk bundle storage that has the same name as our manually created one; the `upload2` test is expected to fail because it checks the response header (needs `Content-Encoding='identity'`), but the GCS response header does not contain `content-encoding`.
     
 ## Pre-commit
 
