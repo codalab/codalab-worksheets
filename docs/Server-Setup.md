@@ -361,7 +361,7 @@ You should repeat this step each time you change the worker docker image and wan
 
 ```bash
 codalab-service build -s worker
-```
+``` 
 
 ### Run codalab and worker managers
 
