@@ -327,3 +327,62 @@ If you need to send Slack notifications from monitor.py service, you can configu
    Slack email address which will show up in a designated Slack channel.
 * Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
 
+
+## Start a local Kubernetes Batch Worker Manager (with kind, for testing / development only)
+
+If you want to test or develop with kubernetes locally, follow these steps to do so:
+
+### Initial (one-time) setup
+
+```
+# First, start codalab without a worker:
+codalab-service start -bds default no-worker
+
+# Install initial dependencies
+wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz && rm go1.18.1.linux-amd64.tar.gz # Install go: instructions from https://go.dev/doc/install
+export PATH=$PATH:/usr/local/go/bin:~/go/bin # add to your bash profile
+go version # go should be installed
+go install sigs.k8s.io/kind@v0.12.0
+go install github.com/cloudflare/cfssl/cmd/...@latest
+kind version # kind should be installed
+cfssl version # cfssl should be installed
+
+# Set up local kind cluster. follow the instructions that display to view the web dashboard.
+./scripts/local-k8s/setup.sh
+```
+
+If all is successful, your dashboard should look something like this. Make sure at least one node has at least 1000m CPU available (so that it can run a minimal CodaLab bundle):
+
+![Local Kubernetes Dashboard](../images/local-k8s-dashboard.png)
+
+
+export CODALAB_SERVER=http://nginx
+export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443
+export CODALAB_WORKER_MANAGER_TYPE=kubernetes
+export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null
+export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
+export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
+export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
+export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
+# codalab-service start -bds worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
+codalab-service start -bds default no-worker worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
+```
+
+### teardown
+
+```
+kind delete cluster
+```
+
+### todo
+
+CI:
+https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml
+
+Run:
+
+```
+run echo --request-queue codalab-cpu
+```
+
+ssl / auth for local k8s
