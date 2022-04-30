@@ -32,6 +32,11 @@ class SlurmBatchWorkerManager(WorkerManager):
 
     @staticmethod
     def add_arguments_to_subparser(subparser):
+        try:
+            user_id = getpass.getuser()
+        except Exception:
+            # Sometimes getpass.getuser() doesn't work.
+            user_id = ""
         subparser.add_argument(
             '--job-name',
             type=str,
@@ -74,7 +79,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             help='Print out Slurm batch job definition without submitting to Slurm',
         )
         subparser.add_argument(
-            '--user', type=str, default=getpass.getuser(), help='User to run the Batch jobs as'
+            '--user', type=str, default=user_id, help='User to run the Batch jobs as'
         )
         subparser.add_argument(
             '--password-file',
@@ -268,7 +273,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             work_dir_prefix = Path()
 
         worker_work_dir = work_dir_prefix.joinpath(
-            Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), "workdir")
+            Path('{}-codalab-SlurmBatchWorkerManager-scratch'.format(self.username), worker_id)
         )
         command = self.build_command(worker_id, str(worker_work_dir))
 
