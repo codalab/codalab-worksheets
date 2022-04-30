@@ -355,6 +355,14 @@ If all is successful, your dashboard should look something like this. Make sure 
 
 ![Local Kubernetes Dashboard](../images/local-k8s-dashboard.png)
 
+### Build worker docker image
+
+You should repeat this step each time you change the worker docker image and want the local kind cluster to load it:
+
+```bash
+codalab-service build -s worker
+```
+
 ### Run codalab and worker managers
 
 Run:
@@ -384,14 +392,3 @@ You can remove the kind cluster by running:
 kind delete cluster --name codalab
 ```
 
-### Todo
-
-- Set up CI: https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml
-
-- Running:
-
-```
-cl run "echo hi" --request-queue codalab-cpu --request-memory 10m --request-docker-image python:3.6.10-slim-buster
-```
-
-- ssl / auth for local k8s
