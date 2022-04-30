@@ -74,6 +74,12 @@ class KubernetesWorkerManager(WorkerManager):
         configuration.api_key['authorization'] = args.auth_token
         configuration.host = args.cluster_host
         configuration.ssl_ca_cert = args.cert_path
+        if configuration.host == "https://codalab-control-plane:6443":
+            configuration.verify_ssl = False
+            configuration.ssl_ca_cert = None
+            del configuration.api_key_prefix['authorization']
+            del configuration.api_key['authorization']
+            configuration.debug = False
 
         self.k8_client: client.ApiClient = client.ApiClient(configuration)
         self.k8_api: client.CoreV1Api = client.CoreV1Api(self.k8_client)
