@@ -355,7 +355,11 @@ If all is successful, your dashboard should look something like this. Make sure 
 
 ![Local Kubernetes Dashboard](../images/local-k8s-dashboard.png)
 
+### Run codalab and worker managers
 
+Run:
+
+```
 export CODALAB_SERVER=http://nginx
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443
 export CODALAB_WORKER_MANAGER_TYPE=kubernetes
@@ -364,25 +368,30 @@ export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
-# codalab-service start -bds worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
-codalab-service start -bds default no-worker worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
+codalab-service start -bds default no-worker worker-manager-cpu
 ```
 
-### teardown
-
+Or if you just want to run the worker manager and check its logs, run:
 ```
-kind delete cluster
-```
-
-### todo
-
-CI:
-https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml
-
-Run:
-
-```
-run echo --request-queue codalab-cpu
+codalab-service start -bds worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
 ```
 
-ssl / auth for local k8s
+### Teardown
+
+You can remove the kind cluster by running:
+
+```
+kind delete cluster --name codalab
+```
+
+### Todo
+
+- Set up CI: https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml
+
+- Running:
+
+```
+cl run "echo hi" --request-queue codalab-cpu --request-memory 10m --request-docker-image python:3.6.10-slim-buster
+```
+
+- ssl / auth for local k8s
