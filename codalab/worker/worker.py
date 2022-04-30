@@ -40,6 +40,7 @@ but they expect the platform specific RunManagers they use to implement a common
 
 NOOP = 'noop'
 
+
 class Worker:
     # Number of retries when a bundle service client command failed to execute. Defining a large number here
     # would allow offline workers to patiently wait until connection to server is re-established.
@@ -73,7 +74,7 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
-        bundle_runtime, # type: Runtime
+        bundle_runtime,  # type: Runtime
         docker_runtime=DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.

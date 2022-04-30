@@ -312,7 +312,12 @@ def main():
         docker_runtime = None
     elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
         image_manager = NoopImageManager()
-        bundle_runtime_class = KubernetesRuntime()
+        bundle_runtime_class = KubernetesRuntime(
+            args.work_dir,
+            args.kubernetes_auth_token,
+            args.kubernetes_cluster_host,
+            args.kubernetes_cert_path,
+        )
         docker_runtime = None
     else:
         image_manager = DockerImageManager(
@@ -358,7 +363,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
-        bundle_runtime=bundle_runtime_class
+        bundle_runtime=bundle_runtime_class,
     )
 
     # Register a signal handler to ensure safe shutdown.

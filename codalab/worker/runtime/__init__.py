@@ -1,13 +1,12 @@
 from typing import Tuple
-from codalab.common import BundleRuntime
-from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 from codalab.worker.docker_utils import DEFAULT_RUNTIME
+
 
 class Runtime:
     """Base class for a runtime."""
 
     @property
-    def name() -> str:
+    def name(self) -> str:
         raise NotImplementedError
 
     def get_nvidia_devices(self, use_docker=True):
@@ -30,12 +29,14 @@ class Runtime:
         self,
         bundle_path,
         uuid,
-        dependencies, # array of (original path, mounted path)
+        dependencies,  # array of (original path, mounted path)
         command,
         docker_image,
         network=None,
         cpuset=None,
         gpuset=None,
+        request_cpus=0,
+        request_gpus=0,
         memory_bytes=0,
         detach=True,
         tty=False,
@@ -58,6 +59,5 @@ class Runtime:
         """Returns (finished boolean, exitcode or None of bundle, failure message or None)"""
         raise NotImplementedError
 
-    @wrap_exception('Unable to check Docker container running time')
     def get_container_running_time(self, container) -> int:
         raise NotImplementedError

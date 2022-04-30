@@ -81,7 +81,7 @@ class DockerRuntime(Runtime):
     """Runtime that launches Docker containers."""
 
     @property
-    def name(self):
+    def name(self) -> str:
         return BundleRuntime.DOCKER.value
 
     def __init__(self):
@@ -169,6 +169,8 @@ class DockerRuntime(Runtime):
         network=None,
         cpuset=None,
         gpuset=None,
+        request_cpus=0,
+        request_gpus=0,
         memory_bytes=0,
         detach=True,
         tty=False,
