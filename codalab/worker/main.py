@@ -18,11 +18,12 @@ from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from .worker import Worker
+from codalab.worker.docker_utils import DockerRuntime
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
 from codalab.worker.noop_image_manager import NoopImageManager
-from codalab.worker.runtime import get_runtime
+from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -307,16 +308,20 @@ def main():
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
         # todo workers with singularity don't work because this is set to none -- handle this
+        bundle_runtime_class = None
         docker_runtime = None
     elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
         image_manager = NoopImageManager()
+        bundle_runtime_class = KubernetesRuntime()
+        docker_runtime = None
     else:
         image_manager = DockerImageManager(
             os.path.join(args.work_dir, 'images-state.json'),
             args.max_image_cache_size,
             args.max_image_size,
         )
-        docker_runtime = get_runtime(args.bundle_runtime).get_available_runtime()
+        bundle_runtime_class = DockerRuntime()
+        docker_runtime = bundle_runtime_class.get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -353,7 +358,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
-        bundle_runtime=args.bundle_runtime,
+        bundle_runtime=bundle_runtime_class
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -414,9 +419,7 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = get_runtime(
-            BundleRuntime.DOCKER.value
-        ).get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+        all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
     except Exception:
         all_gpus = {}
         # TODO: do this same check for the Kubernetes runtime.

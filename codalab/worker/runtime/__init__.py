@@ -1,20 +1,14 @@
 from typing import Tuple
-from xmlrpc.client import Boolean
 from codalab.common import BundleRuntime
 from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
-from codalab.worker.docker_utils import DEFAULT_RUNTIME, DockerRuntime
-
-
-def get_runtime(runtime_name: str):
-    """Gets the appropriate runtime."""
-    if runtime_name == BundleRuntime.KUBERNETES.value:
-        return KubernetesRuntime
-    else:
-        return DockerRuntime
-
+from codalab.worker.docker_utils import DEFAULT_RUNTIME
 
 class Runtime:
     """Base class for a runtime."""
+
+    @property
+    def name() -> str:
+        raise NotImplementedError
 
     def get_nvidia_devices(self, use_docker=True):
         """
@@ -36,7 +30,7 @@ class Runtime:
         self,
         bundle_path,
         uuid,
-        dependencies,
+        dependencies, # array of (original path, mounted path)
         command,
         docker_image,
         network=None,
@@ -57,10 +51,10 @@ class Runtime:
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
         raise NotImplementedError
 
-    def container_exists(self, container) -> Boolean:
+    def container_exists(self, container) -> bool:
         raise NotImplementedError
 
-    def check_finished(self, container) -> Tuple[Boolean, str, str]:
+    def check_finished(self, container) -> Tuple[bool, str, str]:
         """Returns (finished boolean, exitcode or None of bundle, failure message or None)"""
         raise NotImplementedError
 

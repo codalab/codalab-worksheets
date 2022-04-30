@@ -9,13 +9,14 @@ import socket
 import http.client
 import sys
 from typing import Optional, Set, Dict
+from types import SimpleNamespace
 
 import psutil
 
 import docker
 from codalab.common import BundleRuntime
 from codalab.lib.telemetry_util import capture_exception, using_sentry
-from codalab.worker.runtime import get_runtime
+from codalab.worker.runtime import Runtime, get_runtime
 import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
@@ -37,6 +38,7 @@ to architecture-specific RunManagers that run the jobs. Workers are execution pl
 but they expect the platform specific RunManagers they use to implement a common interface
 """
 
+NOOP = 'noop'
 
 class Worker:
     # Number of retries when a bundle service client command failed to execute. Defining a large number here
@@ -71,6 +73,7 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
+        bundle_runtime, # type: Runtime
         docker_runtime=DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
@@ -81,7 +84,6 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool
-        bundle_runtime=BundleRuntime.DOCKER.value,  # type: str
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -145,6 +147,12 @@ class Worker:
         """
         Set up docker networks for runs: one with external network access and one without
         """
+        if self.bundle_runtime.name != BundleRuntime.DOCKER.value:
+            # Don't create Docker networks if we're not using the Docker runtime. Return.
+            self.worker_docker_network = SimpleNamespace(name=NOOP)
+            self.docker_network_external = SimpleNamespace(name=NOOP)
+            self.docker_network_internal = SimpleNamespace(name=NOOP)
+            return
 
         def create_or_get_network(name, internal, verbose):
             try:
@@ -341,12 +349,13 @@ class Worker:
         self.save_state()
         if self.delete_work_dir_on_exit:
             shutil.rmtree(self.work_dir)
-        try:
-            self.worker_docker_network.remove()
-            self.docker_network_internal.remove()
-            self.docker_network_external.remove()
-        except docker.errors.APIError as e:
-            logger.warning("Cannot clear docker networks: %s", str(e))
+        if self.worker_docker_network.name != NOOP:
+            try:
+                self.worker_docker_network.remove()
+                self.docker_network_internal.remove()
+                self.docker_network_external.remove()
+            except docker.errors.APIError as e:
+                logger.warning("Cannot clear docker networks: %s", str(e))
 
         logger.info("Stopped Worker. Exiting")
 
@@ -505,6 +514,7 @@ class Worker:
         ]
         for container_id in finished_container_ids:
             try:
+                # todo
                 container = self.docker.containers.get(container_id)
                 container.remove(force=True)
             except (docker.errors.NotFound, docker.errors.NullResource):
@@ -736,7 +746,7 @@ class Worker:
         def netcat_fn():
             try:
                 run_state = self.runs[uuid]
-                container_ip = get_runtime(run_state.bundle_runtime).get_container_ip(
+                container_ip = self.bundle_runtime.get_container_ip(
                     self.worker_docker_network.name, run_state.container
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

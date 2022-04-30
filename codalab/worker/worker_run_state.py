@@ -16,7 +16,6 @@ from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
 from codalab.worker.bundle_state import State, DependencyKey
 from codalab.worker.fsm import DependencyStage, StateTransitioner
 from codalab.worker.worker_thread import ThreadDict
-from codalab.worker.runtime import get_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +107,6 @@ RunState = namedtuple(
         'memory_usage',  # float
         'bundle_profile_stats',  # dict
         'paths_to_remove',  # list[str]. Stores paths to be removed after the worker run.
-        'bundle_runtime',  # str
     ],
 )
 
@@ -421,7 +419,7 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Start container
         try:
-            container = get_runtime(run_state.bundle_runtime).start_bundle_container(
+            container = self.bundle_runtime.start_bundle_container(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
@@ -471,9 +469,7 @@ class RunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = get_runtime(
-                    run_state.bundle_runtime
-                ).check_finished(run_state.container)
+                finished, exitcode, failure_msg = self.bundle_runtime.check_finished(run_state.container)
             except DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None
@@ -482,15 +478,13 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            (cpu_usage, memory_usage,) = get_runtime(
-                run_state.bundle_runtime
-            ).get_container_stats_with_docker_stats(run_state.container)
+            (cpu_usage, memory_usage,) = self.bundle_runtime.get_container_stats_with_docker_stats(run_state.container)
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
             run_state = run_state._replace(memory_usage=memory_usage)
 
             kill_messages = []
 
-            run_stats = get_runtime(run_state.bundle_runtime).get_container_stats(
+            run_stats = self.bundle_runtime.get_container_stats(
                 run_state.container
             )
 
@@ -501,7 +495,7 @@ class RunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
             )
 
-            container_time_total = get_runtime(run_state.bundle_runtime).get_container_running_time(
+            container_time_total = self.bundle_runtime.get_container_running_time(
                 run_state.container
             )
             run_state = run_state._replace(
@@ -565,11 +559,11 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.CLEANING_UP,
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
-            if get_runtime(run_state.bundle_runtime).container_exists(run_state.container):
+            if self.bundle_runtime.container_exists(run_state.container):
                 try:
                     run_state.container.kill()
                 except docker.errors.APIError:
-                    finished, _, _ = get_runtime(run_state.bundle_runtime).check_finished(
+                    finished, _, _ = self.bundle_runtime.check_finished(
                         run_state.container
                     )
                     if not finished:
@@ -607,9 +601,9 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.container_id is not None:
-            while get_runtime(run_state.bundle_runtime).container_exists(run_state.container):
+            while self.bundle_runtime.container_exists(run_state.container):
                 try:
-                    finished, _, _ = get_runtime(run_state.bundle_runtime).check_finished(
+                    finished, _, _ = self.bundle_runtime.check_finished(
                         run_state.container
                     )
                     if finished:

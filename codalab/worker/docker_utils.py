@@ -13,6 +13,7 @@ from dateutil import parser, tz
 import datetime
 import re
 import traceback
+from codalab.common import BundleRuntime
 from .runtime import Runtime
 
 MIN_API_VERSION = '1.17'
@@ -78,6 +79,10 @@ class DockerUserErrorException(Exception):
 
 class DockerRuntime(Runtime):
     """Runtime that launches Docker containers."""
+
+    @property
+    def name(self):
+        return BundleRuntime.DOCKER.value
 
     def __init__(self):
         self.client = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
