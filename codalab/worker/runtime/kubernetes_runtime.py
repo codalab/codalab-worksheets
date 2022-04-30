@@ -1,4 +1,4 @@
-from . import Runtime
+from codalab.worker.runtime import Runtime
 
 
 class KubernetesRuntime(Runtime):

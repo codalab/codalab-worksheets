@@ -1,9 +1,8 @@
 from typing import Tuple
 from xmlrpc.client import Boolean
 from codalab.common import BundleRuntime
-from .kubernetes_runtime import KubernetesRuntime
-from ..docker_utils import DEFAULT_RUNTIME, DockerRuntime
-
+from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
+from codalab.worker.docker_utils import DEFAULT_RUNTIME, DockerRuntime
 
 def get_runtime(runtime_name: str):
     """Gets the appropriate runtime."""
