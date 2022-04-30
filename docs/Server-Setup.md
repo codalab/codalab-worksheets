@@ -353,7 +353,7 @@ cfssl version # cfssl should be installed
 
 If all is successful, you should be able to log into your dashboard. You should have one node running (codalab-control-plane). After you follow the steps below, you should also be able to view each pod (which corresponds to each worker) and then check their logs by clicking on the icon in the top-right.
 
-![Local Kubernetes Dashboard](../images/local-k8s-dashboard.png)
+![Local Kubernetes Dashboard](./images/local-k8s-dashboard.png)
 
 ### Build worker docker image
 
