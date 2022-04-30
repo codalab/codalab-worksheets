@@ -12,6 +12,7 @@ import os
 import uuid
 from argparse import ArgumentParser
 from typing import Any, Dict, List
+from codalab.common import BundleRuntime
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
@@ -68,6 +69,10 @@ class KubernetesWorkerManager(WorkerManager):
                 'Valid credentials need to be set as environment variables: CODALAB_USERNAME and CODALAB_PASSWORD'
             )
 
+        self.auth_token = args.auth_token
+        self.cluster_host = args.cluster_host
+        self.cert_path = args.cert_path
+
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
         configuration.api_key_prefix['authorization'] = 'Bearer'
@@ -111,6 +116,12 @@ class KubernetesWorkerManager(WorkerManager):
         worker_name: str = f'cl-worker-{worker_id}'
         work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
+
+        command.extend(['--bundle-runtime', BundleRuntime.KUBERNETES.value])
+        command.extend(['--kubernetes-cluster-host', self.cluster_host])
+        command.extend(['--kubernetes-auth-token', self.auth_token])
+        command.extend(['--kubernetes-cert-path', self.cert_path])
+
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
         config: Dict[str, Any] = {
@@ -123,7 +134,6 @@ class KubernetesWorkerManager(WorkerManager):
                         'name': f'{worker_name}-container',
                         'image': worker_image,
                         'command': command,
-                        'securityContext': {'runAsUser': 0},  # Run as root
                         'env': [
                             {'name': 'CODALAB_USERNAME', 'value': self.codalab_username},
                             {'name': 'CODALAB_PASSWORD', 'value': self.codalab_password},
@@ -135,16 +145,10 @@ class KubernetesWorkerManager(WorkerManager):
                                 'nvidia.com/gpu': self.args.gpus,  # Configure NVIDIA GPUs
                             }
                         },
-                        'volumeMounts': [
-                            {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
-                            {'name': 'workdir', 'mountPath': work_dir},
-                        ],
+                        'volumeMounts': [{'name': 'workdir', 'mountPath': work_dir},],
                     }
                 ],
-                'volumes': [
-                    {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
-                    {'name': 'workdir', 'hostPath': {'path': work_dir}},
-                ],
+                'volumes': [{'name': 'workdir', 'hostPath': {'path': work_dir}},],
                 'restartPolicy': 'Never',  # Only run a job once
             },
         }
