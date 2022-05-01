@@ -10,9 +10,8 @@ go install github.com/cloudflare/cfssl/cmd/...@latest
 kind version # kind should be installed
 cfssl version # cfssl should be installed
 
-# Set up local kind cluster. follow the instructions that display to view the web dashboard.
-__dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-${__dir}/setup.sh
+# Set up local kind cluster.
+./scripts/local-k8s/setup.sh
 
 # Run worker manager
 export CODALAB_SERVER=http://nginx
