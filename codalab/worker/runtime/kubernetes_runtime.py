@@ -159,6 +159,7 @@ class KubernetesRuntime(Runtime):
     def container_exists(self, pod_name: str) -> bool:
         try:
             self.k8_api.read_namespaced_pod_status(pod_name, "default")
+            return True
         except ApiException as e:
             if e.status == 404:
                 return False
