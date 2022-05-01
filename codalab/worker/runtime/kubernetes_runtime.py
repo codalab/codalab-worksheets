@@ -5,8 +5,8 @@ from dateutil import tz
 from typing import Any, Dict, Optional, Tuple
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
-from kubernetes import client, utils  # type: ignore
-from kubernetes.utils.create_from_yaml import FailToCreateError  # type: ignore
+from kubernetes import client, utils
+from kubernetes.utils.create_from_yaml import FailToCreateError
 from kubernetes.client.rest import ApiException
 
 from codalab.worker.docker_utils import DEFAULT_RUNTIME
