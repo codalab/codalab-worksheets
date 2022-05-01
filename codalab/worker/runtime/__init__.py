@@ -1,5 +1,6 @@
 from typing import Tuple
-from codalab.worker.docker_utils import DEFAULT_RUNTIME
+
+DEFAULT_RUNTIME = 'runc'  # copied from docker_utils to avoid a circular import
 
 
 class Runtime:

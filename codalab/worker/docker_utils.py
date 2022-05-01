@@ -14,7 +14,7 @@ import datetime
 import re
 import traceback
 from codalab.common import BundleRuntime
-from .runtime import Runtime
+from codalab.worker.runtime import Runtime
 
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'

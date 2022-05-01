@@ -16,7 +16,7 @@ import psutil
 import docker
 from codalab.common import BundleRuntime
 from codalab.lib.telemetry_util import capture_exception, using_sentry
-from codalab.worker.runtime import Runtime, get_runtime
+from codalab.worker.runtime import Runtime
 import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
@@ -150,9 +150,9 @@ class Worker:
         """
         if self.bundle_runtime.name != BundleRuntime.DOCKER.value:
             # Don't create Docker networks if we're not using the Docker runtime. Return.
-            self.worker_docker_network = SimpleNamespace(name=NOOP)
-            self.docker_network_external = SimpleNamespace(name=NOOP)
-            self.docker_network_internal = SimpleNamespace(name=NOOP)
+            self.worker_docker_network = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            self.docker_network_external = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            self.docker_network_internal = SimpleNamespace(name=NOOP, connect=lambda _: _)
             return
 
         def create_or_get_network(name, internal, verbose):
@@ -685,7 +685,6 @@ class Worker:
                 cpu_usage=0.0,
                 memory_usage=0.0,
                 paths_to_remove=[],
-                bundle_runtime=self.bundle_runtime,
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
