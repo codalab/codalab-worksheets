@@ -5,9 +5,6 @@ set -e
 python3 codalab_service.py start --services default no-worker --version ${VERSION}
 
 # Install initial dependencies
-wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz && rm go1.18.1.linux-amd64.tar.gz # Install go: instructions from https://go.dev/doc/install
-export PATH=$PATH:/usr/local/go/bin:~/go/bin # add to your bash profile
-go version # go should be installed
 go install sigs.k8s.io/kind@v0.12.0
 go install github.com/cloudflare/cfssl/cmd/...@latest
 kind version # kind should be installed
