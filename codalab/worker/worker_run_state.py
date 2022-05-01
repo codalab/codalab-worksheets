@@ -1,4 +1,3 @@
-import docker
 import glob
 import logging
 import os
@@ -11,6 +10,7 @@ from collections import namedtuple
 from .docker_utils import DockerException, DockerUserErrorException
 from pathlib import Path
 
+from codalab.worker.runtime import RuntimeAPIError
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
 from codalab.worker.bundle_state import State, DependencyKey
@@ -88,7 +88,7 @@ RunState = namedtuple(
         'container_time_total',  # int
         'container_time_user',  # int
         'container_time_system',  # int
-        'container',  # Optional[docker.Container]
+        'container',  # Optional[docker.Container]. Deprecated, all container data is handled by container_id now.
         'container_id',  # Optional[str]
         'docker_image',  # Optional[str]
         'is_killed',  # bool
@@ -419,7 +419,7 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Start container
         try:
-            container = self.bundle_runtime.start_bundle_container(
+            container_id = self.bundle_runtime.start_bundle_container(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
@@ -434,7 +434,7 @@ class RunStateMachine(StateTransitioner):
                 runtime=self.docker_runtime,
                 shared_memory_size_gb=self.shared_memory_size_gb,
             )
-            self.worker_docker_network.connect(container)
+            self.worker_docker_network.connect(container_id)
         except DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             log_bundle_transition(
@@ -454,8 +454,8 @@ class RunStateMachine(StateTransitioner):
         return run_state._replace(
             stage=RunStage.RUNNING,
             run_status='Running job in container',
-            container_id=container.id,
-            container=container,
+            container_id=container_id,
+            container=None,
             docker_image=image_state.digest,
             has_contents=True,
             cpuset=cpuset,
@@ -472,7 +472,7 @@ class RunStateMachine(StateTransitioner):
         def check_and_report_finished(run_state):
             try:
                 finished, exitcode, failure_msg = self.bundle_runtime.check_finished(
-                    run_state.container
+                    run_state.container_id
                 )
             except DockerException:
                 logger.error(traceback.format_exc())
@@ -483,14 +483,14 @@ class RunStateMachine(StateTransitioner):
 
         def check_resource_utilization(run_state: RunState):
             (cpu_usage, memory_usage,) = self.bundle_runtime.get_container_stats_with_docker_stats(
-                run_state.container
+                run_state.container_id
             )
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
             run_state = run_state._replace(memory_usage=memory_usage)
 
             kill_messages = []
 
-            run_stats = self.bundle_runtime.get_container_stats(run_state.container)
+            run_stats = self.bundle_runtime.get_container_stats(run_state.container_id)
 
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
@@ -500,7 +500,7 @@ class RunStateMachine(StateTransitioner):
             )
 
             container_time_total = self.bundle_runtime.get_container_running_time(
-                run_state.container
+                run_state.container_id
             )
             run_state = run_state._replace(
                 container_time_total=container_time_total,
@@ -563,11 +563,11 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.CLEANING_UP,
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
-            if self.bundle_runtime.container_exists(run_state.container):
+            if self.bundle_runtime.container_exists(run_state.container_id):
                 try:
-                    run_state.container.kill()
-                except docker.errors.APIError:
-                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container)
+                    self.bundle_runtime.remove(run_state.container_id)
+                except RuntimeAPIError:
+                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container_id)
                     if not finished:
                         logger.error(traceback.format_exc())
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
@@ -603,20 +603,20 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.container_id is not None:
-            while self.bundle_runtime.container_exists(run_state.container):
+            while self.bundle_runtime.container_exists(run_state.container_id):
                 try:
-                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container)
+                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container_id)
                     if finished:
-                        run_state.container.remove(force=True)
+                        self.bundle_runtime.remove(run_state.container_id)
                         run_state = run_state._replace(container=None, container_id=None)
                         break
                     else:
                         try:
-                            run_state.container.kill()
-                        except docker.errors.APIError:
+                            self.bundle_runtime.kill(run_state.container_id)
+                        except RuntimeAPIError:
                             logger.error(traceback.format_exc())
                             time.sleep(1)
-                except docker.errors.APIError:
+                except RuntimeAPIError:
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 

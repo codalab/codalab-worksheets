@@ -1,6 +1,12 @@
-from typing import Tuple
+from typing import Optional, Tuple
+import docker
+from kubernetes.client.rest import ApiException
 
 DEFAULT_RUNTIME = 'runc'  # copied from docker_utils to avoid a circular import
+
+
+# Any errors that relate to runtime API calls failing.
+RuntimeAPIError = (docker.errors.APIError, ApiException)
 
 
 class Runtime:
@@ -23,7 +29,7 @@ class Runtime:
         """
         raise NotImplementedError
 
-    def get_container_ip(self, network_name, container):
+    def get_container_ip(self, network_name: str, container_id: str):
         raise NotImplementedError
 
     def start_bundle_container(
@@ -43,22 +49,29 @@ class Runtime:
         tty=False,
         runtime=DEFAULT_RUNTIME,
         shared_memory_size_gb=1,
-    ):
+    ) -> str:
+        """Starts bundle job. Should return a unique identifier that can be used to fetch the job later."""
         raise NotImplementedError
 
-    def get_container_stats(self, container):
+    def get_container_stats(self, container_id: str):
         raise NotImplementedError
 
-    def get_container_stats_with_docker_stats(self, container):
+    def get_container_stats_with_docker_stats(self, container_id: str):
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
         raise NotImplementedError
 
-    def container_exists(self, container) -> bool:
+    def container_exists(self, container_id: str) -> bool:
         raise NotImplementedError
 
-    def check_finished(self, container) -> Tuple[bool, str, str]:
+    def check_finished(self, container_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """Returns (finished boolean, exitcode or None of bundle, failure message or None)"""
         raise NotImplementedError
 
-    def get_container_running_time(self, container) -> int:
+    def get_container_running_time(self, container_id: str) -> int:
+        raise NotImplementedError
+
+    def kill(self, container_id: str):
+        raise NotImplementedError
+
+    def remove(self, container_id: str):
         raise NotImplementedError

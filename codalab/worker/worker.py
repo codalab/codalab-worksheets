@@ -508,18 +508,13 @@ class Worker:
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
-            run.container
+            run.container_id
             for run in self.runs.values()
             if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
             and run.container_id is not None
         ]
         for container_id in finished_container_ids:
-            try:
-                # todo
-                container = self.docker.containers.get(container_id)
-                container.remove(force=True)
-            except (docker.errors.NotFound, docker.errors.NullResource):
-                pass
+            self.bundle_runtime.remove(container_id)
 
         # 3. reset runs for the current worker
         self.runs = {
@@ -747,7 +742,7 @@ class Worker:
             try:
                 run_state = self.runs[uuid]
                 container_ip = self.bundle_runtime.get_container_ip(
-                    self.worker_docker_network.name, run_state.container
+                    self.worker_docker_network.name, run_state.container_id
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((container_ip, port))

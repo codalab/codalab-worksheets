@@ -37,6 +37,10 @@ logger = logging.getLogger('docker')
 logger.setLevel(logging.WARNING)
 logger = logging.getLogger('apache_beam')
 logger.setLevel(logging.WARNING)
+logger = logging.getLogger('kubernetes')
+logger.setLevel(logging.WARNING)
+logger = logging.getLogger('urllib3')
+logger.setLevel(logging.ERROR)
 
 
 class IntegrityError(ValueError):

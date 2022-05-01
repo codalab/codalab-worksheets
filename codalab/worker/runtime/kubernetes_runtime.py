@@ -1,8 +1,13 @@
+import datetime
+import json
 import logging
-from typing import Any, Dict, Tuple
+from dateutil import tz
+from typing import Any, Dict, Optional, Tuple
+from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
+
 from kubernetes import client, utils  # type: ignore
 from kubernetes.utils.create_from_yaml import FailToCreateError  # type: ignore
-from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
+from kubernetes.client.rest import ApiException
 
 from codalab.worker.docker_utils import DEFAULT_RUNTIME
 from codalab.common import BundleRuntime
@@ -56,8 +61,10 @@ class KubernetesRuntime(Runtime):
         """
         return {}
 
-    def get_container_ip(self, network_name, container):
-        raise NotImplementedError
+    def get_container_ip(self, network_name: str, pod_name: str):
+        """Returns (finished boolean, exitcode or None of bundle, failure message or None)"""
+        pod = self.k8_api.read_namespaced_pod_status(pod_name, "default")
+        return pod.status.pod_ip
 
     def start_bundle_container(
         self,
@@ -76,7 +83,7 @@ class KubernetesRuntime(Runtime):
         tty=False,
         runtime=DEFAULT_RUNTIME,
         shared_memory_size_gb=1,
-    ):
+    ) -> str:
         if not command.endswith(';'):
             command = '{};'.format(command)
         # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
@@ -129,28 +136,98 @@ class KubernetesRuntime(Runtime):
                 'restartPolicy': 'Never',  # Only run a job once
             },
         }
-        import json
+
         logging.warn("config is: %s", json.dumps(config))
         logger.warn('Starting job {} with image {}'.format(container_name, docker_image))
         try:
-            output = utils.create_from_dict(self.k8_client, config)
-            logging.warn("output from create is: %s", output)
+            pod = utils.create_from_dict(self.k8_client, config)
         except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
             logger.error(f'Exception when calling Kubernetes utils->create_from_dict...: {e}')
+            raise e
 
-    def get_container_stats(self, container):
-        raise NotImplementedError
+        return pod.metadata.name
 
-    def get_container_stats_with_docker_stats(self, container):
+    def get_container_stats(self, pod_name: str):
+        # TODO: implement
+        return {}
+
+    def get_container_stats_with_docker_stats(self, pod_name: str):
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
-        raise NotImplementedError
+        # TODO: implement
+        return 0.0, 0
 
-    def container_exists(self, container) -> bool:
-        raise NotImplementedError
+    def container_exists(self, pod_name: str) -> bool:
+        try:
+            self.k8_api.read_namespaced_pod_status(pod_name, "default")
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            logger.error(
+                f'Exception when calling Kubernetes api->read_namespaced_pod_status...: {e}'
+            )
+            raise e
 
-    def check_finished(self, container) -> Tuple[bool, str, str]:
+    def check_finished(self, pod_name: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """Returns (finished boolean, exitcode or None of bundle, failure message or None)"""
-        raise NotImplementedError
+        try:
+            pod = self.k8_api.read_namespaced_pod_status(pod_name, "default")
+        except ApiException as e:
+            if e.status == 404:
+                # Pod no longer exists
+                return (True, None, None)
+            logger.error(
+                f'Exception when calling Kubernetes api->read_namespaced_pod_status...: {e}'
+            )
+            raise e
+        if pod.status.phase in ("Succeeded", "Failed"):
+            try:
+                return (
+                    True,
+                    pod.status.container_statuses[0].last_state.terminated.exit_code,
+                    pod.status.container_statuses[0].last_state.terminated.reason,
+                )
+            except (AttributeError, KeyError):
+                logging.warn("check_finished: status couldn't be parsed, but is: %s", pod)
+                return (True, None, None)
+        return (False, None, None)
 
-    def get_container_running_time(self, container) -> int:
-        raise NotImplementedError
+    def get_container_running_time(self, pod_name: str) -> int:
+        try:
+            status = self.k8_api.read_namespaced_pod_status(pod_name, "default")
+        except ApiException as e:
+            if e.status == 404:
+                # Pod no longer exists
+                return 0
+            logger.error(
+                f'Exception when calling Kubernetes api->read_namespaced_pod_status...: {e}'
+            )
+            raise e
+        try:
+            lastState = status.container_statuses[0].last_state
+            if "running" in lastState:
+                return (
+                    datetime.datetime.now(tz.tzutc()) - lastState.running.started_at
+                ).total_seconds()
+            elif "terminated" in lastState:
+                return (
+                    lastState.terminated.finished_at - lastState.terminated.started_at
+                ).total_seconds()
+            return 0
+        except (AttributeError, KeyError):
+            logging.warn(
+                "get_container_running_time: status couldn't be parsed, but is: %s", status
+            )
+            return 0
+
+    def kill(self, pod_name: str):
+        return self.remove(pod_name)
+
+    def remove(self, pod_name: str):
+        try:
+            self.k8_api.delete_namespaced_pod(pod_name, "default")
+        except ApiException as e:
+            if e.status != 404:
+                logger.error(
+                    f'Exception when calling Kubernetes api->delete_namespaced_pod...: {e}'
+                )
+                raise e

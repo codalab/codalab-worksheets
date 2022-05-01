@@ -8,6 +8,7 @@ created if not.
 
 import logging
 import os
+from typing import Optional, Tuple
 import docker
 from dateutil import parser, tz
 import datetime
@@ -149,10 +150,10 @@ class DockerRuntime(Runtime):
         }
 
     @wrap_exception('Unable to fetch Docker container ip')
-    def get_container_ip(self, network_name, container):
+    def get_container_ip(self, network_name: str, container_id: str):
         # Unfortunately docker SDK doesn't update the status of Container objects
         # so we re-fetch them from the API again to get the most recent state
-        container = self.client.containers.get(container.id)
+        container = self.client.containers.get(container_id)
         try:
             return container.attrs["NetworkSettings"]["Networks"][network_name]["IPAddress"]
         except KeyError:  # if container ip cannot be found in provided network, return None
@@ -176,7 +177,7 @@ class DockerRuntime(Runtime):
         tty=False,
         runtime=DEFAULT_RUNTIME,
         shared_memory_size_gb=1,
-    ):
+    ) -> str:
         if not command.endswith(';'):
             command = '{};'.format(command)
         # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
@@ -240,7 +241,7 @@ class DockerRuntime(Runtime):
                 logger.warning("Failed to clean up Docker container after failed launch.")
                 traceback.print_exc()
             raise
-        return container
+        return container.id
 
     def get_bundle_container_volume_binds(self, bundle_path, docker_bundle_path, dependencies):
         """
@@ -254,7 +255,7 @@ class DockerRuntime(Runtime):
         return binds
 
     @wrap_exception("Can't get container stats")
-    def get_container_stats(self, container):
+    def get_container_stats(self, container_id: str):
         # We don't use the stats API since it doesn't seem to be reliable, and
         # is definitely slow. This doesn't work on Mac.
         cgroup = None
@@ -269,7 +270,7 @@ class DockerRuntime(Runtime):
 
         # Get CPU usage
         try:
-            cpu_path = os.path.join(cgroup, 'cpuacct/docker', container.id, 'cpuacct.stat')
+            cpu_path = os.path.join(cgroup, 'cpuacct/docker', container_id, 'cpuacct.stat')
             with open(cpu_path) as f:
                 for line in f:
                     key, value = line.split(' ')
@@ -284,7 +285,7 @@ class DockerRuntime(Runtime):
         # Get memory usage
         try:
             memory_path = os.path.join(
-                cgroup, 'memory/docker', container.id, 'memory.usage_in_bytes'
+                cgroup, 'memory/docker', container_id, 'memory.usage_in_bytes'
             )
             with open(memory_path) as f:
                 stats['memory'] = int(f.read())
@@ -294,13 +295,11 @@ class DockerRuntime(Runtime):
         return stats
 
     @wrap_exception('Unable to check Docker API for container')
-    def get_container_stats_with_docker_stats(self, container: docker.models.containers.Container):
+    def get_container_stats_with_docker_stats(self, container_id: str):
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
-        if self.container_exists(container):
+        if self.container_exists(container_id):
             try:
-                container_stats: dict = self.client.containers.get(container.name).stats(
-                    stream=False
-                )
+                container_stats: dict = self.client.containers.get(container_id).stats(stream=False)
 
                 cpu_usage: float = self.get_cpu_usage(container_stats)
                 memory_usage: float = self.get_memory_usage(container_stats)
@@ -347,23 +346,19 @@ class DockerRuntime(Runtime):
             return 0
 
     @wrap_exception('Unable to check Docker API for container')
-    def container_exists(self, container):
+    def container_exists(self, container_id):
         try:
-            self.client.containers.get(container.id)
+            self.client.containers.get(container_id)
             return True
-        except AttributeError:
-            # container is None
-            return False
         except docker.errors.NotFound:
             return False
 
     @wrap_exception('Unable to check Docker container status')
-    def check_finished(self, container):
-        # Unfortunately docker SDK doesn't update the status of Container objects
-        # so we re-fetch them from the API again to get the most recent state
-        if container is None:
+    def check_finished(self, container_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        try:
+            container = self.client.containers.get(container_id)
+        except docker.errors.NotFound:
             return (True, None, 'Docker container not found')
-        container = self.client.containers.get(container.id)
         if container.status != 'running':
             # If the logs are nonempty, then something might have gone
             # wrong with the commands run before the user command,
@@ -382,12 +377,13 @@ class DockerRuntime(Runtime):
         return (False, None, None)
 
     @wrap_exception('Unable to check Docker container running time')
-    def get_container_running_time(self, container):
-        # This usually happens when container gets accidentally removed or deleted
-        if container is None:
-            return DEFAULT_CONTAINER_RUNNING_TIME
+    def get_container_running_time(self, container_id: str):
         # Get the current container
-        container = self.client.containers.get(container.id)
+        try:
+            container = self.client.containers.get(container_id)
+        except docker.errors.NotFound:
+            # This usually happens when container gets accidentally removed or deleted
+            return DEFAULT_CONTAINER_RUNNING_TIME
         # Load this container from the server again and update attributes with the new data.
         container.reload()
         # Calculate the start_time of the current container
@@ -404,3 +400,17 @@ class DockerRuntime(Runtime):
         # formatted datetime string directly.
         container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
         return container_running_time.total_seconds()
+
+    def kill(self, container_id: str):
+        try:
+            container = self.client.containers.get(container_id)
+        except docker.errors.NotFound:
+            return
+        container.kill()
+
+    def remove(self, container_id: str):
+        try:
+            container = self.client.containers.get(container_id)
+        except docker.errors.NotFound:
+            return
+        container.remove(force=True)
