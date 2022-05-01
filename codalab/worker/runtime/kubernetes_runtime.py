@@ -83,7 +83,7 @@ class KubernetesRuntime(Runtime):
         # the program can't find the symbolic link (default is "/bin/bash") of bash in the environment
         command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
         working_directory = '/' + uuid
-        container_name = 'codalab_run_%s' % uuid
+        container_name = 'codalab-run-%s' % uuid
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
@@ -112,14 +112,14 @@ class KubernetesRuntime(Runtime):
                             {
                                 'name': 'workdir',
                                 'mountPath': working_directory,
-                                'subPath': removeprefix(bundle_path, self.work_dir),
+                                'subPath': removeprefix(bundle_path, self.work_dir).lstrip("/"),
                             }
                         ]
                         + [
                             {
                                 'name': 'workdir',
                                 'mountPath': mounted_dep_path,
-                                'subPath': removeprefix(dep_path, self.work_dir),
+                                'subPath': removeprefix(dep_path, self.work_dir).lstrip("/"),
                             }
                             for dep_path, mounted_dep_path in dependencies
                         ],
@@ -129,13 +129,14 @@ class KubernetesRuntime(Runtime):
                 'restartPolicy': 'Never',  # Only run a job once
             },
         }
-        print("config", config)
+        import json
+        logging.warn("config is: %s", json.dumps(config))
         logger.warn('Starting job {} with image {}'.format(container_name, docker_image))
         try:
             output = utils.create_from_dict(self.k8_client, config)
-            print(output)
+            logging.warn("output from create is: %s", output)
         except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
-            logger.error(f'Exception when calling Kubernetes utils->create_from_dict: {e}')
+            logger.error(f'Exception when calling Kubernetes utils->create_from_dict...: {e}')
 
     def get_container_stats(self, container):
         raise NotImplementedError
