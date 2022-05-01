@@ -380,7 +380,6 @@ export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=0.5
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
-export CODALAB_WORKER_MANAGER_CPU_TAG=noop
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
 export CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=1
 codalab-service start -bds default no-worker worker-manager-cpu
@@ -401,12 +400,9 @@ kind delete cluster --name codalab
 
 ### Todo
 
-- Set up CI: https://github.com/kind-ci/examples/blob/master/.github/workflows/kind.yml
-
-- Running:
-
-```
-cl run "echo hi" --request-memory 10m --request-docker-image python:3.6.10-slim-buster
-```
-
+todos:
+- get GPUs to work
+- make sure workers are now advertising their number of CPUs / disk space properly
+- make sure time calculations for bundles work
 - ssl / auth for local k8s
+- (lower priority) eventually use persistentvolumes for multiple workers, see https://stackoverflow.com/questions/31693529/how-to-share-storage-between-kubernetes-pods
