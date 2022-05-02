@@ -123,30 +123,26 @@ class KubernetesWorkerManager(WorkerManager):
                         },
                         'volumeMounts': [
                             {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
+                            {
+                                "name": self.nfs_volume_name if self.nfs_volume_name else 'workdir',
+                                "mountPath": work_dir,
+                            },
                         ],
                     }
                 ],
-                'volumes': [{'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},],
+                'volumes': [
+                    {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
+                    {
+                        "name": self.nfs_volume_name,
+                        # When attaching a volume over NFS, use a persistent volume claim
+                        "persistentVolumeClaim": {"claimName": f"{self.nfs_volume_name}-claim"},
+                    }
+                    if self.nfs_volume_name
+                    else {"name": 'workdir', "hostPath": {"path": work_dir}},
+                ],
                 'restartPolicy': 'Never',  # Only run a job once
             },
         }
-
-        if self.nfs_volume_name:
-            # When attaching a volume over NFS, use a persistent volume claim
-            config['spec']['volumes'].append(
-                {
-                    "name": self.nfs_volume_name,
-                    "persistentVolumeClaim": {"claimName": f"{self.nfs_volume_name}-claim"},
-                }
-            )
-            config['spec']['containers'][0]['volumeMounts'].append(
-                {"name": self.nfs_volume_name, "mountPath": work_dir},
-            )
-        else:
-            config['spec']['volumes'].append({"name": 'workdir', "hostPath": {"path": work_dir}})
-            config['spec']['containers'][0]['volumeMounts'].append(
-                {"name": 'workdir', "mountPath": work_dir},
-            )
 
         # Start a worker pod on the k8s cluster
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
