@@ -258,3 +258,10 @@ class UploadManager(object):
         bundle_update = {'data_hash': None, 'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
         self._bundle_model.update_user_disk_used(bundle.owner_id)
+    
+    # def bypass_upload_url(self, bundle):
+    def get_upload_sas_url(self, path, **kwargs):
+        # when upload 
+        # path = # neet to get the path like gs://{bucket-name}/{file_name}/{subpath?}
+        return parse_linked_bundle_url(path).bundle_path_sas_url(permission='w', **kwargs)
+

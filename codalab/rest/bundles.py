@@ -12,7 +12,14 @@ from http.client import HTTPResponse
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.common import StorageType, StorageFormat, precondition, UsageError, NotFoundError
+from codalab.common import (
+    StorageType, 
+    StorageFormat, 
+    precondition, 
+    UsageError, 
+    NotFoundError,
+    parse_linked_bundle_url,
+)
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
 from codalab.lib.server_util import (
@@ -455,12 +462,25 @@ def _add_bundle_location(bundle_uuid: str):
 
     Query parameters:
     - `bundle_uuid`: Bundle UUID corresponding to the new location
+    - `should_bypass_server`: If true, if will return
+    - `url`: If the bundle is stored on GCS or Azure, pass the url
     """
+    should_bypass_server = query_get_bool('should_bypass_server', default=False)
+    url = query_get_type(str, 'url', default='')
+    # concate then 
+
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     new_location["uuid"] = local.model.add_bundle_location(
         new_location['bundle_uuid'], new_location['bundle_store_uuid']
     )
-    return BundleLocationSchema(many=True).dump([new_location]).data
+    if should_bypass_server:
+        # generate the SAS token, and send it back to 
+        # TODO: 
+        local.upload_manager.get_upload_sas_url(path)
+
+    data = BundleLocationSchema(many=True).dump([new_location]).data
+    data['data']['upload_url'] = 
+    return data
 
 
 @get(

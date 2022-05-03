@@ -238,8 +238,13 @@ class LinkedBundlePath:
     archive_subpath: str
     bundle_uuid: str
 
-    def _get_sas_url(self, path, **kwargs):
-        """Generates a SAS URL that can be used to read the given blob for one hour."""
+    def _get_sas_url(self, path, permission='r', **kwargs):
+        """
+        Generates a SAS URL that can be used to read the given blob for one hour.
+
+        Args: 
+            permission: `r` or `w`. `r` for bypass server download, and `w` for bypass server upload.
+        """
         if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
             raise ValueError(
                 f"SAS URLs can only be retrieved for bundles on Azure Blob Storage. Storage type is: {self.storage_type}."
@@ -247,22 +252,30 @@ class LinkedBundlePath:
         blob_name = path.replace(
             f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
+        
+        if permission == 'w':  
+            # Use `create` instead of `write`. The `write` permission might modify other bundles.
+            sas_permission = BlobSasPermissions(create=True)
+        else:
+            sas_permission = BlobSasPermissions(read=True)
         sas_token = generate_blob_sas(
             **kwargs,
             account_name=AZURE_BLOB_ACCOUNT_NAME,
             container_name=AZURE_BLOB_CONTAINER_NAME,
             account_key=AZURE_BLOB_ACCOUNT_KEY,
-            permission=BlobSasPermissions(read=True),
+            permission=sas_permission,
             expiry=datetime.datetime.now() + datetime.timedelta(hours=1),
             blob_name=blob_name,
         )
         return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
 
-    def bundle_path_sas_url(self, **kwargs):
-        return self._get_sas_url(self.bundle_path, **kwargs)
+    def bundle_path_sas_url(self, permission='r', **kwargs):
+        return self._get_sas_url(self.bundle_path, permission, **kwargs)
 
-    def index_path_sas_url(self, **kwargs):
-        return self._get_sas_url(self.index_path, **kwargs)
+    def index_path_sas_url(self, permission='r', **kwargs):
+        return self._get_sas_url(self.index_path, permission, **kwargs)
+
+
 
 
 def parse_linked_bundle_url(url):

@@ -1,6 +1,8 @@
 import http.client
 import socket
+from statistics import median_high
 import sys
+from urllib import response
 import six
 import urllib.request
 import urllib.parse
@@ -711,5 +713,18 @@ class JsonApiClient(RestClient):
     def get_bundle_locations(self, bundle_uuid):
         response = self._make_request(
             method='GET', path='/bundles/{}/locations/'.format(bundle_uuid),
+        )
+        return response['data']
+
+    @wrap_exception('Unable to create the location of bundles')
+    def update_bundle_locations(self, bundle_uuid, bundle_store_uuid, params):
+        print(f"In update_bundle_locations, {bundle_uuid} {bundle_store_uuid} {params}")
+        response = self._make_request(
+            method='POST', 
+            path = '/bundles/{}/locations/'.format(bundle_uuid),
+            data={
+                [{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}]
+            },
+            query_params=self._pack_params(params)
         )
         return response['data']

@@ -51,6 +51,7 @@ from codalab.common import (
     ensure_str,
     DiskQuotaExceededError,
     parse_linked_bundle_url,
+    StorageType,
 )
 from codalab.lib import (
     file_util,
@@ -1475,6 +1476,21 @@ class BundleCLI(object):
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
+
+            # If the bundle is stored in Azure or GCS, use bypass server upload 
+            if metadata.get('store') != '':
+                storage_info = client.fetch('bundle_stores', params={
+                    'name': metadata.get('store'), 
+                    'include': ['uuid', 'storage_type', 'url']
+                })
+                # TODO(Jiani): Add StorageType.GCS Here
+                if storage_info['storage_type'] in (StorageType.Azure.value):
+                    should_bypass_server = True
+                    params = {'should_bypass_server': should_bypass_server, 'url': storage_info['url']}
+                    client.update_bundle_locations(new_bundle['id'], storage_info['uuid'], params)
+
+            
+
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
                 client.upload_contents_blob(
