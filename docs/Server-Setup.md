@@ -328,6 +328,8 @@ If you need to send Slack notifications from monitor.py service, you can configu
 * Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
 
 
+<!-- move this to Developer Setup -->
+
 ## Start a local Kubernetes Batch Worker Manager (with kind, for testing / development only)
 
 If you want to test or develop with kubernetes locally, follow these steps to do so:
@@ -378,7 +380,7 @@ export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-contro
 export CODALAB_WORKER_MANAGER_TYPE=kubernetes
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
-export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=0.5
+export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
 export CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=1
@@ -400,9 +402,11 @@ kind delete cluster --name codalab
 
 ### Todo
 
-todos:
+todos for this PR:
 - get GPUs to work
 - make sure workers are now advertising their number of CPUs / disk space properly
 - make sure time calculations for bundles work
+
+future todos:
 - ssl / auth for local k8s
 - (lower priority) eventually use persistentvolumes for multiple workers, see https://stackoverflow.com/questions/31693529/how-to-share-storage-between-kubernetes-pods
