@@ -1486,11 +1486,13 @@ class BundleCLI(object):
                 # TODO(Jiani): Add StorageType.GCS Here
                 if storage_info['storage_type'] in (StorageType.Azure.value):
                     should_bypass_server = True
-                    params = {'should_bypass_server': should_bypass_server, 'url': storage_info['url']}
+                    params = {
+                        'should_bypass_server': should_bypass_server, 
+                        'url': storage_info['url'],
+                        'file_name': packed['filename']}
                     client.update_bundle_locations(new_bundle['id'], storage_info['uuid'], params)
 
             
-
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
                 client.upload_contents_blob(
