@@ -350,19 +350,22 @@ To set this up:
       and check that the output is the same as the output in the previous step.
 
 
-#### Setting up a Network File System (NFS) server <a name="gkenfs"></a>
+#### Optional: Setting up a Network File System (NFS) server <a name="gkenfs"></a>
 
-Optionally, you can attach additional storage by creating a NFS server.
+You can attach additional storage by creating a NFS server.
 
 To set this up:
 
 1. Create a compute disk named `pd` in GCP by running: 
    `gcloud compute disks create --size=<Size of disk in GB>GB --zone=us-west1-a --type pd-ssd pd`.
-2. Go to the `gcp/nfs` directory of this repository: `cd gcp/nfs`.
+2. Go to the `docs/gcp` directory of this repository: `cd docs/gcp`.
 3. Run `kubectl apply -f nfs-server.yaml && kubectl apply -f nfs-service.yaml && kubectl get svc nfs-server`.
    This will output the IP address of the cluster.
 4. Update `nfs-pv.yaml` with the IP address from step 3.
-5. Run `kubectl apply -f nfs-pv.yaml`.
+5. Run `kubectl apply -f nfs-pv.yaml`. 
+6. Note the name of the persistent volume specified [here](https://github.com/codalab/codalab-worksheets/blob/master/docs/gcp/nfs-pv.yaml#L17)
+   and the volume mount path specified [here](https://github.com/codalab/codalab-worksheets/blob/master/docs/gcp/nfs-server.yaml#L42)
+   as you will need these to start the worker manager.
 
 
 #### Authentication and setting up a service account <a name="gkeauthenticate"></a>
@@ -408,6 +411,10 @@ cl-worker-manager --server https://worksheets.codalab.org --min-workers 0 --max-
 --cert-path <Path to gke.crt> --auth-token <Auth token> --cluster-host <Endpoint URL of cluster host>
 --cpus <Number of CPUs on VM> --gpus <Number of GPUS on VM>  --memory-mb <Amount of memory on VM in MB>
 ```
+
+If you want to mount an NFS volume to the worker pods, additionally specify the following arguments:
+- `--nfs-volume-name`: Name of the persistent volume
+- `--worker-work-dir-prefix`: NFS volume mount path
 
 ### Checking worker logs in GCP
 
