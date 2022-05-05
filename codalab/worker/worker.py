@@ -120,7 +120,9 @@ class Worker:
         self.preemptible = preemptible
 
         self.checkin_frequency_seconds = checkin_frequency_seconds
+        self.last_checkin = None
         self.last_checkin_successful = False
+        self.listen_thread = None
         self.last_time_ran = None  # type: Optional[bool]
 
         self.runs = {}  # type: Dict[str, RunState]
@@ -273,21 +275,49 @@ class Worker:
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
-        
-        async def periodic_checkin():
-            async with websockets.connect("ws://ws-server:2901/worker/{self.id}") as websocket:
-                async def receive_msg():
-                    await websocket.recv()
-                    self.checkin()
-                while not self.terminate:
-                    await asyncio.wait_for(receive_msg, timeout=10.0)
 
-        self.checkin()
-        asyncio.ensure_future(periodic_checkin)
+        async def listen(self):
+            logging.warn("Started websocket listening thread")
+            while not self.terminate:
+                logging.warn(f"Connecting anew to: ws://ws-server:2901/worker/{self.id}")
+                async with websockets.connect(
+                    f"ws://ws-server:2901/worker/{self.id}", max_queue=1
+                ) as websocket:
+
+                    async def receive_msg():
+                        await websocket.send("a")
+                        data = await websocket.recv()
+                        logging.warn(
+                            f"Got websocket message, got data: {data}, going to check in now."
+                        )
+                        self.checkin()
+                        self.last_checkin = time.time()
+
+                    while not self.terminate:
+                        try:
+                            await receive_msg()
+                        except asyncio.futures.TimeoutError:
+                            pass
+                        except websockets.exceptions.ConnectionClosed:
+                            logging.warn("Websocket connection closed, starting a new one...")
+                            break
+
+        def listen_thread_fn(self):
+            futures = [listen(self)]
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(asyncio.wait(futures))
+
+        self.listen_thread = threading.Thread(target=listen_thread_fn, args=[self])
+        self.listen_thread.start()
         while not self.terminate:
             try:
-                # Process runs.
-                while not self.terminate:
+                self.checkin()
+                self.last_checkin = time.time()
+                # Process runs until it's time for the next checkin.
+                while not self.terminate and (
+                    time.time() - self.last_checkin <= self.checkin_frequency_seconds
+                ):
                     self.check_termination()
                     self.save_state()
                     if self.check_idle_stop() or self.check_num_runs_stop():
@@ -339,6 +369,8 @@ class Worker:
         Blocks until cleanup is complete and it is safe to quit
         """
         logger.info("Stopping Worker")
+        if self.listen_thread:
+            self.listen_thread.join()
         self.image_manager.stop()
         if not self.shared_file_system:
             self.dependency_manager.stop()

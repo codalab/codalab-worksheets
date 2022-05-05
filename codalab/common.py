@@ -33,6 +33,10 @@ URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 
 # Silence verbose log outputs from certain libraries
 logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
 logger.setLevel(logging.WARNING)
+logger = logging.getLogger('azure.storage.blob')
+logger.setLevel(logging.WARNING)
+logger = logging.getLogger('websockets')
+logger.setLevel(logging.WARNING)
 logger = logging.getLogger('docker')
 logger.setLevel(logging.WARNING)
 logger = logging.getLogger('apache_beam')

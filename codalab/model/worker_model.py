@@ -347,7 +347,7 @@ class WorkerModel(object):
                     sock.connect(self._socket_path(socket_id))
                     success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                 except socket.error:
-                    logging.exception("socket error when calling send_stream")
+                    logging.debug("socket error when calling send_stream")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -366,12 +366,12 @@ class WorkerModel(object):
         async def ping_ws():
             async with websockets.connect("ws://ws-server:2901/main") as websocket:
                 await websocket.send(worker_id)
-        # asyncio.run(ping_ws)
+
         futures = [ping_ws()]
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(asyncio.wait(futures))
-        logging.error("Called ping ws")
+        logging.warn(f"Pinged worker through websockets, worker id: {worker_id}")
 
     def send_json_message(self, socket_id, worker_id, message, timeout_secs, autoretry=True):
         """
@@ -385,6 +385,7 @@ class WorkerModel(object):
         False. See comments below.
         """
         start_time = time.time()
+        self._ping_worker_ws(worker_id)
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
@@ -392,7 +393,6 @@ class WorkerModel(object):
                 success = False
                 try:
                     sock.connect(self._socket_path(socket_id))
-                    self._ping_worker_ws(worker_id)
                     if autoretry:
                         # This auto retry mechanisms helps ensure that messages
                         # sent to a worker are received more reliably. The
@@ -407,7 +407,7 @@ class WorkerModel(object):
                     else:
                         success = True
                 except socket.error:
-                    logging.exception("socket error when calling send_json_message")
+                    logging.debug("socket error when calling send_json_message")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -428,7 +428,6 @@ class WorkerModel(object):
                     )
 
                 sock.sendall(json.dumps(message).encode())
-                self._ping_worker_ws(worker_id)
                 return True
 
         return False
