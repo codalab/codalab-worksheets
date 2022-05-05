@@ -174,7 +174,7 @@ What happens when a user takes an action that needs the worker to do something, 
 
 One problem was that reading the contents of running bundles would take up to 20 seconds. This is because in the process above, the worker only checks in every 5-10 seconds (or longer), and this can cause large delays in timing.
 
-[https://github.com/codalab/codalab-worksheets/pull/4096](#4096) fixes this issue by adding a websocket, which allows for bidirectional communciation and essentially lets us trigger on-demand check-ins for the worker. The server now runs a websocket server (through the `ws-server` Docker container). The above process for viewing the contents of a running bundle now looks like the following (new text in **bold**):
+[PR #4096](https://github.com/codalab/codalab-worksheets/pull/4096) fixes this issue by adding a websocket, which allows for bidirectional communciation and essentially lets us trigger on-demand check-ins for the worker. The server now runs a websocket server (through the `ws-server` Docker container). The above process for viewing the contents of a running bundle now looks like the following (new text in **bold**):
 
 - The user makes a request to the REST server to view contents of the bundle `/bundles/<bundle_id>/contents/blob/stdout`
 - The server writes a JSON message `{"action_type": "read", "path": "stdout"}` to the worker socket.
