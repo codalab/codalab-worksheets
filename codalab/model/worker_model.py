@@ -362,7 +362,7 @@ class WorkerModel(object):
 
         return False
 
-    def _ping_worker_ws(worker_id):
+    def _ping_worker_ws(self, worker_id):
         async def ping_ws():
             async with websockets.connect("ws://ws-server:2901/main") as websocket:
                 await websocket.send(worker_id)
