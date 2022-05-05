@@ -118,10 +118,23 @@ services:
     <<: *codalab-server
     depends_on:
       - mysql
+      - ws-server
     networks:
       - rest-server
     expose:
       - ${CODALAB_REST_PORT}
+
+  ws-server:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-ws-server --port ${CODALAB_WS_PORT}
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
+    networks:
+      - rest-server
+    expose:
+      - ${CODALAB_WS_PORT}
 
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}

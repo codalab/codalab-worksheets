@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import shutil
@@ -9,6 +10,7 @@ import socket
 import http.client
 import sys
 from typing import Optional, Set, Dict
+import websockets
 
 import psutil
 
@@ -265,19 +267,27 @@ class Worker:
 
     def start(self):
         """Return whether we ran anything."""
+        logging.info(f"my id is: {self.id}")
         self.load_state()
         self.sync_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
+        
+        async def periodic_checkin():
+            async with websockets.connect("ws://ws-server:2901/worker/{self.id}") as websocket:
+                async def receive_msg():
+                    await websocket.recv()
+                    self.checkin()
+                while not self.terminate:
+                    await asyncio.wait_for(receive_msg, timeout=10.0)
+
+        self.checkin()
+        asyncio.ensure_future(periodic_checkin)
         while not self.terminate:
             try:
-                self.checkin()
-                last_checkin = time.time()
-                # Process runs until it's time for the next checkin.
-                while not self.terminate and (
-                    time.time() - last_checkin <= self.checkin_frequency_seconds
-                ):
+                # Process runs.
+                while not self.terminate:
                     self.check_termination()
                     self.save_state()
                     if self.check_idle_stop() or self.check_num_runs_stop():
@@ -287,7 +297,6 @@ class Worker:
                     time.sleep(0.003)
                     self.save_state()
             except Exception:
-                self.last_checkin_successful = False
                 if using_sentry():
                     capture_exception()
                 traceback.print_exc()

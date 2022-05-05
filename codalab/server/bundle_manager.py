@@ -344,7 +344,7 @@ class BundleManager(object):
                 )
                 self._model.transition_bundle_worker_offline(bundle)
             elif self._worker_model.send_json_message(
-                worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
+                worker['socket_id'], worker['worker_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
                 logger.info(
                     'Acknowledged finalization of run bundle {} on worker {}'.format(
@@ -659,6 +659,7 @@ class BundleManager(object):
             os.mkdir(path)
         if self._worker_model.send_json_message(
             worker['socket_id'],
+            worker['worker_id'],
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
             0.2,
         ):

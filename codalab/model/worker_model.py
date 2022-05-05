@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import closing
 import datetime
 import json
@@ -5,6 +6,7 @@ import logging
 import os
 import socket
 import time
+import websockets
 
 from sqlalchemy import and_, select
 
@@ -360,7 +362,18 @@ class WorkerModel(object):
 
         return False
 
-    def send_json_message(self, socket_id, message, timeout_secs, autoretry=True):
+    def _ping_worker_ws(worker_id):
+        async def ping_ws():
+            async with websockets.connect("ws://ws-server:2901/main") as websocket:
+                await websocket.send(worker_id)
+        # asyncio.run(ping_ws)
+        futures = [ping_ws()]
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(asyncio.wait(futures))
+        logging.error("Called ping ws")
+
+    def send_json_message(self, socket_id, worker_id, message, timeout_secs, autoretry=True):
         """
         Sends a JSON message to the given socket, retrying until it is received
         correctly.
@@ -379,6 +392,7 @@ class WorkerModel(object):
                 success = False
                 try:
                     sock.connect(self._socket_path(socket_id))
+                    self._ping_worker_ws(worker_id)
                     if autoretry:
                         # This auto retry mechanisms helps ensure that messages
                         # sent to a worker are received more reliably. The
@@ -414,6 +428,7 @@ class WorkerModel(object):
                     )
 
                 sock.sendall(json.dumps(message).encode())
+                self._ping_worker_ws(worker_id)
                 return True
 
         return False
