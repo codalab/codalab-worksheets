@@ -288,7 +288,7 @@ CODALAB_ARGUMENTS = [
         name='bundle_manager_worker_timeout_seconds',
         help='Number of seconds to wait after a worker check-in before determining a worker is offline',
         type=int,
-        default=99999,
+        default=60,
     ),
     # Worker manager
     CodalabArg(
