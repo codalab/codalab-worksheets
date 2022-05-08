@@ -138,7 +138,7 @@ def parse_args():
         '--checkin-frequency-seconds',
         help='Number of seconds to wait between worker check-ins',
         type=int,
-        default=20,
+        default=5,
     )
     parser.add_argument(
         '--id',
