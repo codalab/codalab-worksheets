@@ -11,7 +11,7 @@ import logging
 import os
 import uuid
 from argparse import ArgumentParser
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
@@ -41,10 +41,7 @@ class KubernetesWorkerManager(WorkerManager):
             required=True,
         )
         subparser.add_argument(
-            '--nfs-server', type=str, help='Name of the network file system server name.',
-        )
-        subparser.add_argument(
-            '--nfs-work-dir', type=str, help='Path of the network file system working directory.',
+            '--nfs-volume-name', type=str, help='Name of the persistent volume for the NFS server.',
         )
 
         # Job-related arguments
@@ -77,12 +74,7 @@ class KubernetesWorkerManager(WorkerManager):
 
         self.k8_client: client.ApiClient = client.ApiClient(configuration)
         self.k8_api: client.CoreV1Api = client.CoreV1Api(self.k8_client)
-
-        if args.nfs_server and args.nfs_work_dir:
-            self.nfs_server = args.nfs_server
-            self.nfs_work_dir = args.nfs_work_dir
-        else:
-            self.nfs_server = None
+        self.nfs_volume_name: Optional[str] = args.nfs_volume_name
 
     def get_worker_jobs(self) -> List[WorkerJob]:
         try:
@@ -131,28 +123,26 @@ class KubernetesWorkerManager(WorkerManager):
                         },
                         'volumeMounts': [
                             {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
-                            {'name': 'workdir', 'mountPath': work_dir},
+                            {
+                                "name": self.nfs_volume_name if self.nfs_volume_name else 'workdir',
+                                "mountPath": work_dir,
+                            },
                         ],
                     }
                 ],
                 'volumes': [
                     {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
-                    {'name': 'workdir', 'hostPath': {'path': work_dir}},
+                    {
+                        "name": self.nfs_volume_name,
+                        # When attaching a volume over NFS, use a persistent volume claim
+                        "persistentVolumeClaim": {"claimName": f"{self.nfs_volume_name}-claim"},
+                    }
+                    if self.nfs_volume_name
+                    else {"name": 'workdir', "hostPath": {"path": work_dir}},
                 ],
                 'restartPolicy': 'Never',  # Only run a job once
             },
         }
-
-        if self.nfs_server:
-            config['spec']['volumes'].append(
-                {
-                    "name": self.nfs_server,
-                    "persistentVolumeClaim": {"claimName": f"{self.nfs_server}-claim"},
-                }
-            )
-            config['spec']['containers'][0]['volumeMounts'].append(
-                {"name": self.nfs_server, "mountPath": self.nfs_work_dir},
-            )
 
         # Start a worker pod on the k8s cluster
         logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
