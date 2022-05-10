@@ -199,7 +199,7 @@ Step 2: Start the codalab server, and manually create a bundle store using GCS.
     ./codalab_service start -bds default
     cl work http:://localhost::   # make sure it works using local instance
     cl store add --name {your_bundle_store_name} --url gs://{test_bucket_name}
-    cl store ls  # make sure you have succcessfully add the GCS store
+    cl store ls  # make sure you have successfully add the GCS store
 
 Step 3: Set the environment variable `CODALAB_DEFAULT_BUNDLE_STORE_NAME`. This environment variable will set the default bundle store used in test cases. The bundle store name should match the name in step3.
 
