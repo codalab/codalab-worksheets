@@ -6,5 +6,4 @@ networking:
   apiServerPort: 6443
 nodes:
 - role: control-plane
-  # TODO: upgrade this version to 1.22 / 1.23 / 1.24 once kind versions are released. We pinned it to 1.21 to avoid: https://github.com/kubernetes-sigs/kind/issues/2723.
-  image: kindest/node:v1.21.10@sha256:84709f09756ba4f863769bdcabe5edafc2ada72d3c8c44d6515fc581b66b029c
+  image: kindest/node:v1.24.0@sha256:406fd86d48eaf4c04c7280cd1d2ca1d61e7d0d61ddef0125cb097bc7b82ed6a1
