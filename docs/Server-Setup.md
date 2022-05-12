@@ -347,8 +347,12 @@ go install github.com/cloudflare/cfssl/cmd/...@latest
 kind version # kind should be installed
 cfssl version # cfssl should be installed
 
-# Set up local kind cluster. follow the instructions that display to view the web dashboard.
+# Set up local kind cluster.
 ./scripts/local-k8s/setup.sh
+# Set up web dashboard.
+kubectl config use-context kind-codalab # makes sure kubectl is connected to local cluster
+kubectl -n kubernetes-dashboard get secret $(kubectl -n kubernetes-dashboard get sa/admin-user -o jsonpath="{.secrets[0].name}") -o go-template="{{.data.token | base64decode}}" # copy this token and use it for web ui auth in the next step
+# To view the dashboard, run \"kubectl proxy\" in a terminal and open up: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/workloads?namespace=default"
 ```
 
 If all is successful, you should be able to log into your dashboard. You should have one node running (codalab-control-plane). After you follow the steps below, you should also be able to view each pod (which corresponds to each worker) and then check their logs by clicking on the icon in the top-right.
