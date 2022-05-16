@@ -1,11 +1,11 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
+  add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
@@ -20,8 +20,9 @@ RUN apt-get update && \
     python3.6-dev \
     python3-pip \
     python3-setuptools \
-    python-virtualenv \
+    python3-virtualenv \
     python3-software-properties \
+    python3.6-distutils \
     zip \
     unzip \
     rsync && \
