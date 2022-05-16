@@ -80,7 +80,7 @@ class BundleDetailSideBar extends React.Component<{
         const bundleRunTime = bundleInfo.metadata.time
             ? renderDuration(bundleInfo.metadata.time)
             : '-- --';
-        const runStatus = bundleInfo.metadata.run_status
+        const runStatus = bundleInfo.metadata.run_status;
 
         return (
             <div>
@@ -148,11 +148,11 @@ class BundleDetailSideBar extends React.Component<{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 {isRunBundle && runStatus && (
-                <div>
-                    <ConfigLabel label='Run status: ' inline={true} />
-                    <div className={classes.dataText}>{runStatus}</div>
-                </div>)
-                }
+                    <div>
+                        <ConfigLabel label='Run status: ' inline={true} />
+                        <div className={classes.dataText}>{runStatus}</div>
+                    </div>
+                )}
                 {/** ----------------------------------------------------------------------------------------------- */}
                 {isRunBundle ? (
                     <div>
