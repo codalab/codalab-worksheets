@@ -178,7 +178,7 @@ def pack_files_for_upload(
                 'fileobj': open(source, mode='rb'),
                 'filename': filename,
                 'filesize': os.path.getsize(source),
-                'should_unpack': should_unpack,
+                'should_unpack': should_unpack,  # when user upload a archive file
             }
         elif force_compression:
             return {

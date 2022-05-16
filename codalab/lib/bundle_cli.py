@@ -26,16 +26,21 @@ import sys
 import time
 import textwrap
 import json
+import tempfile
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
 from shlex import quote
 from typing import Dict
 import webbrowser
-
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
+from ratarmountcore import SQLiteIndexedTar
+from apache_beam.io.filesystem import CompressionTypes
+from apache_beam.io.filesystems import FileSystems
 
+
+from codalab.lib.zip_util import ARCHIVE_EXTS
 import codalab.model.bundle_model as bundle_model
 
 from codalab.bundles import get_bundle_subclass
@@ -97,11 +102,15 @@ from codalab.lib.completers import (
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.print_util import FileTransferProgress
+from codalab.lib.beam.filesystems import (
+    AZURE_BLOB_CONNECTION_STRING,
+    TEST_CONN_STR,
+)
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-from codalab.worker.file_util import get_path_size
+from codalab.worker.file_util import get_path_size, GzipStream
 
 
 # Command groupings
@@ -1477,22 +1486,46 @@ class BundleCLI(object):
                 file=self.stderr,
             )
 
-            # If the bundle is stored in Azure or GCS, use bypass server upload 
-            if metadata.get('store') != '':
-                storage_info = client.fetch('bundle_stores', params={
-                    'name': metadata.get('store'), 
-                    'include': ['uuid', 'storage_type', 'url']
-                })
-                # TODO(Jiani): Add StorageType.GCS Here
-                if storage_info['storage_type'] in (StorageType.Azure.value):
-                    should_bypass_server = True
-                    params = {
-                        'should_bypass_server': should_bypass_server, 
-                        'url': storage_info['url'],
-                        'file_name': packed['filename']}
-                    client.update_bundle_locations(new_bundle['id'], storage_info['uuid'], params)
+            print("Packed info: {}".format(packed))
 
-            
+            # If the bundle is stored in Azure or GCS, use bypass server upload
+            if metadata.get('store', None) is not None:
+                storage_info = client.fetch_one(
+                    'bundle_stores',
+                    params={
+                        'name': metadata.get('store'),
+                        'include': ['uuid', 'storage_type', 'url'],
+                    },
+                )
+                print(storage_info)
+
+                if storage_info['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
+                    need_sas = True
+                    # TODO(Jiani): Check the name of the upload files.
+                    is_dir = zip_util.get_archive_ext(packed['filename']) in ARCHIVE_EXTS
+                    if is_dir:
+                        bundle_url = f"{storage_info['url']}/{new_bundle['id']}/contents.tar.gz"
+                    else:
+                        bundle_url = f"{storage_info['url']}/{new_bundle['id']}/contents.gz"
+                    index_url = f"{storage_info['url']}/{new_bundle['id']}/index.sqlite"
+                    params = {
+                        'need_sas': need_sas,
+                        'bundle_url': bundle_url,  # eg, 'azfs://devstoreaccount1/bundles'
+                        'index_url': index_url,
+                        'is_dir': is_dir,
+                    }
+                    data = client.update_bundle_locations(
+                        new_bundle['id'], storage_info['uuid'], params
+                    )
+                    bundle_conn_str = data.get('bundle_url')
+                    index_conn_str = data.get('index_url')
+                    print(data)  # data should contain two sas token
+                    # TODO: check SAS token and set local variable
+
+                    # TODO: upload process
+
+                    # TODO: inform the upload has finished.
+
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
                 client.upload_contents_blob(
@@ -1510,6 +1543,40 @@ class BundleCLI(object):
                 )
 
         print(new_bundle['id'], file=self.stdout)
+
+    def upload_blob_storage(self, fileobj, bundle_conn_str, index_conn_str):
+        """
+        Helper function for bypass server upload. 
+
+        params:
+        bundle_conn_str: 
+        """
+        # save the origin Azure connection string
+        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
+        
+        output_fileobj = GzipStream(fileobj) # TODO: check do we need to double Gzip
+        # Write archive file.
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
+            shutil.copyfileobj(output_fileobj, out)
+        # Write index file to a temporary file, then write that file to Blob Storage.
+        with FileSystems.open(
+            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+            SQLiteIndexedTar(
+                fileObject=ttf,
+                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                writeIndex=True,
+                clearIndexCache=True,
+                indexFilePath=tmp_index_file.name,
+            )
+            print(tmp_index_file.name)
+            # make it into to steps
+            with FileSystems.create(
+                parse_linked_bundle_url(bundle_path).index_path,
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                shutil.copyfileobj(tif, out_index_file)
 
     @Commands.command(
         'download',

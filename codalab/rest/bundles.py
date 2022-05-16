@@ -1,6 +1,7 @@
 import http.client
 import logging
 import mimetypes
+from operator import index
 import os
 import re
 import sys
@@ -8,6 +9,7 @@ import traceback
 import time
 from io import BytesIO
 from http.client import HTTPResponse
+from unicodedata import name
 
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
@@ -21,7 +23,7 @@ from codalab.common import (
     parse_linked_bundle_url,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
-from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
+from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_base_conn_str
 from codalab.lib.server_util import (
     RequestSource,
     bottle_patch as patch,
@@ -458,28 +460,37 @@ def _fetch_bundle_locations(bundle_uuid: str):
 )
 def _add_bundle_location(bundle_uuid: str):
     """
-    Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+    Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and 
+    connection string. Request body must contain the fields in BundleLocationSchema.
 
     Query parameters:
     - `bundle_uuid`: Bundle UUID corresponding to the new location
-    - `should_bypass_server`: If true, if will return
-    - `url`: If the bundle is stored on GCS or Azure, pass the url
+    - `bypass_server`: Bool. If true, if will return SAS token
+    - `url`: If the bundle is stored on GCS or Azure, this is the storage url.
     """
-    should_bypass_server = query_get_bool('should_bypass_server', default=False)
-    url = query_get_type(str, 'url', default='')
-    # concate then 
-
+    need_sas = query_get_bool('need_sas', default=False)
+    bundle_url = query_get_type(str, 'bundle_url', default=None)
+    
+    logging.info(request.json)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
-    new_location["uuid"] = local.model.add_bundle_location(
+    logging.info(new_location)
+    local.model.add_bundle_location(
         new_location['bundle_uuid'], new_location['bundle_store_uuid']
     )
-    if should_bypass_server:
-        # generate the SAS token, and send it back to 
-        # TODO: 
-        local.upload_manager.get_upload_sas_url(path)
-
+    logging.info(new_location)
+    if need_sas:
+        # generate the SAS token and Azure connection string, and send it back to the client
+        bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
+        index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
+        base_conn_str = get_base_conn_str()
+        bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
+        index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
+        print(bundle_conn_str, index_conn_str)
+ 
     data = BundleLocationSchema(many=True).dump([new_location]).data
-    data['data']['upload_url'] = 
+    data['data'][0]['bundle_conn_str'] = bundle_conn_str
+    data['data'][0]['index_conn_str'] = index_conn_str
+    print(data)
     return data
 
 
@@ -512,8 +523,16 @@ def _fetch_bundle_stores():
     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
     - `url`: a self-referential URL that points to the bundle store.
     """
-    bundle_stores = local.model.get_bundle_stores(request.user.user_id)
+    bundle_store_name = query_get_type(str, 'name', None)
+    if(bundle_store_name is not None): 
+        # this function only fetch one record
+        bundle_store = local.model.get_bundle_store(request.user.user_id, name=bundle_store_name)
+        bundle_stores = [bundle_store]
+    else:
+        # this function fetches all the records
+        bundle_stores = local.model.get_bundle_stores(request.user.user_id)
     return BundleStoreSchema(many=True).dump(bundle_stores).data
+
 
 
 @post('/bundle_stores', apply=AuthenticatedProtectedPlugin())
@@ -1027,8 +1046,8 @@ def _update_bundle_contents_blob(uuid):
             pass
         elif source:
             local.upload_manager.upload_to_bundle_store(
-                bundle,
-                source=source,
+                bundle,  # bundle info
+                source=source, 
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 use_azure_blob_beta=use_azure_blob_beta,

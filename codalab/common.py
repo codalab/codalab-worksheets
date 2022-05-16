@@ -243,7 +243,7 @@ class LinkedBundlePath:
         Generates a SAS URL that can be used to read the given blob for one hour.
 
         Args: 
-            permission: `r` or `w`. `r` for bypass server download, and `w` for bypass server upload.
+            permission: Different permission granted by SAS token. `r`, `w` or `wr`. `r` for read permission, and `w` for write permission.
         """
         if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
             raise ValueError(
@@ -252,12 +252,17 @@ class LinkedBundlePath:
         blob_name = path.replace(
             f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
-        
-        if permission == 'w':  
+
+        if permission == 'w':
             # Use `create` instead of `write`. The `write` permission might modify other bundles.
-            sas_permission = BlobSasPermissions(create=True)
-        else:
+            sas_permission = BlobSasPermissions(write=True)
+        elif permission == 'r':
             sas_permission = BlobSasPermissions(read=True)
+        elif permission == 'rw':
+            sas_permission = BlobSasPermissions(read=True, write=True)
+        else:
+            raise UsageError(f"Not supported SAS token permission. Only support `r`/`w`/`rw`.")
+
         sas_token = generate_blob_sas(
             **kwargs,
             account_name=AZURE_BLOB_ACCOUNT_NAME,
@@ -274,8 +279,6 @@ class LinkedBundlePath:
 
     def index_path_sas_url(self, permission='r', **kwargs):
         return self._get_sas_url(self.index_path, permission, **kwargs)
-
-
 
 
 def parse_linked_bundle_url(url):

@@ -720,11 +720,9 @@ class JsonApiClient(RestClient):
     def update_bundle_locations(self, bundle_uuid, bundle_store_uuid, params):
         print(f"In update_bundle_locations, {bundle_uuid} {bundle_store_uuid} {params}")
         response = self._make_request(
-            method='POST', 
-            path = '/bundles/{}/locations/'.format(bundle_uuid),
-            data={
-                [{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}]
-            },
-            query_params=self._pack_params(params)
+            method='POST',
+            path='/bundles/{}/locations/'.format(bundle_uuid),
+            data=self._pack_document([{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}], 'bundle_locations'),
+            query_params=self._pack_params(params),
         )
         return response['data']

@@ -523,10 +523,13 @@ Query parameters:
 
 ### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
-Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and 
+connection string. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
 - `bundle_uuid`: Bundle UUID corresponding to the new location
+- `bypass_server`: Bool. If true, if will return SAS token
+- `url`: If the bundle is stored on GCS or Azure, this is the storage url.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 

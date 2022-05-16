@@ -69,7 +69,6 @@ class RestClient(object):
         access_token = self._get_access_token()
         if authorized and access_token:
             headers['Authorization'] = 'Bearer ' + self._get_access_token()
-
         if isinstance(data, dict):
             headers['Content-Type'] = 'application/json'
             data = json.dumps(data)  # Turn dict into string

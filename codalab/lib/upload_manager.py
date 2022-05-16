@@ -125,7 +125,7 @@ class Uploader:
         """
         is_url, is_fileobj = False, False
         if isinstance(source, str):
-            if path_util.path_is_url(source):
+            if path_util.path_is_url(source):  # eg, http links
                 is_url = True
                 source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
             else:
@@ -175,7 +175,8 @@ class BlobStorageUploader(Uploader):
     def write_fileobj(
         self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
-        if unpack_archive:
+        if unpack_archive:  # user upload a zipped file, need to unpack
+            # and then rezip the file to .tar.gz or .gz
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
         else:
             output_fileobj = GzipStream(source_fileobj)
@@ -258,10 +259,15 @@ class UploadManager(object):
         bundle_update = {'data_hash': None, 'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
         self._bundle_model.update_user_disk_used(bundle.owner_id)
-    
-    # def bypass_upload_url(self, bundle):
-    def get_upload_sas_url(self, path, **kwargs):
-        # when upload 
-        # path = # neet to get the path like gs://{bucket-name}/{file_name}/{subpath?}
-        return parse_linked_bundle_url(path).bundle_path_sas_url(permission='w', **kwargs)
 
+    def get_bundle_sas_token(self, path, **kwargs):
+        """
+        Get SAS token with write permission. Used for bypass server downloading.
+        """
+        return parse_linked_bundle_url(path).bundle_path_sas_url(permission='rw', **kwargs).split('?')[-1]
+    
+    def get_index_sas_token(self, path, **kwargs):
+        """
+        Get SAS token of the index file. 
+        """
+        return parse_linked_bundle_url(path).index_path_sas_url(permission='rw', **kwargs).split('?')[-1]
