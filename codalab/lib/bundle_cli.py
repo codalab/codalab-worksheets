@@ -1516,15 +1516,15 @@ class BundleCLI(object):
                     }
                     data = client.update_bundle_locations(
                         new_bundle['id'], storage_info['uuid'], params
-                    )
-                    bundle_conn_str = data.get('bundle_url')
-                    index_conn_str = data.get('index_url')
+                    )[0].get('attributes')
+                    print(data)
+                    bundle_conn_str = data.get('bundle_conn_str')
+                    index_conn_str = data.get('index_conn_str')
                     print(data)  # data should contain two sas token
-                    # TODO: check SAS token and set local variable
-
-                    # TODO: upload process
+                    self.upload_blob_storage(packed['fileobj'], bundle_url, bundle_conn_str, index_conn_str)
 
                     # TODO: inform the upload has finished.
+                    return
 
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
@@ -1544,7 +1544,7 @@ class BundleCLI(object):
 
         print(new_bundle['id'], file=self.stdout)
 
-    def upload_blob_storage(self, fileobj, bundle_conn_str, index_conn_str):
+    def upload_blob_storage(self, fileobj, bundle_url, bundle_conn_str, index_conn_str):
         """
         Helper function for bypass server upload. 
 
@@ -1553,15 +1553,22 @@ class BundleCLI(object):
         """
         # save the origin Azure connection string
         conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+        
+        bundle_conn_str = bundle_conn_str.replace("azurite", "localhost", 1)
+        index_conn_str = index_conn_str.replace("azurite", "localhost", 1)
+        print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         
         output_fileobj = GzipStream(fileobj) # TODO: check do we need to double Gzip
+        # output_fileobj = fileobj
         # Write archive file.
-        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
+        print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
+        with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
             shutil.copyfileobj(output_fileobj, out)
+        print("upload to bundle store")
         # Write index file to a temporary file, then write that file to Blob Storage.
         with FileSystems.open(
-            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+            bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
         ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
             SQLiteIndexedTar(
                 fileObject=ttf,
@@ -1570,13 +1577,16 @@ class BundleCLI(object):
                 clearIndexCache=True,
                 indexFilePath=tmp_index_file.name,
             )
-            print(tmp_index_file.name)
-            # make it into to steps
+            print(f"temp file name is: {tmp_index_file.name}")
+            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
+            # TODO: check do we make it into two steps?
             with FileSystems.create(
-                parse_linked_bundle_url(bundle_path).index_path,
+                parse_linked_bundle_url(bundle_url).index_path,
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
+        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
+        return
 
     @Commands.command(
         'download',

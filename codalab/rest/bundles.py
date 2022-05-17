@@ -488,8 +488,8 @@ def _add_bundle_location(bundle_uuid: str):
         print(bundle_conn_str, index_conn_str)
  
     data = BundleLocationSchema(many=True).dump([new_location]).data
-    data['data'][0]['bundle_conn_str'] = bundle_conn_str
-    data['data'][0]['index_conn_str'] = index_conn_str
+    data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
+    data['data'][0]['attributes']['index_conn_str'] = index_conn_str
     print(data)
     return data
 
