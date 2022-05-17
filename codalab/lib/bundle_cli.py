@@ -1517,13 +1517,19 @@ class BundleCLI(object):
                     data = client.update_bundle_locations(
                         new_bundle['id'], storage_info['uuid'], params
                     )[0].get('attributes')
-                    print(data)
                     bundle_conn_str = data.get('bundle_conn_str')
                     index_conn_str = data.get('index_conn_str')
-                    print(data)  # data should contain two sas token
-                    self.upload_blob_storage(packed['fileobj'], bundle_url, bundle_conn_str, index_conn_str)
+                    
+                    self.upload_blob_storage(
+                        fileobj=packed['fileobj'], 
+                        bundle_url = bundle_url, 
+                        bundle_conn_str = bundle_conn_str, 
+                        index_conn_str = index_conn_str,
+                    )
 
                     # TODO: inform the upload has finished.
+                    # TODO: add upload process call back
+                    print(new_bundle['id'], file=self.stdout)
                     return
 
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
