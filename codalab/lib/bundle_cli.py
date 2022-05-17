@@ -1528,7 +1528,8 @@ class BundleCLI(object):
                     )
 
                     # TODO: inform the upload has finished.
-                    # TODO: add upload process call back
+
+                    # TODO(Jiani): add upload process call back
                     print(new_bundle['id'], file=self.stdout)
                     return
 

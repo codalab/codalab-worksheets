@@ -467,6 +467,8 @@ def _add_bundle_location(bundle_uuid: str):
     - `need_sas`: (Optional) Bool. If true, if will return SAS token
     - `bundle_url`: (Optional) String. If the bundle is stored on GCS or Azure, this is the storage url.
     """
+    # TODO: check user have permission to write this bundle?
+    # check_bundles_have_all_permission(local.model, request.user, [uuid])
     need_sas = query_get_bool('need_sas', default=False)
     bundle_url = query_get_type(str, 'bundle_url', default=None)
     
