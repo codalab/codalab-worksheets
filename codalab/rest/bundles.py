@@ -1,7 +1,6 @@
 import http.client
 import logging
 import mimetypes
-from operator import index
 import os
 import re
 import sys
@@ -9,7 +8,6 @@ import traceback
 import time
 from io import BytesIO
 from http.client import HTTPResponse
-from unicodedata import name
 
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
@@ -460,8 +458,7 @@ def _fetch_bundle_locations(bundle_uuid: str):
 )
 def _add_bundle_location(bundle_uuid: str):
     """
-    Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and 
-    connection string. Request body must contain the fields in BundleLocationSchema.
+    Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
     Query parameters:
     - `need_sas`: (Optional) Bool. If true, if will return SAS token

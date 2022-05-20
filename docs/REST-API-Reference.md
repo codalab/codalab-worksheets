@@ -524,8 +524,7 @@ Query parameters:
 
 ### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
-Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and 
-connection string. Request body must contain the fields in BundleLocationSchema.
+Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
 - `need_sas`: (Optional) Bool. If true, if will return SAS token

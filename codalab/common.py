@@ -243,7 +243,7 @@ class LinkedBundlePath:
         """
         Generates a SAS URL that can be used to read the given blob for one hour.
 
-        Args: 
+        Args:
             permission: Different permission granted by SAS token. `r`, `w` or `wr`. `r` for read permission, and `w` for write permission.
         """
         if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
@@ -263,7 +263,7 @@ class LinkedBundlePath:
         elif permission == 'rw':
             sas_permission = BlobSasPermissions(read=True, write=True)
         else:
-            raise UsageError(f"Not supported SAS token permission. Only support `r`/`w`/`rw`.")
+            raise UsageError("Not supported SAS token permission. Only support `r`/`w`/`rw`.")
 
         sas_token = generate_blob_sas(
             **kwargs,

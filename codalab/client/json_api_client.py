@@ -1,8 +1,6 @@
 import http.client
 import socket
-from statistics import median_high
 import sys
-from urllib import response
 import six
 import urllib.request
 import urllib.parse

@@ -272,7 +272,7 @@ class UploadManager(object):
 
     def get_index_sas_token(self, path, **kwargs):
         """
-        Get SAS token of the index file. 
+        Get SAS token of the index file.
         """
         return (
             parse_linked_bundle_url(path)

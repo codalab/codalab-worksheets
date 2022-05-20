@@ -100,10 +100,6 @@ from codalab.lib.completers import (
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.print_util import FileTransferProgress
-from codalab.lib.beam.filesystems import (
-    AZURE_BLOB_CONNECTION_STRING,
-    TEST_CONN_STR,
-)
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
@@ -1543,13 +1539,15 @@ class BundleCLI(object):
 
         print(new_bundle['id'], file=self.stdout)
 
-    def upload_blob_storage(self, fileobj, bundle_url, bundle_conn_str, index_conn_str):
+    def upload_blob_storage(
+        self, fileobj, bundle_url, bundle_conn_str, index_conn_str, progress_callback
+    ):
         """
-        Helper function for bypass server upload. 
+        Helper function for bypass server upload.
 
         params:
         bundle_url: Url for bundle store, eg "azfs://devstoreaccount1/bundles/{bundle_uuid}/contents.gz"
-        bundle_conn_str: Connection string for Azure blkob
+        bundle_conn_str: Connection string for Azure blob
         """
         # save the origin Azure connection string
         conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
@@ -1561,6 +1559,7 @@ class BundleCLI(object):
 
         # TODO: check do we need to double Gzip
         output_fileobj = GzipStream(fileobj)
+        # estimate the size of gzip file.
         # output_fileobj = fileobj
         # Write archive file.
         print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
@@ -1586,6 +1585,7 @@ class BundleCLI(object):
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
+                # change shutil.
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
 
         return
