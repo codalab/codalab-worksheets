@@ -1484,8 +1484,6 @@ class BundleCLI(object):
                 file=self.stderr,
             )
 
-            print("Packed info: {}".format(packed))
-
             # If the bundle is stored in Azure or GCS, use bypass server upload
             if metadata.get('store', None) is not None:
                 storage_info = client.fetch_one(
