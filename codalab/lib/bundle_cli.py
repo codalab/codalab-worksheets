@@ -39,8 +39,6 @@ from ratarmountcore import SQLiteIndexedTar
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 
-
-from codalab.lib.zip_util import ARCHIVE_EXTS
 import codalab.model.bundle_model as bundle_model
 
 from codalab.bundles import get_bundle_subclass
@@ -1497,40 +1495,36 @@ class BundleCLI(object):
                         'include': ['uuid', 'storage_type', 'url'],
                     },
                 )
-                print(storage_info)
 
                 if storage_info['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
                     need_sas = True
-                    # TODO(Jiani): Check the name of the upload files.
-                    is_dir = zip_util.get_archive_ext(packed['filename']) in ARCHIVE_EXTS
-                    if is_dir:
-                        bundle_url = f"{storage_info['url']}/{new_bundle['id']}/contents.tar.gz"
-                    else:
-                        bundle_url = f"{storage_info['url']}/{new_bundle['id']}/contents.gz"
-                    index_url = f"{storage_info['url']}/{new_bundle['id']}/index.sqlite"
                     params = {
-                        'need_sas': need_sas,
-                        'bundle_url': bundle_url,  # eg, 'azfs://devstoreaccount1/bundles'
-                        'index_url': index_url,
-                        'is_dir': is_dir,
+                        'need_sas': need_sas,    
                     }
                     data = client.update_bundle_locations(
                         new_bundle['id'], storage_info['uuid'], params
                     )[0].get('attributes')
                     bundle_conn_str = data.get('bundle_conn_str')
                     index_conn_str = data.get('index_conn_str')
-                    
-                    self.upload_blob_storage(
-                        fileobj=packed['fileobj'], 
-                        bundle_url = bundle_url, 
-                        bundle_conn_str = bundle_conn_str, 
-                        index_conn_str = index_conn_str,
-                    )
-
-                    # TODO: inform the upload has finished.
-
+                    bundle_url = data.get('bundle_url')
+                    try:
+                        self.upload_blob_storage(
+                            fileobj=packed['fileobj'], 
+                            bundle_url = bundle_url, 
+                            bundle_conn_str = bundle_conn_str, 
+                            index_conn_str = index_conn_str,
+                        )
+                    except Exception as err:
+                        params = {
+                            'success': False,  
+                            'error_msg': f'Bypass server upload error. {err}'
+                        }
+                        client.update_bundle_locations_blob(new_bundle['id'], params)
+                    else:
+                        params = {'success': True }
+                        client.update_bundle_locations_blob(new_bundle['id'], params)
+                        print(new_bundle['id'], file=self.stdout)
                     # TODO(Jiani): add upload process call back
-                    print(new_bundle['id'], file=self.stdout)
                     return
 
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
@@ -1556,7 +1550,8 @@ class BundleCLI(object):
         Helper function for bypass server upload. 
 
         params:
-        bundle_conn_str: 
+        bundle_url: Url for bundle store, eg "azfs://devstoreaccount1/bundles/{bundle_uuid}/contents.gz"
+        bundle_conn_str: Connection string for Azure blkob
         """
         # save the origin Azure connection string
         conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
@@ -1566,7 +1561,8 @@ class BundleCLI(object):
         print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         
-        output_fileobj = GzipStream(fileobj) # TODO: check do we need to double Gzip
+        # TODO: check do we need to double Gzip
+        output_fileobj = GzipStream(fileobj) 
         # output_fileobj = fileobj
         # Write archive file.
         print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
@@ -1593,6 +1589,8 @@ class BundleCLI(object):
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
+
+
         return
 
     @Commands.command(

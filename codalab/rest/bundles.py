@@ -467,15 +467,17 @@ def _add_bundle_location(bundle_uuid: str):
     - `need_sas`: (Optional) Bool. If true, if will return SAS token
     - `bundle_url`: (Optional) String. If the bundle is stored on GCS or Azure, this is the storage url.
     """
-    # TODO: check user have permission to write this bundle?
-    # check_bundles_have_all_permission(local.model, request.user, [uuid])
+    check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
     need_sas = query_get_bool('need_sas', default=False)
-    bundle_url = query_get_type(str, 'bundle_url', default=None)
-    
+
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     local.model.add_bundle_location(
         new_location['bundle_uuid'], new_location['bundle_store_uuid']
     )
+    data = BundleLocationSchema(many=True).dump([new_location]).data
+
+    bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+    
     if need_sas:
         # generate the SAS token and Azure connection string, and send it back to the client
         bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
@@ -483,13 +485,11 @@ def _add_bundle_location(bundle_uuid: str):
         base_conn_str = get_base_conn_str()
         bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
         index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
-        print(bundle_conn_str, index_conn_str)
- 
-    data = BundleLocationSchema(many=True).dump([new_location]).data
-    data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
-    data['data'][0]['attributes']['index_conn_str'] = index_conn_str
-    return data
 
+        data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
+        data['data'][0]['attributes']['index_conn_str'] = index_conn_str
+        data['data'][0]['attributes']['bundle_url'] = bundle_url
+    return data
 
 @get(
     '/bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/',
@@ -507,10 +507,10 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     return BundleLocationListSchema(many=True).dump(bundle_location).data
 
 @post(
-    '/bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/',
+    '/bundles/<bundle_uuid:re:%s>/locations/blob' % spec_util.UUID_STR,
     apply=AuthenticatedProtectedPlugin(),
 )
-def _update_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
+def _update_bundle_location(bundle_uuid: str):
     """
     Finalize after uploading a file to the blob storage.
 
@@ -518,33 +518,39 @@ def _update_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     - `success`: The state of upload.
     - `state_on_success`: (Optional) String. New bundle state if success
     - `state_on_failure`: (Optional) String. Bundle UUID corresponding to the new location
-    - `bundle_url`: If the bundle is stored on GCS or Azure, this is the storage url. Used to infer the blob storage type.
+    - `error_msg`: (Optional) String. Error message if upload fails.
     """
     success = query_get_bool('success', default=False)
     state_on_success = query_get_bool('state_on_success', default=State.READY)
     state_on_failure = query_get_bool('state_on_failure', default=State.FAILED)
-    bundle_url = query_get_type(str, 'bundle_url', default=None)
-    storage_type = parse_linked_bundle_url(bundle_url).storage_type
+    error_msg = query_get_type(str, 'error_msg', default=None)
 
     bundle = local.model.get_bundle(bundle_uuid)
-    if(success):
+    bundle_location = local.bundle_store.get_bundle_location(bundle.uuid) # get blob storage url
+    logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
+    storage_type = parse_linked_bundle_url(bundle_location).storage_type
+    is_dir = parse_linked_bundle_url(bundle_location).is_archive_dir
+
+    if success:
         local.model.update_bundle(
             bundle,
             {
                 'state': state_on_success,
-                'metadata': {'storage_type': storage_type, 'is_dir': storage_type},
+                'storage_type': storage_type, 
+                'is_dir': is_dir,
             },
         )
-    else:  # the upload failed
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+    else:  # If the upload failed, cleanup the uploaded file and update bundle state
         local.model.update_bundle(
             bundle,
             {
                 'state': state_on_failure,
-                'metadata': {'storage_type': storage_type, 'is_dir': storage_type},
+                'metadata': {'failure_message': error_msg },
             },
         )
-    # TODO: update user disk quota remaining
-    
+    bundles_dict = get_bundle_infos([bundle_uuid])
+    return BundleSchema(many=True).dump([bundles_dict]).data
 
 
 @get('/bundle_stores', apply=AuthenticatedProtectedPlugin())
