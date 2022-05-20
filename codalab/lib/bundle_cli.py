@@ -1483,7 +1483,7 @@ class BundleCLI(object):
             )
 
             # If the bundle is stored in Azure or GCS, use bypass server upload
-            if metadata.get('store', None) is not None:
+            if metadata.get('store', '') != '':
                 print("In bypass server branch")
                 storage_info = client.fetch_one(
                     'bundle_stores',
