@@ -15,10 +15,10 @@ from bottle import abort, get, post, put, delete, local, redirect, request, resp
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import (
-    StorageType, 
-    StorageFormat, 
-    precondition, 
-    UsageError, 
+    StorageType,
+    StorageFormat,
+    precondition,
+    UsageError,
     NotFoundError,
     parse_linked_bundle_url,
 )
@@ -471,13 +471,11 @@ def _add_bundle_location(bundle_uuid: str):
     need_sas = query_get_bool('need_sas', default=False)
 
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
-    local.model.add_bundle_location(
-        new_location['bundle_uuid'], new_location['bundle_store_uuid']
-    )
+    local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
     data = BundleLocationSchema(many=True).dump([new_location]).data
 
     bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
-    
+
     if need_sas:
         # generate the SAS token and Azure connection string, and send it back to the client
         bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
@@ -490,6 +488,7 @@ def _add_bundle_location(bundle_uuid: str):
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str
         data['data'][0]['attributes']['bundle_url'] = bundle_url
     return data
+
 
 @get(
     '/bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/',
@@ -505,6 +504,7 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     """
     bundle_location = local.model.get_bundle_location(bundle_uuid, bundle_store_uuid)
     return BundleLocationListSchema(many=True).dump(bundle_location).data
+
 
 @post(
     '/bundles/<bundle_uuid:re:%s>/locations/blob' % spec_util.UUID_STR,
@@ -526,28 +526,19 @@ def _update_bundle_location(bundle_uuid: str):
     error_msg = query_get_type(str, 'error_msg', default=None)
 
     bundle = local.model.get_bundle(bundle_uuid)
-    bundle_location = local.bundle_store.get_bundle_location(bundle.uuid) # get blob storage url
+    bundle_location = local.bundle_store.get_bundle_location(bundle.uuid)  # get blob storage url
     logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
     storage_type = parse_linked_bundle_url(bundle_location).storage_type
     is_dir = parse_linked_bundle_url(bundle_location).is_archive_dir
 
     if success:
         local.model.update_bundle(
-            bundle,
-            {
-                'state': state_on_success,
-                'storage_type': storage_type, 
-                'is_dir': is_dir,
-            },
+            bundle, {'state': state_on_success, 'storage_type': storage_type, 'is_dir': is_dir,},
         )
         local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
     else:  # If the upload failed, cleanup the uploaded file and update bundle state
         local.model.update_bundle(
-            bundle,
-            {
-                'state': state_on_failure,
-                'metadata': {'failure_message': error_msg },
-            },
+            bundle, {'state': state_on_failure, 'metadata': {'failure_message': error_msg},},
         )
     bundles_dict = get_bundle_infos([bundle_uuid])
     return BundleSchema(many=True).dump([bundles_dict]).data
@@ -567,7 +558,7 @@ def _fetch_bundle_stores():
     - `url`: a self-referential URL that points to the bundle store.
     """
     bundle_store_name = query_get_type(str, 'name', None)
-    if(bundle_store_name is not None): 
+    if bundle_store_name is not None:
         # this function only fetch one record
         bundle_store = local.model.get_bundle_store(request.user.user_id, name=bundle_store_name)
         bundle_stores = [bundle_store]
@@ -575,7 +566,6 @@ def _fetch_bundle_stores():
         # this function fetches all the records
         bundle_stores = local.model.get_bundle_stores(request.user.user_id)
     return BundleStoreSchema(many=True).dump(bundle_stores).data
-
 
 
 @post('/bundle_stores', apply=AuthenticatedProtectedPlugin())
@@ -1090,7 +1080,7 @@ def _update_bundle_contents_blob(uuid):
         elif source:
             local.upload_manager.upload_to_bundle_store(
                 bundle,  # bundle info
-                source=source, 
+                source=source,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
                 use_azure_blob_beta=use_azure_blob_beta,

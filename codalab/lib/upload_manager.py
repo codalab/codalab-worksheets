@@ -264,10 +264,18 @@ class UploadManager(object):
         """
         Get SAS token with write permission. Used for bypass server downloading.
         """
-        return parse_linked_bundle_url(path).bundle_path_sas_url(permission='rw', **kwargs).split('?')[-1]
-    
+        return (
+            parse_linked_bundle_url(path)
+            .bundle_path_sas_url(permission='rw', **kwargs)
+            .split('?')[-1]
+        )
+
     def get_index_sas_token(self, path, **kwargs):
         """
         Get SAS token of the index file. 
         """
-        return parse_linked_bundle_url(path).index_path_sas_url(permission='rw', **kwargs).split('?')[-1]
+        return (
+            parse_linked_bundle_url(path)
+            .index_path_sas_url(permission='rw', **kwargs)
+            .split('?')[-1]
+        )

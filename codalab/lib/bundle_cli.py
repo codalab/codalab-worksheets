@@ -1499,7 +1499,7 @@ class BundleCLI(object):
                 if storage_info['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
                     need_sas = True
                     params = {
-                        'need_sas': need_sas,    
+                        'need_sas': need_sas,
                     }
                     data = client.update_bundle_locations(
                         new_bundle['id'], storage_info['uuid'], params
@@ -1509,19 +1509,19 @@ class BundleCLI(object):
                     bundle_url = data.get('bundle_url')
                     try:
                         self.upload_blob_storage(
-                            fileobj=packed['fileobj'], 
-                            bundle_url = bundle_url, 
-                            bundle_conn_str = bundle_conn_str, 
-                            index_conn_str = index_conn_str,
+                            fileobj=packed['fileobj'],
+                            bundle_url=bundle_url,
+                            bundle_conn_str=bundle_conn_str,
+                            index_conn_str=index_conn_str,
                         )
                     except Exception as err:
                         params = {
-                            'success': False,  
-                            'error_msg': f'Bypass server upload error. {err}'
+                            'success': False,
+                            'error_msg': f'Bypass server upload error. {err}',
                         }
                         client.update_bundle_locations_blob(new_bundle['id'], params)
                     else:
-                        params = {'success': True }
+                        params = {'success': True}
                         client.update_bundle_locations_blob(new_bundle['id'], params)
                         print(new_bundle['id'], file=self.stdout)
                     # TODO(Jiani): add upload process call back
@@ -1555,14 +1555,14 @@ class BundleCLI(object):
         """
         # save the origin Azure connection string
         conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
-        
+
         bundle_conn_str = bundle_conn_str.replace("azurite", "localhost", 1)
         index_conn_str = index_conn_str.replace("azurite", "localhost", 1)
         print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
-        
+
         # TODO: check do we need to double Gzip
-        output_fileobj = GzipStream(fileobj) 
+        output_fileobj = GzipStream(fileobj)
         # output_fileobj = fileobj
         # Write archive file.
         print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
@@ -1589,7 +1589,6 @@ class BundleCLI(object):
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
-
 
         return
 

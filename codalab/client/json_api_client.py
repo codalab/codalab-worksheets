@@ -721,11 +721,14 @@ class JsonApiClient(RestClient):
         response = self._make_request(
             method='POST',
             path='/bundles/{}/locations/'.format(bundle_uuid),
-            data=self._pack_document([{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}], 'bundle_locations'),
+            data=self._pack_document(
+                [{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}],
+                'bundle_locations',
+            ),
             query_params=self._pack_params(params),
         )
         return response['data']
-    
+
     @wrap_exception("Unable to finilize the status of blob storge bundles")
     def update_bundle_locations_blob(self, bundle_uuid, params):
         response = self._make_request(
