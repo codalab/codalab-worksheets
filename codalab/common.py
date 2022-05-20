@@ -297,7 +297,7 @@ class LinkedBundlePath:
             response_type=kwargs["content_type"],
         )
         return signed_url
-      
+
     def bundle_path_sas_url(self, permission='r', **kwargs):
         return self._get_sas_url(self.bundle_path, permission, **kwargs)
 

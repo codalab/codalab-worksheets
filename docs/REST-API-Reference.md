@@ -214,6 +214,7 @@ Name | Type
 
 Name | Type
 --- | ---
+`id` | String
 `bundle_uuid` | String
 `bundle_store_uuid` | String
 
@@ -527,9 +528,8 @@ Adds a new BundleLocation to a bundle. If need to generate sas token, generate A
 connection string. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
-- `bundle_uuid`: Bundle UUID corresponding to the new location
-- `bypass_server`: Bool. If true, if will return SAS token
-- `url`: If the bundle is stored on GCS or Azure, this is the storage url.
+- `need_sas`: (Optional) Bool. If true, if will return SAS token
+- `bundle_url`: (Optional) String. If the bundle is stored on GCS or Azure, this is the storage url.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 
@@ -538,6 +538,16 @@ Get info about a specific BundleLocation.
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the location for
 - `bundle_store_uuid`: Bundle Store UUID to get the location for
+
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/blob`
+
+Finalize after uploading a file to the blob storage.
+
+Query parameters:
+- `success`: The state of upload.
+- `state_on_success`: (Optional) String. New bundle state if success
+- `state_on_failure`: (Optional) String. Bundle UUID corresponding to the new location
+- `error_msg`: (Optional) String. Error message if upload fails.
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
