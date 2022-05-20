@@ -355,7 +355,7 @@ class DownloadManager(object):
         Get SAS url with read permission. Used for bypass server downloading from Azure blob storage.
         """
         return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_sas_url(
-            permission='r', **kwargs
+            permission='r', **kwargs)
 
     def get_target_download_url(self, target, **kwargs):
         return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_download_url(
