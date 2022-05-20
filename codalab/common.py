@@ -16,6 +16,7 @@ from retry import retry
 from enum import Enum
 
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+from google.cloud import storage
 import datetime
 from codalab.lib.beam.filesystems import (
     AZURE_BLOB_ACCOUNT_NAME,
@@ -26,7 +27,7 @@ from codalab.lib.beam.filesystems import (
 
 # Increment this on master when ready to cut a release.
 # http://semver.org/
-CODALAB_VERSION = '1.5.0'
+CODALAB_VERSION = '1.5.2'
 BINARY_PLACEHOLDER = '<binary>'
 URLOPEN_TIMEOUT_SECONDS = int(os.environ.get('CODALAB_URLOPEN_TIMEOUT_SECONDS', 5 * 60))
 
@@ -250,7 +251,8 @@ class LinkedBundlePath:
                 f"SAS URLs can only be retrieved for bundles on Azure Blob Storage. Storage type is: {self.storage_type}."
             )
         blob_name = path.replace(
-            f"azfs://{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/", ""
+            f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/",
+            "",
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
 
         if permission == 'w':
@@ -274,11 +276,44 @@ class LinkedBundlePath:
         )
         return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
 
+    def _get_signed_url(self, path, **kwargs):
+        """Generate GCS signed url that can be used to download the blob for 1 hour."""
+        if self.storage_type != StorageType.GCS_STORAGE.value:
+            raise ValueError(
+                f"Signed URLs can only be retrieved for bundles on Google Cloud Storage. Storage type is: {self.storage_type}."
+            )
+        client = storage.Client()
+        # parse parameters from path, eg: "gs://{bucket_name}/{bundle_uuid}/{contents_file}"
+        bucket_name, blob_name = path.replace(f"{StorageURLScheme.GCS_STORAGE.value}", "").split(
+            "/", 1
+        )
+        bucket = client.get_bucket(bucket_name)
+        blob = bucket.get_blob(blob_name)
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(hours=1),
+            method="GET",
+            response_disposition=kwargs["content_disposition"],
+            response_type=kwargs["content_type"],
+        )
+        return signed_url
+      
     def bundle_path_sas_url(self, permission='r', **kwargs):
         return self._get_sas_url(self.bundle_path, permission, **kwargs)
 
     def index_path_sas_url(self, permission='r', **kwargs):
         return self._get_sas_url(self.index_path, permission, **kwargs)
+
+    def bundle_path_signed_url(self, **kwargs):
+        return self._get_signed_url(self.bundle_path, **kwargs)
+
+    def bundle_path_download_url(self, **kwargs):
+        if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
+            return self._get_sas_url(self.bundle_path, **kwargs)
+        elif self.storage_type == StorageType.GCS_STORAGE.value:
+            return self._get_signed_url(self.bundle_path, **kwargs)
+        else:
+            raise UsageError(f"Does not support current storage type: {self.storage_type}")
 
 
 def parse_linked_bundle_url(url):
