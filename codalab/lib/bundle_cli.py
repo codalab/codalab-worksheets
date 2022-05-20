@@ -1463,6 +1463,7 @@ class BundleCLI(object):
                 force_compression=args.force_compression,
                 ignore_file=args.ignore,
             )
+            print(packed)
 
             # Create bundle.
             # We must create the bundle right before we upload it because we
@@ -1475,6 +1476,7 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
+            print(new_bundle)
             print(
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
@@ -1482,6 +1484,7 @@ class BundleCLI(object):
 
             # If the bundle is stored in Azure or GCS, use bypass server upload
             if metadata.get('store', None) is not None:
+                print("In bypass server branch")
                 storage_info = client.fetch_one(
                     'bundle_stores',
                     params={
@@ -1489,6 +1492,7 @@ class BundleCLI(object):
                         'include': ['uuid', 'storage_type', 'url'],
                     },
                 )
+                print(f"storage info {storage_info}")
 
                 if storage_info['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
                     need_sas = True
@@ -1554,18 +1558,16 @@ class BundleCLI(object):
 
         bundle_conn_str = bundle_conn_str.replace("azurite", "localhost", 1)
         index_conn_str = index_conn_str.replace("azurite", "localhost", 1)
-        print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
 
-        # TODO: check do we need to double Gzip
+        # TODO: check do we need to double Gzip. If the user upload a already zipped file.
         output_fileobj = GzipStream(fileobj)
         # estimate the size of gzip file.
         # output_fileobj = fileobj
         # Write archive file.
-        print(f"before upload, bundle url: {bundle_url}, bundle_conn_str: {bundle_conn_str}")
         with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
             shutil.copyfileobj(output_fileobj, out)
-        print("upload to bundle store")
+
         # Write index file to a temporary file, then write that file to Blob Storage.
         with FileSystems.open(
             bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
