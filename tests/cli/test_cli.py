@@ -1116,6 +1116,62 @@ def test_upload_default_bundle_store(ctx):
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
 
+@TestModule.register('upload_blob')
+def test_upload_bundle_store(ctx):
+    """Test upload file to Azure blob storage.
+    Only run when the azurite has been started.
+    """
+    # Create a new bundle store and upload to it
+    bundle_store_name = 'blob-' + random_name()
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    # Upload a bundle, which should output to bundle store by default
+    uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
+    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
+
+    # 1. test upload a single file. Cat the file and check it is right.
+    uuid = _run_command([cl, 'upload', test_path('a.txt'), '--store', bundle_store_name])
+
+    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
+
+    # 2. Test upload a dir.
+
+    # 3. Test upload a zipped file. Without `-p` specified.
+    # archive_path = temp_path('.tar.gz')  # upload a zipped file
+    # contents_path = test_path('')
+    # _run_command(
+    #     ['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), '--']
+    #     + os.listdir(contents_path)
+    # )
+    # uuid = _run_command([cl, 'upload', archive_path, '--store', bundle_store_name])
+
+    # # Download whole bundle
+    # path = temp_path('')
+    # _run_command([cl, 'download', uuid, '-o', path])
+    # check_contains(['a.txt', 'b.txt', 'echo', crazy_name], _run_command(['ls', '-R', path]))
+    # shutil.rmtree(path)
+
+    # # Download a target inside (binary)
+    # _run_command([cl, 'download', uuid + '/echo', '-o', path])
+    # check_equals(test_path_contents('echo', binary=True), path_contents(path, binary=True))
+    # os.unlink(path)
+
+    # TODO: test upload a zipped file, with `-p` specified.
+
+    #
+
+
 @TestModule.register('store_add')
 def test_store_add(ctx):
     """

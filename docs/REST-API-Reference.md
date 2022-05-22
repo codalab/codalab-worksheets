@@ -528,7 +528,6 @@ Adds a new BundleLocation to a bundle. If need to generate sas token, generate A
 
 Query parameters:
 - `need_sas`: (Optional) Bool. If true, if will return SAS token
-- `bundle_url`: (Optional) String. If the bundle is stored on GCS or Azure, this is the storage url.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 

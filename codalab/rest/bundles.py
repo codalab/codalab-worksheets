@@ -18,7 +18,6 @@ from codalab.common import (
     precondition,
     UsageError,
     NotFoundError,
-    parse_linked_bundle_url,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_base_conn_str
@@ -462,16 +461,31 @@ def _add_bundle_location(bundle_uuid: str):
 
     Query parameters:
     - `need_sas`: (Optional) Bool. If true, if will return SAS token
-    - `bundle_url`: (Optional) String. If the bundle is stored on GCS or Azure, this is the storage url.
     """
     check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
     need_sas = query_get_bool('need_sas', default=False)
+    is_dir = query_get_bool('is_dir', default=False)
 
+    bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
-    local.model.add_bundle_location(new_location['bundle_uuid'], new_location['bundle_store_uuid'])
+    logging.info(
+        f"Bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
+    )
+    if new_location.get('bundle_store_uuid', None) is None:
+        # If user does not specify bundle store but use `cl upload -a`, use default azure path
+        local.model.update_bundle(
+            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir,},
+        )
+        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+    else:
+        local.model.add_bundle_location(
+            new_location['bundle_uuid'], new_location['bundle_store_uuid']
+        )
+        local.model.update_bundle(  # get_bundle_location() function uses this field
+            bundle, {'is_dir': is_dir},
+        )
+        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
-
-    bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
 
     if need_sas:
         # generate the SAS token and Azure connection string, and send it back to the client
@@ -525,12 +539,10 @@ def _update_bundle_location(bundle_uuid: str):
     bundle = local.model.get_bundle(bundle_uuid)
     bundle_location = local.bundle_store.get_bundle_location(bundle.uuid)  # get blob storage url
     logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
-    storage_type = parse_linked_bundle_url(bundle_location).storage_type
-    is_dir = parse_linked_bundle_url(bundle_location).is_archive_dir
 
     if success:
         local.model.update_bundle(
-            bundle, {'state': state_on_success, 'storage_type': storage_type, 'is_dir': is_dir,},
+            bundle, {'state': state_on_success},
         )
         local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
     else:  # If the upload failed, cleanup the uploaded file and update bundle state

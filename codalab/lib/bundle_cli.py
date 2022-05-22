@@ -100,6 +100,7 @@ from codalab.lib.completers import (
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.print_util import FileTransferProgress
+from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
@@ -1463,7 +1464,6 @@ class BundleCLI(object):
                 force_compression=args.force_compression,
                 ignore_file=args.ignore,
             )
-            print(packed)
 
             # Create bundle.
             # We must create the bundle right before we upload it because we
@@ -1476,15 +1476,16 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
-            print(new_bundle)
+
             print(
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
 
             # If the bundle is stored in Azure or GCS, use bypass server upload
+            bypass_server = False
+            bundle_store_uuid = None
             if metadata.get('store', '') != '':
-                print("In bypass server branch")
                 storage_info = client.fetch_one(
                     'bundle_stores',
                     params={
@@ -1492,38 +1493,47 @@ class BundleCLI(object):
                         'include': ['uuid', 'storage_type', 'url'],
                     },
                 )
-                print(f"storage info {storage_info}")
-
+                bundle_store_uuid = storage_info['uuid']
                 if storage_info['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
-                    need_sas = True
+                    bypass_server = True
+
+            if bypass_server or args.use_azure_blob_beta:
+                # decided whether need to
+                source_ext = zip_util.get_archive_ext(packed['filename'])
+                is_dir = source_ext in zip_util.ARCHIVE_EXTS_DIR
+                unpack_before_upload = False
+                if packed['should_unpack'] and zip_util.path_is_archive(packed['filename']):
+                    unpack_before_upload = True
+
+                params = {'need_sas': True, 'is_dir': is_dir}
+                data = client.update_bundle_locations(new_bundle['id'], bundle_store_uuid, params)[
+                    0
+                ].get('attributes')
+                bundle_conn_str = data.get('bundle_conn_str')
+                index_conn_str = data.get('index_conn_str')
+                bundle_url = data.get('bundle_url')
+                try:
+                    self.upload_blob_storage(
+                        fileobj=packed['fileobj'],
+                        bundle_url=bundle_url,
+                        bundle_conn_str=bundle_conn_str,
+                        index_conn_str=index_conn_str,
+                        source_ext=source_ext,
+                        should_unpack=unpack_before_upload,
+                    )
+                except Exception as err:
                     params = {
-                        'need_sas': need_sas,
+                        'success': False,
+                        'error_msg': f'Bypass server upload error. {err}',
                     }
-                    data = client.update_bundle_locations(
-                        new_bundle['id'], storage_info['uuid'], params
-                    )[0].get('attributes')
-                    bundle_conn_str = data.get('bundle_conn_str')
-                    index_conn_str = data.get('index_conn_str')
-                    bundle_url = data.get('bundle_url')
-                    try:
-                        self.upload_blob_storage(
-                            fileobj=packed['fileobj'],
-                            bundle_url=bundle_url,
-                            bundle_conn_str=bundle_conn_str,
-                            index_conn_str=index_conn_str,
-                        )
-                    except Exception as err:
-                        params = {
-                            'success': False,
-                            'error_msg': f'Bypass server upload error. {err}',
-                        }
-                        client.update_bundle_locations_blob(new_bundle['id'], params)
-                    else:
-                        params = {'success': True}
-                        client.update_bundle_locations_blob(new_bundle['id'], params)
-                        print(new_bundle['id'], file=self.stdout)
-                    # TODO(Jiani): add upload process call back
-                    return
+                    print(params['error_msg'])
+                    client.update_bundle_locations_blob(new_bundle['id'], params)
+                else:
+                    params = {'success': True}
+                    client.update_bundle_locations_blob(new_bundle['id'], params)
+                    print(new_bundle['id'], file=self.stdout)
+                # TODO(Jiani): add upload process call back
+                return
 
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
             with closing(packed['fileobj']), progress:
@@ -1544,26 +1554,34 @@ class BundleCLI(object):
         print(new_bundle['id'], file=self.stdout)
 
     def upload_blob_storage(
-        self, fileobj, bundle_url, bundle_conn_str, index_conn_str, progress_callback
+        self, fileobj, bundle_url, bundle_conn_str, index_conn_str, source_ext, should_unpack
     ):
         """
-        Helper function for bypass server upload.
+        Helper function for bypass server upload. Mimic behavior of BlobStorageUploader at client side.
+        Change enviroment variable 'AZURE_STORAGE_CONNECTION_STRING' to upload to Azure.
 
         params:
-        bundle_url: Url for bundle store, eg "azfs://devstoreaccount1/bundles/{bundle_uuid}/contents.gz"
-        bundle_conn_str: Connection string for Azure blob
+        fileobj: The file object to upload.
+        bundle_url: Url for bundle store, eg "azfs://devstoreaccount1/bundles/{bundle_uuid}/contents.gz".
+        bundle_conn_str: Connection string for the contents file.
+        index_conn_str: Connection string for the index.sqlite file.
+        source_ext: Extension of the file.
+        should_unpack: Unpack the file before upload iff True.
         """
-        # save the origin Azure connection string
-        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+        from codalab.lib import zip_util
 
-        bundle_conn_str = bundle_conn_str.replace("azurite", "localhost", 1)
-        index_conn_str = index_conn_str.replace("azurite", "localhost", 1)
+        # save the current Azure connection string
+        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+        # For running the test locally.
+        if LOCAL_USING_AZURITE and "core.windows.net" not in bundle_conn_str:
+            bundle_conn_str = bundle_conn_str.replace("azurite", "localhost", 1)
+            index_conn_str = index_conn_str.replace("azurite", "localhost", 1)
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
 
-        # TODO: check do we need to double Gzip. If the user upload a already zipped file.
-        output_fileobj = GzipStream(fileobj)
-        # estimate the size of gzip file.
-        # output_fileobj = fileobj
+        if should_unpack:
+            output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
+        else:
+            output_fileobj = GzipStream(fileobj)
         # Write archive file.
         with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
             shutil.copyfileobj(output_fileobj, out)
@@ -1579,7 +1597,6 @@ class BundleCLI(object):
                 clearIndexCache=True,
                 indexFilePath=tmp_index_file.name,
             )
-            print(f"temp file name is: {tmp_index_file.name}")
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
             # TODO: check do we make it into two steps?
             with FileSystems.create(

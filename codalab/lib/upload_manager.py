@@ -178,7 +178,8 @@ class BlobStorageUploader(Uploader):
         if unpack_archive:  # user upload a zipped file, need to unpack
             # and then rezip the file to .tar.gz or .gz
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
-        else:
+        else:  # if the fileobj is a zipped file, still use GzipStream to double gzip. The seconde Gzip is for transfer.
+            # if file is a non-zipped file, Gzip to upload.
             output_fileobj = GzipStream(source_fileobj)
         # Write archive file.
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
