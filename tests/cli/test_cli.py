@@ -786,6 +786,85 @@ def test_upload1(ctx):
     # Switch back to root user
     switch_user('codalab')
 
+@TestModule.register('upload1_blob')
+def test_upload1_blob(ctx):
+    """
+    Test bypass server upload. specify `-a`
+    """
+    # Upload contents
+    uuid = _run_command([cl, 'upload', '-c', 'hello', '-a'])
+    check_equals('hello', _run_command([cl, 'cat', uuid]))
+
+    # Upload binary file
+    uuid = _run_command([cl, 'upload', test_path('echo'), '-a'])
+    check_equals(
+        test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
+    )
+
+    # Upload file with crazy name
+    uuid = _run_command([cl, 'upload', test_path(crazy_name), '-a'])
+    check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
+
+    # Upload directory with excluded files
+    uuid = _run_command([cl, 'upload', '-a', test_path('dir1'), '--exclude-patterns', 'f*',])
+    check_num_lines(
+        2 + 2, _run_command([cl, 'cat', uuid])
+    )  # 2 header lines, Only two files left after excluding and extracting.
+
+    # Upload multiple files with excluded files
+    uuid = _run_command(
+        [
+            cl,
+            'upload',
+            '-a',
+            test_path('dir1'),
+            test_path('echo'),
+            test_path(crazy_name),
+            '--exclude-patterns',
+            'f*',
+
+        ]
+    )
+    check_num_lines(
+        2 + 3, _run_command([cl, 'cat', uuid])
+    )  # 2 header lines, 3 items at bundle target root
+    check_num_lines(
+        2 + 2, _run_command([cl, 'cat', uuid + '/dir1'])
+    )  # 2 header lines, Only two files left after excluding and extracting.
+
+    # Upload directory with only one file, should not simplify directory structure
+    uuid = _run_command([cl, 'upload', test_path('dir2'), '-a'])
+    check_num_lines(
+        2 + 1, _run_command([cl, 'cat', uuid])
+    )  # Directory listing with 2 headers lines and one file
+
+    # Upload a file that exceeds the disk quota
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+    # expect to fail when we upload something more than 2 bytes
+    _run_command([cl, 'upload', '-a', test_path('codalab.png')], expected_exit_code=1)
+    # Reset disk quota
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
+
+    # Run the same tests when on a non root user
+    user_name = 'non_root_user_' + random_name()
+    create_user(ctx, user_name, disk_quota='2000')
+    switch_user(user_name)
+    # expect to fail when we upload something more than 2k bytes
+    check_contains(
+        "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
+        _run_command(
+            [cl, 'upload', test_path('codalab.png'), '-a'],
+            expected_exit_code=1,
+            # To return stderr, we need to include
+            # the following two arguments:
+            include_stderr=True,
+            force_subprocess=True,
+        ),
+    )
+    # Switch back to root user
+    switch_user('codalab')
+
+
 
 @TestModule.register('upload2')
 def test_upload2(ctx):
@@ -1123,7 +1202,7 @@ def test_upload_bundle_store(ctx):
     """
     # Create a new bundle store and upload to it
     bundle_store_name = 'blob-' + random_name()
-    _run_command(
+    bundle_store_uuid = _run_command(
         [
             cl,
             "store",
@@ -1136,16 +1215,16 @@ def test_upload_bundle_store(ctx):
             'azfs://devstoreaccount1/bundles',
         ]
     )
-    # Upload a bundle, which should output to bundle store by default
-    uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
-    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
     # 1. test upload a single file. Cat the file and check it is right.
     uuid = _run_command([cl, 'upload', test_path('a.txt'), '--store', bundle_store_name])
-
     check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
 
-    # 2. Test upload a dir.
+    uuid = _run_command([cl, 'upload', test_path('a.txt'), '-a'])
+    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
+
+    # 2. Test upload a dir. Check the uploaded dir is correct.
+
 
     # 3. Test upload a zipped file. Without `-p` specified.
     # archive_path = temp_path('.tar.gz')  # upload a zipped file
@@ -1168,8 +1247,9 @@ def test_upload_bundle_store(ctx):
     # os.unlink(path)
 
     # TODO: test upload a zipped file, with `-p` specified.
-
-    #
+    
+    # Delete Bundle store. Expected to exit with 1, because it has bundle stored in it.
+    _run_command([cl, "store", "rm", bundle_store_uuid], expected_exit_code=1)
 
 
 @TestModule.register('store_add')

@@ -1481,7 +1481,9 @@ class BundleCLI(object):
                 file=self.stderr,
             )
 
-            # If the bundle is stored in Azure or GCS, use bypass server upload
+            # By pass server upload: 
+            # 1. If the user specify `-a`, upload to Azure blob storage
+            # 2. If the user specify `--store` and blob storage is on Azure or GCS
             bypass_server = False
             bundle_store_uuid = None
             if metadata.get('store', '') != '':
@@ -1525,7 +1527,6 @@ class BundleCLI(object):
                         'success': False,
                         'error_msg': f'Bypass server upload error. {err}',
                     }
-                    print(params['error_msg'])
                     client.update_bundle_locations_blob(new_bundle['id'], params)
                 else:
                     params = {'success': True}
