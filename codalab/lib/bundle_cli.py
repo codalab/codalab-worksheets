@@ -100,7 +100,6 @@ from codalab.lib.completers import (
 )
 from codalab.lib.bundle_store import MultiDiskBundleStore
 from codalab.lib.print_util import FileTransferProgress
-from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
@@ -1572,10 +1571,6 @@ class BundleCLI(object):
 
         # save the current Azure connection string
         conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
-        # For running the test locally.
-        if LOCAL_USING_AZURITE and "core.windows.net" not in bundle_conn_str:
-            bundle_conn_str = bundle_conn_str.replace("azurite", "localhost", 1)
-            index_conn_str = index_conn_str.replace("azurite", "localhost", 1)
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
 
         if should_unpack:

@@ -492,6 +492,9 @@ def _add_bundle_location(bundle_uuid: str):
         bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
         index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
         base_conn_str = get_base_conn_str()
+        if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
+            # For test locally. Mannually typing `cl upload`
+            base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
         bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
         index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
 
