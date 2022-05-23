@@ -786,6 +786,7 @@ def test_upload1(ctx):
     # Switch back to root user
     switch_user('codalab')
 
+
 @TestModule.register('upload1_blob')
 def test_upload1_blob(ctx):
     """
@@ -863,7 +864,6 @@ def test_upload1_blob(ctx):
     )
     # Switch back to root user
     switch_user('codalab')
-
 
 
 @TestModule.register('upload2')
@@ -1225,7 +1225,6 @@ def test_upload_bundle_store(ctx):
 
     # 2. Test upload a dir. Check the uploaded dir is correct.
 
-
     # 3. Test upload a zipped file. Without `-p` specified.
     # archive_path = temp_path('.tar.gz')  # upload a zipped file
     # contents_path = test_path('')
@@ -1247,7 +1246,6 @@ def test_upload_bundle_store(ctx):
     # os.unlink(path)
 
     # TODO: test upload a zipped file, with `-p` specified.
-    
     # Delete Bundle store. Expected to exit with 1, because it has bundle stored in it.
     _run_command([cl, "store", "rm", bundle_store_uuid], expected_exit_code=1)
 
