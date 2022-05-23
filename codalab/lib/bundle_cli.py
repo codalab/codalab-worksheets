@@ -1481,7 +1481,7 @@ class BundleCLI(object):
                 file=self.stderr,
             )
 
-            # By pass server upload: 
+            # By pass server upload:
             # 1. If the user specify `-a`, upload to Azure blob storage
             # 2. If the user specify `--store` and blob storage is on Azure or GCS
             bypass_server = False
