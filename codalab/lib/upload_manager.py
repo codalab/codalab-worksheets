@@ -125,7 +125,7 @@ class Uploader:
         """
         is_url, is_fileobj = False, False
         if isinstance(source, str):
-            if path_util.path_is_url(source):  # eg, http links
+            if path_util.path_is_url(source):
                 is_url = True
                 source = source.rsplit('?', 1)[0]  # Remove query string from URL, if present
             else:
@@ -175,11 +175,9 @@ class BlobStorageUploader(Uploader):
     def write_fileobj(
         self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
     ):
-        if unpack_archive:  # user upload a zipped file, need to unpack
-            # and then rezip the file to .tar.gz or .gz
+        if unpack_archive:
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
-        else:  # if the fileobj is a zipped file, still use GzipStream to double gzip. The seconde Gzip is for transfer.
-            # if file is a non-zipped file, Gzip to upload.
+        else:
             output_fileobj = GzipStream(source_fileobj)
         # Write archive file.
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:

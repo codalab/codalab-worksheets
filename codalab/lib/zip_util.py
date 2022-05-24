@@ -173,7 +173,7 @@ def pack_files_for_upload(
                 'filesize': None,
                 'should_unpack': True,
             }
-        elif path_is_archive(source):  # when user upload a archive file
+        elif path_is_archive(source):
             return {
                 'fileobj': open(source, mode='rb'),
                 'filename': filename,
@@ -183,11 +183,11 @@ def pack_files_for_upload(
         elif force_compression:
             return {
                 'fileobj': gzip_file(source),
-                'filename': filename + '.gz',  # If add .gz, the `ext` when unpack will be .gz
+                'filename': filename + '.gz',
                 'filesize': None,
                 'should_unpack': True,
             }
-        else:  #
+        else:
             return {
                 'fileobj': open(source, mode='rb'),
                 'filename': filename,

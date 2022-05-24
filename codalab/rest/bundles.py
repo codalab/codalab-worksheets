@@ -1101,7 +1101,7 @@ def _update_bundle_contents_blob(uuid):
             pass
         elif source:
             local.upload_manager.upload_to_bundle_store(
-                bundle,  # bundle info
+                bundle,
                 source=source,
                 git=query_get_bool('git', default=False),
                 unpack=query_get_bool('unpack', default=True),
