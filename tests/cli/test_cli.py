@@ -822,7 +822,9 @@ def test_upload1_blob(ctx):
     check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
 
     # Upload directory with excluded files
-    uuid = _run_command([cl, 'upload','--store', bundle_store_name, test_path('dir1'), '--exclude-patterns', 'f*',])
+    uuid = _run_command(
+        [cl, 'upload', '--store', bundle_store_name, test_path('dir1'), '--exclude-patterns', 'f*',]
+    )
     check_num_lines(
         2 + 2, _run_command([cl, 'cat', uuid])
     )  # 2 header lines, Only two files left after excluding and extracting.
@@ -856,7 +858,9 @@ def test_upload1_blob(ctx):
     # Upload a file that exceeds the disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
     # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', '--store', bundle_store_name, test_path('codalab.png')], expected_exit_code=1)
+    _run_command(
+        [cl, 'upload', '--store', bundle_store_name, test_path('codalab.png')], expected_exit_code=1
+    )
     # Reset disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
@@ -1061,7 +1065,9 @@ def test_upload2_blob(ctx):
         check_equals(test_path_contents(archive_path, binary=True), response.read())
 
         # Force compression
-        uuid = _run_command([cl, 'upload', '--store', bundle_store_name, test_path('echo'), '--force-compression'])
+        uuid = _run_command(
+            [cl, 'upload', '--store', bundle_store_name, test_path('echo'), '--force-compression']
+        )
         check_equals('echo', get_info(uuid, 'name'))
         check_equals(
             test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)

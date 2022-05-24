@@ -1508,7 +1508,7 @@ class BundleCLI(object):
                 else:
                     unpack_before_upload = False
                     is_dir = False
-                    
+
                 params = {'need_sas': True, 'is_dir': is_dir}
                 data = client.update_bundle_locations(new_bundle['id'], bundle_store_uuid, params)[
                     0
