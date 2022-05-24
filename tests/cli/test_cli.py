@@ -971,7 +971,7 @@ def test_upload2(ctx):
 
 @TestModule.register('upload_blob2')
 def test_upload2_blob(ctx):
-    """Similar to 'upload2' test but test the bypass server upload. 
+    """Similar to 'upload2' test but test the bypass server upload.
     Only run it when enabling Azurite environment.
     """
     bundle_store_name = 'blob-' + random_name()
