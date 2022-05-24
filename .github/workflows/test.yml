@@ -444,7 +444,7 @@ jobs:
           - resources
           - memoize
           - copy netcat netcurl
-          - edit blob
+          - edit blob upload_blob1 upload_blob2
           - open wopen
     steps:
       - name: Clear free space

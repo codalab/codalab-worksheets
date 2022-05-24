@@ -787,27 +787,42 @@ def test_upload1(ctx):
     switch_user('codalab')
 
 
-@TestModule.register('upload1_blob')
+@TestModule.register('upload_blob1')
 def test_upload1_blob(ctx):
+    """Simiar to test case 'upload1'.
+    Test bypass server upload under different senario. Specify `--store` to enable bypass server upload.
     """
-    Test bypass server upload. specify `-a`
-    """
-    # Upload contents
-    uuid = _run_command([cl, 'upload', '-c', 'hello', '-a'])
+    bundle_store_name = 'blob-' + random_name()
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+
+    # Upload contents: Upload a string will not bypass server.
+    uuid = _run_command([cl, 'upload', '-c', 'hello', '--store', bundle_store_name])
     check_equals('hello', _run_command([cl, 'cat', uuid]))
 
     # Upload binary file
-    uuid = _run_command([cl, 'upload', test_path('echo'), '-a'])
+    uuid = _run_command([cl, 'upload', test_path('echo'), '--store', bundle_store_name])
     check_equals(
         test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
     )
 
     # Upload file with crazy name
-    uuid = _run_command([cl, 'upload', test_path(crazy_name), '-a'])
+    uuid = _run_command([cl, 'upload', test_path(crazy_name), '--store', bundle_store_name])
     check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
 
     # Upload directory with excluded files
-    uuid = _run_command([cl, 'upload', '-a', test_path('dir1'), '--exclude-patterns', 'f*',])
+    uuid = _run_command([cl, 'upload','--store', bundle_store_name, test_path('dir1'), '--exclude-patterns', 'f*',])
     check_num_lines(
         2 + 2, _run_command([cl, 'cat', uuid])
     )  # 2 header lines, Only two files left after excluding and extracting.
@@ -823,7 +838,6 @@ def test_upload1_blob(ctx):
             test_path(crazy_name),
             '--exclude-patterns',
             'f*',
-
         ]
     )
     check_num_lines(
@@ -834,7 +848,7 @@ def test_upload1_blob(ctx):
     )  # 2 header lines, Only two files left after excluding and extracting.
 
     # Upload directory with only one file, should not simplify directory structure
-    uuid = _run_command([cl, 'upload', test_path('dir2'), '-a'])
+    uuid = _run_command([cl, 'upload', test_path('dir2'), '--store', bundle_store_name])
     check_num_lines(
         2 + 1, _run_command([cl, 'cat', uuid])
     )  # Directory listing with 2 headers lines and one file
@@ -842,7 +856,7 @@ def test_upload1_blob(ctx):
     # Upload a file that exceeds the disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
     # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', '-a', test_path('codalab.png')], expected_exit_code=1)
+    _run_command([cl, 'upload', '--store', bundle_store_name, test_path('codalab.png')], expected_exit_code=1)
     # Reset disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
@@ -854,7 +868,7 @@ def test_upload1_blob(ctx):
     check_contains(
         "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
         _run_command(
-            [cl, 'upload', test_path('codalab.png'), '-a'],
+            [cl, 'upload', test_path('codalab.png'), '--store', bundle_store_name],
             expected_exit_code=1,
             # To return stderr, we need to include
             # the following two arguments:
@@ -942,6 +956,112 @@ def test_upload2(ctx):
 
         # Force compression
         uuid = _run_command([cl, 'upload', test_path('echo'), '--force-compression'])
+        check_equals('echo', get_info(uuid, 'name'))
+        check_equals(
+            test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
+        )
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals("text/plain", response.headers.get("Content-Type"))
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals('inline; filename="echo"', response.headers.get("Content-Disposition"))
+        check_equals(test_path_contents('echo', binary=True), response.read().rstrip())
+
+        os.unlink(archive_path)
+
+
+@TestModule.register('upload_blob2')
+def test_upload2_blob(ctx):
+    """Similar to 'upload2' test but test the bypass server upload. 
+    Only run it when enabling Azurite environment.
+    """
+    bundle_store_name = 'blob-' + random_name()
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    # Upload tar.gz and zip.
+    for suffix in ['.tar.gz', '.zip']:
+        # Pack it up
+        archive_path = temp_path(suffix)
+        contents_path = test_path('dir1')
+        if suffix == '.tar.gz':
+            _run_command(
+                [
+                    'tar',
+                    'cfz',
+                    archive_path,
+                    '-C',
+                    os.path.dirname(contents_path),
+                    os.path.basename(contents_path),
+                ]
+            )
+        else:
+            _run_command(
+                [
+                    'bash',
+                    '-c',
+                    'cd %s && zip -r %s %s'
+                    % (
+                        os.path.dirname(contents_path),
+                        archive_path,
+                        os.path.basename(contents_path),
+                    ),
+                ]
+            )
+
+        # Upload it and unpack
+        uuid = _run_command([cl, 'upload', archive_path, '--store', bundle_store_name])
+        name = get_info(uuid, 'name')
+        check_equals(os.path.basename(archive_path).replace(suffix, ''), name)
+        check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1']))
+
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals("application/gzip", response.headers.get("Content-Type"))
+        check_equals("identity", response.headers.get("Content-Encoding"))
+        check_equals(
+            f'attachment; filename="{name}.tar.gz"', response.headers.get("Content-Disposition")
+        )
+
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
+        check_equals("text/plain", response.headers.get("Content-Type"))
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals('inline; filename="f1"', response.headers.get("Content-Disposition"))
+        check_equals(test_path_contents('dir1/f1', binary=True), response.read().rstrip())
+
+        # Upload it but don't unpack
+        # failed here! Upload a packed file (.tar.gz), and it is thought as a dir (which is false)
+        uuid = _run_command([cl, 'upload', '--store', bundle_store_name, archive_path, '--pack'])
+        check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
+        print(test_path_contents(archive_path, binary=True))
+        check_equals(
+            test_path_contents(archive_path, binary=True),
+            _run_command([cl, 'cat', uuid], binary=True),
+        )
+
+        # Bundle should be streamed as a gzipped archive file, so it should be transparently decoded by the browser.
+        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+        check_equals(
+            "application/zip" if suffix == ".zip" else "application/octet-stream",
+            response.headers.get("Content-Type"),
+        )
+        check_equals("gzip", response.headers.get("Content-Encoding"))
+        check_equals(
+            f'inline; filename="{os.path.basename(archive_path)}"',
+            response.headers.get("Content-Disposition"),
+        )
+        check_equals(test_path_contents(archive_path, binary=True), response.read())
+
+        # Force compression
+        uuid = _run_command([cl, 'upload', '--store', bundle_store_name, test_path('echo'), '--force-compression'])
         check_equals('echo', get_info(uuid, 'name'))
         check_equals(
             test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
@@ -1193,61 +1313,6 @@ def test_upload_default_bundle_store(ctx):
     # Upload a bundle, which should output to bundle store by default
     uuid = _run_command([cl, 'upload', '-c', 'hello'])
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
-
-
-@TestModule.register('upload_blob')
-def test_upload_bundle_store(ctx):
-    """Test upload file to Azure blob storage.
-    Only run when the azurite has been started.
-    """
-    # Create a new bundle store and upload to it
-    bundle_store_name = 'blob-' + random_name()
-    bundle_store_uuid = _run_command(
-        [
-            cl,
-            "store",
-            "add",
-            "--name",
-            bundle_store_name,
-            '--storage-type',
-            'azure_blob',
-            '--url',
-            'azfs://devstoreaccount1/bundles',
-        ]
-    )
-
-    # 1. test upload a single file. Cat the file and check it is right.
-    uuid = _run_command([cl, 'upload', test_path('a.txt'), '--store', bundle_store_name])
-    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
-
-    uuid = _run_command([cl, 'upload', test_path('a.txt'), '-a'])
-    check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
-
-    # 2. Test upload a dir. Check the uploaded dir is correct.
-
-    # 3. Test upload a zipped file. Without `-p` specified.
-    # archive_path = temp_path('.tar.gz')  # upload a zipped file
-    # contents_path = test_path('')
-    # _run_command(
-    #     ['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), '--']
-    #     + os.listdir(contents_path)
-    # )
-    # uuid = _run_command([cl, 'upload', archive_path, '--store', bundle_store_name])
-
-    # # Download whole bundle
-    # path = temp_path('')
-    # _run_command([cl, 'download', uuid, '-o', path])
-    # check_contains(['a.txt', 'b.txt', 'echo', crazy_name], _run_command(['ls', '-R', path]))
-    # shutil.rmtree(path)
-
-    # # Download a target inside (binary)
-    # _run_command([cl, 'download', uuid + '/echo', '-o', path])
-    # check_equals(test_path_contents('echo', binary=True), path_contents(path, binary=True))
-    # os.unlink(path)
-
-    # TODO: test upload a zipped file, with `-p` specified.
-    # Delete Bundle store. Expected to exit with 1, because it has bundle stored in it.
-    _run_command([cl, "store", "rm", bundle_store_uuid], expected_exit_code=1)
 
 
 @TestModule.register('store_add')

@@ -1499,13 +1499,16 @@ class BundleCLI(object):
                     bypass_server = True
 
             if bypass_server or args.use_azure_blob_beta:
-                # decided whether need to
+                # Mimic the rest server behavior
+                # decided the bundle type (file/directory) and decide whether need to unpack
                 source_ext = zip_util.get_archive_ext(packed['filename'])
-                is_dir = source_ext in zip_util.ARCHIVE_EXTS_DIR
-                unpack_before_upload = False
                 if packed['should_unpack'] and zip_util.path_is_archive(packed['filename']):
                     unpack_before_upload = True
-
+                    is_dir = source_ext in zip_util.ARCHIVE_EXTS_DIR
+                else:
+                    unpack_before_upload = False
+                    is_dir = False
+                    
                 params = {'need_sas': True, 'is_dir': is_dir}
                 data = client.update_bundle_locations(new_bundle['id'], bundle_store_uuid, params)[
                     0
