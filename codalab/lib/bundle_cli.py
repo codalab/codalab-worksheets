@@ -1517,14 +1517,17 @@ class BundleCLI(object):
                 index_conn_str = data.get('index_conn_str')
                 bundle_url = data.get('bundle_url')
                 try:
-                    self.upload_blob_storage(
-                        fileobj=packed['fileobj'],
-                        bundle_url=bundle_url,
-                        bundle_conn_str=bundle_conn_str,
-                        index_conn_str=index_conn_str,
-                        source_ext=source_ext,
-                        should_unpack=unpack_before_upload,
-                    )
+                    progress = FileTransferProgress('Sent ', f=self.stderr)
+                    with closing(packed['fileobj']), progress:
+                        self.upload_blob_storage(
+                            fileobj=packed['fileobj'],
+                            bundle_url=bundle_url,
+                            bundle_conn_str=bundle_conn_str,
+                            index_conn_str=index_conn_str,
+                            source_ext=source_ext,
+                            should_unpack=unpack_before_upload,
+                            progress_callback=progress.update,
+                        )
                 except Exception as err:
                     params = {
                         'success': False,
@@ -1557,7 +1560,7 @@ class BundleCLI(object):
         print(new_bundle['id'], file=self.stdout)
 
     def upload_blob_storage(
-        self, fileobj, bundle_url, bundle_conn_str, index_conn_str, source_ext, should_unpack
+        self, fileobj, bundle_url, bundle_conn_str, index_conn_str, source_ext, should_unpack, progress_callback=None
     ):
         """
         Helper function for bypass server upload. Mimic behavior of BlobStorageUploader at client side.
@@ -1582,8 +1585,20 @@ class BundleCLI(object):
         else:
             output_fileobj = GzipStream(fileobj)
         # Write archive file.
+        bytes_uploaded = 0
+        CHUNK_SIZE = 16 * 1024
         with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
-            shutil.copyfileobj(output_fileobj, out)
+            # shutil.copyfileobj(output_fileobj, out)
+            while True:
+                to_send = output_fileobj.read(CHUNK_SIZE)
+                if not to_send:
+                    break
+                out.write(to_send)
+                bytes_uploaded += len(to_send)
+                if progress_callback is not None:
+                    should_resume = progress_callback(bytes_uploaded)
+                    if not should_resume:
+                        raise Exception('Upload aborted by client')
 
         # Write index file to a temporary file, then write that file to Blob Storage.
         with FileSystems.open(
@@ -1597,13 +1612,21 @@ class BundleCLI(object):
                 indexFilePath=tmp_index_file.name,
             )
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
-            # TODO: check do we make it into two steps?
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_url).index_path,
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                shutil.copyfileobj(tif, out_index_file)
-                # change shutil.
+                # shutil.copyfileobj(tif, out_index_file)
+                while True:
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    out_index_file.write(to_send)
+                    bytes_uploaded += len(to_send)
+                    if progress_callback is not None:
+                        should_resume = progress_callback(bytes_uploaded)
+                        if not should_resume:
+                            raise Exception('Upload aborted by client')
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
 
         return
