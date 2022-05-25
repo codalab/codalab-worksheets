@@ -1,4 +1,5 @@
 tornado<7.0
 markdown==3.3.6
 mkdocs==1.2.3
+jinja2==3.0.3
 mkdocs-material==6.2.8
