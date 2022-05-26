@@ -1538,7 +1538,6 @@ class BundleCLI(object):
                     params = {'success': True}
                     client.update_bundle_locations_blob(new_bundle['id'], params)
                     print(new_bundle['id'], file=self.stdout)
-                # TODO(Jiani): add upload process call back
                 return
 
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
@@ -1560,7 +1559,14 @@ class BundleCLI(object):
         print(new_bundle['id'], file=self.stdout)
 
     def upload_blob_storage(
-        self, fileobj, bundle_url, bundle_conn_str, index_conn_str, source_ext, should_unpack, progress_callback=None
+        self,
+        fileobj,
+        bundle_url,
+        bundle_conn_str,
+        index_conn_str,
+        source_ext,
+        should_unpack,
+        progress_callback=None,
     ):
         """
         Helper function for bypass server upload. Mimic behavior of BlobStorageUploader at client side.
