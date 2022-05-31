@@ -7,6 +7,9 @@ from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
 from ratarmountcore import SQLiteIndexedTar
 from contextlib import closing
+import urllib.parse
+import urllib.request
+import http.client
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
@@ -315,6 +318,7 @@ class ClientUploadManager(object):
         # 2. If the user specify `--store` and blob storage is on Azure or GCS
         bypass_server = True if use_azure_blob_beta else False
         bundle_store_uuid = None
+        upload_func = self.upload_Azure_blob_storage
         if destination_bundle_store is not None and destination_bundle_store != '':
             storage_info = self._client.fetch_one(
                 'bundle_stores',
@@ -329,6 +333,8 @@ class ClientUploadManager(object):
                 StorageType.GCS_STORAGE.value,
             ):
                 bypass_server = True
+                if storage_info['storage_type'] == StorageType.GCS_STORAGE.value:
+                    upload_func = self.upload_GCS_blob_storage
 
         if bypass_server:
             # Mimic the rest server behavior
@@ -350,13 +356,15 @@ class ClientUploadManager(object):
             bundle_conn_str = data.get('bundle_conn_str')
             index_conn_str = data.get('index_conn_str')
             bundle_url = data.get('bundle_url')
+            bundle_read_str = data.get('bundle_read_url', default=bundle_url)
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
                 with closing(packed_source['fileobj']), progress:
-                    self.upload_Azure_blob_storage(
+                    upload_func(
                         fileobj=packed_source['fileobj'],
                         bundle_url=bundle_url,
                         bundle_conn_str=bundle_conn_str,
+                        bundle_read_str=bundle_read_str,
                         index_conn_str=index_conn_str,
                         source_ext=source_ext,
                         should_unpack=unpack_before_upload,
@@ -394,6 +402,7 @@ class ClientUploadManager(object):
         fileobj: IO[bytes],
         bundle_url: str,
         bundle_conn_str: str,
+        bundle_read_str: str,
         index_conn_str: str,
         source_ext: str,
         should_unpack: bool,
@@ -437,17 +446,6 @@ class ClientUploadManager(object):
                     if not should_resume:
                         raise Exception('Upload aborted by client')
         
-        # fileobj.seek(0)  # packed file.
-        # import gzip
-        # if should_unpack:
-        #     new_output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
-        # else:
-        #     new_output_fileobj = GzipStream(fileobj)
-        #     fileobj.seek(0)
-        # new_output_fileobj: GzipStream type.
-        # fileobj: bytestring
-        # Write index file to a temporary file, then write that file to Blob Storage.
-        # from codalab.worker.file_util import gzip_bytestring_to_fileobj
         with FileSystems.open(
             bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
         ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -480,6 +478,7 @@ class ClientUploadManager(object):
         fileobj: IO[bytes],
         bundle_url: str,  
         bundle_conn_str: str,  # bundle_conn_str needs to have 2 urls. One for upload
+        bundle_read_str: str,
         index_conn_str: str,  # index_file write signed url
         source_ext: str,
         should_unpack: bool,
@@ -491,6 +490,62 @@ class ClientUploadManager(object):
             output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
         else:
             output_fileobj = GzipStream(fileobj)
+
+        # Write archive file.
+        self._upload_with_chunked_encoding(
+            method='PUT', 
+            url=bundle_conn_str,
+            header={'Content-type': 'application/octet-stream'},
+            fileobj=open(output_fileobj, "rb"),
+            progress_callback=None,
+        )
         
+        # upload the index file
+        request = urllib.request.Request(url=bundle_read_str, method="GET")  # THIS WORKS
+        with urllib.request.urlopen(request) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+            print("tff is: ", ttf)  # tff is:  <_io.BufferedReader>
+            SQLiteIndexedTar(
+                fileObject=ttf,
+                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                writeIndex=True,
+                clearIndexCache=True,
+                indexFilePath=tmp_index_file.name,
+            )
+            self._upload_with_chunked_encoding(
+                method='PUT', 
+                url=index_conn_str,
+                header={'Content-type': 'application/octet-stream'},
+                fileobj=open(tmp_index_file.name, "rb"),
+                progress_callback=None,
+            )
+            
+        
+    def _upload_with_chunked_encoding(
+        self, method, url, header, fileobj, progress_callback=None
+    ):
+        CHUNK_SIZE = 10
+        TIMEOUT = 60
+        bytes_uploaded = 0
+        parsed_index_url = urllib.parse.urlparse(url)
+        conn = http.client.HTTPSConnection(parsed_index_url.netloc, timeout=TIMEOUT)
+        with closing(conn):
+            conn.putrequest(method=method, url=url)
+            headers = {
+                'Transfer-Encoding': 'chunked',
+            }
+            headers.update(header)
 
-
+            for header_name, header_value in headers.items():
+                conn.putheader(header_name, header_value)
+            conn.endheaders()
+            while True:
+                to_send = fileobj.read(CHUNK_SIZE)
+                if not to_send:
+                    break
+                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
+                bytes_uploaded += len(to_send)
+                if progress_callback is not None:
+                    should_resume = progress_callback(bytes_uploaded)
+                    if not should_resume:
+                        raise Exception('Upload aborted by client')
+            conn.send(b'0\r\n\r\n')
