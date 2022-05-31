@@ -1476,7 +1476,9 @@ class BundleCLI(object):
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
-            uploader = upload_manager.ClientUploadManager(client, stdout=self.stdout, stderr=self.stderr)
+            uploader = upload_manager.ClientUploadManager(
+                client, stdout=self.stdout, stderr=self.stderr
+            )
             uploader.upload_to_bundle_store(
                 bundle=new_bundle,
                 packed_source=packed,

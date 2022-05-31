@@ -488,9 +488,7 @@ def _add_bundle_location(bundle_uuid: str):
         )
         # TODO: check whether this function could get bundle location for GCS store.
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
-        logging.info(
-            f"Bypass server upload, url: {bundle_url}"
-        )
+        logging.info(f"Bypass server upload, url: {bundle_url}")
     data = BundleLocationSchema(many=True).dump([new_location]).data
 
     if need_sas:
@@ -506,15 +504,10 @@ def _add_bundle_location(bundle_uuid: str):
             index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
 
         elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
-            bundle_read_url = local.upload_manager.get_bundle_signed_url(
-                bundle_url,
-                method="GET",
-            )
+            bundle_read_url = local.upload_manager.get_bundle_signed_url(bundle_url, method="GET",)
             # For GCS storage, the connection string is signed url
             bundle_conn_str = local.upload_manager.get_bundle_signed_url(
-                bundle_url,
-                method="PUT",
-                request_content_type="application/octet-stream"
+                bundle_url, method="PUT", request_content_type="application/octet-stream"
             )
             index_conn_str = local.upload_manager.get_index_signed_url(
                 bundle_url, method="PUT", request_content_type="application/octet-stream"
