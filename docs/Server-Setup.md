@@ -43,7 +43,7 @@ Docker Container | Docker Image Used            | Purpose
  frontend        | `codalab/frontend:<version>` | Website (serves static pages)
  rest-server     | `codalab/server:<version>`   | REST API endpoint (used by website and CLI)
  bundle-manager  | `codalab/server:<version>`   | Schedules bundles to workers in the background
- rest-server     | `codalab/server:<version>`   | Websocket API endpoint (used by workers)
+ ws-server     | `codalab/server:<version>`   | Websocket API endpoint (used by workers)
  nginx           | `nginx:1.12.0`               | Routes requests to frontend or rest-server
  mysql           | `mysql/mysql:5.53`           | Database for users/bundles/worksheets
  worker          | `codalab/worker:<version>`   | Runs bundle in a Docker container
