@@ -728,7 +728,7 @@ class Worker:
             try:
                 run_state = self.runs[uuid]
                 container_ip = docker_utils.get_container_ip(
-                    self.worker_docker_network.name, run_state.container
+                    self.worker_docker_network.name, run_state.container_id
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((container_ip, port))

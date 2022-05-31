@@ -89,7 +89,7 @@ RunState = namedtuple(
         'container_time_total',  # int
         'container_time_user',  # int
         'container_time_system',  # int
-        'container',  # Optional[docker.Container]
+        'container',  # Optional[docker.Container]. Deprecated, all container data is handled by container_id now.
         'container_id',  # Optional[str]
         'docker_image',  # Optional[str]
         'is_killed',  # bool
@@ -419,7 +419,7 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Start container
         try:
-            container = docker_utils.start_bundle_container(
+            container_id = docker_utils.start_bundle_container(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
@@ -432,7 +432,7 @@ class RunStateMachine(StateTransitioner):
                 runtime=self.docker_runtime,
                 shared_memory_size_gb=self.shared_memory_size_gb,
             )
-            self.worker_docker_network.connect(container)
+            self.worker_docker_network.connect(container_id)
         except docker_utils.DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             log_bundle_transition(
@@ -452,8 +452,8 @@ class RunStateMachine(StateTransitioner):
         return run_state._replace(
             stage=RunStage.RUNNING,
             run_status='Running job in container',
-            container_id=container.id,
-            container=container,
+            container_id=container_id,
+            container=None,
             docker_image=image_state.digest,
             has_contents=True,
             cpuset=cpuset,
@@ -469,7 +469,9 @@ class RunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = docker_utils.check_finished(run_state.container)
+                finished, exitcode, failure_msg = docker_utils.check_finished(
+                    run_state.container_id
+                )
             except docker_utils.DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None
@@ -479,14 +481,14 @@ class RunStateMachine(StateTransitioner):
 
         def check_resource_utilization(run_state: RunState):
             cpu_usage, memory_usage = docker_utils.get_container_stats_with_docker_stats(
-                run_state.container
+                run_state.container_id
             )
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
             run_state = run_state._replace(memory_usage=memory_usage)
 
             kill_messages = []
 
-            run_stats = docker_utils.get_container_stats(run_state.container)
+            run_stats = docker_utils.get_container_stats(run_state.container_id)
 
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
@@ -495,7 +497,7 @@ class RunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
             )
 
-            container_time_total = docker_utils.get_container_running_time(run_state.container)
+            container_time_total = docker_utils.get_container_running_time(run_state.container_id)
             run_state = run_state._replace(
                 container_time_total=container_time_total,
                 container_time_user=run_stats.get(
@@ -557,11 +559,11 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.CLEANING_UP,
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
-            if docker_utils.container_exists(run_state.container):
+            if docker_utils.container_exists(run_state.container_id):
                 try:
                     docker_utils.kill(run_state.container_id)
                 except docker.errors.APIError:
-                    finished, _, _ = docker_utils.check_finished(run_state.container)
+                    finished, _, _ = docker_utils.check_finished(run_state.container_id)
                     if not finished:
                         logger.error(traceback.format_exc())
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
@@ -597,9 +599,9 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.container_id is not None:
-            while docker_utils.container_exists(run_state.container):
+            while docker_utils.container_exists(run_state.container_id):
                 try:
-                    finished, _, _ = docker_utils.check_finished(run_state.container)
+                    finished, _, _ = docker_utils.check_finished(run_state.container_id)
                     if finished:
                         docker_utils.remove(run_state.container_id)
                         run_state = run_state._replace(container=None, container_id=None)
