@@ -375,6 +375,12 @@ def gzip_bytestring(bytestring):
             fileobj.write(bytestring)
         return output_fileobj.getvalue()
 
+def gzip_bytestring_to_fileobj(bytestring: IO[bytes]) -> IO[bytes]:
+    output_fileobj = BytesIO()  # write to RAM
+    with gzip.GzipFile(filename=None, mode='wb', fileobj=output_fileobj) as fileobj:
+        fileobj.write(bytestring)
+    return output_fileobj
+
 
 def un_gzip_bytestring(bytestring):
     """

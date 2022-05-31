@@ -288,13 +288,15 @@ class LinkedBundlePath:
             "/", 1
         )
         bucket = client.get_bucket(bucket_name)
-        blob = bucket.get_blob(blob_name)
+        blob = bucket.blob(blob_name)
         signed_url = blob.generate_signed_url(
             version="v4",
             expiration=datetime.timedelta(hours=1),
-            method="GET",
-            response_disposition=kwargs["content_disposition"],
-            response_type=kwargs["content_type"],
+            method=kwargs.get("method", "GET"),  # HTTP method. eg, GET, PUT
+            # TODO: test what if kwargs does not have this keyword.
+            content_type=kwargs.get("request_content_type", None),
+            response_disposition=kwargs.get("content_disposition", None),
+            response_type=kwargs.get("content_type", None),
         )
         return signed_url
 
@@ -306,6 +308,9 @@ class LinkedBundlePath:
 
     def bundle_path_signed_url(self, **kwargs):
         return self._get_signed_url(self.bundle_path, **kwargs)
+    
+    def index_path_signed_url(self, **kwargs):
+        return self._get_signed_url(self.index_path, **kwargs)
 
     def bundle_path_download_url(self, **kwargs):
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:

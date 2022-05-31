@@ -15,6 +15,7 @@ from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import (
     StorageType,
     StorageFormat,
+    StorageURLScheme,
     precondition,
     UsageError,
     NotFoundError,
@@ -461,6 +462,7 @@ def _add_bundle_location(bundle_uuid: str):
 
     Query parameters:
     - `need_sas`: (Optional) Bool. If true, if will return SAS token
+    - `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
     """
     check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
     need_sas = query_get_bool('need_sas', default=False)
@@ -474,7 +476,7 @@ def _add_bundle_location(bundle_uuid: str):
     if new_location.get('bundle_store_uuid', None) is None:
         # If user does not specify bundle store but use `cl upload -a`, use default azure path
         local.model.update_bundle(
-            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir,},
+            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
         )
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     else:
@@ -482,26 +484,48 @@ def _add_bundle_location(bundle_uuid: str):
             new_location['bundle_uuid'], new_location['bundle_store_uuid']
         )
         local.model.update_bundle(  # get_bundle_location() function uses this field
-            bundle, {'is_dir': is_dir},
+            bundle, {'is_dir': is_dir },
         )
+        # TODO: check whether this function could get bundle location for GCS store.
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+        logging.info(
+            f"Bypass server upload, url: {bundle_url}"
+        )
     data = BundleLocationSchema(many=True).dump([new_location]).data
 
     if need_sas:
+        if bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
         # generate the SAS token and Azure connection string, and send it back to the client
-        bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
-        index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
-        base_conn_str = get_base_conn_str()
-        if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
-            # For test locally. Mannually typing `cl upload`
-            base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
-        bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
-        index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
+            bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
+            index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
+            base_conn_str = get_base_conn_str()
+            if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
+                # For test locally. Mannually typing `cl upload`
+                base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
+            bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
+            index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
+            
+        elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
+            # bundle_signed_url = local.upload_manager.get_bundle_signed_url(
+            #     bundle_url,
+            #     method="GET",
+            #     request_content_type="application/octet-stream",
+
+            # )
+            # For GCS storage, the connection string is signed url
+            bundle_conn_str = local.upload_manager.get_bundle_signed_url(
+                bundle_url,
+                method="PUT",
+                request_content_type="application/octet-stream"
+            )
+            index_conn_str = local.upload_manager.get_index_signed_url(
+                bundle_url, method="PUT", request_content_type="application/octet-stream"
+            )
 
         data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str
         data['data'][0]['attributes']['bundle_url'] = bundle_url
-    return data
+        return data
 
 
 @get(

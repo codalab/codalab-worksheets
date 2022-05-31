@@ -63,6 +63,7 @@ from codalab.lib import (
     path_util,
     spec_util,
     ui_actions,
+    upload_manager,
     worksheet_util,
     bundle_fuse,
 )
@@ -1480,162 +1481,15 @@ class BundleCLI(object):
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
-
-            # By pass server upload:
-            # 1. If the user specify `-a`, upload to Azure blob storage
-            # 2. If the user specify `--store` and blob storage is on Azure or GCS
-            bypass_server = False
-            bundle_store_uuid = None
-            if metadata.get('store', '') != '':
-                storage_info = client.fetch_one(
-                    'bundle_stores',
-                    params={
-                        'name': metadata.get('store'),
-                        'include': ['uuid', 'storage_type', 'url'],
-                    },
-                )
-                bundle_store_uuid = storage_info['uuid']
-                if storage_info['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
-                    bypass_server = True
-
-            if bypass_server or args.use_azure_blob_beta:
-                # Mimic the rest server behavior
-                # decided the bundle type (file/directory) and decide whether need to unpack
-                source_ext = zip_util.get_archive_ext(packed['filename'])
-                if packed['should_unpack'] and zip_util.path_is_archive(packed['filename']):
-                    unpack_before_upload = True
-                    is_dir = source_ext in zip_util.ARCHIVE_EXTS_DIR
-                else:
-                    unpack_before_upload = False
-                    is_dir = False
-
-                params = {'need_sas': True, 'is_dir': is_dir}
-                data = client.update_bundle_locations(new_bundle['id'], bundle_store_uuid, params)[
-                    0
-                ].get('attributes')
-                bundle_conn_str = data.get('bundle_conn_str')
-                index_conn_str = data.get('index_conn_str')
-                bundle_url = data.get('bundle_url')
-                try:
-                    progress = FileTransferProgress('Sent ', f=self.stderr)
-                    with closing(packed['fileobj']), progress:
-                        self.upload_blob_storage(
-                            fileobj=packed['fileobj'],
-                            bundle_url=bundle_url,
-                            bundle_conn_str=bundle_conn_str,
-                            index_conn_str=index_conn_str,
-                            source_ext=source_ext,
-                            should_unpack=unpack_before_upload,
-                            progress_callback=progress.update,
-                        )
-                except Exception as err:
-                    params = {
-                        'success': False,
-                        'error_msg': f'Bypass server upload error. {err}',
-                    }
-                    client.update_bundle_locations_blob(new_bundle['id'], params)
-                else:
-                    params = {'success': True}
-                    client.update_bundle_locations_blob(new_bundle['id'], params)
-                    print(new_bundle['id'], file=self.stdout)
-                return
-
-            progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
-            with closing(packed['fileobj']), progress:
-                client.upload_contents_blob(
-                    new_bundle['id'],
-                    fileobj=packed['fileobj'],
-                    params={
-                        'filename': packed['filename'],
-                        'unpack': packed['should_unpack'],
-                        'state_on_success': State.READY,
-                        'finalize_on_success': True,
-                        'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': metadata.get('store') or '',
-                    },
-                    progress_callback=progress.update,
-                )
+            uploader = upload_manager.ClientUploadManager(client, stdout=self.stdout, stderr=self.stderr)
+            uploader.upload_to_bundle_store(
+                bundle=new_bundle,
+                packed_source=packed,
+                use_azure_blob_beta=args.use_azure_blob_beta,
+                destination_bundle_store=metadata.get('store'),
+            )
 
         print(new_bundle['id'], file=self.stdout)
-
-    def upload_blob_storage(
-        self,
-        fileobj,
-        bundle_url,
-        bundle_conn_str,
-        index_conn_str,
-        source_ext,
-        should_unpack,
-        progress_callback=None,
-    ):
-        """
-        Helper function for bypass server upload. Mimic behavior of BlobStorageUploader at client side.
-        Change enviroment variable 'AZURE_STORAGE_CONNECTION_STRING' to upload to Azure.
-
-        params:
-        fileobj: The file object to upload.
-        bundle_url: Url for bundle store, eg "azfs://devstoreaccount1/bundles/{bundle_uuid}/contents.gz".
-        bundle_conn_str: Connection string for the contents file.
-        index_conn_str: Connection string for the index.sqlite file.
-        source_ext: Extension of the file.
-        should_unpack: Unpack the file before upload iff True.
-        """
-        from codalab.lib import zip_util
-
-        # save the current Azure connection string
-        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
-
-        if should_unpack:
-            output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
-        else:
-            output_fileobj = GzipStream(fileobj)
-        # Write archive file.
-        bytes_uploaded = 0
-        CHUNK_SIZE = 16 * 1024
-        with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
-            # shutil.copyfileobj(output_fileobj, out)
-            while True:
-                to_send = output_fileobj.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                out.write(to_send)
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
-                    if not should_resume:
-                        raise Exception('Upload aborted by client')
-
-        # Write index file to a temporary file, then write that file to Blob Storage.
-        with FileSystems.open(
-            bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
-            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
-            with FileSystems.create(
-                parse_linked_bundle_url(bundle_url).index_path,
-                compression_type=CompressionTypes.UNCOMPRESSED,
-            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                # shutil.copyfileobj(tif, out_index_file)
-                while True:
-                    to_send = tif.read(CHUNK_SIZE)
-                    if not to_send:
-                        break
-                    out_index_file.write(to_send)
-                    bytes_uploaded += len(to_send)
-                    if progress_callback is not None:
-                        should_resume = progress_callback(bytes_uploaded)
-                        if not should_resume:
-                            raise Exception('Upload aborted by client')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
-
-        return
 
     @Commands.command(
         'download',
