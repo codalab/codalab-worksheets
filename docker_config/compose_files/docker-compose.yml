@@ -483,7 +483,7 @@ services:
 
   monitor:
     image: codalab/server:${CODALAB_VERSION}
-    command: python3.6 monitor.py --log-path ${CODALAB_MONITOR_DIR}/monitor.log --backup-path ${CODALAB_MONITOR_DIR}
+    command: python3 monitor.py --log-path ${CODALAB_MONITOR_DIR}/monitor.log --backup-path ${CODALAB_MONITOR_DIR}
     <<: *codalab-base
     depends_on:
       - rest-server
