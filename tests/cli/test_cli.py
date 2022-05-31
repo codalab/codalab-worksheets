@@ -141,7 +141,7 @@ def create_worker(context, user_id, worker_id, tag=None, group_name=None):
     # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
     # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
     worker_model.worker_checkin(
-        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False, False
     )
     context.collect_worker(user_id, worker_id)
 
@@ -1051,6 +1051,44 @@ def test_blob(ctx):
         # When client is from a web browser, should redirect
         response = fetch_contents_blob_from_web_browser(uuid)
         assert response.headers['Location'].startswith("http://localhost")
+
+
+@TestModule.register('preemptible')
+def test_preemptible(ctx):
+    """Tests preemptible workers to ensure they are functioning properly. A bundle
+    that is preemptible should be run on a preemptible worker, and when that worker is killed,
+    should go back to staged and transfer to another worker.
+
+    This test should only be called when the "worker-preemptible" and "worker-preemptible2" services are
+    running locally, and test-setup-preemptible.sh should be run first. See the GitHub Actions test file
+    "preemptible" test for an example of how to set up this test.
+    """
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'bash -c "(mkdir checkpoint1 || mkdir checkpoint2) && sleep 120"',
+            '--request-queue',
+            'preemptible',
+        ]
+    )
+    # We run (mkdir checkpoint1 || mkdir checkpoint2) to ensure that the working directory is shared between
+    # worker runs for a preemptible bundle. The first worker this runs on, the directory "checkpoint1" should be created.
+    # The second worker should create the directory "checkpoint2" because "checkpoint1" should already exist in
+    # the working directory (so mkdir checkpoint1 will fail and thus mkdir checkpoint2 will run).
+
+    wait_until_state(uuid, State.RUNNING)
+    remote_preemptible_worker = get_info(uuid, 'remote')
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    # Bundle should be killed by the test-setup-preemptible.sh script now.
+    # Wait for bundle to be re-assigned
+
+    wait_until_state(uuid, State.READY)
+    # Bundle should have resumed on the other worker
+    check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    check_contains("checkpoint1", _run_command([cl, 'cat', uuid]))
+    check_contains("checkpoint2", _run_command([cl, 'cat', uuid]))
 
 
 @TestModule.register('default_bundle_store')
