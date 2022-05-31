@@ -36,6 +36,7 @@ import sys
 import textwrap
 import time
 from distutils.util import strtobool
+from datetime import datetime
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
@@ -482,19 +483,23 @@ class CodaLabManager(object):
         if 'token_info' in auth:
             token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
+            print(f"Expires at: {datetime.fromtimestamp(expires_at)}")
 
             # If token is not nearing expiration (more than 10 minutes left), just return it.
             if expires_at >= (time.time() + 10 * 60):
+                print(f"Not expired yet. Just returning...")
                 return token_info['access_token']
 
             # Otherwise, let's refresh the token.
             token_info = auth_handler.generate_token(
                 'refresh_token', auth['username'], token_info['refresh_token']
             )
+            print(f"Refreshing... {str(token_info)}")
             if token_info is not None:
                 return _cache_token(token_info)
 
         # If we get here, a valid token is not already available.
+        print("No valid token...")
         auth = self.state['auth'][cache_key] = {}
 
         username = os.environ.get('CODALAB_USERNAME')
