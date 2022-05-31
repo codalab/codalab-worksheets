@@ -46,6 +46,7 @@ nav:
     - Server Setup: Server-Setup.md
     - Worker Managers: Worker-Managers.md
     - Multiple Bundle Stores (in development): Multiple-Bundle-Stores.md
+    - Development Setup: Development-Setup.md
   - About:
     - About: About.md
     - Privacy: Privacy.md
