@@ -484,7 +484,7 @@ def _add_bundle_location(bundle_uuid: str):
             new_location['bundle_uuid'], new_location['bundle_store_uuid']
         )
         local.model.update_bundle(  # get_bundle_location() function uses this field
-            bundle, {'is_dir': is_dir },
+            bundle, {'is_dir': is_dir},
         )
         # TODO: check whether this function could get bundle location for GCS store.
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
@@ -495,7 +495,7 @@ def _add_bundle_location(bundle_uuid: str):
 
     if need_sas:
         if bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-        # generate the SAS token and Azure connection string, and send it back to the client
+            # generate the SAS token and Azure connection string, and send it back to the client
             bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
             index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
             base_conn_str = get_base_conn_str()
@@ -505,7 +505,6 @@ def _add_bundle_location(bundle_uuid: str):
             bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
             index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
 
-            
         elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
             bundle_read_url = local.upload_manager.get_bundle_signed_url(
                 bundle_url,

@@ -664,7 +664,7 @@ class JsonApiClient(RestClient):
     def get_bundles_locations(self, bundle_uuids):
         response = self._make_request(
             method='GET',
-            path='/bundles/locations',
+            path='/bundles',
             query_params=self._pack_params({'uuids': bundle_uuids}),
         )
         return response['data']

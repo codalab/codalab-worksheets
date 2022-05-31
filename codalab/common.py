@@ -308,7 +308,7 @@ class LinkedBundlePath:
 
     def bundle_path_signed_url(self, **kwargs):
         return self._get_signed_url(self.bundle_path, **kwargs)
-    
+
     def index_path_signed_url(self, **kwargs):
         return self._get_signed_url(self.index_path, **kwargs)
 

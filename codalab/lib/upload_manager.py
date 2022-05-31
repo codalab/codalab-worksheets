@@ -290,7 +290,7 @@ class UploadManager(object):
         Get signed url for the bundle path
         """
         return parse_linked_bundle_url(path).bundle_path_signed_url(**kwargs)
-    
+
     def get_bundle_index_url(self, path, **kwargs):
         return parse_linked_bundle_url(path).index_path_signed_url(**kwargs)
 
@@ -349,14 +349,14 @@ class ClientUploadManager(object):
                 unpack_before_upload = False
                 is_dir = False
 
-            params = {'need_sas': True, 'is_dir': is_dir }
+            params = {'need_sas': True, 'is_dir': is_dir}
             data = self._client.update_bundle_locations(bundle['id'], bundle_store_uuid, params)[
                 0
             ].get('attributes')
             bundle_conn_str = data.get('bundle_conn_str')
             index_conn_str = data.get('index_conn_str')
             bundle_url = data.get('bundle_url')
-            bundle_read_str = data.get('bundle_read_url', default=bundle_url)
+            bundle_read_str = data.get('bundle_read_url', bundle_url)
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
                 with closing(packed_source['fileobj']), progress:
@@ -445,7 +445,7 @@ class ClientUploadManager(object):
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
                         raise Exception('Upload aborted by client')
-        
+
         with FileSystems.open(
             bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
         ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -472,11 +472,11 @@ class ClientUploadManager(object):
                         if not should_resume:
                             raise Exception('Upload aborted by client')
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
-        
+
     def upload_GCS_blob_storage(
         self,
         fileobj: IO[bytes],
-        bundle_url: str,  
+        bundle_url: str,
         bundle_conn_str: str,  # bundle_conn_str needs to have 2 urls. One for upload
         bundle_read_str: str,
         index_conn_str: str,  # index_file write signed url
@@ -493,13 +493,12 @@ class ClientUploadManager(object):
 
         # Write archive file.
         self._upload_with_chunked_encoding(
-            method='PUT', 
+            method='PUT',
             url=bundle_conn_str,
             header={'Content-type': 'application/octet-stream'},
             fileobj=open(output_fileobj, "rb"),
             progress_callback=None,
         )
-        
         # upload the index file
         request = urllib.request.Request(url=bundle_read_str, method="GET")  # THIS WORKS
         with urllib.request.urlopen(request) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -512,14 +511,13 @@ class ClientUploadManager(object):
                 indexFilePath=tmp_index_file.name,
             )
             self._upload_with_chunked_encoding(
-                method='PUT', 
+                method='PUT',
                 url=index_conn_str,
                 header={'Content-type': 'application/octet-stream'},
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
             )
-            
-        
+
     def _upload_with_chunked_encoding(
         self, method, url, header, fileobj, progress_callback=None
     ):

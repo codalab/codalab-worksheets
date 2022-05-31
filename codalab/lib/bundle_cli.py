@@ -26,7 +26,6 @@ import sys
 import time
 import textwrap
 import json
-import tempfile
 from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
@@ -35,9 +34,6 @@ from typing import Dict
 import webbrowser
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
-from ratarmountcore import SQLiteIndexedTar
-from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
 
 import codalab.model.bundle_model as bundle_model
 
@@ -54,7 +50,6 @@ from codalab.common import (
     ensure_str,
     DiskQuotaExceededError,
     parse_linked_bundle_url,
-    StorageType,
 )
 from codalab.lib import (
     file_util,
@@ -105,7 +100,7 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-from codalab.worker.file_util import get_path_size, GzipStream
+from codalab.worker.file_util import get_path_size
 
 
 # Command groupings
