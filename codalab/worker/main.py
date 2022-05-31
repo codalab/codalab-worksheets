@@ -156,7 +156,7 @@ def parse_args():
     parser.add_argument(
         '--tag-exclusive',
         action='store_true',
-        help='To be used when the worker should only run bundles that match the worker\'s tag.',
+        help='To be used when the worker should only run bundles that match the worker\'s tag. Only has an effect when --tag is set.',
     )
     parser.add_argument(
         '--pass-down-termination',
@@ -323,7 +323,7 @@ def main():
         args.checkin_frequency_seconds,
         bundle_service,
         args.shared_file_system,
-        args.tag_exclusive,
+        args.tag_exclusive if args.tag else False,
         args.group,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
