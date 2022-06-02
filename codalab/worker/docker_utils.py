@@ -140,10 +140,10 @@ def get_nvidia_devices(use_docker=True):
 
 
 @wrap_exception('Unable to fetch Docker container ip')
-def get_container_ip(self, network_name: str, container_id: str):
+def get_container_ip(network_name: str, container_id: str):
     # Unfortunately docker SDK doesn't update the status of Container objects
     # so we re-fetch them from the API again to get the most recent state
-    container = self.client.containers.get(container_id)
+    container = client.containers.get(container_id)
     try:
         return container.attrs["NetworkSettings"]["Networks"][network_name]["IPAddress"]
     except KeyError:  # if container ip cannot be found in provided network, return None
@@ -280,14 +280,14 @@ def get_container_stats(container_id: str):
 
 
 @wrap_exception('Unable to check Docker API for container')
-def get_container_stats_with_docker_stats(self, container_id: str):
+def get_container_stats_with_docker_stats(container_id: str):
     """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
-    if self.container_exists(container_id):
+    if container_exists(container_id):
         try:
-            container_stats: dict = self.client.containers.get(container_id).stats(stream=False)
+            container_stats: dict = client.containers.get(container_id).stats(stream=False)
 
-            cpu_usage: float = self.get_cpu_usage(container_stats)
-            memory_usage: float = self.get_memory_usage(container_stats)
+            cpu_usage: float = get_cpu_usage(container_stats)
+            memory_usage: float = get_memory_usage(container_stats)
 
             return cpu_usage, memory_usage
         except docker.errors.NotFound:
@@ -334,18 +334,18 @@ def get_memory_usage(container_stats: dict) -> float:
 
 
 @wrap_exception('Unable to check Docker API for container')
-def container_exists(self, container_id: str):
+def container_exists(container_id: str):
     try:
-        self.client.containers.get(container_id)
+        client.containers.get(container_id)
         return True
     except docker.errors.NotFound:
         return False
 
 
 @wrap_exception('Unable to check Docker container status')
-def check_finished(self, container_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
+def check_finished(container_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
     try:
-        container = self.client.containers.get(container_id)
+        container = client.containers.get(container_id)
     except docker.errors.NotFound:
         return (True, None, 'Docker container not found')
     if container.status != 'running':
@@ -367,10 +367,10 @@ def check_finished(self, container_id: str) -> Tuple[bool, Optional[str], Option
 
 
 @wrap_exception('Unable to check Docker container running time')
-def get_container_running_time(self, container_id: str):
+def get_container_running_time(container_id: str):
     # Get the current container
     try:
-        container = self.client.containers.get(container_id)
+        container = client.containers.get(container_id)
     except docker.errors.NotFound:
         # This usually happens when container gets accidentally removed or deleted
         return DEFAULT_CONTAINER_RUNNING_TIME
@@ -392,17 +392,17 @@ def get_container_running_time(self, container_id: str):
     return container_running_time.total_seconds()
 
 
-def kill(self, container_id: str):
+def kill(container_id: str):
     try:
-        container = self.client.containers.get(container_id)
+        container = client.containers.get(container_id)
     except docker.errors.NotFound:
         return
     container.kill()
 
 
-def remove(self, container_id: str):
+def remove(container_id: str):
     try:
-        container = self.client.containers.get(container_id)
+        container = client.containers.get(container_id)
     except docker.errors.NotFound:
         return
     container.remove(force=True)
