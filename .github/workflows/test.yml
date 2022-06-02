@@ -141,7 +141,7 @@ jobs:
         run: |
           sh ./tests/test-setup.sh
           python3 codalab_service.py start --services default --version ${VERSION}
-          #python3 test_runner.py --version ${VERSION} ${TEST}
+          python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
@@ -155,7 +155,7 @@ jobs:
         run: |
           sh ./tests/test-setup.sh
           sh ./scripts/local-k8s/setup-ci.sh
-          python3 test_runner.py --version ${VERSION} ${TEST}
+          #python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
