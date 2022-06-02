@@ -67,14 +67,3 @@ You can remove the kind cluster by running:
 ```
 kind delete cluster --name codalab
 ```
-
-### Todo
-
-todos for this PR:
-- get GPUs to work
-- make sure workers are now advertising their number of CPUs / disk space properly
-- make sure time calculations for bundles work
-
-future todos:
-- ssl / auth for local k8s
-- (lower priority) eventually use persistentvolumes for multiple workers, see https://stackoverflow.com/questions/31693529/how-to-share-storage-between-kubernetes-pods
