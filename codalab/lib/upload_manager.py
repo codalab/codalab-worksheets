@@ -393,13 +393,13 @@ class ClientUploadManager(object):
     # TODO(Jiani): Change into class
     def upload_Azure_blob_storage(
         self,
-        fileobj: IO[bytes],
-        bundle_url: str,
-        bundle_conn_str: str,
-        bundle_read_str: str,
-        index_conn_str: str,
-        source_ext: str,
-        should_unpack: bool,
+        fileobj,
+        bundle_url,
+        bundle_conn_str,
+        bundle_read_str,
+        index_conn_str,
+        source_ext,
+        should_unpack,
         progress_callback=None,
     ):
         """
@@ -466,5 +466,4 @@ class ClientUploadManager(object):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
-        if conn_str != '':
-            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
+        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str if conn_str != '' else None
