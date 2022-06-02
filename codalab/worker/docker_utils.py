@@ -394,17 +394,17 @@ def get_container_running_time(container):
     return container_running_time.total_seconds()
 
 
-def kill(self, container_id: str):
+def kill(container_id: str):
     try:
-        container = self.client.containers.get(container_id)
+        container = client.containers.get(container_id)
     except docker.errors.NotFound:
         return
     container.kill()
 
 
-def remove(self, container_id: str):
+def remove(container_id: str):
     try:
-        container = self.client.containers.get(container_id)
+        container = client.containers.get(container_id)
     except docker.errors.NotFound:
         return
     container.remove(force=True)
