@@ -7,9 +7,6 @@ from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
 from ratarmountcore import SQLiteIndexedTar
 from contextlib import closing
-import urllib.parse
-import urllib.request
-import http.client
 
 from codalab.common import (
     UsageError,
@@ -324,7 +321,6 @@ class ClientUploadManager(object):
         # 2. If the user specify `--store` and blob storage is on Azure or GCS
         bypass_server = True if use_azure_blob_beta else False
         bundle_store_uuid = None
-        upload_func = self.upload_Azure_blob_storage
         if destination_bundle_store is not None and destination_bundle_store != '':
             storage_info = self._client.fetch_one(
                 'bundle_stores',
@@ -339,8 +335,6 @@ class ClientUploadManager(object):
                 StorageType.GCS_STORAGE.value,
             ):
                 bypass_server = True
-                if storage_info['storage_type'] == StorageType.GCS_STORAGE.value:
-                    upload_func = self.upload_GCS_blob_storage
 
         if bypass_server:
             # Mimic the rest server behavior
@@ -366,7 +360,7 @@ class ClientUploadManager(object):
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
                 with closing(packed_source['fileobj']), progress:
-                    upload_func(
+                    self.upload_Azure_blob_storage(
                         fileobj=packed_source['fileobj'],
                         bundle_url=bundle_url,
                         bundle_conn_str=bundle_conn_str,
@@ -422,6 +416,7 @@ class ClientUploadManager(object):
         fileobj: The file object to upload.
         bundle_url: Url for bundle store, eg "azfs://devstoreaccount1/bundles/{bundle_uuid}/contents.gz".
         bundle_conn_str: Connection string for the contents file.
+        bundle_read_str: Signed URL or bundle URL to read the content of bundle.
         index_conn_str: Connection string for the index.sqlite file.
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
@@ -434,7 +429,7 @@ class ClientUploadManager(object):
             output_fileobj = GzipStream(fileobj)
 
         # save the current Azure connection string
-        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
 
         # Write archive file.
@@ -453,7 +448,7 @@ class ClientUploadManager(object):
                         raise Exception('Upload aborted by client')
 
         with FileSystems.open(
-            bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
+            bundle_read_str, compression_type=CompressionTypes.UNCOMPRESSED
         ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
             SQLiteIndexedTar(
                 fileObject=ttf,
@@ -477,7 +472,8 @@ class ClientUploadManager(object):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
+
+        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str if conn_str != '' else None
 
     def upload_GCS_blob_storage(
         self,
@@ -551,3 +547,4 @@ class ClientUploadManager(object):
                     if not should_resume:
                         raise Exception('Upload aborted by client')
             conn.send(b'0\r\n\r\n')
+
