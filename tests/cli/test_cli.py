@@ -792,20 +792,16 @@ def test_upload1_blob(ctx):
     """Simiar to test case 'upload1'.
     Test bypass server upload under different senario. Specify `--store` to enable bypass server upload.
     """
-    storage_urls = ['azfs://devstoreaccount1/bundles', 'gs://codalab-test/']
-    
+    storage_urls = [
+        'azfs://devstoreaccount1/bundles',
+        # 'gs://codalab-test'
+    ]
+    # TODO: Add manually test using GCS
+
     for url in storage_urls:
         bundle_store_name = 'blob-' + random_name()
         _run_command(
-            [
-                cl,
-                "store",
-                "add",
-                "--name",
-                bundle_store_name,
-                '--url',
-                url,
-            ]
+            [cl, "store", "add", "--name", bundle_store_name, '--url', url,]
         )
 
         # Upload contents: Upload a string will not bypass server.
@@ -824,7 +820,15 @@ def test_upload1_blob(ctx):
 
         # Upload directory with excluded files
         uuid = _run_command(
-            [cl, 'upload', '--store', bundle_store_name, test_path('dir1'), '--exclude-patterns', 'f*',]
+            [
+                cl,
+                'upload',
+                '--store',
+                bundle_store_name,
+                test_path('dir1'),
+                '--exclude-patterns',
+                'f*',
+            ]
         )
         check_num_lines(
             2 + 2, _run_command([cl, 'cat', uuid])
@@ -860,7 +864,8 @@ def test_upload1_blob(ctx):
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
         # expect to fail when we upload something more than 2 bytes
         _run_command(
-            [cl, 'upload', '--store', bundle_store_name, test_path('codalab.png')], expected_exit_code=1
+            [cl, 'upload', '--store', bundle_store_name, test_path('codalab.png')],
+            expected_exit_code=1,
         )
         # Reset disk quota
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
@@ -979,107 +984,116 @@ def test_upload2_blob(ctx):
     """Similar to 'upload2' test but test the bypass server upload.
     Only run it when enabling Azurite environment.
     """
-    bundle_store_name = 'blob-' + random_name()
-    _run_command(
-        [
-            cl,
-            "store",
-            "add",
-            "--name",
-            bundle_store_name,
-            '--storage-type',
-            'azure_blob',
-            '--url',
-            'azfs://devstoreaccount1/bundles',
-        ]
-    )
-    # Upload tar.gz and zip.
-    for suffix in ['.tar.gz', '.zip']:
-        # Pack it up
-        archive_path = temp_path(suffix)
-        contents_path = test_path('dir1')
-        if suffix == '.tar.gz':
-            _run_command(
-                [
-                    'tar',
-                    'cfz',
-                    archive_path,
-                    '-C',
-                    os.path.dirname(contents_path),
-                    os.path.basename(contents_path),
-                ]
-            )
-        else:
-            _run_command(
-                [
-                    'bash',
-                    '-c',
-                    'cd %s && zip -r %s %s'
-                    % (
-                        os.path.dirname(contents_path),
+    storage_urls = [
+        'azfs://devstoreaccount1/bundles',
+        # 'gs://codalab-test'
+    ]
+    # TODO: Add manually test using GCS
+
+    for url in storage_urls:
+        bundle_store_name = 'blob-' + random_name()
+        _run_command(
+            [cl, "store", "add", "--name", bundle_store_name, '--url', url,]
+        )
+        # Upload tar.gz and zip.
+        for suffix in ['.tar.gz', '.zip']:
+            # Pack it up
+            archive_path = temp_path(suffix)
+            contents_path = test_path('dir1')
+            if suffix == '.tar.gz':
+                _run_command(
+                    [
+                        'tar',
+                        'cfz',
                         archive_path,
+                        '-C',
+                        os.path.dirname(contents_path),
                         os.path.basename(contents_path),
-                    ),
-                ]
+                    ]
+                )
+            else:
+                _run_command(
+                    [
+                        'bash',
+                        '-c',
+                        'cd %s && zip -r %s %s'
+                        % (
+                            os.path.dirname(contents_path),
+                            archive_path,
+                            os.path.basename(contents_path),
+                        ),
+                    ]
+                )
+
+            # Upload it and unpack
+            uuid = _run_command([cl, 'upload', archive_path, '--store', bundle_store_name])
+            name = get_info(uuid, 'name')
+            check_equals(os.path.basename(archive_path).replace(suffix, ''), name)
+            check_equals(
+                test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1'])
             )
 
-        # Upload it and unpack
-        uuid = _run_command([cl, 'upload', archive_path, '--store', bundle_store_name])
-        name = get_info(uuid, 'name')
-        check_equals(os.path.basename(archive_path).replace(suffix, ''), name)
-        check_equals(test_path_contents('dir1/f1'), _run_command([cl, 'cat', uuid + '/dir1/f1']))
+            response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+            check_equals("application/gzip", response.headers.get("Content-Type"))
+            check_equals("identity", response.headers.get("Content-Encoding"))
+            check_equals(
+                f'attachment; filename="{name}.tar.gz"', response.headers.get("Content-Disposition")
+            )
 
-        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
-        check_equals("application/gzip", response.headers.get("Content-Type"))
-        check_equals("identity", response.headers.get("Content-Encoding"))
-        check_equals(
-            f'attachment; filename="{name}.tar.gz"', response.headers.get("Content-Disposition")
-        )
+            response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
+            check_equals("text/plain", response.headers.get("Content-Type"))
+            check_equals("gzip", response.headers.get("Content-Encoding"))
+            check_equals('inline; filename="f1"', response.headers.get("Content-Disposition"))
+            check_equals(test_path_contents('dir1/f1', binary=True), response.read().rstrip())
 
-        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, 'dir1/f1'))
-        check_equals("text/plain", response.headers.get("Content-Type"))
-        check_equals("gzip", response.headers.get("Content-Encoding"))
-        check_equals('inline; filename="f1"', response.headers.get("Content-Disposition"))
-        check_equals(test_path_contents('dir1/f1', binary=True), response.read().rstrip())
+            # Upload it but don't unpack
+            # failed here! Upload a packed file (.tar.gz), and it is thought as a dir (which is false)
+            uuid = _run_command(
+                [cl, 'upload', '--store', bundle_store_name, archive_path, '--pack']
+            )
+            check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
+            print(test_path_contents(archive_path, binary=True))
+            check_equals(
+                test_path_contents(archive_path, binary=True),
+                _run_command([cl, 'cat', uuid], binary=True),
+            )
 
-        # Upload it but don't unpack
-        # failed here! Upload a packed file (.tar.gz), and it is thought as a dir (which is false)
-        uuid = _run_command([cl, 'upload', '--store', bundle_store_name, archive_path, '--pack'])
-        check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
-        print(test_path_contents(archive_path, binary=True))
-        check_equals(
-            test_path_contents(archive_path, binary=True),
-            _run_command([cl, 'cat', uuid], binary=True),
-        )
+            # Bundle should be streamed as a gzipped archive file, so it should be transparently decoded by the browser.
+            response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+            check_equals(
+                "application/zip" if suffix == ".zip" else "application/octet-stream",
+                response.headers.get("Content-Type"),
+            )
+            check_equals("gzip", response.headers.get("Content-Encoding"))
+            check_equals(
+                f'inline; filename="{os.path.basename(archive_path)}"',
+                response.headers.get("Content-Disposition"),
+            )
+            check_equals(test_path_contents(archive_path, binary=True), response.read())
 
-        # Bundle should be streamed as a gzipped archive file, so it should be transparently decoded by the browser.
-        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
-        check_equals(
-            "application/zip" if suffix == ".zip" else "application/octet-stream",
-            response.headers.get("Content-Type"),
-        )
-        check_equals("gzip", response.headers.get("Content-Encoding"))
-        check_equals(
-            f'inline; filename="{os.path.basename(archive_path)}"',
-            response.headers.get("Content-Disposition"),
-        )
-        check_equals(test_path_contents(archive_path, binary=True), response.read())
+            # Force compression
+            uuid = _run_command(
+                [
+                    cl,
+                    'upload',
+                    '--store',
+                    bundle_store_name,
+                    test_path('echo'),
+                    '--force-compression',
+                ]
+            )
+            check_equals('echo', get_info(uuid, 'name'))
+            check_equals(
+                test_path_contents('echo', binary=True),
+                _run_command([cl, 'cat', uuid], binary=True),
+            )
+            response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
+            check_equals("text/plain", response.headers.get("Content-Type"))
+            check_equals("gzip", response.headers.get("Content-Encoding"))
+            check_equals('inline; filename="echo"', response.headers.get("Content-Disposition"))
+            check_equals(test_path_contents('echo', binary=True), response.read().rstrip())
 
-        # Force compression
-        uuid = _run_command(
-            [cl, 'upload', '--store', bundle_store_name, test_path('echo'), '--force-compression']
-        )
-        check_equals('echo', get_info(uuid, 'name'))
-        check_equals(
-            test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
-        )
-        response = ctx.client.fetch_contents_blob(BundleTarget(uuid, ''))
-        check_equals("text/plain", response.headers.get("Content-Type"))
-        check_equals("gzip", response.headers.get("Content-Encoding"))
-        check_equals('inline; filename="echo"', response.headers.get("Content-Disposition"))
-        check_equals(test_path_contents('echo', binary=True), response.read().rstrip())
-
-        os.unlink(archive_path)
+            os.unlink(archive_path)
 
 
 @TestModule.register('upload3')

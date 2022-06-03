@@ -12,6 +12,7 @@ import urllib.request
 import urllib.error
 
 from dataclasses import dataclass
+import httpio  # type: ignore
 from retry import retry
 from enum import Enum
 
@@ -167,6 +168,11 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     :return: the response object
     """
     return urllib.request.urlopen(request, timeout=timeout)
+
+
+@retry(httpio.HTTPIOError, tries=10, delay=5, backoff=2)
+def httpopen_with_retry(url: str, timeout: int = URLOPEN_TIMEOUT_SECONDS):
+    return httpio.open(url)
 
 
 class StorageType(Enum):

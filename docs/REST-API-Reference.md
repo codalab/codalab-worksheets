@@ -528,6 +528,7 @@ Adds a new BundleLocation to a bundle. If need to generate sas token, generate A
 
 Query parameters:
 - `need_sas`: (Optional) Bool. If true, if will return SAS token
+- `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 

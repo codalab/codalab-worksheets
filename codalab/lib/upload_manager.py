@@ -11,7 +11,13 @@ import urllib.parse
 import urllib.request
 import http.client
 
-from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
+from codalab.common import (
+    UsageError,
+    StorageType,
+    urlopen_with_retry,
+    parse_linked_bundle_url,
+    httpopen_with_retry,
+)
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
 from codalab.worker.bundle_state import State
 from codalab.lib import file_util, path_util, zip_util
@@ -371,10 +377,10 @@ class ClientUploadManager(object):
                         progress_callback=progress.update,
                     )
             except Exception as err:
-                self._client.update_bundle_locations_blob(bundle['id'], params={
-                    'success': False,
-                    'error_msg': f'Bypass server upload error. {err}',
-                })
+                self._client.update_bundle_locations_blob(
+                    bundle['id'],
+                    params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
+                )
                 raise err
             else:
                 self._client.update_bundle_locations_blob(bundle['id'], params={'success': True})
@@ -399,13 +405,13 @@ class ClientUploadManager(object):
     # TODO(Jiani): Change into class
     def upload_Azure_blob_storage(
         self,
-        fileobj: IO[bytes],
-        bundle_url: str,
-        bundle_conn_str: str,
-        bundle_read_str: str,
-        index_conn_str: str,
-        source_ext: str,
-        should_unpack: bool,
+        fileobj,
+        bundle_url,
+        bundle_conn_str,
+        bundle_read_str,
+        index_conn_str,
+        source_ext,
+        should_unpack,
         progress_callback=None,
     ):
         """
@@ -475,13 +481,13 @@ class ClientUploadManager(object):
 
     def upload_GCS_blob_storage(
         self,
-        fileobj: IO[bytes],
-        bundle_url: str,
-        bundle_conn_str: str,  # bundle_conn_str needs to have 2 urls. One for upload
-        bundle_read_str: str,
-        index_conn_str: str,  # index_file write signed url
-        source_ext: str,
-        should_unpack: bool,
+        fileobj,
+        bundle_url,
+        bundle_conn_str,
+        bundle_read_str,
+        index_conn_str,
+        source_ext,
+        should_unpack,
         progress_callback=None,
     ):
         from codalab.lib import zip_util
@@ -496,15 +502,15 @@ class ClientUploadManager(object):
             method='PUT',
             url=bundle_conn_str,
             header={'Content-type': 'application/octet-stream'},
-            fileobj=open(output_fileobj, "rb"),
-            progress_callback=None,
+            fileobj=output_fileobj,
+            progress_callback=progress_callback,
         )
         # upload the index file
-        request = urllib.request.Request(url=bundle_read_str, method="GET")  # THIS WORKS
-        with urllib.request.urlopen(request) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-            print("tff is: ", ttf)  # tff is:  <_io.BufferedReader>
+        with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
+            suffix=".sqlite"
+        ) as tmp_index_file:
             SQLiteIndexedTar(
-                fileObject=ttf,
+                fileObject=ttf,  # TODO: This need to load the file into memory
                 tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                 writeIndex=True,
                 clearIndexCache=True,
@@ -518,9 +524,7 @@ class ClientUploadManager(object):
                 progress_callback=None,
             )
 
-    def _upload_with_chunked_encoding(
-        self, method, url, header, fileobj, progress_callback=None
-    ):
+    def _upload_with_chunked_encoding(self, method, url, header, fileobj, progress_callback=None):
         CHUNK_SIZE = 10
         TIMEOUT = 60
         bytes_uploaded = 0
