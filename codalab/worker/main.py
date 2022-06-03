@@ -323,7 +323,7 @@ def main():
         args.checkin_frequency_seconds,
         bundle_service,
         args.shared_file_system,
-        args.tag_exclusive if args.tag else False,
+        args.tag_exclusive,
         args.group,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
