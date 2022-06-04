@@ -21,12 +21,24 @@ Source = Union[str, Tuple[str, IO[bytes]]]
 
 class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
-    non-implemented methods that perform the uploads to a bundle store."""
+    non-implemented methods that perform the uploads to a bundle store.
+    Used when: 1. client -> blob storage
+               2. rest-server -> blob storage
 
-    def __init__(self, bundle_model, bundle_store, destination_bundle_store=None):
-        self._bundle_model = bundle_model
-        self._bundle_store = bundle_store
-        self.destination_bundle_store = destination_bundle_store
+    params:
+    bundle_model: Used on rest-server.
+    bundle_store: Bundle store model, used on rest-server.
+    destination_bundle_store: Indicate destination for bundle storage.
+    is_client: Whether this uploader is used on client side. Used on client.
+    """
+
+    def __init__(
+        self, bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=False
+    ):
+        if not is_client:
+            self._bundle_model = bundle_model
+            self._bundle_store = bundle_store
+            self.destination_bundle_store = destination_bundle_store
 
     @property
     def storage_type(self):
@@ -42,7 +54,14 @@ class Uploader:
         raise NotImplementedError
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
+        self,
+        source_ext: str,
+        source_fileobj: IO[bytes],
+        bundle_path: str,
+        unpack_archive: bool,
+        bundle_conn_str=None,
+        index_conn_str=None,
+        progress_callback=None,
     ):
         """Writes fileobj indicated, unpacks if specified, and uploads it to the path at bundle_path.
         Args:
@@ -55,7 +74,8 @@ class Uploader:
 
     def upload_to_bundle_store(self, bundle: Bundle, source: Source, git: bool, unpack: bool):
         """Uploads the given source to the bundle store.
-        Given arguments are the same as UploadManager.upload_to_bundle_store()"""
+        Given arguments are the same as UploadManager.upload_to_bundle_store().
+        Used when upload from rest server."""
         try:
             # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
@@ -151,7 +171,14 @@ class DiskStorageUploader(Uploader):
         file_util.git_clone(source, bundle_path)
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
+        self,
+        source_ext: str,
+        source_fileobj: IO[bytes],
+        bundle_path: str,
+        unpack_archive: bool,
+        bundle_conn_str=None,
+        index_conn_str=None,
+        progress_callback=None,
     ):
         if unpack_archive:
             zip_util.unpack(source_ext, source_fileobj, bundle_path)
@@ -176,16 +203,38 @@ class BlobStorageUploader(Uploader):
             )
 
     def write_fileobj(
-        self, source_ext: str, source_fileobj: IO[bytes], bundle_path: str, unpack_archive: bool
+        self,
+        source_ext: str,
+        source_fileobj: IO[bytes],
+        bundle_path: str,
+        unpack_archive: bool,
+        bundle_conn_str=None,
+        index_conn_str=None,
+        progress_callback=None,
     ):
         if unpack_archive:
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
         else:
             output_fileobj = GzipStream(source_fileobj)
-        # Write archive file.
+
+        # write archive file.
+        if bundle_conn_str is not None:
+            conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
+            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
+        bytes_uploaded = 0
+        CHUNK_SIZE = 16 * 1024
         with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
-            shutil.copyfileobj(output_fileobj, out)
-        # Write index file to a temporary file, then write that file to Blob Storage.
+            while True:
+                to_send = output_fileobj.read(CHUNK_SIZE)
+                if not to_send:
+                    break
+                out.write(to_send)
+                bytes_uploaded += len(to_send)
+                if progress_callback is not None:
+                    should_resume = progress_callback(bytes_uploaded)
+                    if not should_resume:
+                        raise Exception('Upload aborted by client')
+
         with FileSystems.open(
             bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
         ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -196,11 +245,24 @@ class BlobStorageUploader(Uploader):
                 clearIndexCache=True,
                 indexFilePath=tmp_index_file.name,
             )
+            if bundle_conn_str is not None:
+                os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_path).index_path,
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                shutil.copyfileobj(tif, out_index_file)
+                while True:
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    out_index_file.write(to_send)
+                    bytes_uploaded += len(to_send)
+                    if progress_callback is not None:
+                        should_resume = progress_callback(bytes_uploaded)
+                        if not should_resume:
+                            raise Exception('Upload aborted by client')
+        if bundle_conn_str is not None:
+            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str if conn_str != '' else None  # type: ignore
 
 
 class UploadManager(object):
@@ -249,7 +311,10 @@ class UploadManager(object):
             # Legacy "-a" flag without specifying a bundle store.
             UploaderCls = BlobStorageUploader
         return UploaderCls(
-            self._bundle_model, self._bundle_store, destination_bundle_store
+            bundle_model=self._bundle_model,
+            bundle_store=self._bundle_store,
+            destination_bundle_store=destination_bundle_store,
+            is_client=False,
         ).upload_to_bundle_store(bundle, source, git, unpack)
 
     def has_contents(self, bundle):
@@ -309,9 +374,12 @@ class ClientUploadManager(object):
         use_azure_blob_beta: bool,
         destination_bundle_store=None,
     ):
+        """
+        Bypass server upload. Upload from client directly to different blob storage (Azure, GCS, Disk storage).
+        """
 
         # By pass server upload:
-        # 1. If the user specify `-a`, upload to Azure blob storage
+        # 1. The server support use Azure as default storage
         # 2. If the user specify `--store` and blob storage is on Azure
         upload_to_disk = False
         bundle_store_uuid = None
@@ -325,7 +393,6 @@ class ClientUploadManager(object):
             )
             bundle_store_uuid = storage_info['uuid']
             if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
-                print("here, upload_to_disk == True")
                 upload_to_disk = True  # The user specify --store to upload to disk storage
 
         source_ext = zip_util.get_archive_ext(packed_source['filename'])
@@ -388,7 +455,6 @@ class ClientUploadManager(object):
                     progress_callback=progress.update,
                 )
 
-    # TODO(Jiani): Change into class
     def upload_Azure_blob_storage(
         self,
         fileobj,
@@ -413,57 +479,15 @@ class ClientUploadManager(object):
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
         """
-        from codalab.lib import zip_util
 
-        if should_unpack:
-            output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
-        else:
-            output_fileobj = GzipStream(fileobj)
-
-        # save the current Azure connection string
-        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
-
-        # TODO: change here to call Uploader().upload_to_blob_storage.
-
-        # Write archive file.
-        bytes_uploaded = 0
-        CHUNK_SIZE = 16 * 1024
-        with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
-            while True:
-                to_send = output_fileobj.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                out.write(to_send)
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
-                    if not should_resume:
-                        raise Exception('Upload aborted by client')
-
-        with FileSystems.open(
-            bundle_read_str, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
-            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
-            with FileSystems.create(
-                parse_linked_bundle_url(bundle_url).index_path,
-                compression_type=CompressionTypes.UNCOMPRESSED,
-            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                while True:
-                    to_send = tif.read(CHUNK_SIZE)
-                    if not to_send:
-                        break
-                    out_index_file.write(to_send)
-                    bytes_uploaded += len(to_send)
-                    if progress_callback is not None:
-                        should_resume = progress_callback(bytes_uploaded)
-                        if not should_resume:
-                            raise Exception('Upload aborted by client')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str if conn_str != '' else None
+        BlobStorageUploader(
+            bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=True
+        ).write_fileobj(
+            source_ext,
+            fileobj,
+            bundle_url,
+            should_unpack,
+            bundle_conn_str,
+            index_conn_str,
+            progress_callback,
+        )
