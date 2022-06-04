@@ -151,7 +151,7 @@ class OAuth2Provider(object):
 
             oauth._validator = MyValidator()
         """
-        expires_in = self.app.config.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN', parse_duration("30d"))
+        expires_in = self.app.config.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN', parse_duration("7d"))
         token_generator = self.app.config.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
         if token_generator and not isinstance(token_generator, collections.Callable):
             token_generator = import_string(token_generator)
