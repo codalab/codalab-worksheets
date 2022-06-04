@@ -2,6 +2,7 @@ import logging
 import uuid
 import subprocess
 import getpass
+import os
 import re
 import sys
 import textwrap
@@ -107,6 +108,14 @@ class SlurmBatchWorkerManager(WorkerManager):
         self.num_failed = 0
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
         self.submitted_jobs = self.load_worker_jobs()
+
+        if args.password_file:
+            logger.info(
+                f"--password-file specified. Reading credentials from {args.password_file}..."
+            )
+            with open(args.password_file) as f:
+                os.environ["CODALAB_USERNAME"] = f.readline().strip()
+                os.environ["CODALAB_PASSWORD"] = f.readline().strip()
 
     def load_worker_jobs(self):
         """
