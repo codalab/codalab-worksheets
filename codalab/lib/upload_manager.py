@@ -312,7 +312,7 @@ class ClientUploadManager(object):
 
         # By pass server upload:
         # 1. If the user specify `-a`, upload to Azure blob storage
-        # 2. If the user specify `--store` and blob storage is on Azure or GCS
+        # 2. If the user specify `--store` and blob storage is on Azure
         bypass_server = True if use_azure_blob_beta else False
         bundle_store_uuid = None
         if destination_bundle_store is not None and destination_bundle_store != '':
