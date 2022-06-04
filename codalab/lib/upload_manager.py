@@ -325,6 +325,7 @@ class ClientUploadManager(object):
             )
             bundle_store_uuid = storage_info['uuid']
             if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value, ):
+                print("here, upload_to_disk == True")
                 upload_to_disk = True   # The user specify --store to upload to disk storage
 
         source_ext = zip_util.get_archive_ext(packed_source['filename'])
@@ -341,7 +342,7 @@ class ClientUploadManager(object):
             'attributes'
         )
 
-        if data.get('bundle_conn_str') is not None or not upload_to_disk:
+        if data.get('bundle_conn_str', None) is not None:
             # Mimic the rest server behavior
             # decided the bundle type (file/directory) and decide whether need to unpack
             bundle_conn_str = data.get('bundle_conn_str')
@@ -422,6 +423,8 @@ class ClientUploadManager(object):
         # save the current Azure connection string
         conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
         os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
+
+        # TODO: change here to call Uploader().upload_to_blob_storage.
 
         # Write archive file.
         bytes_uploaded = 0
