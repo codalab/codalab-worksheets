@@ -324,9 +324,9 @@ class ClientUploadManager(object):
                 },
             )
             bundle_store_uuid = storage_info['uuid']
-            if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value, ):
+            if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
                 print("here, upload_to_disk == True")
-                upload_to_disk = True   # The user specify --store to upload to disk storage
+                upload_to_disk = True  # The user specify --store to upload to disk storage
 
         source_ext = zip_util.get_archive_ext(packed_source['filename'])
         if packed_source['should_unpack'] and zip_util.path_is_archive(packed_source['filename']):
