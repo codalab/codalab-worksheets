@@ -471,14 +471,17 @@ def _add_bundle_location(bundle_uuid: str):
     bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     logging.info(
-        f"Bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
+        f"Try to bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
     )
     if new_location.get('bundle_store_uuid', None) is None:
-        # If user does not specify bundle store but use `cl upload -a`, use default azure path
-        local.model.update_bundle(
-            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
-        )
-        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+        if os.environ.get('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1':
+            # The rest-server use Azure as default storage. Use default azure path
+            local.model.update_bundle(
+                bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
+            )
+            bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+        else:  # The rest-server does not support store on Azure.
+            bundle_url = None
     else:
         local.model.add_bundle_location(
             new_location['bundle_uuid'], new_location['bundle_store_uuid']
@@ -492,7 +495,9 @@ def _add_bundle_location(bundle_uuid: str):
     data = BundleLocationSchema(many=True).dump([new_location]).data
 
     if need_sas:
-        if bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+        if bundle_url is None:
+            bundle_conn_str, index_conn_str = None, None
+        elif bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
             # generate the SAS token and Azure connection string, and send it back to the client
             bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
             index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
@@ -517,7 +522,7 @@ def _add_bundle_location(bundle_uuid: str):
         data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str
         data['data'][0]['attributes']['bundle_url'] = bundle_url
-        return data
+    return data
 
 
 @get(

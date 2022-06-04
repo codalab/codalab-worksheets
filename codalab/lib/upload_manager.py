@@ -313,7 +313,7 @@ class ClientUploadManager(object):
         # By pass server upload:
         # 1. If the user specify `-a`, upload to Azure blob storage
         # 2. If the user specify `--store` and blob storage is on Azure
-        bypass_server = True if use_azure_blob_beta else False
+        upload_to_disk = False
         bundle_store_uuid = None
         if destination_bundle_store is not None and destination_bundle_store != '':
             storage_info = self._client.fetch_one(
@@ -324,29 +324,26 @@ class ClientUploadManager(object):
                 },
             )
             bundle_store_uuid = storage_info['uuid']
-            if storage_info['storage_type'] in (
-                StorageType.AZURE_BLOB_STORAGE.value,
-                StorageType.GCS_STORAGE.value,
-            ):
-                bypass_server = True
+            if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value, ):
+                upload_to_disk = True   # The user specify --store to upload to disk storage
 
-        if bypass_server:
+        source_ext = zip_util.get_archive_ext(packed_source['filename'])
+        if packed_source['should_unpack'] and zip_util.path_is_archive(packed_source['filename']):
+            unpack_before_upload = True
+            is_dir = source_ext in zip_util.ARCHIVE_EXTS_DIR
+        else:
+            unpack_before_upload = False
+            is_dir = False
+
+        # try to bypass server upload
+        params = {'need_sas': not upload_to_disk, 'is_dir': is_dir}
+        data = self._client.add_bundle_location(bundle['id'], bundle_store_uuid, params)[0].get(
+            'attributes'
+        )
+
+        if data.get('bundle_conn_str') is not None or not upload_to_disk:
             # Mimic the rest server behavior
             # decided the bundle type (file/directory) and decide whether need to unpack
-            source_ext = zip_util.get_archive_ext(packed_source['filename'])
-            if packed_source['should_unpack'] and zip_util.path_is_archive(
-                packed_source['filename']
-            ):
-                unpack_before_upload = True
-                is_dir = source_ext in zip_util.ARCHIVE_EXTS_DIR
-            else:
-                unpack_before_upload = False
-                is_dir = False
-
-            params = {'need_sas': True, 'is_dir': is_dir}
-            data = self._client.update_bundle_locations(bundle['id'], bundle_store_uuid, params)[
-                0
-            ].get('attributes')
             bundle_conn_str = data.get('bundle_conn_str')
             index_conn_str = data.get('index_conn_str')
             bundle_url = data.get('bundle_url')
