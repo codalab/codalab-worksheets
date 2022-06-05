@@ -109,6 +109,10 @@ class SlurmBatchWorkerManager(WorkerManager):
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
         self.submitted_jobs = self.load_worker_jobs()
 
+        # We're using a temporary CodaLabManager for the worker and worker managers by default,
+        # so we don't write out the state to state.json when users log in.
+        # If we always read from the password file, we can both leave state.json untouched,
+        # and users can always start the worker manager without logging in.
         if args.password_file:
             logger.info(
                 f"--password-file specified. Reading credentials from {args.password_file}..."
