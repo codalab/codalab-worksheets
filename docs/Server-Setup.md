@@ -186,36 +186,6 @@ In sum, to start an instance and run tests on it:
 
 These must pass before you submit a PR.
 
-### Manually test using GCS
-For now, GCS does not have end-to-end testing. If you need to test upload/download with GCS, you can follow these steps:
-
-Step 1: Create a test bucket using your GCS account, and make sure you have the credential to the test bucket.
-Set the environment variable:
-
-    export CODALAB_GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentail.json
-
-Step 2: Start the codalab server, and manually create a bundle store using GCS.
-
-    ./codalab_service start -bds default
-    cl work http:://localhost::   # make sure it works using local instance
-    cl store add --name {your_bundle_store_name} --url gs://{test_bucket_name}
-    cl store ls  # make sure you have successfully add the GCS store
-
-Step 3: Set the environment variable `CODALAB_DEFAULT_BUNDLE_STORE_NAME`. This environment variable will set the default bundle store used in test cases. The bundle store name should match the name in step3.
-
-    export CODALAB_DEFAULT_BUNDLE_STORE_NAME={your_bundle_store_name}
-
-Step 4: Restart the server and run the test cases. This script will run all the test cases in `test_cli.py`.
-    
-    ./codalab_service start -bds default
-    python test_runner.py default
-
-Or you could run a single test cases using the following command:
-
-    docker exec codalab_rest-server_1 python3 tests/cli/test_cli.py {test_name}
-
-Sidenote about testing result: the `default_bundle_store` test is expected to fail because it wants to create a new disk bundle storage that has the same name as our manually created one; the `upload2` test is expected to fail because it checks the response header (needs `Content-Encoding='identity'`), but the GCS response header does not contain `content-encoding`.
-    
 ## Pre-commit
 
 Before you commit, you should run the following script that makes automated
@@ -356,73 +326,4 @@ If you need to send Slack notifications from monitor.py service, you can configu
 * Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 
    Slack email address which will show up in a designated Slack channel.
 * Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
-
-
-## Start a local Kubernetes Batch Worker Manager (with kind, for testing / development only)
-
-If you want to test or develop with kubernetes locally, follow these steps to do so:
-
-### Initial (one-time) setup
-
-```
-# First, start codalab without a worker:
-codalab-service start -bds default no-worker
-
-# Install initial dependencies
-wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz && rm go1.18.1.linux-amd64.tar.gz # Install go: instructions from https://go.dev/doc/install
-export PATH=$PATH:/usr/local/go/bin:~/go/bin # add to your bash profile
-go version # go should be installed
-go install sigs.k8s.io/kind@v0.12.0
-go install github.com/cloudflare/cfssl/cmd/...@latest
-kind version # kind should be installed
-cfssl version # cfssl should be installed
-
-# Set up local kind cluster.
-./scripts/local-k8s/setup.sh
-# Set up web dashboard.
-kubectl config use-context kind-codalab # makes sure kubectl is connected to local cluster
-kubectl -n kubernetes-dashboard get secret $(kubectl -n kubernetes-dashboard get sa/admin-user -o jsonpath="{.secrets[0].name}") -o go-template="{{.data.token | base64decode}}" # copy this token and use it for web ui auth in the next step
-# To view the dashboard, run \"kubectl proxy\" in a terminal and open up: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/workloads?namespace=default"
-```
-
-If all is successful, you should be able to log into your dashboard. You should have one node running (codalab-control-plane). After you follow the steps below, you should also be able to view each pod (which corresponds to each worker) and then check their logs by clicking on the icon in the top-right.
-
-![Local Kubernetes Dashboard](./images/local-k8s-dashboard.png)
-
-### Build worker docker image
-
-You should repeat this step each time you change the worker docker image and want the local kind cluster to load it:
-
-```bash
-codalab-service build -s worker
-```
-
-### Run codalab and worker managers
-
-Run:
-
-```
-export CODALAB_SERVER=http://nginx
-export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443
-export CODALAB_WORKER_MANAGER_TYPE=kubernetes
-export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null
-export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
-export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
-export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
-export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
-codalab-service start -bds default no-worker worker-manager-cpu
-```
-
-Or if you just want to run the worker manager and check its logs, run:
-```
-codalab-service start -bds worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
-```
-
-### Teardown
-
-You can remove the kind cluster by running:
-
-```
-kind delete cluster --name codalab
-```
 
