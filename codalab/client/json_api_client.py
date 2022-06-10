@@ -732,7 +732,6 @@ class JsonApiClient(RestClient):
         response = self._make_request(
             method='POST',
             path='/bundles/{}/locations/blob'.format(bundle_uuid),
-            # data=self._pack_document([{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}], 'bundle_locations'),
             query_params=self._pack_params(params),
         )
         return response['data']
