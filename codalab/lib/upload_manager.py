@@ -24,17 +24,18 @@ class Uploader:
     non-implemented methods that perform the uploads to a bundle store.
     Used when: 1. client -> blob storage
                2. rest-server -> blob storage
-
-    params:
-    bundle_model: Used on rest-server.
-    bundle_store: Bundle store model, used on rest-server.
-    destination_bundle_store: Indicate destination for bundle storage.
-    is_client: Whether this uploader is used on client side. Used on client.
     """
 
     def __init__(
         self, bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=False
     ):
+        """
+        params:
+        bundle_model: Used on rest-server.
+        bundle_store: Bundle store model, used on rest-server.
+        destination_bundle_store: Indicate destination for bundle storage.
+        is_client: Whether this uploader is used on client side. Used on client.
+        """
         if not is_client:
             self._bundle_model = bundle_model
             self._bundle_store = bundle_store
@@ -69,13 +70,16 @@ class Uploader:
             source_fileobj (str): Fileobj of the source to write.
             bundle_path (str): Output bundle path.
             unpack_archive (bool): Whether fileobj is an archive that should be unpacked.
+            bundle_conn_str (str): Connection string for uploading bundle contents.
+            index_conn_str (str): Connection string for uploading bundle index file.
+            progress_callback (func): Callback function of upload progress.
         """
         raise NotImplementedError
 
     def upload_to_bundle_store(self, bundle: Bundle, source: Source, git: bool, unpack: bool):
         """Uploads the given source to the bundle store.
         Given arguments are the same as UploadManager.upload_to_bundle_store().
-        Used when upload from rest server."""
+        Used when uploading from rest server."""
         try:
             # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
@@ -221,48 +225,54 @@ class BlobStorageUploader(Uploader):
         if bundle_conn_str is not None:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
-        bytes_uploaded = 0
-        CHUNK_SIZE = 16 * 1024
-        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
-            while True:
-                to_send = output_fileobj.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                out.write(to_send)
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
-                    if not should_resume:
-                        raise Exception('Upload aborted by client')
-
-        with FileSystems.open(
-            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
-            if bundle_conn_str is not None:
-                os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
+        try:
+            bytes_uploaded = 0
+            CHUNK_SIZE = 16 * 1024
             with FileSystems.create(
-                parse_linked_bundle_url(bundle_path).index_path,
-                compression_type=CompressionTypes.UNCOMPRESSED,
-            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+            ) as out:
                 while True:
-                    to_send = tif.read(CHUNK_SIZE)
+                    to_send = output_fileobj.read(CHUNK_SIZE)
                     if not to_send:
                         break
-                    out_index_file.write(to_send)
+                    out.write(to_send)
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
-        if bundle_conn_str is not None:
-            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str if conn_str != '' else None  # type: ignore
+
+            with FileSystems.open(
+                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+            ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+                SQLiteIndexedTar(
+                    fileObject=ttf,
+                    tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                    writeIndex=True,
+                    clearIndexCache=True,
+                    indexFilePath=tmp_index_file.name,
+                )
+                if bundle_conn_str is not None:
+                    os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
+                with FileSystems.create(
+                    parse_linked_bundle_url(bundle_path).index_path,
+                    compression_type=CompressionTypes.UNCOMPRESSED,
+                ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                    while True:
+                        to_send = tif.read(CHUNK_SIZE)
+                        if not to_send:
+                            break
+                        out_index_file.write(to_send)
+                        bytes_uploaded += len(to_send)
+                        if progress_callback is not None:
+                            should_resume = progress_callback(bytes_uploaded)
+                            if not should_resume:
+                                raise Exception('Upload aborted by client')
+        except Exception as err:
+            raise err
+        finally:  # restore the origin connection string
+            if bundle_conn_str is not None:
+                os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str if conn_str != '' else None  # type: ignore
 
 
 class UploadManager(object):
@@ -334,7 +344,7 @@ class UploadManager(object):
         return (
             parse_linked_bundle_url(path)
             .bundle_path_sas_url(permission='rw', **kwargs)
-            .split('?')[-1]
+            .split('?')[-1]  # Get SAS token from SAS url.
         )
 
     def get_index_sas_token(self, path, **kwargs):
@@ -344,17 +354,17 @@ class UploadManager(object):
         return (
             parse_linked_bundle_url(path)
             .index_path_sas_url(permission='rw', **kwargs)
-            .split('?')[-1]
+            .split('?')[-1]  # Get SAS token from SAS url.
         )
 
     def get_bundle_signed_url(self, path, **kwargs):
         """
         Get signed url for the bundle path
         """
-        return parse_linked_bundle_url(path).bundle_path_signed_url(**kwargs)
+        return parse_linked_bundle_url(path).bundle_path_sas_url(**kwargs)
 
     def get_bundle_index_url(self, path, **kwargs):
-        return parse_linked_bundle_url(path).index_path_signed_url(**kwargs)
+        return parse_linked_bundle_url(path).index_path_sas_url(**kwargs)
 
 
 class ClientUploadManager(object):
