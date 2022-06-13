@@ -489,7 +489,6 @@ class ClientUploadManager(object):
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
         """
-
         BlobStorageUploader(
             bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=True
         ).write_fileobj(
