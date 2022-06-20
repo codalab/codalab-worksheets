@@ -30,6 +30,7 @@ nav:
   - Features:
     - Bundles:
       - Uploading and Downloading Bundles: features/bundles/uploading.md
+      - Bundle States: features/bundles/states.md
   - Concepts:
     - The CodaLab Workflow: Workflow.md
     - Executable Papers: Executable-Papers.md
