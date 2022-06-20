@@ -480,7 +480,7 @@ def _add_bundle_location(bundle_uuid: str):
                 bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
             )
             bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
-        else:  # The rest-server does not support store on Azure.
+        else:  # The rest-server does not use Azure as default storage.
             bundle_url = None
     else:
         local.model.add_bundle_location(
@@ -503,7 +503,7 @@ def _add_bundle_location(bundle_uuid: str):
             index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
             base_conn_str = get_base_conn_str()
             if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
-                # For test locally. Mannually typing `cl upload`
+                # For test locally. Manually typing `cl upload`
                 base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
             bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
             index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
