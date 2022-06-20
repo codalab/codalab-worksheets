@@ -440,13 +440,13 @@ class ClientUploadManager(object):
                         progress_callback=progress.update,
                     )
             except Exception as err:
-                self._client.update_bundle_locations_blob(
+                self._client.update_bundle_location_blob(
                     bundle['id'],
                     params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
                 )
                 raise err
             else:
-                self._client.update_bundle_locations_blob(bundle['id'], params={'success': True})
+                self._client.update_bundle_location_blob(bundle['id'], params={'success': True})
         else:
             # upload to rest-server
             progress = FileTransferProgress('Sent ', packed_source['filesize'], f=self.stderr)

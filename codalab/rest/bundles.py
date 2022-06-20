@@ -508,17 +508,6 @@ def _add_bundle_location(bundle_uuid: str):
             bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
             index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
 
-        elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
-            bundle_read_url = local.upload_manager.get_bundle_signed_url(bundle_url, method="GET",)
-            # For GCS storage, the connection string is signed url
-            bundle_conn_str = local.upload_manager.get_bundle_signed_url(
-                bundle_url, method="PUT", request_content_type="application/octet-stream"
-            )
-            index_conn_str = local.upload_manager.get_index_signed_url(
-                bundle_url, method="PUT", request_content_type="application/octet-stream"
-            )
-            data['data'][0]['attributes']['bundle_read_url'] = bundle_read_url
-
         data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str
         data['data'][0]['attributes']['bundle_url'] = bundle_url
@@ -547,7 +536,7 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
 )
 def _update_bundle_location(bundle_uuid: str):
     """
-    Finalize after uploading a file to the blob storage.
+    Updates a bundle location. Used to finalize a bundle's upload status after it is uploaded by the client directly to the bundle store, such as uploading to blob storage and bypassing the server.
 
     Query parameters:
     - `success`: The state of upload.

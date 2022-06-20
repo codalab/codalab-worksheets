@@ -728,7 +728,7 @@ class JsonApiClient(RestClient):
         return response['data']
 
     @wrap_exception("Unable to finalize the status of blob storage bundles")
-    def update_bundle_locations_blob(self, bundle_uuid, params):
+    def update_bundle_location_blob(self, bundle_uuid, params):
         response = self._make_request(
             method='POST',
             path='/bundles/{}/locations/blob'.format(bundle_uuid),
