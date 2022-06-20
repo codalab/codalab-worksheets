@@ -495,59 +495,17 @@ class ClientUploadManager(object):
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
         """
-<<<<<<< HEAD
-        from codalab.lib import zip_util
-
-        if should_unpack:
-            output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
-        else:
-            output_fileobj = GzipStream(fileobj)
-
-        # save the current Azure connection string
-        conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
-
-        # Write archive file.
-        bytes_uploaded = 0
-        CHUNK_SIZE = 16 * 1024
-        with FileSystems.create(bundle_url, compression_type=CompressionTypes.UNCOMPRESSED) as out:
-            while True:
-                to_send = output_fileobj.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                out.write(to_send)
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
-                    if not should_resume:
-                        raise Exception('Upload aborted by client')
-
-        with FileSystems.open(
-            bundle_url, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
-            os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
-            with FileSystems.create(
-                parse_linked_bundle_url(bundle_url).index_path,
-                compression_type=CompressionTypes.UNCOMPRESSED,
-            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                while True:
-                    to_send = tif.read(CHUNK_SIZE)
-                    if not to_send:
-                        break
-                    out_index_file.write(to_send)
-                    bytes_uploaded += len(to_send)
-                    if progress_callback is not None:
-                        should_resume = progress_callback(bytes_uploaded)
-                        if not should_resume:
-                            raise Exception('Upload aborted by client')
-        os.environ['AZURE_STORAGE_CONNECTION_STRING'] = conn_str
+        BlobStorageUploader(
+            bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=True
+        ).write_fileobj(
+            source_ext,
+            fileobj,
+            bundle_url,
+            should_unpack,
+            bundle_conn_str,
+            index_conn_str,
+            progress_callback,
+        )
 
     def upload_GCS_blob_storage(
         self,
@@ -621,16 +579,3 @@ class ClientUploadManager(object):
                     if not should_resume:
                         raise Exception('Upload aborted by client')
             conn.send(b'0\r\n\r\n')
-=======
-        BlobStorageUploader(
-            bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=True
-        ).write_fileobj(
-            source_ext,
-            fileobj,
-            bundle_url,
-            should_unpack,
-            bundle_conn_str,
-            index_conn_str,
-            progress_callback,
-        )
->>>>>>> Azure-bypass-upload
