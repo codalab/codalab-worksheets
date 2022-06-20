@@ -471,14 +471,17 @@ def _add_bundle_location(bundle_uuid: str):
     bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     logging.info(
-        f"Bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
+        f"Try to bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
     )
     if new_location.get('bundle_store_uuid', None) is None:
-        # If user does not specify bundle store but use `cl upload -a`, use default azure path
-        local.model.update_bundle(
-            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
-        )
-        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+        if os.environ.get('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1':
+            # The rest-server use Azure as default storage. Use default azure path
+            local.model.update_bundle(
+                bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
+            )
+            bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+        else:  # The rest-server does not use Azure as default storage.
+            bundle_url = None
     else:
         local.model.add_bundle_location(
             new_location['bundle_uuid'], new_location['bundle_store_uuid']
@@ -492,16 +495,18 @@ def _add_bundle_location(bundle_uuid: str):
     data = BundleLocationSchema(many=True).dump([new_location]).data
 
     if need_sas:
-        if bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+        if bundle_url is None:
+            bundle_conn_str, index_conn_str = None, None
+        elif bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
             # generate the SAS token and Azure connection string, and send it back to the client
             bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
             index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
             base_conn_str = get_base_conn_str()
             if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
-                # For test locally. Mannually typing `cl upload`
+                # For test locally. Manually typing `cl upload`
                 base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
-            bundle_conn_str = f"{base_conn_str}SharedAccessSignature={bundle_sas_token};"
-            index_conn_str = f"{base_conn_str}SharedAccessSignature={index_sas_token};"
+            bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
+            index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
 
         elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
             bundle_read_url = local.upload_manager.get_bundle_signed_url(bundle_url, method="GET",)
@@ -517,7 +522,7 @@ def _add_bundle_location(bundle_uuid: str):
         data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str
         data['data'][0]['attributes']['bundle_url'] = bundle_url
-        return data
+    return data
 
 
 @get(
@@ -1018,7 +1023,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if should_redirect_url:
         # Redirect to SAS URL on Blob Storage.
         assert fileobj is None  # We should not be returning any other contents.
-        download_url = local.download_manager.get_target_download_url(
+        download_url = local.download_manager.get_target_sas_url(
             target,
             # We pass these parameters to set the Content-Type, Content-Encoding, and
             # Content-Disposition headers that are set on the Blob Storage response.

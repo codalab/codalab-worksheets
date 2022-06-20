@@ -48,8 +48,10 @@ def get_base_conn_str():
     Return the Azure connection string without Account key.
     """
     conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
-    fields = conn_str.split(";")
-    for field in fields:
-        if "AccountKey" in field:
-            fields.remove(field)
+    all_fields = conn_str.split(";")
+    allow_fields = ["DefaultEndpointsProtocol", "AccountName", "BlobEndpoint", "EndpointSuffix"]
+    fields = []
+    for field in all_fields:
+        if field.split('=')[0] in allow_fields:
+            fields.append(field)
     return ';'.join(fields)

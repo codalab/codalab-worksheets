@@ -245,7 +245,7 @@ class LinkedBundlePath:
     archive_subpath: str
     bundle_uuid: str
 
-    def _get_sas_url(self, path, permission='r', **kwargs):
+    def _get_sas_url(self, path, **kwargs):
         """
         Generates a SAS URL that can be used to read the given blob for one hour.
 
@@ -261,8 +261,8 @@ class LinkedBundlePath:
             "",
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
 
+        permission = kwargs.get("permission", 'r')
         if permission == 'w':
-            # Use `create` instead of `write`. The `write` permission might modify other bundles.
             sas_permission = BlobSasPermissions(write=True)
         elif permission == 'r':
             sas_permission = BlobSasPermissions(read=True)
@@ -270,13 +270,13 @@ class LinkedBundlePath:
             sas_permission = BlobSasPermissions(read=True, write=True)
         else:
             raise UsageError("Not supported SAS token permission. Only support `r`/`w`/`rw`.")
+        kwargs["permission"] = sas_permission
 
         sas_token = generate_blob_sas(
             **kwargs,
             account_name=AZURE_BLOB_ACCOUNT_NAME,
             container_name=AZURE_BLOB_CONTAINER_NAME,
             account_key=AZURE_BLOB_ACCOUNT_KEY,
-            permission=sas_permission,
             expiry=datetime.datetime.now() + datetime.timedelta(hours=1),
             blob_name=blob_name,
         )
@@ -299,30 +299,25 @@ class LinkedBundlePath:
             version="v4",
             expiration=datetime.timedelta(hours=1),
             method=kwargs.get("method", "GET"),  # HTTP method. eg, GET, PUT
-            # TODO: test what if kwargs does not have this keyword.
             content_type=kwargs.get("request_content_type", None),
             response_disposition=kwargs.get("content_disposition", None),
             response_type=kwargs.get("content_type", None),
         )
         return signed_url
 
-    def bundle_path_sas_url(self, permission='r', **kwargs):
-        return self._get_sas_url(self.bundle_path, permission, **kwargs)
-
-    def index_path_sas_url(self, permission='r', **kwargs):
-        return self._get_sas_url(self.index_path, permission, **kwargs)
-
-    def bundle_path_signed_url(self, **kwargs):
-        return self._get_signed_url(self.bundle_path, **kwargs)
-
-    def index_path_signed_url(self, **kwargs):
-        return self._get_signed_url(self.index_path, **kwargs)
-
-    def bundle_path_download_url(self, **kwargs):
+    def bundle_path_sas_url(self, **kwargs):
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return self._get_sas_url(self.bundle_path, **kwargs)
         elif self.storage_type == StorageType.GCS_STORAGE.value:
             return self._get_signed_url(self.bundle_path, **kwargs)
+        else:
+            raise UsageError(f"Does not support current storage type: {self.storage_type}")
+
+    def index_path_sas_url(self, **kwargs):
+        if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
+            return self._get_sas_url(self.index_path, **kwargs)
+        elif self.storage_type == StorageType.GCS_STORAGE.value:
+            return self._get_signed_url(self.index_path, **kwargs)
         else:
             raise UsageError(f"Does not support current storage type: {self.storage_type}")
 
