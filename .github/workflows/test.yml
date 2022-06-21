@@ -150,10 +150,12 @@ jobs:
         if: matrix.runtime == 'kubernetes'
         with:
           go-version: '1.18.1'
-      - name: Set up local Kubernetes cluster
+      - name: Run tests using Kubernetes runtime
         if: matrix.runtime == 'kubernetes'
         run: |
           sh ./tests/test-setup.sh
+          sh ./scripts/local-k8s/setup-ci.sh
+          #python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
