@@ -96,3 +96,12 @@ export const DEFAULT_SCHEMA_ROWS = [
         from_schema_name: '',
     },
 ];
+
+// Documentation URLs (object structure matches /docs directory structure)
+export const DOCS = {
+    features: {
+        bundles: {
+            states: 'https://codalab-worksheets.readthedocs.io/en/latest/features/bundles/states',
+        },
+    },
+};

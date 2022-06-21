@@ -2,6 +2,7 @@ import React from 'react';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
 import InfoIcon from '@material-ui/icons/Info';
+import { BUNDLE_STATES, DOCS } from '../constants';
 
 class StateTooltip extends React.Component {
     constructor(props) {
@@ -9,23 +10,10 @@ class StateTooltip extends React.Component {
     }
 
     render() {
-        const href = 'https://codalab-worksheets.readthedocs.io/en/latest/features/bundles/states';
-        const states = [
-            'created',
-            'staged',
-            'making',
-            'starting',
-            'preparing',
-            'running',
-            'finalizing',
-            'ready',
-            'failed',
-            'killed',
-        ];
         const title = (
             <div>
                 Bundle States:
-                {states.map((state) => (
+                {BUNDLE_STATES.map((state) => (
                     <div>- {state}</div>
                 ))}
             </div>
@@ -34,7 +22,7 @@ class StateTooltip extends React.Component {
         return (
             <Tooltip title={title}>
                 <IconButton
-                    href={href}
+                    href={DOCS.features.bundles.states}
                     target='_blank'
                     rel='noopener noreferrer'
                     style={{
