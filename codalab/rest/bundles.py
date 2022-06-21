@@ -499,7 +499,6 @@ def _add_bundle_location(bundle_uuid: str):
             bundle, {'is_dir': is_dir},
         )
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
-        logging.info(f"Bypass server upload, url: {bundle_url}")
     data = BundleLocationSchema(many=True).dump([new_location]).data
 
     if need_sas:
