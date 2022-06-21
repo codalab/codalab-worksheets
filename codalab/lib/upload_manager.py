@@ -393,6 +393,7 @@ class ClientUploadManager(object):
         # 2. If the user specify `--store` and blob storage is on Azure
         upload_to_disk = False
         bundle_store_uuid = None
+        # 1) Read destination store from --store if user has specified it
         if destination_bundle_store is not None and destination_bundle_store != '':
             storage_info = self._client.fetch_one(
                 'bundle_stores',
@@ -405,6 +406,7 @@ class ClientUploadManager(object):
             if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
                 upload_to_disk = True  # The user specify --store to upload to disk storage
 
+        # 2) Pack the files to be uploaded
         source_ext = zip_util.get_archive_ext(packed_source['filename'])
         if packed_source['should_unpack'] and zip_util.path_is_archive(packed_source['filename']):
             unpack_before_upload = True
@@ -413,12 +415,13 @@ class ClientUploadManager(object):
             unpack_before_upload = False
             is_dir = False
 
-        # try to bypass server upload
+        # 3) Create a bundle location for the bundle
         params = {'need_sas': not upload_to_disk, 'is_dir': is_dir}
         data = self._client.add_bundle_location(bundle['id'], bundle_store_uuid, params)[0].get(
             'attributes'
         )
 
+        # 4) If bundle location has bundle_conn_str, we should bypass the server when uploading.
         if data.get('bundle_conn_str', None) is not None:
             # Mimic the rest server behavior
             # decided the bundle type (file/directory) and decide whether need to unpack
@@ -440,15 +443,15 @@ class ClientUploadManager(object):
                         progress_callback=progress.update,
                     )
             except Exception as err:
-                self._client.update_bundle_location_blob(
+                self._client.update_bundle_state(
                     bundle['id'],
                     params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
                 )
                 raise err
             else:
-                self._client.update_bundle_location_blob(bundle['id'], params={'success': True})
+                self._client.update_bundle_state(bundle['id'], params={'success': True})
         else:
-            # upload to rest-server
+            # 5) Otherwise, upload the bundle directly through the server.
             progress = FileTransferProgress('Sent ', packed_source['filesize'], f=self.stderr)
             with closing(packed_source['fileobj']), progress:
                 self._client.upload_contents_blob(

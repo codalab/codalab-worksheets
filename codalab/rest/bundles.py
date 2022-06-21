@@ -473,15 +473,24 @@ def _add_bundle_location(bundle_uuid: str):
     logging.info(
         f"Try to bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
     )
-    if new_location.get('bundle_store_uuid', None) is None:
-        if os.environ.get('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1':
-            # The rest-server use Azure as default storage. Use default azure path
-            local.model.update_bundle(
-                bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
-            )
-            bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
-        else:  # The rest-server does not use Azure as default storage.
-            bundle_url = None
+    # Scenario 1: User does not sepcify destination store, but rest-server support using Azure as default storage.
+    # Should bypass server and upload to default Azure store.
+    if (
+        new_location.get('bundle_store_uuid', None) is None
+        and os.environ.get('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1'
+    ):
+        # The rest-server use Azure as default storage. Use default azure path
+        local.model.update_bundle(
+            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
+        )
+        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+
+    # Scenario 2: User does not specify destination store, and rest-server does not use Azure as default storage.
+    # Should go throught rest server and upload to disk storage.
+    elif new_location.get('bundle_store_uuid', None) is None:
+        bundle_url = None
+
+    # Scenario 3: User specify destination store. Should upload to the specified storage.
     else:
         local.model.add_bundle_location(
             new_location['bundle_uuid'], new_location['bundle_store_uuid']
@@ -489,7 +498,6 @@ def _add_bundle_location(bundle_uuid: str):
         local.model.update_bundle(  # get_bundle_location() function uses this field
             bundle, {'is_dir': is_dir},
         )
-        # TODO: check whether this function could get bundle location for GCS store.
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
         logging.info(f"Bypass server upload, url: {bundle_url}")
     data = BundleLocationSchema(many=True).dump([new_location]).data
@@ -531,12 +539,14 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
 
 
 @post(
-    '/bundles/<bundle_uuid:re:%s>/locations/blob' % spec_util.UUID_STR,
+    '/bundles/<bundle_uuid:re:%s>/state' % spec_util.UUID_STR,
     apply=AuthenticatedProtectedPlugin(),
 )
-def _update_bundle_location(bundle_uuid: str):
+def _update_bundle_state(bundle_uuid: str):
     """
-    Updates a bundle location. Used to finalize a bundle's upload status after it is uploaded by the client directly to the bundle store, such as uploading to blob storage and bypassing the server.
+    Updates a bundle state. Used to finalize a bundle's upload status
+    after it is uploaded by the client directly to the bundle store,
+    such as uploading to blob storage and bypassing the server.
 
     Query parameters:
     - `success`: The state of upload.

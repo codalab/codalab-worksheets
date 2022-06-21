@@ -540,7 +540,9 @@ Query parameters:
 
 ### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/blob`
 
-Updates a bundle location. Used to finalize a bundle's upload status after it is uploaded by the client directly to the bundle store, such as uploading to blob storage and bypassing the server.
+Updates a bundle location. Used to finalize a bundle's upload status
+after it is uploaded by the client directly to the bundle store,
+such as uploading to blob storage and bypassing the server.
 
 Query parameters:
 - `success`: The state of upload.
