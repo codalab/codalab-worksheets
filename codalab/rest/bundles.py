@@ -539,8 +539,7 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
 
 
 @post(
-    '/bundles/<bundle_uuid:re:%s>/state' % spec_util.UUID_STR,
-    apply=AuthenticatedProtectedPlugin(),
+    '/bundles/<bundle_uuid:re:%s>/state' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin(),
 )
 def _update_bundle_state(bundle_uuid: str):
     """

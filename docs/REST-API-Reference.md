@@ -538,9 +538,9 @@ Query parameters:
 - `bundle_uuid`: Bundle UUID to get the location for
 - `bundle_store_uuid`: Bundle Store UUID to get the location for
 
-### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/blob`
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/state`
 
-Updates a bundle location. Used to finalize a bundle's upload status
+Updates a bundle state. Used to finalize a bundle's upload status
 after it is uploaded by the client directly to the bundle store,
 such as uploading to blob storage and bypassing the server.
 
