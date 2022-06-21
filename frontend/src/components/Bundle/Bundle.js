@@ -2,6 +2,7 @@
 import * as React from 'react';
 import SubHeader from '../SubHeader';
 import ContentWrapper from '../ContentWrapper';
+import StateTooltip from '../StateTooltip';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { BundleEditableField } from '../EditableField';
@@ -378,7 +379,10 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
         createRow(
             bundleInfo,
             bundleMetadataChanged,
-            'state',
+            <span>
+                state
+                <StateTooltip style={{ verticalAlign: 'text-top' }} />
+            </span>,
             <span className={bundleStateClass}>{bundleInfo.state}</span>,
         ),
     );

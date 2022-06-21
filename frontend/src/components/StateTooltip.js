@@ -4,6 +4,10 @@ import Tooltip from '@material-ui/core/Tooltip';
 import InfoIcon from '@material-ui/icons/Info';
 
 class StateTooltip extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
     render() {
         const href = 'https://codalab-worksheets.readthedocs.io/en/latest/features/bundles/states';
         const states = [
@@ -36,6 +40,7 @@ class StateTooltip extends React.Component {
                     style={{
                         padding: 4,
                         fontSize: 13,
+                        ...this.props.style,
                     }}
                 >
                     <InfoIcon fontSize='inherit' />
