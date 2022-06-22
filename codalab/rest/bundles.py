@@ -479,7 +479,6 @@ def _add_bundle_location(bundle_uuid: str):
         new_location.get('bundle_store_uuid', None) is None
         and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') is not None
     ):
-        # The rest-server use Azure as default storage. Use default azure path
         default_store_name = os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
         default_bundle_store = local.model.get_bundle_store(
             request.user.user_id, name=default_store_name
@@ -512,7 +511,7 @@ def _add_bundle_location(bundle_uuid: str):
         )
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
-
+    logging.info(f"Bypass server upload, the URL is {bundle_url}")
     if need_sas:
         if bundle_url is None:
             bundle_conn_str, index_conn_str = None, None
