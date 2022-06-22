@@ -473,17 +473,29 @@ def _add_bundle_location(bundle_uuid: str):
     logging.info(
         f"Try to bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
     )
-    # Scenario 1: User does not sepcify destination store, but rest-server support using Azure as default storage.
+    # Scenario 1: User does not sepcify destination store, but rest-server set default storage name.
     # Should bypass server and upload to default Azure store.
     if (
         new_location.get('bundle_store_uuid', None) is None
-        and os.environ.get('CODALAB_ALWAYS_USE_AZURE_BLOB_BETA') == '1'
+        and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') is not None
     ):
         # The rest-server use Azure as default storage. Use default azure path
-        local.model.update_bundle(
-            bundle, {'storage_type': StorageType.AZURE_BLOB_STORAGE.value, 'is_dir': is_dir},
+        default_store_name = os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+        default_bundle_store = local.model.get_bundle_store(
+            request.user.user_id, name=default_store_name
         )
-        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+        if default_bundle_store['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
+            local.model.add_bundle_location(
+                new_location['bundle_uuid'], default_bundle_store['uuid']
+            )
+            local.model.update_bundle(
+                bundle, {'storage_type': default_bundle_store['storage_type'], 'is_dir': is_dir},
+            )
+            bundle_url = local.bundle_store.get_bundle_location(
+                bundle_uuid, default_bundle_store['uuid']
+            )
+        else:  # default storage is disk, do not support bypass server
+            bundle_url = None
 
     # Scenario 2: User does not specify destination store, and rest-server does not use Azure as default storage.
     # Should go throught rest server and upload to disk storage.
