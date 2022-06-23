@@ -478,7 +478,11 @@ def _add_bundle_location(bundle_uuid: str):
     if (
         new_location.get('bundle_store_uuid', None) is None
         and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') is not None
+        and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') != ''
     ):
+        logging.info(
+            f"CODALAB_DEFAULT_BUNDLE_STORE_NAME is {os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') is not None}"
+        )
         default_store_name = os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
         default_bundle_store = local.model.get_bundle_store(
             request.user.user_id, name=default_store_name
