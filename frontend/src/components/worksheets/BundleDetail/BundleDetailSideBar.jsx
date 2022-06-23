@@ -10,6 +10,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { renderDuration } from '../../../util/worksheet_utils';
 import { Icon } from '@material-ui/core';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import StateTooltip from '../../StateTooltip';
 import { BundleEditableField } from '../../EditableField';
 import PermissionDialog from '../PermissionDialog';
 import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
@@ -81,6 +82,12 @@ class BundleDetailSideBar extends React.Component<{
             ? renderDuration(bundleInfo.metadata.time)
             : '-- --';
         const runStatus = bundleInfo.metadata.run_status;
+        const stateLabel = (
+            <span>
+                State
+                <StateTooltip style={{ verticalAlign: 'top' }} />
+            </span>
+        );
 
         return (
             <div>
@@ -124,7 +131,7 @@ class BundleDetailSideBar extends React.Component<{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
-                    <ConfigLabel label='State' inline={true} />
+                    <ConfigLabel label={stateLabel} inline={true} />
                     <span
                         className={`${classes.stateBox} ${classes[stateSpecClass]}`}
                         style={{ display: 'inline' }}
