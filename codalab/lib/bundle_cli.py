@@ -1372,6 +1372,26 @@ class BundleCLI(object):
             'metadata': metadata,
         }
 
+        # Validate store metadata.
+        store = metadata.get('store') or ''
+        if store != '':
+            print('Validating store...')
+            bundle_stores = client.fetch('bundle_stores')
+            if len(bundle_stores) == 0:
+                raise UsageError(f'{store} is not a valid store. No stores have been added.')
+
+            store_is_valid = False
+            for store_data in bundle_stores:
+                if store_data['name'] == store:
+                    store_is_valid = True
+                    break
+
+            if not store_is_valid:
+                print('Available Stores:\n')
+                self.print_table(['id', 'name', 'storage_type', 'storage_format'], bundle_stores)
+                print(' ')
+                raise UsageError(f' {store} is not a valid store.')
+
         # Option 1: --link
         if args.link:
             if len(args.path) != 1:
@@ -1399,7 +1419,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
-                    'store': metadata.get('store') or '',
+                    'store': store,
                 },
             )
 
@@ -1420,7 +1440,7 @@ class BundleCLI(object):
                     'state_on_success': State.READY,
                     'finalize_on_success': True,
                     'use_azure_blob_beta': args.use_azure_blob_beta,
-                    'store': metadata.get('store') or '',
+                    'store': store,
                 },
             )
 
@@ -1486,7 +1506,7 @@ class BundleCLI(object):
                         'state_on_success': State.READY,
                         'finalize_on_success': True,
                         'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': metadata.get('store') or '',
+                        'store': store,
                     },
                     progress_callback=progress.update,
                 )

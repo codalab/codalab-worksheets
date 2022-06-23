@@ -923,6 +923,9 @@ def test_upload3(ctx):
     check_equals('hello', _run_command([cl, 'cat', uuid]))
     check_contains(bundle_store_name, _run_command([cl, 'info', uuid]))
 
+    # Check that we raise an error if the user specifies an invalid store.
+    _run_command([cl, 'upload', '--store', 'nonexistent_store'], expected_exit_code=1)
+
     # Check that uuid_run finished and uploaded results properly.
     wait(uuid_run)
     check_equals('hello', _run_command([cl, 'cat', f'{uuid_run}/stdout']))
