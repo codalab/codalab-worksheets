@@ -17,6 +17,7 @@ import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
 import { ConfigLabel } from '../ConfigPanel';
 import { renderPermissions } from '../../../util/worksheet_utils';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
+import { BUNDLE_STATE_DETAILS } from '../../../constants';
 
 class Dependency extends React.PureComponent<{
     bundleInfo: {},
@@ -82,6 +83,7 @@ class BundleDetailSideBar extends React.Component<{
             ? renderDuration(bundleInfo.metadata.time)
             : '-- --';
         const runStatus = bundleInfo.metadata.run_status;
+        const stateDetails = BUNDLE_STATE_DETAILS[bundleState];
         const stateLabel = (
             <span>
                 State
@@ -152,6 +154,11 @@ class BundleDetailSideBar extends React.Component<{
                             ({metadata.failure_message})
                         </div>
                     )}
+                </div>
+                {/** ----------------------------------------------------------------------------------------------- */}
+                <div>
+                    <ConfigLabel label='State Details:' inline={true} />
+                    <div className={classes.dataText}>{stateDetails}</div>
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 {isRunBundle && runStatus && (
