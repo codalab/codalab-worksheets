@@ -413,6 +413,8 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_USERNAME: codalab
+          CODALAB_PASSWORD: codalab
       - name: Save logs
         if: always()
         run: |
