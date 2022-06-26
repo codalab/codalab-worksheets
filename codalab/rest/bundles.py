@@ -21,7 +21,7 @@ from codalab.common import (
     NotFoundError,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
-from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_base_conn_str
+from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_azure_bypass_conn_str
 from codalab.lib.server_util import (
     RequestSource,
     bottle_patch as patch,
@@ -473,7 +473,7 @@ def _add_bundle_location(bundle_uuid: str):
     logging.info(
         f"Try to bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
     )
-    # Scenario 1: User does not sepcify destination store, but rest-server set default storage name.
+    # Scenario 1: User does not specify destination store, but rest-server set default storage name.
     # Should bypass server and upload to default Azure store.
     if (
         new_location.get('bundle_store_uuid', None) is None
@@ -520,7 +520,7 @@ def _add_bundle_location(bundle_uuid: str):
             # generate the SAS token and Azure connection string, and send it back to the client
             bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
             index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
-            base_conn_str = get_base_conn_str()
+            base_conn_str = get_azure_bypass_conn_str()
             if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
                 # For test locally. Manually typing `cl upload`
                 base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
@@ -1032,7 +1032,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if should_redirect_url:
         # Redirect to SAS URL on Blob Storage.
         assert fileobj is None  # We should not be returning any other contents.
-        download_url = local.download_manager.get_target_sas_url(
+        download_url = local.download_manager.get_target_bypass_url(
             target,
             # We pass these parameters to set the Content-Type, Content-Encoding, and
             # Content-Disposition headers that are set on the Blob Storage response.

@@ -406,7 +406,6 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default azurite --version ${VERSION}
-          sleep 20
           sh ./tests/test-setup-default-store.sh
           CODALAB_DEFAULT_BUNDLE_STORE_NAME=azure-store-default python3 codalab_service.py start --services default azurite --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}

@@ -22,8 +22,8 @@ Source = Union[str, Tuple[str, IO[bytes]]]
 class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
     non-implemented methods that perform the uploads to a bundle store.
-    Used when: 1. client -> blob storage
-               2. rest-server -> blob storage
+    Used when: 1. client -> blob storage (is_client = True in init function)
+               2. rest-server -> blob storage (is_client = False in init function)
     """
 
     def __init__(
@@ -221,7 +221,7 @@ class BlobStorageUploader(Uploader):
         else:
             output_fileobj = GzipStream(source_fileobj)
 
-        # write archive file.
+        # Write archive file.
         if bundle_conn_str is not None:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
@@ -343,7 +343,7 @@ class UploadManager(object):
         """
         return (
             parse_linked_bundle_url(path)
-            .bundle_path_sas_url(permission='rw', **kwargs)
+            .bundle_path_bypass_url(permission='rw', **kwargs)
             .split('?')[-1]  # Get SAS token from SAS url.
         )
 
@@ -353,7 +353,7 @@ class UploadManager(object):
         """
         return (
             parse_linked_bundle_url(path)
-            .index_path_sas_url(permission='rw', **kwargs)
+            .index_path_bypass_url(permission='rw', **kwargs)
             .split('?')[-1]  # Get SAS token from SAS url.
         )
 
@@ -361,10 +361,10 @@ class UploadManager(object):
         """
         Get signed url for the bundle path
         """
-        return parse_linked_bundle_url(path).bundle_path_sas_url(**kwargs)
+        return parse_linked_bundle_url(path).bundle_path_bypass_url(**kwargs)
 
     def get_bundle_index_url(self, path, **kwargs):
-        return parse_linked_bundle_url(path).index_path_sas_url(**kwargs)
+        return parse_linked_bundle_url(path).index_path_bypass_url(**kwargs)
 
 
 class ClientUploadManager(object):
@@ -386,11 +386,11 @@ class ClientUploadManager(object):
     ):
         """
         Bypass server upload. Upload from client directly to different blob storage (Azure, GCS, Disk storage).
+        Bypass server uploading is used in following situations:
+        # 1. The server set CODALAB_DEFAULT_BUNDLE_STORE_NAME
+        # 2. If the user specify `--store` and blob storage is on Azure
         """
 
-        # By pass server upload:
-        # 1. The server support use Azure as default storage
-        # 2. If the user specify `--store` and blob storage is on Azure
         upload_to_disk = False
         bundle_store_uuid = None
         # 1) Read destination store from --store if user has specified it

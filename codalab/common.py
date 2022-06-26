@@ -299,7 +299,7 @@ class LinkedBundlePath:
         )
         return signed_url
 
-    def bundle_path_sas_url(self, **kwargs):
+    def bundle_path_bypass_url(self, **kwargs):
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return self._get_azure_sas_url(self.bundle_path, **kwargs)
         elif self.storage_type == StorageType.GCS_STORAGE.value:
@@ -307,7 +307,7 @@ class LinkedBundlePath:
         else:
             raise UsageError(f"Does not support current storage type: {self.storage_type}")
 
-    def index_path_sas_url(self, **kwargs):
+    def index_path_bypass_url(self, **kwargs):
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return self._get_azure_sas_url(self.index_path, **kwargs)
         elif self.storage_type == StorageType.GCS_STORAGE.value:

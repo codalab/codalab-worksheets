@@ -700,91 +700,116 @@ def test_auth(ctx):
 
 @TestModule.register('upload1')
 def test_upload1(ctx):
-    # Upload contents
-    uuid = _run_command([cl, 'upload', '-c', 'hello'])
-    check_equals('hello', _run_command([cl, 'cat', uuid]))
+    upload_suffix = [[]]
+    # If the test workflow start azurite docker
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        bundle_store_name = random_name()
+        blob_id = _run_command(
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--storage-type',
+                'azure_blob',
+                '--url',
+                'azfs://devstoreaccount1/bundles',
+            ]
+        )
+        upload_suffix.append(['--store', bundle_store_name])
 
-    # Upload binary file
-    uuid = _run_command([cl, 'upload', test_path('echo')])
-    check_equals(
-        test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
-    )
+    for suffix in upload_suffix:
+        # Upload contents
+        uuid = _run_command([cl, 'upload', '-c', 'hello'] + suffix)
+        check_equals('hello', _run_command([cl, 'cat', uuid]))
 
-    # Upload file with crazy name
-    uuid = _run_command([cl, 'upload', test_path(crazy_name)])
-    check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
+        # Upload binary file
+        uuid = _run_command([cl, 'upload', test_path('echo')] + suffix)
+        check_equals(
+            test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
+        )
 
-    # Upload directory with a symlink
-    uuid = _run_command([cl, 'upload', test_path('')])
-    check_equals(' -> /etc/passwd', _run_command([cl, 'cat', uuid + '/passwd']))
+        # Upload file with crazy name
+        uuid = _run_command([cl, 'upload', test_path(crazy_name)] + suffix)
+        check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
 
-    # Upload symlink without following it.
-    uuid = _run_command([cl, 'upload', test_path('a-symlink.txt')], 1)
+        # Upload directory with a symlink
+        uuid = _run_command([cl, 'upload', test_path('')] + suffix)
+        check_equals(' -> /etc/passwd', _run_command([cl, 'cat', uuid + '/passwd']))
 
-    # Upload symlink, follow link
-    uuid = _run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
-    check_equals(test_path_contents('a-symlink.txt'), _run_command([cl, 'cat', uuid]))
-    _run_command([cl, 'cat', uuid])  # Should have the full contents
+        # Upload symlink without following it.
+        uuid = _run_command([cl, 'upload', test_path('a-symlink.txt')] + suffix, 1)
 
-    # Upload broken symlink (should not be possible)
-    uuid = _run_command([cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'], 1)
+        # Upload symlink, follow link
+        uuid = _run_command(
+            [cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'] + suffix
+        )
+        check_equals(test_path_contents('a-symlink.txt'), _run_command([cl, 'cat', uuid]))
+        _run_command([cl, 'cat', uuid])  # Should have the full contents
 
-    # Upload directory with excluded files
-    uuid = _run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
-    check_num_lines(
-        2 + 2, _run_command([cl, 'cat', uuid])
-    )  # 2 header lines, Only two files left after excluding and extracting.
+        # Upload broken symlink (should not be possible)
+        uuid = _run_command(
+            [cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'] + suffix, 1
+        )
 
-    # Upload multiple files with excluded files
-    uuid = _run_command(
-        [
-            cl,
-            'upload',
-            test_path('dir1'),
-            test_path('echo'),
-            test_path(crazy_name),
-            '--exclude-patterns',
-            'f*',
-        ]
-    )
-    check_num_lines(
-        2 + 3, _run_command([cl, 'cat', uuid])
-    )  # 2 header lines, 3 items at bundle target root
-    check_num_lines(
-        2 + 2, _run_command([cl, 'cat', uuid + '/dir1'])
-    )  # 2 header lines, Only two files left after excluding and extracting.
+        # Upload directory with excluded files
+        uuid = _run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'] + suffix)
+        check_num_lines(
+            2 + 2, _run_command([cl, 'cat', uuid])
+        )  # 2 header lines, Only two files left after excluding and extracting.
 
-    # Upload directory with only one file, should not simplify directory structure
-    uuid = _run_command([cl, 'upload', test_path('dir2')])
-    check_num_lines(
-        2 + 1, _run_command([cl, 'cat', uuid])
-    )  # Directory listing with 2 headers lines and one file
+        # Upload multiple files with excluded files
+        uuid = _run_command(
+            [
+                cl,
+                'upload',
+                test_path('dir1'),
+                test_path('echo'),
+                test_path(crazy_name),
+                '--exclude-patterns',
+                'f*',
+            ]
+            + suffix
+        )
+        check_num_lines(
+            2 + 3, _run_command([cl, 'cat', uuid])
+        )  # 2 header lines, 3 items at bundle target root
+        check_num_lines(
+            2 + 2, _run_command([cl, 'cat', uuid + '/dir1'])
+        )  # 2 header lines, Only two files left after excluding and extracting.
 
-    # Upload a file that exceeds the disk quota
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
-    # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', test_path('codalab.png')], expected_exit_code=1)
-    # Reset disk quota
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
+        # Upload directory with only one file, should not simplify directory structure
+        uuid = _run_command([cl, 'upload', test_path('dir2')] + suffix)
+        check_num_lines(
+            2 + 1, _run_command([cl, 'cat', uuid])
+        )  # Directory listing with 2 headers lines and one file
 
-    # Run the same tests when on a non root user
-    user_name = 'non_root_user_' + random_name()
-    create_user(ctx, user_name, disk_quota='2000')
-    switch_user(user_name)
-    # expect to fail when we upload something more than 2k bytes
-    check_contains(
-        "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
-        _run_command(
-            [cl, 'upload', test_path('codalab.png')],
-            expected_exit_code=1,
-            # To return stderr, we need to include
-            # the following two arguments:
-            include_stderr=True,
-            force_subprocess=True,
-        ),
-    )
-    # Switch back to root user
-    switch_user('codalab')
+        # Upload a file that exceeds the disk quota
+        _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+        # expect to fail when we upload something more than 2 bytes
+        _run_command([cl, 'upload', test_path('codalab.png')] + suffix, expected_exit_code=1)
+        # Reset disk quota
+        _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
+
+        # Run the same tests when on a non root user
+        user_name = 'non_root_user_' + random_name()
+        create_user(ctx, user_name, disk_quota='2000')
+        switch_user(user_name)
+        # expect to fail when we upload something more than 2k bytes
+        check_contains(
+            "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
+            _run_command(
+                [cl, 'upload', test_path('codalab.png')] + suffix,
+                expected_exit_code=1,
+                # To return stderr, we need to include
+                # the following two arguments:
+                include_stderr=True,
+                force_subprocess=True,
+            ),
+        )
+        # Switch back to root user
+        switch_user('codalab')
 
 
 @TestModule.register('upload2')
