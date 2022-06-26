@@ -7,6 +7,8 @@ from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
 from ratarmountcore import SQLiteIndexedTar
 from contextlib import closing
+import urllib.parse
+import http.client
 
 from codalab.common import (
     UsageError,
