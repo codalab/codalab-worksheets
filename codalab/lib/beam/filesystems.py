@@ -43,9 +43,9 @@ AZURE_BLOB_HTTP_ENDPOINT = f"http://localhost:10000/{AZURE_BLOB_ACCOUNT_NAME}" i
 
 def get_base_conn_str():
     """
-    Get current connection string from environmental variable.
-    Remove the AccountKey. Used for bypass server upload to blob storage.
-    Return the Azure connection string without Account key.
+    Get current Azure connection string from environment variables.
+    Used for bypass server upload to blob storage.
+    Returns the Azure connection string without Account key.
     """
     conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
     all_fields = conn_str.split(";")

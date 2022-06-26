@@ -351,7 +351,7 @@ class UploadManager(object):
         """
         return (
             parse_linked_bundle_url(path)
-            .bundle_path_sas_url(permission='rw', **kwargs)
+            .bundle_path_bypass_url(permission='rw', **kwargs)
             .split('?')[-1]  # Get SAS token from SAS url.
         )
 
@@ -361,7 +361,7 @@ class UploadManager(object):
         """
         return (
             parse_linked_bundle_url(path)
-            .index_path_sas_url(permission='rw', **kwargs)
+            .index_path_bypass_url(permission='rw', **kwargs)
             .split('?')[-1]  # Get SAS token from SAS url.
         )
 
@@ -369,10 +369,10 @@ class UploadManager(object):
         """
         Get signed url for the bundle path
         """
-        return parse_linked_bundle_url(path).bundle_path_sas_url(**kwargs)
+        return parse_linked_bundle_url(path).bundle_path_bypass_url(**kwargs)
 
     def get_bundle_index_url(self, path, **kwargs):
-        return parse_linked_bundle_url(path).index_path_sas_url(**kwargs)
+        return parse_linked_bundle_url(path).index_path_bypass_url(**kwargs)
 
 
 class ClientUploadManager(object):
