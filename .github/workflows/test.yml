@@ -396,6 +396,7 @@ jobs:
           restore-keys: |
             pip-
       - run: pip install -r requirements.txt
+      - run: pip install -e .
       - name: Setup tests
         run: |
           sudo service mysql stop
