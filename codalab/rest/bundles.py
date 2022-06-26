@@ -527,7 +527,6 @@ def _add_bundle_location(bundle_uuid: str):
             bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
             index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
 
-<<<<<<< HEAD
         elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
             bundle_read_url = local.upload_manager.get_bundle_signed_url(bundle_url, method="GET",)
             # For GCS storage, the connection string is signed url
@@ -539,8 +538,6 @@ def _add_bundle_location(bundle_uuid: str):
             )
             data['data'][0]['attributes']['bundle_read_url'] = bundle_read_url
 
-=======
->>>>>>> Azure-bypass-upload
         data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str
         data['data'][0]['attributes']['bundle_url'] = bundle_url
