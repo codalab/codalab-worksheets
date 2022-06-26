@@ -559,7 +559,7 @@ class RunStateMachine(StateTransitioner):
             )
             if docker_utils.container_exists(run_state.container):
                 try:
-                    run_state.container.kill()
+                    docker_utils.kill(run_state.container_id)
                 except docker.errors.APIError:
                     finished, _, _ = docker_utils.check_finished(run_state.container)
                     if not finished:
@@ -601,12 +601,12 @@ class RunStateMachine(StateTransitioner):
                 try:
                     finished, _, _ = docker_utils.check_finished(run_state.container)
                     if finished:
-                        run_state.container.remove(force=True)
+                        docker_utils.remove(run_state.container_id)
                         run_state = run_state._replace(container=None, container_id=None)
                         break
                     else:
                         try:
-                            run_state.container.kill()
+                            docker_utils.kill(run_state.container_id)
                         except docker.errors.APIError:
                             logger.error(traceback.format_exc())
                             time.sleep(1)

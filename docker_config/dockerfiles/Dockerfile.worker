@@ -25,14 +25,9 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common curl && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
-    python3.6 \
-    python3.6-dev \
-    python3-pip \
-    python3-setuptools \
     libssl-dev \
     uuid-dev \
     libgpgme11-dev \
@@ -45,8 +40,13 @@ RUN apt-get update && \
     unzip && \
     rm -rf /var/lib/apt/lists/*;
 
-# Set Python3.6 as the default python3 version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
+# Miniconda 4.5.11 installs Python 3.7 by default.
+RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
+     chmod +x ~/miniconda.sh && \
+     ~/miniconda.sh -b -p /opt/conda && \
+     rm ~/miniconda.sh
+ENV PATH /opt/conda/bin:$PATH
+RUN conda --version
 
 COPY --from=ecr-login-installation /root/go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local /usr/local/bin
 COPY --from=ecr-login-installation /usr/local/bin/singularity /usr/local/bin
@@ -62,9 +62,9 @@ RUN mkdir ${WORKDIR}/scripts
 
 # Install dependencies
 COPY requirements.txt requirements.txt
-RUN python3.6 -m pip install --user --upgrade pip==20.3.4; \
-    python3.6 -m pip install setuptools --upgrade; \
-    python3.6 -m pip install --no-cache-dir -r requirements.txt;
+RUN python3 -m pip install --user --upgrade pip==20.3.4; \
+    python3 -m pip install setuptools --upgrade; \
+    python3 -m pip install --no-cache-dir -r requirements.txt;
 
 # Install code
 COPY codalab/lib codalab/lib
