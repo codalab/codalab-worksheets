@@ -477,7 +477,7 @@ def _add_bundle_location(bundle_uuid: str):
     # Should bypass server and upload to default Azure store.
     if (
         new_location.get('bundle_store_uuid', None) is None
-        and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') is not None
+        and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
         and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') != ''
     ):
         default_store_name = os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')

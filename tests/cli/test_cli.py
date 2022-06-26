@@ -704,7 +704,7 @@ def test_upload1(ctx):
     # If the test workflow start azurite docker
     if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
         bundle_store_name = random_name()
-        blob_id = _run_command(
+        _run_command(
             [
                 cl,
                 "store",
