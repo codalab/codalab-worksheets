@@ -500,11 +500,7 @@ class Worker:
             and run.container_id is not None
         ]
         for container_id in finished_container_ids:
-            try:
-                container = self.docker.containers.get(container_id)
-                container.remove(force=True)
-            except (docker.errors.NotFound, docker.errors.NullResource):
-                pass
+            docker_utils.remove(container_id)
 
         # 3. reset runs for the current worker
         self.runs = {
