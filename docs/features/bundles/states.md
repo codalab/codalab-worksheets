@@ -10,9 +10,9 @@
 
 | STATE | DESCRIPTION |
 | - | - |
+| **created** | Bundle has been created, but its contents haven't been populated. |
 | **uploading** | Bundle upload in progress. |
-| **created** | Bundle has been created. |
-| **staged** | Bundle dependencies are met. |
+| **staged** | All the dependencies of the bundle are ready. |
 | **making** | Make bundle is being created. |
 | **starting** | Waiting for a worker to start running the bundle. |
 | **preparing** | Waiting for the worker to download dependencies and docker images. |

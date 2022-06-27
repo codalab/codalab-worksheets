@@ -2,7 +2,8 @@ import React from 'react';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
 import InfoIcon from '@material-ui/icons/Info';
-import { DOCS } from '../constants';
+import { bundleStates, makeBundleStates, offlineState } from './bundleStates';
+import { DOCS } from '../../constants';
 
 class StateTooltip extends React.Component {
     constructor(props) {
@@ -10,19 +11,17 @@ class StateTooltip extends React.Component {
     }
 
     render() {
+        const type = this.props.bundleType;
+        const states = type == 'make' ? makeBundleStates : bundleStates;
         const title = (
-            <div>
-                <div>State 1: uploading</div>
-                <div>State 2: created</div>
-                <div>State 3: staged</div>
-                <div>State 4: making</div>
-                <div>State 5: starting</div>
-                <div>State 6: preparing</div>
-                <div>State 7: running</div>
-                <div>State 8: finalizing</div>
-                <div>State 9: ready, failed or killed</div>
-                <div>Offline State: worker_offline</div>
-            </div>
+            <>
+                {states.map((state, i) => (
+                    <div>
+                        State {i}: {state}
+                    </div>
+                ))}
+                <div>Offline State: {offlineState}</div>
+            </>
         );
 
         return (

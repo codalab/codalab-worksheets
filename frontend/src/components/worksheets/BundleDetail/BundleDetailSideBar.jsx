@@ -87,7 +87,10 @@ class BundleDetailSideBar extends React.Component<{
         const stateLabel = (
             <span>
                 State
-                <StateTooltip style={{ verticalAlign: 'top' }} />
+                <StateTooltip
+                    bundleType={bundleInfo.bundle_type}
+                    style={{ verticalAlign: 'top' }}
+                />
             </span>
         );
 
@@ -133,15 +136,17 @@ class BundleDetailSideBar extends React.Component<{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
-                    <ConfigLabel label={stateLabel} inline={true} />
+                    <ConfigLabel label={stateLabel} />
                     <span
                         className={`${classes.stateBox} ${classes[stateSpecClass]}`}
-                        style={{ display: 'inline' }}
+                        style={{ marginLeft: 0 }}
                     >
                         <Typography inline color='inherit'>
                             {bundleState}
                         </Typography>
                     </span>
+                    <div className={classes.dataText}>{stateDetails}</div>
+
                     {bundleInfo.bundle_type === 'run' &&
                     typeof bundleInfo.metadata.staged_status !== 'undefined'
                         ? bundleInfo.metadata.staged_status
@@ -154,11 +159,6 @@ class BundleDetailSideBar extends React.Component<{
                             ({metadata.failure_message})
                         </div>
                     )}
-                </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <div>
-                    <ConfigLabel label='State Details:' inline={true} />
-                    <div className={classes.dataText}>{stateDetails}</div>
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 {isRunBundle && runStatus && (

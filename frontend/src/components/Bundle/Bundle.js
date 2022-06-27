@@ -15,6 +15,7 @@ import {
     fetchFileSummary,
     fetchBundleStores,
 } from '../../util/apiWrapper';
+import { BUNDLE_STATE_DETAILS } from '../../constants';
 
 class Bundle extends React.Component<
     {
@@ -325,6 +326,7 @@ function renderMetadata(bundleInfo, bundleMetadataChanged) {
 function renderHeader(bundleInfo, bundleMetadataChanged) {
     let bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
     let bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
+    const bundleStateDetails = BUNDLE_STATE_DETAILS[bundleInfo.state];
 
     // Display basic information
     let rows = [];
@@ -381,9 +383,15 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             bundleMetadataChanged,
             <span>
                 state
-                <StateTooltip style={{ verticalAlign: 'text-top' }} />
+                <StateTooltip
+                    bundleType={bundleInfo.bundle_type}
+                    style={{ verticalAlign: 'text-top' }}
+                />
             </span>,
-            <span className={bundleStateClass}>{bundleInfo.state}</span>,
+            <>
+                <span className={bundleStateClass}>{bundleInfo.state}</span>
+                <span style={{ marginLeft: 5 }}>{bundleStateDetails}</span>
+            </>,
         ),
     );
 
