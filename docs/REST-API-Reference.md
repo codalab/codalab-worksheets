@@ -368,6 +368,9 @@ existing permissions on the same bundle-group pair.
 
 Fetch the bundle stores available to the user. No required arguments.
 
+Query parameters:
+- `name`: (Optional) name of bundle store. If specified, only query information about the bundle store with given name. If not, return information of all the bundle stores.
+
 Returns a list of bundle stores, each having the following parameters:
 - `uuid`: bundle store UUID
 - `owner_id`: (integer) owner of bundle store
@@ -527,7 +530,7 @@ Query parameters:
 Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
-- `need_sas`: (Optional) Bool. If true, if will return SAS token
+- `need_bypass`: (Optional) Bool. If true, if will return SAS token (for Azure) or signed url (for GCS) to bypass server upload.
 - `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`

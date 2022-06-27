@@ -391,7 +391,7 @@ class ClientUploadManager(object):
         # 2. If the user specify `--store` and blob storage is on Azure
         """
 
-        upload_to_disk = False
+        need_bypass = True
         bundle_store_uuid = None
         # 1) Read destination store from --store if user has specified it
         if destination_bundle_store is not None and destination_bundle_store != '':
@@ -404,7 +404,7 @@ class ClientUploadManager(object):
             )
             bundle_store_uuid = storage_info['uuid']
             if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
-                upload_to_disk = True  # The user specify --store to upload to disk storage
+                need_bypass = False  # The user specify --store to upload to disk storage
 
         # 2) Pack the files to be uploaded
         source_ext = zip_util.get_archive_ext(packed_source['filename'])
@@ -416,7 +416,7 @@ class ClientUploadManager(object):
             is_dir = False
 
         # 3) Create a bundle location for the bundle
-        params = {'need_sas': not upload_to_disk, 'is_dir': is_dir}
+        params = {'need_bypass': need_bypass, 'is_dir': is_dir}
         data = self._client.add_bundle_location(bundle['id'], bundle_store_uuid, params)[0].get(
             'attributes'
         )

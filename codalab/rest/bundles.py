@@ -461,17 +461,17 @@ def _add_bundle_location(bundle_uuid: str):
     Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
     Query parameters:
-    - `need_sas`: (Optional) Bool. If true, if will return SAS token
+    - `need_bypass`: (Optional) Bool. If true, if will return SAS token (for Azure) or signed url (for GCS) to bypass server upload.
     - `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
     """
     check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
-    need_sas = query_get_bool('need_sas', default=False)
+    need_bypass = query_get_bool('need_bypass', default=False)
     is_dir = query_get_bool('is_dir', default=False)
 
     bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     logging.info(
-        f"Try to bypass server upload, need_sas: {need_sas}, is_dir: {is_dir}, new_location: {new_location}"
+        f"Try to bypass server upload, need_bypass: {need_bypass}, is_dir: {is_dir}, new_location: {new_location}"
     )
     # Scenario 1: User does not specify destination store, but rest-server set default storage name.
     # Should bypass server and upload to default Azure store.
@@ -497,24 +497,25 @@ def _add_bundle_location(bundle_uuid: str):
         else:  # default storage is disk, do not support bypass server
             bundle_url = None
 
-    # Scenario 2: User does not specify destination store, and rest-server does not use Azure as default storage.
+    # Scenario 2: User does not specify destination store, and rest-server does not specify a default bundle store name.
     # Should go throught rest server and upload to disk storage.
     elif new_location.get('bundle_store_uuid', None) is None:
         bundle_url = None
 
-    # Scenario 3: User specify destination store. Should upload to the specified storage.
+    # Scenario 3: User specifies destination store. Should upload to the specified storage.
     else:
         local.model.add_bundle_location(
             new_location['bundle_uuid'], new_location['bundle_store_uuid']
         )
-        local.model.update_bundle(  # get_bundle_location() function uses this field
+        local.model.update_bundle(
             bundle, {'is_dir': is_dir},
         )
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
     logging.info(f"Bypass server upload, the URL is {bundle_url}")
-    if need_sas:
+    if need_bypass:
         if bundle_url is None:
+            # Not support bypass server upload: user specifies neeed_bypass, but the server does not set default storage as Azure or GCS
             bundle_conn_str, index_conn_str = None, None
         elif bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
             # generate the SAS token and Azure connection string, and send it back to the client
@@ -522,7 +523,10 @@ def _add_bundle_location(bundle_uuid: str):
             index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
             base_conn_str = get_azure_bypass_conn_str()
             if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
-                # For test locally. Manually typing `cl upload`
+                # For test CLI locally. When developers want to test CLI using dockers running locally,
+                # they are accessing the azurite container from local network, which need to using localhost
+                # instead of the name of docker. When running tests using CI, we are accessing azurite
+                # from another docker, which need to use the docker container's name.
                 base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
             bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
             index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
@@ -590,6 +594,9 @@ def _update_bundle_state(bundle_uuid: str):
 def _fetch_bundle_stores():
     """
     Fetch the bundle stores available to the user. No required arguments.
+
+    Query parameters:
+    - `name`: (Optional) name of bundle store. If specified, only query information about the bundle store with given name. If not, return information of all the bundle stores.
 
     Returns a list of bundle stores, each having the following parameters:
     - `uuid`: bundle store UUID
