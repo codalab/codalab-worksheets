@@ -1,28 +1,25 @@
 import React from 'react';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
-import InfoIcon from '@material-ui/icons/Info';
-import { bundleStates, makeBundleStates, offlineState } from './bundleStates';
+import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { DOCS } from '../../constants';
+import { getBundleStates } from './utils/';
 
-class StateTooltip extends React.Component {
+class BundleStateTooltip extends React.Component {
     constructor(props) {
         super(props);
     }
 
     render() {
-        const type = this.props.bundleType;
-        const states = type == 'make' ? makeBundleStates : bundleStates;
-        const title = (
-            <>
-                {states.map((state, i) => (
-                    <div>
-                        State {i}: {state}
-                    </div>
-                ))}
-                <div>Offline State: {offlineState}</div>
-            </>
-        );
+        const states = getBundleStates(this.props.bundleType);
+        const title = states.map((state, i) => {
+            const step = state == 'worker_offline' ? 'Offline State' : `State: ${i}`;
+            return (
+                <div>
+                    {step}: {state}
+                </div>
+            );
+        });
 
         return (
             <Tooltip title={title}>
@@ -36,11 +33,11 @@ class StateTooltip extends React.Component {
                         ...this.props.style,
                     }}
                 >
-                    <InfoIcon fontSize='inherit' />
+                    <HelpOutlineOutlinedIcon fontSize='inherit' />
                 </IconButton>
             </Tooltip>
         );
     }
 }
 
-export default StateTooltip;
+export default BundleStateTooltip;

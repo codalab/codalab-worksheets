@@ -10,14 +10,14 @@ import { withStyles } from '@material-ui/core/styles';
 import { renderDuration } from '../../../util/worksheet_utils';
 import { Icon } from '@material-ui/core';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
-import StateTooltip from '../../StateTooltip';
+import BundleStateTooltip from '../../BundleStateTooltip';
 import { BundleEditableField } from '../../EditableField';
 import PermissionDialog from '../PermissionDialog';
 import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
 import { ConfigLabel } from '../ConfigPanel';
 import { renderPermissions } from '../../../util/worksheet_utils';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
-import { BUNDLE_STATE_DETAILS } from '../../../constants';
+import { getBundleStateDetails } from '../../BundleStateTooltip/utils/';
 
 class Dependency extends React.PureComponent<{
     bundleInfo: {},
@@ -68,10 +68,12 @@ class BundleDetailSideBar extends React.Component<{
         const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields = [], metadataType } = bundleInfo;
         const hasEditPermission = bundleInfo.permission > 1;
+        const bundleType = bundleInfo.bundle_type;
         const bundleState =
             bundleInfo.state === 'running' && bundleInfo.metadata.run_status != 'Running'
                 ? bundleInfo.metadata.run_status
                 : bundleInfo.state;
+        const bundleStateDetails = getBundleStateDetails(bundleType, bundleState);
         const isRunBundle = bundleInfo.bundle_type === 'run';
         const stateSpecClass =
             bundleInfo.state === 'failed'
@@ -83,14 +85,10 @@ class BundleDetailSideBar extends React.Component<{
             ? renderDuration(bundleInfo.metadata.time)
             : '-- --';
         const runStatus = bundleInfo.metadata.run_status;
-        const stateDetails = BUNDLE_STATE_DETAILS[bundleState];
         const stateLabel = (
             <span>
                 State
-                <StateTooltip
-                    bundleType={bundleInfo.bundle_type}
-                    style={{ verticalAlign: 'top' }}
-                />
+                <BundleStateTooltip bundleType={bundleType} style={{ verticalAlign: 'top' }} />
             </span>
         );
 
@@ -145,18 +143,16 @@ class BundleDetailSideBar extends React.Component<{
                             {bundleState}
                         </Typography>
                     </span>
-                    <div className={classes.dataText}>{stateDetails}</div>
+                    <div className={classes.dataText}>{bundleStateDetails}</div>
 
                     {bundleInfo.bundle_type === 'run' &&
                     typeof bundleInfo.metadata.staged_status !== 'undefined'
                         ? bundleInfo.metadata.staged_status
                         : null}
                     {metadata.failure_message && (
-                        <div
-                            className={classes.wrappableText}
-                            style={{ color: 'red', display: 'inline' }}
-                        >
-                            ({metadata.failure_message})
+                        <div className={classes.failureText}>
+                            <span style={{ fontWeight: 500 }}>Error: </span>
+                            {metadata.failure_message}
                         </div>
                     )}
                 </div>
@@ -354,6 +350,11 @@ const styles = (theme) => ({
     wrappableText: {
         flexWrap: 'wrap',
         flexShrink: 1,
+    },
+    failureText: {
+        fontSize: 14,
+        margin: '4px 0',
+        color: 'red',
     },
 });
 

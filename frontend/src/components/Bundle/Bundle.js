@@ -2,7 +2,7 @@
 import * as React from 'react';
 import SubHeader from '../SubHeader';
 import ContentWrapper from '../ContentWrapper';
-import StateTooltip from '../StateTooltip';
+import BundleStateTooltip from '../BundleStateTooltip';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { BundleEditableField } from '../EditableField';
@@ -15,7 +15,7 @@ import {
     fetchFileSummary,
     fetchBundleStores,
 } from '../../util/apiWrapper';
-import { BUNDLE_STATE_DETAILS } from '../../constants';
+import { getBundleStateDetails } from '../BundleStateTooltip/utils/';
 
 class Bundle extends React.Component<
     {
@@ -326,7 +326,7 @@ function renderMetadata(bundleInfo, bundleMetadataChanged) {
 function renderHeader(bundleInfo, bundleMetadataChanged) {
     let bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
     let bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
-    const bundleStateDetails = BUNDLE_STATE_DETAILS[bundleInfo.state];
+    const bundleStateDetails = getBundleStateDetails(bundleInfo.bundle_type, bundleInfo.state);
 
     // Display basic information
     let rows = [];
@@ -383,7 +383,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             bundleMetadataChanged,
             <span>
                 state
-                <StateTooltip
+                <BundleStateTooltip
                     bundleType={bundleInfo.bundle_type}
                     style={{ verticalAlign: 'text-top' }}
                 />

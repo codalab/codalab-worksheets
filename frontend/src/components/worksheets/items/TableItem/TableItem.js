@@ -13,7 +13,7 @@ import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
 import BundleRow from './BundleRow';
-import StateTooltip from '../../../StateTooltip';
+import BundleStateTooltip from '../../../BundleStateTooltip';
 import { getIds } from '../../../../util/worksheet_utils';
 import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 import { fetchAsyncBundleContents } from '../../../../util/apiWrapper';
@@ -191,7 +191,7 @@ class TableItem extends React.Component<{
                         </Tooltip>
                     )}
                     {item}
-                    {showStateTooltip && <StateTooltip />}
+                    {showStateTooltip && <BundleStateTooltip />}
                 </TableCell>
             );
         });
