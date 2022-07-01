@@ -11,12 +11,15 @@ class BundleStateTooltip extends React.Component {
     }
 
     render() {
-        const states = getBundleStates(this.props.bundleType);
+        const states = getBundleStates(this.props.bundleType) || [];
         const title = states.map((state, i) => {
-            const step = state == 'worker_offline' ? 'Offline State' : `State: ${i}`;
+            const isLast = i == states.length - 1;
+            const isCurrent = state == this.props.bundleState;
+            const border = isCurrent ? '1px solid white' : '';
             return (
-                <div>
-                    {step}: {state}
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ border: border, padding: '0 4px' }}>{state}</div>
+                    {!isLast && <div>↓</div>}
                 </div>
             );
         });

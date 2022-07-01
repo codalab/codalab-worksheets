@@ -1,6 +1,6 @@
-const uploadBundleStates = ['created', 'uploading', 'ready or failed'];
+const uploadBundleStates = ['created', 'uploading', 'ready | failed'];
 
-const makeBundleStates = ['created', 'making', 'ready or failed'];
+const makeBundleStates = ['created', 'making', 'ready | failed'];
 
 const runBundleStates = [
     'created',
@@ -9,19 +9,17 @@ const runBundleStates = [
     'preparing',
     'running',
     'finalizing',
-    'ready, failed or killed',
-    'worker_offline',
+    'ready | failed | killed',
 ];
 
 const allBundleStates = [
     'created',
-    'uploading, making or staged',
+    'uploading | making | staged',
     'starting [run bundles only]',
     'preparing [run bundles only]',
     'running [run bundles only]',
     'finalizing [run bundles only]',
-    'ready, failed or killed',
-    'worker_offline',
+    'ready | failed | killed',
 ];
 
 /**

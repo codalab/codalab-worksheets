@@ -354,3 +354,53 @@ def check_bundle_freezable(bundle):
             'Cannot freeze bundle %s(%s), bundle is not in a final state.'
             % (bundle.uuid, bundle.metadata.to_dict()["name"])
         )
+
+
+def get_bundle_state_details(bundle):
+    """
+    Each bundle type is assicociated with a different set of states.
+    This helper returns details about a bundle's state based on its type.
+
+    :param bundle: bundle information
+    """
+    if 'state' not in bundle or 'bundle_type' not in bundle:
+        return ''
+
+    type = bundle['bundle_type']
+    state = bundle['state']
+    state_details_by_type = {
+        'dataset': {
+            'created': 'Bundle has been created but its contents have not been uploaded yet.',
+            'uploading': 'Bundle contents are being uploaded.',
+            'ready': 'Bundle has completed uploading.',
+            'failed': 'Bundle has failed.',
+        },
+        'make': {
+            'created': 'Bundle has been created but its contents have not been populated yet.',
+            'making': 'Bundle contents are being populated by copying its dependencies.',
+            'ready': 'Bundle contents have been populated.',
+            'failed': 'Bundle has failed.',
+        },
+        'run': {
+            'created': 'Bundle has been created but its contents have not been populated yet.',
+            'staged': 'Bundle’s dependencies are all ready. Just waiting for workers to do their job.',
+            'starting': 'Bundle has been assigned to a worker and waiting for worker to start the bundle.',
+            'preparing': 'Waiting for worker to download dependencies and container image to run the bundle.',
+            'running': 'Bundle command is being executed in a container. Results are uploading.',
+            'finalizing': 'Bundle command has finished executing, deleting from worker.',
+            'ready': 'Bundle command is finished executing successfully, and results have been uploaded to the server.',
+            'failed': 'Bundle has failed.',
+            'killed': 'Bundle was killed by the user, and results have been uploaded to the server.',
+            'worker_offline': 'The worker where the bundle is running on is offline.',
+        },
+    }
+
+    if type not in state_details_by_type:
+        return ''
+
+    # if the bundle is running, return the run status instead of the state description
+    if state == 'running':
+        if 'metadata' in bundle and 'run_status' in bundle['metadata']:
+            return bundle['metadata']['run_status']
+
+    return state_details_by_type[type][state]

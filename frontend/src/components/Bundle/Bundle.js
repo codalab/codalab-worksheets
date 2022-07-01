@@ -15,7 +15,6 @@ import {
     fetchFileSummary,
     fetchBundleStores,
 } from '../../util/apiWrapper';
-import { getBundleStateDetails } from '../BundleStateTooltip/utils/';
 
 class Bundle extends React.Component<
     {
@@ -326,7 +325,6 @@ function renderMetadata(bundleInfo, bundleMetadataChanged) {
 function renderHeader(bundleInfo, bundleMetadataChanged) {
     let bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
     let bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
-    const bundleStateDetails = getBundleStateDetails(bundleInfo.bundle_type, bundleInfo.state);
 
     // Display basic information
     let rows = [];
@@ -384,27 +382,19 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             <span>
                 state
                 <BundleStateTooltip
+                    bundleState={bundleInfo.state}
                     bundleType={bundleInfo.bundle_type}
                     style={{ verticalAlign: 'text-top' }}
                 />
             </span>,
             <>
                 <span className={bundleStateClass}>{bundleInfo.state}</span>
-                <span style={{ marginLeft: 5 }}>{bundleStateDetails}</span>
+                <span style={{ marginLeft: 5 }}>{bundleInfo.state_details}</span>
             </>,
         ),
     );
 
     if (bundleInfo.bundle_type === 'run') {
-        if (bundleInfo.metadata.run_status)
-            rows.push(
-                createRow(
-                    bundleInfo,
-                    bundleMetadataChanged,
-                    'run_status',
-                    bundleInfo.metadata.run_status,
-                ),
-            );
         rows.push(createRow(bundleInfo, bundleMetadataChanged, 'time', bundleInfo.metadata.time));
     }
 

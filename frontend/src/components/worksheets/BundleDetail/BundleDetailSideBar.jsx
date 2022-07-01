@@ -17,7 +17,6 @@ import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
 import { ConfigLabel } from '../ConfigPanel';
 import { renderPermissions } from '../../../util/worksheet_utils';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
-import { getBundleStateDetails } from '../../BundleStateTooltip/utils/';
 
 class Dependency extends React.PureComponent<{
     bundleInfo: {},
@@ -68,12 +67,6 @@ class BundleDetailSideBar extends React.Component<{
         const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields = [], metadataType } = bundleInfo;
         const hasEditPermission = bundleInfo.permission > 1;
-        const bundleType = bundleInfo.bundle_type;
-        const bundleState =
-            bundleInfo.state === 'running' && bundleInfo.metadata.run_status != 'Running'
-                ? bundleInfo.metadata.run_status
-                : bundleInfo.state;
-        const bundleStateDetails = getBundleStateDetails(bundleType, bundleState);
         const isRunBundle = bundleInfo.bundle_type === 'run';
         const stateSpecClass =
             bundleInfo.state === 'failed'
@@ -84,11 +77,14 @@ class BundleDetailSideBar extends React.Component<{
         const bundleRunTime = bundleInfo.metadata.time
             ? renderDuration(bundleInfo.metadata.time)
             : '-- --';
-        const runStatus = bundleInfo.metadata.run_status;
-        const stateLabel = (
+        const bundleStateLabel = (
             <span>
                 State
-                <BundleStateTooltip bundleType={bundleType} style={{ verticalAlign: 'top' }} />
+                <BundleStateTooltip
+                    bundleState={bundleInfo.state}
+                    bundleType={bundleInfo.bundle_type}
+                    style={{ verticalAlign: 'top' }}
+                />
             </span>
         );
 
@@ -134,16 +130,16 @@ class BundleDetailSideBar extends React.Component<{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
-                    <ConfigLabel label={stateLabel} />
+                    <ConfigLabel label={bundleStateLabel} />
                     <span
                         className={`${classes.stateBox} ${classes[stateSpecClass]}`}
                         style={{ marginLeft: 0 }}
                     >
                         <Typography inline color='inherit'>
-                            {bundleState}
+                            {bundleInfo.state}
                         </Typography>
                     </span>
-                    <div className={classes.dataText}>{bundleStateDetails}</div>
+                    <div className={classes.dataText}>{bundleInfo.state_details}</div>
 
                     {bundleInfo.bundle_type === 'run' &&
                     typeof bundleInfo.metadata.staged_status !== 'undefined'
@@ -156,13 +152,6 @@ class BundleDetailSideBar extends React.Component<{
                         </div>
                     )}
                 </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                {isRunBundle && runStatus && (
-                    <div>
-                        <ConfigLabel label='Run status: ' inline={true} />
-                        <div className={classes.dataText}>{runStatus}</div>
-                    </div>
-                )}
                 {/** ----------------------------------------------------------------------------------------------- */}
                 {isRunBundle ? (
                     <div>
