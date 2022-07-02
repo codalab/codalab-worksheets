@@ -358,10 +358,11 @@ def check_bundle_freezable(bundle):
 
 def get_bundle_state_details(bundle):
     """
-    Each bundle type is assicociated with a different set of states.
-    This helper returns details about a bundle's state based on its type.
+    This helper returns information about what the given bundle's state means.
+    State definitions varry slightly based on the bundle's type.
 
-    :param bundle: bundle information
+    If the bundle is currently running, its run status will be returned.
+    If the bundle is currently staged, its staged status will be returned.
     """
     if 'state' not in bundle or 'bundle_type' not in bundle:
         return ''
@@ -395,12 +396,16 @@ def get_bundle_state_details(bundle):
         },
     }
 
-    if type not in state_details_by_type:
-        return ''
-
-    # if the bundle is running, return the run status instead of the state description
+    # if the bundle is running, return the run status
     if state == 'running':
         if 'metadata' in bundle and 'run_status' in bundle['metadata']:
             return bundle['metadata']['run_status']
 
-    return state_details_by_type[type][state]
+    # if the bundle is staged, return the staged status
+    if state == 'staged':
+        if 'metadata' in bundle and 'staged_status' in bundle['metadata']:
+            return bundle['metadata']['staged_status']
+
+    if type in state_details_by_type:
+        return state_details_by_type[type][state]
+    return ''

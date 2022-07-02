@@ -389,7 +389,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
             </span>,
             <>
                 <span className={bundleStateClass}>{bundleInfo.state}</span>
-                <span style={{ marginLeft: 5 }}>{bundleInfo.state_details}</span>
+                <div>{bundleInfo.state_details}</div>
             </>,
         ),
     );

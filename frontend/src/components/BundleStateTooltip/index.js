@@ -14,7 +14,7 @@ class BundleStateTooltip extends React.Component {
         const states = getBundleStates(this.props.bundleType) || [];
         const title = states.map((state, i) => {
             const isLast = i == states.length - 1;
-            const isCurrent = state == this.props.bundleState;
+            const isCurrent = state.includes(this.props.bundleState);
             const border = isCurrent ? '1px solid white' : '';
             return (
                 <div style={{ textAlign: 'center' }}>

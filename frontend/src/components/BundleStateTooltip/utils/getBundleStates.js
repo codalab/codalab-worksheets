@@ -1,7 +1,5 @@
 const uploadBundleStates = ['created', 'uploading', 'ready | failed'];
-
 const makeBundleStates = ['created', 'making', 'ready | failed'];
-
 const runBundleStates = [
     'created',
     'staged',
@@ -11,7 +9,6 @@ const runBundleStates = [
     'finalizing',
     'ready | failed | killed',
 ];
-
 const allBundleStates = [
     'created',
     'uploading | making | staged',
@@ -24,7 +21,7 @@ const allBundleStates = [
 
 /**
  * Return an array of bundle states based on bundle type.
- * All possible final states of a bundle are grouped together (e.g. 'ready or failed').
+ * All possible final states of a bundle are grouped together (e.g. 'ready | failed').
  *
  * @param {string} bundleType
  * @returns {array}

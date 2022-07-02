@@ -130,21 +130,13 @@ class BundleDetailSideBar extends React.Component<{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
-                    <ConfigLabel label={bundleStateLabel} />
-                    <span
-                        className={`${classes.stateBox} ${classes[stateSpecClass]}`}
-                        style={{ marginLeft: 0 }}
-                    >
+                    <ConfigLabel label={bundleStateLabel} inline={true} />
+                    <span className={`${classes.stateBox} ${classes[stateSpecClass]}`}>
                         <Typography inline color='inherit'>
                             {bundleInfo.state}
                         </Typography>
                     </span>
-                    <div className={classes.dataText}>{bundleInfo.state_details}</div>
-
-                    {bundleInfo.bundle_type === 'run' &&
-                    typeof bundleInfo.metadata.staged_status !== 'undefined'
-                        ? bundleInfo.metadata.staged_status
-                        : null}
+                    <div className={classes.dataTextBlock}>{bundleInfo.state_details}</div>
                     {metadata.failure_message && (
                         <div className={classes.failureText}>
                             <span style={{ fontWeight: 500 }}>Error: </span>
@@ -335,6 +327,11 @@ const styles = (theme) => ({
         fontSize: 14,
         verticalAlign: 'middle',
         paddingLeft: 2,
+    },
+    dataTextBlock: {
+        display: 'block',
+        marginBottom: 3,
+        fontSize: 14,
     },
     wrappableText: {
         flexWrap: 'wrap',
