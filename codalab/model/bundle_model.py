@@ -2985,6 +2985,8 @@ class BundleModel(object):
                     )
                 )
             ).fetchone()
+            if row is None:
+                raise UsageError(f"Can not find the BundleStore with name {name}.")
             return {
                 'uuid': row.uuid,
                 'owner_id': row.owner_id,

@@ -239,8 +239,13 @@ class LinkedBundlePath:
     archive_subpath: str
     bundle_uuid: str
 
-    def _get_sas_url(self, path, **kwargs):
-        """Generates a SAS URL that can be used to read the given blob for one hour."""
+    def _get_azure_sas_url(self, path, **kwargs):
+        """
+        Generates a SAS URL that can be used to read the given blob for one hour.
+
+        Args:
+            permission: Different permission granted by SAS token. `r`, `w` or `wr`. `r` for read permission, and `w` for write permission.
+        """
         if self.storage_type != StorageType.AZURE_BLOB_STORAGE.value:
             raise ValueError(
                 f"SAS URLs can only be retrieved for bundles on Azure Blob Storage. Storage type is: {self.storage_type}."
@@ -249,18 +254,29 @@ class LinkedBundlePath:
             f"{StorageURLScheme.AZURE_BLOB_STORAGE.value}{AZURE_BLOB_ACCOUNT_NAME}/{AZURE_BLOB_CONTAINER_NAME}/",
             "",
         )  # for example, "0x9955c356ed2f42e3970bdf647f3358c8/contents.gz"
+
+        permission = kwargs.get("permission", 'r')
+        if permission == 'w':
+            sas_permission = BlobSasPermissions(write=True)
+        elif permission == 'r':
+            sas_permission = BlobSasPermissions(read=True)
+        elif permission == 'rw':
+            sas_permission = BlobSasPermissions(read=True, write=True)
+        else:
+            raise UsageError("Not supported SAS token permission. Only support `r`/`w`/`rw`.")
+        kwargs["permission"] = sas_permission
+
         sas_token = generate_blob_sas(
             **kwargs,
             account_name=AZURE_BLOB_ACCOUNT_NAME,
             container_name=AZURE_BLOB_CONTAINER_NAME,
             account_key=AZURE_BLOB_ACCOUNT_KEY,
-            permission=BlobSasPermissions(read=True),
             expiry=datetime.datetime.now() + datetime.timedelta(hours=1),
             blob_name=blob_name,
         )
         return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
 
-    def _get_signed_url(self, path, **kwargs):
+    def _get_gcs_signed_url(self, path, **kwargs):
         """Generate GCS signed url that can be used to download the blob for 1 hour."""
         if self.storage_type != StorageType.GCS_STORAGE.value:
             raise ValueError(
@@ -272,30 +288,30 @@ class LinkedBundlePath:
             "/", 1
         )
         bucket = client.get_bucket(bucket_name)
-        blob = bucket.get_blob(blob_name)
+        blob = bucket.blob(blob_name)
         signed_url = blob.generate_signed_url(
             version="v4",
             expiration=datetime.timedelta(hours=1),
-            method="GET",
-            response_disposition=kwargs["content_disposition"],
-            response_type=kwargs["content_type"],
+            method=kwargs.get("method", "GET"),  # HTTP method. eg, GET, PUT
+            content_type=kwargs.get("request_content_type", None),
+            response_disposition=kwargs.get("content_disposition", None),
+            response_type=kwargs.get("content_type", None),
         )
         return signed_url
 
-    def bundle_path_sas_url(self, **kwargs):
-        return self._get_sas_url(self.bundle_path, **kwargs)
-
-    def index_path_sas_url(self, **kwargs):
-        return self._get_sas_url(self.index_path, **kwargs)
-
-    def bundle_path_signed_url(self, **kwargs):
-        return self._get_signed_url(self.bundle_path, **kwargs)
-
-    def bundle_path_download_url(self, **kwargs):
+    def bundle_path_bypass_url(self, **kwargs):
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
-            return self._get_sas_url(self.bundle_path, **kwargs)
+            return self._get_azure_sas_url(self.bundle_path, **kwargs)
         elif self.storage_type == StorageType.GCS_STORAGE.value:
-            return self._get_signed_url(self.bundle_path, **kwargs)
+            return self._get_gcs_signed_url(self.bundle_path, **kwargs)
+        else:
+            raise UsageError(f"Does not support current storage type: {self.storage_type}")
+
+    def index_path_bypass_url(self, **kwargs):
+        if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
+            return self._get_azure_sas_url(self.index_path, **kwargs)
+        elif self.storage_type == StorageType.GCS_STORAGE.value:
+            return self._get_gcs_signed_url(self.index_path, **kwargs)
         else:
             raise UsageError(f"Does not support current storage type: {self.storage_type}")
 
