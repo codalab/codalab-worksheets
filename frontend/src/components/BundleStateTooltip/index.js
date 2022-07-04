@@ -18,7 +18,9 @@ class BundleStateTooltip extends React.Component {
             const border = isCurrent ? '1px solid white' : '';
             return (
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ border: border, padding: '0 4px' }}>{state}</div>
+                    <span style={{ border, borderRadius: '10px', padding: '1px 6px' }}>
+                        {state}
+                    </span>
                     {!isLast && <div>↓</div>}
                 </div>
             );
