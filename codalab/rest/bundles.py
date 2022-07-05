@@ -193,6 +193,7 @@ def build_bundles_document(bundle_uuids):
                         bundle_class
                     ),
                     'metadata_type': worksheet_util.get_metadata_types(bundle_class),
+                    'metadata_descriptions': worksheet_util.get_metadata_descriptions(bundle_class),
                 },
             )
 
