@@ -11,7 +11,6 @@ import urllib.parse
 import http.client
 
 from codalab.common import (
-    StorageFormat,
     StorageURLScheme,
     UsageError,
     StorageType,
@@ -442,7 +441,7 @@ class ClientUploadManager(object):
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
                 upload_func = self.upload_Azure_blob_storage
-                if(bundle_url.startwith(StorageURLScheme.GCS_STORAGE.value)):
+                if bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
                     upload_func = self.upload_GCS_blob_storage
                 with closing(packed_source['fileobj']), progress:
                     upload_func(

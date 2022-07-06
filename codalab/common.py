@@ -10,6 +10,7 @@ import re
 import http.client
 import urllib.request
 import urllib.error
+import requests.exceptions
 
 from dataclasses import dataclass
 import httpio  # type: ignore
@@ -170,7 +171,7 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     return urllib.request.urlopen(request, timeout=timeout)
 
 
-@retry(httpio.HTTPIOError, tries=20, delay=10, backoff=2)
+@retry(requests.exceptions.HTTPError, tries=3, delay=10, backoff=2)
 def httpopen_with_retry(url: str, timeout: int = URLOPEN_TIMEOUT_SECONDS):
     return httpio.open(url)
 
