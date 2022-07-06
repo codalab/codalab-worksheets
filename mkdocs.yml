@@ -30,7 +30,6 @@ nav:
   - Features:
     - Bundles:
       - Uploading and Downloading Bundles: features/bundles/uploading.md
-      - Bundle States: features/bundles/states.md
   - Concepts:
     - The CodaLab Workflow: Workflow.md
     - Executable Papers: Executable-Papers.md
@@ -39,6 +38,7 @@ nav:
     - Competitions: Competitions.md
     - Storage Externalization: Externalization.md
     - Checkpoints: Checkpoints.md
+    - Lifecycle of a Bundle: Bundle-Lifecycle.md
   - Reference:
     - CLI Reference: CLI-Reference.md
     - REST API Reference: REST-API-Reference.md

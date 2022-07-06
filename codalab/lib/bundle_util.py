@@ -373,14 +373,14 @@ def get_bundle_state_details(bundle):
         'dataset': {
             'created': 'Bundle has been created but its contents have not been uploaded yet.',
             'uploading': 'Bundle contents are being uploaded.',
-            'ready': 'Bundle has completed uploading.',
-            'failed': 'Bundle has failed.',
+            'ready': 'Bundle has finished uploading successfully, and is ready to be used for further runs.',
+            'failed': 'Bundle uploading failed.',
         },
         'make': {
             'created': 'Bundle has been created but its contents have not been populated yet.',
             'making': 'Bundle contents are being populated by copying its dependencies.',
-            'ready': 'Bundle contents have been populated.',
-            'failed': 'Bundle has failed.',
+            'ready': 'Bundle contents have been successfully populated and is ready for further runs.',
+            'failed': 'Populating bundle contents failed.',
         },
         'run': {
             'created': 'Bundle has been created but its contents have not been populated yet.',

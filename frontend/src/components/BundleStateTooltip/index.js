@@ -16,8 +16,9 @@ class BundleStateTooltip extends React.Component {
             const isLast = i == states.length - 1;
             const isCurrent = state.includes(this.props.bundleState);
             const border = isCurrent ? '1px solid white' : '';
+            const marginTop = isCurrent ? '4px' : '';
             return (
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ marginTop, textAlign: 'center' }}>
                     <span style={{ border, borderRadius: '10px', padding: '1px 6px' }}>
                         {state}
                     </span>
@@ -29,7 +30,7 @@ class BundleStateTooltip extends React.Component {
         return (
             <Tooltip title={title}>
                 <IconButton
-                    href={DOCS.features.bundles.states}
+                    href={DOCS.concepts.bundleLifecycle}
                     target='_blank'
                     rel='noopener noreferrer'
                     style={{
