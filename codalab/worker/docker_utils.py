@@ -392,3 +392,19 @@ def get_container_running_time(container):
     # formatted datetime string directly.
     container_running_time = parser.isoparse(end_time) - parser.isoparse(start_time)
     return container_running_time.total_seconds()
+
+
+def kill(container_id: str):
+    try:
+        container = client.containers.get(container_id)
+    except docker.errors.NotFound:
+        return
+    container.kill()
+
+
+def remove(container_id: str):
+    try:
+        container = client.containers.get(container_id)
+    except docker.errors.NotFound:
+        return
+    container.remove(force=True)

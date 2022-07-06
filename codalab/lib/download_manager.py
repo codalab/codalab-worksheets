@@ -349,7 +349,7 @@ class DownloadManager(object):
         except download_util.PathException as e:
             raise UsageError(str(e))
 
-    def get_target_sas_url(self, target, **kwargs):
+    def get_target_bypass_url(self, target, **kwargs):
         """
         Get SAS url with read permission. Used for bypass server downloading from Azure blob storage.
         """

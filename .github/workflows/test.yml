@@ -13,10 +13,10 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 14.x
-      - name: Set up Python 3.6
+      - name: Set up Python 3.7
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - run: npm ci
         working-directory: ./frontend
       - run: npm run check-ci
@@ -77,7 +77,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -122,7 +122,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -150,10 +150,12 @@ jobs:
         if: matrix.runtime == 'kubernetes'
         with:
           go-version: '1.18.1'
-      - name: Set up local Kubernetes cluster
+      - name: Run tests using Kubernetes runtime
         if: matrix.runtime == 'kubernetes'
         run: |
           sh ./tests/test-setup.sh
+          sh ./scripts/local-k8s/setup-ci.sh
+          #python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
@@ -185,7 +187,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -234,7 +236,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -290,7 +292,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -339,7 +341,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -406,7 +408,10 @@ jobs:
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default azurite --version ${VERSION}
+<<<<<<< HEAD
           sleep 20
+=======
+>>>>>>> origin/master
           sh ./tests/test-setup-default-store.sh
           CODALAB_DEFAULT_BUNDLE_STORE_NAME=azure-store-default python3 codalab_service.py start --services default azurite --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
@@ -443,7 +448,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -509,7 +514,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -559,7 +564,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip

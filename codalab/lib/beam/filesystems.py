@@ -41,7 +41,7 @@ LOCAL_USING_AZURITE = "http://azurite" in AZURE_BLOB_CONNECTION_STRING
 AZURE_BLOB_HTTP_ENDPOINT = f"http://localhost:10000/{AZURE_BLOB_ACCOUNT_NAME}" if LOCAL_USING_AZURITE else f"https://{AZURE_BLOB_ACCOUNT_NAME}.blob.core.windows.net"
 
 
-def get_base_conn_str():
+def get_azure_bypass_conn_str():
     """
     Get current Azure connection string from environment variables.
     Used for bypass server upload to blob storage.

@@ -12,6 +12,7 @@ import http.client
 
 from codalab.common import (
     StorageFormat,
+    StorageURLScheme,
     UsageError,
     StorageType,
     urlopen_with_retry,
@@ -31,8 +32,8 @@ Source = Union[str, Tuple[str, IO[bytes]]]
 class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
     non-implemented methods that perform the uploads to a bundle store.
-    Used when: 1. client -> blob storage
-               2. rest-server -> blob storage
+    Used when: 1. client -> blob storage (is_client = True in init function)
+               2. rest-server -> blob storage (is_client = False in init function)
     """
 
     def __init__(
@@ -230,7 +231,7 @@ class BlobStorageUploader(Uploader):
         else:
             output_fileobj = GzipStream(source_fileobj)
 
-        # write archive file.
+        # Write archive file.
         if bundle_conn_str is not None:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
@@ -395,12 +396,12 @@ class ClientUploadManager(object):
     ):
         """
         Bypass server upload. Upload from client directly to different blob storage (Azure, GCS, Disk storage).
+        Bypass server uploading is used in following situations:
+        # 1. The server set CODALAB_DEFAULT_BUNDLE_STORE_NAME
+        # 2. If the user specify `--store` and blob storage is on Azure
         """
 
-        # By pass server upload:
-        # 1. The server support use Azure as default storage
-        # 2. If the user specify `--store` and blob storage is on Azure
-        upload_to_disk = False
+        need_bypass = True
         bundle_store_uuid = None
         # 1) Read destination store from --store if user has specified it
         if destination_bundle_store is not None and destination_bundle_store != '':
@@ -413,7 +414,7 @@ class ClientUploadManager(object):
             )
             bundle_store_uuid = storage_info['uuid']
             if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
-                upload_to_disk = True  # The user specify --store to upload to disk storage
+                need_bypass = False  # The user specify --store to upload to disk storage
 
         # 2) Pack the files to be uploaded
         source_ext = zip_util.get_archive_ext(packed_source['filename'])
@@ -425,7 +426,7 @@ class ClientUploadManager(object):
             is_dir = False
 
         # 3) Create a bundle location for the bundle
-        params = {'need_sas': not upload_to_disk, 'is_dir': is_dir}
+        params = {'need_bypass': need_bypass, 'is_dir': is_dir}
         data = self._client.add_bundle_location(bundle['id'], bundle_store_uuid, params)[0].get(
             'attributes'
         )
@@ -440,11 +441,11 @@ class ClientUploadManager(object):
             bundle_read_str = data.get('bundle_read_url', bundle_url)
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
-                upload_func = upload_Azure_blob_storage
+                upload_func = self.upload_Azure_blob_storage
                 if(bundle_url.startwith(StorageURLScheme.GCS_STORAGE.value)):
-                    upload_func = upload_GCS_blob_storage
+                    upload_func = self.upload_GCS_blob_storage
                 with closing(packed_source['fileobj']), progress:
-                    self.upload_func(
+                    upload_func(
                         fileobj=packed_source['fileobj'],
                         bundle_url=bundle_url,
                         bundle_conn_str=bundle_conn_str,
