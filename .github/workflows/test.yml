@@ -1,7 +1,7 @@
 name: Test
 on:
   push:
-    branches: [ master ]
+    branches: [ master, k8s-runtime ]
   pull_request:
 
 jobs:
