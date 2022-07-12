@@ -22,8 +22,8 @@ Below are the various bundle state definitions by bundle type:
 | **finalizing** | Bundle command has finished executing, cleaning up on the worker. |
 | **ready** | Bundle command is finished executing successfully, and results have been uploaded to the server. |
 | **failed** | Bundle has failed. |
-| **killed** | Bundle was killed by the user, and results have been uploaded to the server. |
-| **worker_offline** | The worker where the bundle is running on is offline. |
+| **killed** | Bundle was killed by the user. Bundle contents populated based on when the bundle was killed. |
+| **worker_offline** | The worker where the bundle is running on is offline, and the worker might or might not come back online. |
 
 <br />
 
