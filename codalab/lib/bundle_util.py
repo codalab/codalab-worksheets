@@ -363,12 +363,17 @@ def get_bundle_state_details(bundle):
 
     If the bundle is currently running, its run status will be returned.
     If the bundle is currently staged, its staged status will be returned.
+
+    Otherwise, a description of the state is returned.
     """
     if 'state' not in bundle or 'bundle_type' not in bundle:
         return ''
 
     type = bundle['bundle_type']
     state = bundle['state']
+
+    # see bundle_state.py for details on the State class
+    # see Bundle-Lifecycle.md for public bundle state documentation
     state_details_by_type = {
         'dataset': {
             'created': 'Bundle has been created but its contents have not been uploaded yet.',
@@ -377,22 +382,22 @@ def get_bundle_state_details(bundle):
             'failed': 'Bundle uploading failed.',
         },
         'make': {
-            'created': 'Bundle has been created but its contents have not been populated yet.',
+            'created': 'Bundle has been created but its contents have not yet been populated.',
             'making': 'Bundle contents are being populated by copying its dependencies.',
             'ready': 'Bundle contents have been successfully populated and is ready for further runs.',
             'failed': 'Populating bundle contents failed.',
         },
         'run': {
             'created': 'Bundle has been created but its contents have not been populated yet.',
-            'staged': 'Bundle’s dependencies are all ready. Just waiting for workers to do their job.',
+            'staged': 'Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.',  # only shown if staged_status is empty for some reason
             'starting': 'Bundle has been assigned to a worker and waiting for worker to start the bundle.',
-            'preparing': 'Waiting for worker to download dependencies and container image to run the bundle.',
-            'running': 'Bundle command is being executed in a container. Results are uploading.',
-            'finalizing': 'Bundle command has finished executing, deleting from worker.',
+            'preparing': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
+            'running': 'Bundle command is being executed in a Docker container. Results are uploading.',  # only shown if run_status is empty for some reason
+            'finalizing': 'Bundle command has finished executing, cleaning up on the worker.',
             'ready': 'Bundle command is finished executing successfully, and results have been uploaded to the server.',
             'failed': 'Bundle has failed.',
-            'killed': 'Bundle was killed by the user, and results have been uploaded to the server.',
-            'worker_offline': 'The worker where the bundle is running on is offline.',
+            'killed': 'Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.',
+            'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
         },
     }
 

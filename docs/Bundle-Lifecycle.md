@@ -15,11 +15,11 @@ Below are the various bundle state definitions by bundle type:
 | State | State Description |
 | - | - |
 | **created** | Bundle has been created but its contents have not been populated yet. |
-| **staged** | Bundle’s dependencies are all ready. Just waiting for workers to do their job. |
+| **staged** | Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run. |
 | **starting** | Bundle has been assigned to a worker and waiting for worker to start the bundle. |
-| **preparing** | Waiting for worker to download dependencies and container image to run the bundle. |
-| **running** | Bundle command is being executed in a container. Results are uploading. |
-| **finalizing** | Bundle command has finished executing, deleting from worker. |
+| **preparing** | Waiting for worker to download bundle dependencies and Docker image to run the bundle. |
+| **running** | Bundle command is being executed in a Docker container. Results are uploading. |
+| **finalizing** | Bundle command has finished executing, cleaning up on the worker. |
 | **ready** | Bundle command is finished executing successfully, and results have been uploaded to the server. |
 | **failed** | Bundle has failed. |
 | **killed** | Bundle was killed by the user, and results have been uploaded to the server. |
@@ -42,7 +42,7 @@ Below are the various bundle state definitions by bundle type:
 
 | State  | State Description |
 | - | - |
-| **created** | Bundle has been created but its contents have not been populated yet. |
+| **created** | Bundle has been created but its contents have not yet been populated. |
 | **making** | Bundle contents are being populated by copying its dependencies. |
 | **ready** | Bundle contents have been populated. |
 | **failed** | Bundle has failed. |

@@ -9,27 +9,27 @@ class State(object):
 
     # Bundle contents are being uploaded.
     UPLOADING = 'uploading'
-    # Bundle has been created but its contents have not been uploaded / populated yet.
+    # Bundle has been created but its contents have not yet been uploaded / populated.
     CREATED = 'created'
-    # Bundle’s dependencies are all ready. Just waiting for workers to do their job.
+    # Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.
     STAGED = 'staged'
     # Bundle contents are being populated by copying its dependencies.
     MAKING = 'making'
     # Bundle has been assigned to a worker and waiting for worker to start the bundle.
     STARTING = 'starting'
-    # Waiting for worker to download dependencies and container image to run the bundle.
+    # Waiting for worker to download bundle dependencies and Docker image to run the bundle.
     PREPARING = 'preparing'
-    # Bundle command is being executed in a container. Results are uploading.
+    # Bundle command is being executed in a Docker container. Results are uploading.
     RUNNING = 'running'
-    # Bundle command has finished executing, deleting from worker.
+    # Bundle command has finished executing, cleaning up on the worker.
     FINALIZING = 'finalizing'
     # Bundle command is finished executing successfully, and results have been uploaded to the server.
     READY = 'ready'
     # Bundle has failed.
     FAILED = 'failed'
-    # Bundle was killed by the user, and results have been uploaded to the server.
+    # Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.
     KILLED = 'killed'
-    # The worker where the bundle is running on is offline.
+    # The worker where the bundle is running on is offline, and the worker might or might not come back online.
     WORKER_OFFLINE = 'worker_offline'
 
     OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
