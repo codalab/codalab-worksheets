@@ -358,13 +358,11 @@ def check_bundle_freezable(bundle):
 
 def get_bundle_state_details(bundle):
     """
-    This helper returns information about what the given bundle's state means.
-    State definitions varry slightly based on the bundle's type.
+    This helper returns information about the given bundle's status based on
+    the bundle's current `state` and `run_status`.
 
-    If the bundle is currently running, its run status will be returned.
-    If the bundle is currently staged, its staged status will be returned.
-
-    Otherwise, a description of the state is returned.
+    If the bundle is currently running, its `run_status` will be returned.
+    Otherwise, a description of the `state` is returned.
     """
     if 'state' not in bundle or 'bundle_type' not in bundle:
         return ''
@@ -389,28 +387,19 @@ def get_bundle_state_details(bundle):
         },
         'run': {
             'created': 'Bundle has been created but its contents have not been populated yet.',
-            'staged': 'Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.',  # only shown if staged_status is empty for some reason
+            'staged': 'Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.',
             'starting': 'Bundle has been assigned to a worker and waiting for worker to start the bundle.',
             'preparing': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
-            'running': 'Bundle command is being executed in a Docker container. Results are uploading.',  # only shown if run_status is empty for some reason
             'finalizing': 'Bundle command has finished executing, cleaning up on the worker.',
             'ready': 'Bundle command is finished executing successfully, and results have been uploaded to the server.',
             'failed': 'Bundle has failed.',
             'killed': 'Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.',
             'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
+            'running': '',  # empty string fallback prevents crash in the unlikely event that `run_status` is unavailable.
         },
     }
 
     # if the bundle is running, return the run status
-    if state == 'running':
-        if 'metadata' in bundle and 'run_status' in bundle['metadata']:
-            return bundle['metadata']['run_status']
-
-    # if the bundle is staged, return the staged status
-    if state == 'staged':
-        if 'metadata' in bundle and 'staged_status' in bundle['metadata']:
-            return bundle['metadata']['staged_status']
-
-    if type in state_details_by_type:
-        return state_details_by_type[type][state]
-    return ''
+    if state == 'running' and 'run_status' in bundle['metadata']:
+        return bundle['metadata']['run_status']
+    return state_details_by_type[type][state]

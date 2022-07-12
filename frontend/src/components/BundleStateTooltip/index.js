@@ -5,6 +5,10 @@ import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { DOCS } from '../../constants';
 import { getBundleStates } from './utils/';
 
+/**
+ * Renders a tooltip containing a flow chart of bundle states.
+ * The bundle's current state is circled.
+ */
 class BundleStateTooltip extends React.Component {
     constructor(props) {
         super(props);

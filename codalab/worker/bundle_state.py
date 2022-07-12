@@ -19,7 +19,7 @@ class State(object):
     STARTING = 'starting'
     # Waiting for worker to download bundle dependencies and Docker image to run the bundle.
     PREPARING = 'preparing'
-    # Bundle command is being executed in a Docker container. Results are uploading.
+    # Bundle command is being executed in a Docker container or results are being uploaded.
     RUNNING = 'running'
     # Bundle command has finished executing, cleaning up on the worker.
     FINALIZING = 'finalizing'

@@ -27,13 +27,13 @@ const allBundleStates = [
  * @returns {array}
  */
 export function getBundleStates(bundleType) {
-    if (bundleType == 'dataset') {
+    if (bundleType === 'dataset') {
         return uploadBundleStates;
     }
-    if (bundleType == 'make') {
+    if (bundleType === 'make') {
         return makeBundleStates;
     }
-    if (bundleType == 'run') {
+    if (bundleType === 'run') {
         return runBundleStates;
     }
     return allBundleStates; // show all states when bundle type is not given
