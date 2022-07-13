@@ -25,7 +25,7 @@ db_metadata = MetaData()
 
 # Set tables' charset to utf8, so that it is not set to latin1 by default upon creation.
 # TODO: Migrate to utf8mb4 (https://github.com/codalab/codalab-worksheets/issues/3849)
-TABLE_DEFAULT_CHARSET = 'utf8mb4'
+TABLE_DEFAULT_CHARSET = 'utf8'
 
 bundle = Table(
     'bundle',
