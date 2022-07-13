@@ -233,8 +233,8 @@ def get_metadata_types(cls):
     Return map from key -> type for the metadata fields in the given bundle class.
     e.g.
        'request_time' -> 'basestring'
-       'time' -> 'duration'
-       'tags' -> 'list'
+       'time'         -> 'duration'
+       'tags'         -> 'list'
 
     Possible types: 'int', 'float', 'list', 'bool', 'duration',
                     'size', 'date', 'basestring'
@@ -246,6 +246,17 @@ def get_metadata_types(cls):
         spec.key: (not issubclass(spec.type, str) and spec.formatting) or spec.type.__name__
         for spec in cls.METADATA_SPECS
     }
+
+
+def get_metadata_descriptions(cls):
+    """
+    Return map from key -> description for the metadata fields in the given bundle class.
+    e.g.
+       'request_time' -> 'Amount of time (e.g., 3, 3m, 3h, 3d)...'
+       'time'         -> 'Amount of wall clock time (seconds)...'
+       'tags'         -> 'Space-separated list of tags...'
+    """
+    return {spec.key: spec.description for spec in cls.METADATA_SPECS}
 
 
 def request_lines(worksheet_info):
