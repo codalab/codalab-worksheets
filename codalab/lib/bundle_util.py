@@ -1,6 +1,5 @@
 import copy
 import json
-import logging
 
 from codalab.bundles import get_bundle_subclass
 
@@ -9,8 +8,6 @@ from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship  #
 from codalab.common import PermissionError, UsageError
 from codalab.lib import worksheet_util
 from codalab.worker.bundle_state import BundleInfo, State
-
-logger = logging.getLogger(__name__)
 
 
 def bundle_to_bundle_info(model, bundle):
@@ -367,16 +364,9 @@ def get_bundle_state_details(bundle):
     If the bundle is currently running, its `run_status` will be returned.
     Otherwise, a description of the `state` is returned.
     """
-    if 'state' not in bundle:
-        logger.error('Cannot fetch bundle state details. Missing state.')
-        return ''
-
-    if 'bundle_type' not in bundle:
-        logger.error('Cannot fetch bundle state details. Missing bundle_type.')
-        return ''
-
-    type = bundle['bundle_type']
-    state = bundle['state']
+    type = bundle.get('bundle_type')
+    state = bundle.get('state')
+    metadata = bundle.get('metadata', {})
 
     # see bundle_state.py for details on the State class
     # see Bundle-Lifecycle.md for public bundle state documentation
@@ -408,8 +398,5 @@ def get_bundle_state_details(bundle):
 
     # if the bundle is `running`, return the `run_status`
     if state == 'running':
-        if 'run_status' not in bundle['metadata']:
-            logger.error('Cannot fetch bundle state details. Missing run_status.')
-            return ''
-        return bundle['metadata']['run_status']
+        return metadata.get('run_status', '')
     return state_details_by_type[type][state]
