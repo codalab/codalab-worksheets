@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.5.1_
+_version 1.5.4_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -214,6 +214,7 @@ Name | Type
 
 Name | Type
 --- | ---
+`id` | String
 `bundle_uuid` | String
 `bundle_store_uuid` | String
 
@@ -366,6 +367,9 @@ existing permissions on the same bundle-group pair.
 ### `GET /bundle_stores`
 
 Fetch the bundle stores available to the user. No required arguments.
+
+Query parameters:
+- `name`: (Optional) name of bundle store. If specified, only query information about the bundle store with given name. If not, return information of all the bundle stores.
 
 Returns a list of bundle stores, each having the following parameters:
 - `uuid`: bundle store UUID
@@ -523,10 +527,11 @@ Query parameters:
 
 ### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
-Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
-- `bundle_uuid`: Bundle UUID corresponding to the new location
+- `need_bypass`: (Optional) Bool. If true, if will return SAS token (for Azure) or signed url (for GCS) to bypass server upload.
+- `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 
@@ -535,6 +540,18 @@ Get info about a specific BundleLocation.
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the location for
 - `bundle_store_uuid`: Bundle Store UUID to get the location for
+
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/state`
+
+Updates a bundle state. Used to finalize a bundle's upload status
+after it is uploaded by the client directly to the bundle store,
+such as uploading to blob storage and bypassing the server.
+
+Query parameters:
+- `success`: The state of upload.
+- `state_on_success`: (Optional) String. New bundle state if success
+- `state_on_failure`: (Optional) String. Bundle UUID corresponding to the new location
+- `error_msg`: (Optional) String. Error message if upload fails.
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 

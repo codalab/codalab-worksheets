@@ -32,7 +32,6 @@ from io import BytesIO
 from shlex import quote
 from typing import Dict
 import webbrowser
-
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
@@ -59,6 +58,7 @@ from codalab.lib import (
     path_util,
     spec_util,
     ui_actions,
+    upload_manager,
     worksheet_util,
     bundle_fuse,
 )
@@ -1471,25 +1471,20 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
+
             print(
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
-            progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
-            with closing(packed['fileobj']), progress:
-                client.upload_contents_blob(
-                    new_bundle['id'],
-                    fileobj=packed['fileobj'],
-                    params={
-                        'filename': packed['filename'],
-                        'unpack': packed['should_unpack'],
-                        'state_on_success': State.READY,
-                        'finalize_on_success': True,
-                        'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': metadata.get('store') or '',
-                    },
-                    progress_callback=progress.update,
-                )
+            uploader = upload_manager.ClientUploadManager(
+                client, stdout=self.stdout, stderr=self.stderr
+            )
+            uploader.upload_to_bundle_store(
+                bundle=new_bundle,
+                packed_source=packed,
+                use_azure_blob_beta=args.use_azure_blob_beta,
+                destination_bundle_store=metadata.get('store'),
+            )
 
         print(new_bundle['id'], file=self.stdout)
 
