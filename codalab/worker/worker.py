@@ -494,7 +494,7 @@ class Worker:
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
-            run.container
+            run.container_id
             for run in self.runs.values()
             if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
             and run.container_id is not None
