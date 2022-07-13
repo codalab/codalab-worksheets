@@ -7,7 +7,7 @@ import sys
 
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "1.5.2"
+CODALAB_VERSION = "1.5.4"
 
 
 class Install(install):

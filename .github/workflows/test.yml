@@ -150,10 +150,12 @@ jobs:
         if: matrix.runtime == 'kubernetes'
         with:
           go-version: '1.18.1'
-      - name: Set up local Kubernetes cluster
+      - name: Run tests using Kubernetes runtime
         if: matrix.runtime == 'kubernetes'
         run: |
           sh ./tests/test-setup.sh
+          sh ./scripts/local-k8s/setup-ci.sh
+          #python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
@@ -360,6 +362,60 @@ jobs:
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
+      - name: Save logs
+        if: always()
+        run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v1
+        with:
+          name: logs-test-${{ matrix.test }}
+          path: /tmp/logs
+
+  test_backend_default_bundle_store_azure:
+    name: Test backend - use azure as default bundle store 
+    runs-on: ubuntu-latest
+    needs: [build]
+    strategy:
+      matrix:
+        test:
+          - upload1 upload2 upload3 upload4 download
+    steps:
+      - name: Clear free space
+        run: |
+          sudo rm -rf /opt/ghc
+          df -h
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
+      - run: pip install -e .
+      - name: Setup tests
+        run: |
+          sudo service mysql stop
+          python3 codalab_service.py build services --version ${VERSION} --pull
+        env:
+          VERSION: ${{ github.head_ref || 'master' }}
+      - name: Run tests
+        run: |
+          python3 codalab_service.py start --services default azurite --version ${VERSION}
+          sh ./tests/test-setup-default-store.sh
+          CODALAB_DEFAULT_BUNDLE_STORE_NAME=azure-store-default python3 codalab_service.py start --services default azurite --version ${VERSION}
+          python3 test_runner.py --version ${VERSION} ${TEST}
+        env:
+          TEST: ${{ matrix.test }}
+          VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_USERNAME: codalab
+          CODALAB_PASSWORD: codalab
       - name: Save logs
         if: always()
         run: |
