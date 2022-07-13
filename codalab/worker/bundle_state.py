@@ -5,31 +5,22 @@ from typing import Any, Dict, List, Optional
 class State(object):
     """
     An enumeration of states that a bundle can be in.
+
+    See get_bundle_state_details in bundle_util.py for bundle state details.
+    See Bundle-Lifecycle.md for public bundle state documentation.
     """
 
-    # Bundle contents are being uploaded.
     UPLOADING = 'uploading'
-    # Bundle has been created but its contents have not yet been uploaded / populated.
     CREATED = 'created'
-    # Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.
     STAGED = 'staged'
-    # Bundle contents are being populated by copying its dependencies.
     MAKING = 'making'
-    # Bundle has been assigned to a worker and waiting for worker to start the bundle.
     STARTING = 'starting'
-    # Waiting for worker to download bundle dependencies and Docker image to run the bundle.
     PREPARING = 'preparing'
-    # Bundle command is being executed in a Docker container or results are being uploaded.
     RUNNING = 'running'
-    # Bundle command has finished executing, cleaning up on the worker.
     FINALIZING = 'finalizing'
-    # Bundle command is finished executing successfully, and results have been uploaded to the server.
     READY = 'ready'
-    # Bundle has failed.
     FAILED = 'failed'
-    # Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.
     KILLED = 'killed'
-    # The worker where the bundle is running on is offline, and the worker might or might not come back online.
     WORKER_OFFLINE = 'worker_offline'
 
     OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
