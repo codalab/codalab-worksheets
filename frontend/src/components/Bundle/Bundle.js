@@ -4,6 +4,8 @@
 import * as React from 'react';
 import SubHeader from '../SubHeader';
 import ContentWrapper from '../ContentWrapper';
+import BundleStateTooltip from '../BundleStateTooltip';
+import HelpTooltip from '../HelpTooltip';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
 import { BundleEditableField } from '../EditableField';
@@ -72,6 +74,7 @@ class Bundle extends React.Component<
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
+            bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
             bundleInfo.metadataType = response.data.meta.metadata_type;
             this.setState({ bundleInfo: bundleInfo });
         };
@@ -247,7 +250,7 @@ function renderDependencies(bundleInfo) {
     );
 }
 
-function createRow(bundleInfo, bundleMetadataChanged, key, value) {
+function createRow(bundleInfo, bundleMetadataChanged, key, value, description) {
     // Return a row corresponding to showing
     //   key: value
     // which can be edited.
@@ -261,7 +264,8 @@ function createRow(bundleInfo, bundleMetadataChanged, key, value) {
         return (
             <tr key={key}>
                 <th>
-                    <span className='editable-key'>{key}</span>
+                    <span>{key}</span>
+                    <HelpTooltip className='bundle-field-tooltip' title={description} />
                 </th>
                 <td>
                     <BundleEditableField
@@ -280,6 +284,7 @@ function createRow(bundleInfo, bundleMetadataChanged, key, value) {
             <tr key={key}>
                 <th>
                     <span>{key}</span>
+                    <HelpTooltip className='bundle-field-tooltip' title={description} />
                 </th>
                 <td>
                     <span>{renderFormat(value, fieldType[key])}</span>
@@ -303,8 +308,12 @@ function renderMetadata(bundleInfo, bundleMetadataChanged) {
     }
     keys.sort();
     for (let i = 0; i < keys.length; i++) {
-        let key = keys[i];
-        metadataListHtml.push(createRow(bundleInfo, bundleMetadataChanged, key, metadata[key]));
+        const key = keys[i];
+        const value = metadata[key];
+        const description = bundleInfo.metadataDescriptions[key];
+        metadataListHtml.push(
+            createRow(bundleInfo, bundleMetadataChanged, key, value, description),
+        );
     }
 
     return (
@@ -380,21 +389,22 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
         createRow(
             bundleInfo,
             bundleMetadataChanged,
-            'state',
-            <span className={bundleStateClass}>{bundleInfo.state}</span>,
+            <span>
+                state
+                <BundleStateTooltip
+                    bundleState={bundleInfo.state}
+                    bundleType={bundleInfo.bundle_type}
+                    style={{ verticalAlign: 'text-top' }}
+                />
+            </span>,
+            <>
+                <span className={bundleStateClass}>{bundleInfo.state}</span>
+                <div>{bundleInfo.state_details}</div>
+            </>,
         ),
     );
 
     if (bundleInfo.bundle_type === 'run') {
-        if (bundleInfo.metadata.run_status)
-            rows.push(
-                createRow(
-                    bundleInfo,
-                    bundleMetadataChanged,
-                    'run_status',
-                    bundleInfo.metadata.run_status,
-                ),
-            );
         rows.push(createRow(bundleInfo, bundleMetadataChanged, 'time', bundleInfo.metadata.time));
     }
 

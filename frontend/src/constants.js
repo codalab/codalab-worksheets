@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '1.5.3';
+export const CODALAB_VERSION = '1.5.4';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -96,3 +96,10 @@ export const DEFAULT_SCHEMA_ROWS = [
         from_schema_name: '',
     },
 ];
+
+// Documentation URLs (object structure matches mkdocs.yml)
+export const DOCS = {
+    concepts: {
+        bundleLifecycle: 'https://codalab-worksheets.readthedocs.io/en/latest/Bundle-Lifecycle',
+    },
+};

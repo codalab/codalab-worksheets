@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.5.3_
+_version 1.5.4_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -241,6 +241,7 @@ Name | Type
 `command` | String
 `data_hash` | String
 `state` | String
+`state_details` | String
 `owner` | Relationship([users](#users))
 `frozen` | DateTime
 `is_anonymous` | Boolean

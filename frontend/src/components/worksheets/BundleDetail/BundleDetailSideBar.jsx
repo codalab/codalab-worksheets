@@ -10,6 +10,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { renderDuration } from '../../../util/worksheet_utils';
 import { Icon } from '@material-ui/core';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import BundleStateTooltip from '../../BundleStateTooltip';
 import { BundleEditableField } from '../../EditableField';
 import PermissionDialog from '../PermissionDialog';
 import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
@@ -66,10 +67,6 @@ class BundleDetailSideBar extends React.Component<{
         const { bundleInfo, classes, onUpdate } = this.props;
         const { metadata, editableMetadataFields = [], metadataType } = bundleInfo;
         const hasEditPermission = bundleInfo.permission > 1;
-        const bundleState =
-            bundleInfo.state === 'running' && bundleInfo.metadata.run_status != 'Running'
-                ? bundleInfo.metadata.run_status
-                : bundleInfo.state;
         const isRunBundle = bundleInfo.bundle_type === 'run';
         const stateSpecClass =
             bundleInfo.state === 'failed'
@@ -80,7 +77,16 @@ class BundleDetailSideBar extends React.Component<{
         const bundleRunTime = bundleInfo.metadata.time
             ? renderDuration(bundleInfo.metadata.time)
             : '-- --';
-        const runStatus = bundleInfo.metadata.run_status;
+        const bundleStateLabel = (
+            <span>
+                State
+                <BundleStateTooltip
+                    bundleState={bundleInfo.state}
+                    bundleType={bundleInfo.bundle_type}
+                    style={{ verticalAlign: 'top' }}
+                />
+            </span>
+        );
 
         return (
             <div>
@@ -124,35 +130,20 @@ class BundleDetailSideBar extends React.Component<{
                 </div>
                 {/** ----------------------------------------------------------------------------------------------- */}
                 <div>
-                    <ConfigLabel label='State' inline={true} />
-                    <span
-                        className={`${classes.stateBox} ${classes[stateSpecClass]}`}
-                        style={{ display: 'inline' }}
-                    >
+                    <ConfigLabel label={bundleStateLabel} inline={true} />
+                    <span className={`${classes.stateBox} ${classes[stateSpecClass]}`}>
                         <Typography inline color='inherit'>
-                            {bundleState}
+                            {bundleInfo.state}
                         </Typography>
                     </span>
-                    {bundleInfo.bundle_type === 'run' &&
-                    typeof bundleInfo.metadata.staged_status !== 'undefined'
-                        ? bundleInfo.metadata.staged_status
-                        : null}
+                    <div className={classes.dataTextBlock}>{bundleInfo.state_details}</div>
                     {metadata.failure_message && (
-                        <div
-                            className={classes.wrappableText}
-                            style={{ color: 'red', display: 'inline' }}
-                        >
-                            ({metadata.failure_message})
+                        <div className={classes.failureText}>
+                            <span style={{ fontWeight: 500 }}>Error: </span>
+                            {metadata.failure_message}
                         </div>
                     )}
                 </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                {isRunBundle && runStatus && (
-                    <div>
-                        <ConfigLabel label='Run status: ' inline={true} />
-                        <div className={classes.dataText}>{runStatus}</div>
-                    </div>
-                )}
                 {/** ----------------------------------------------------------------------------------------------- */}
                 {isRunBundle ? (
                     <div>
@@ -337,9 +328,19 @@ const styles = (theme) => ({
         verticalAlign: 'middle',
         paddingLeft: 2,
     },
+    dataTextBlock: {
+        display: 'block',
+        marginBottom: 3,
+        fontSize: 14,
+    },
     wrappableText: {
         flexWrap: 'wrap',
         flexShrink: 1,
+    },
+    failureText: {
+        fontSize: 14,
+        margin: '4px 0',
+        color: 'red',
     },
 });
 
