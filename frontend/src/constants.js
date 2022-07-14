@@ -96,3 +96,10 @@ export const DEFAULT_SCHEMA_ROWS = [
         from_schema_name: '',
     },
 ];
+
+// Documentation URLs (object structure matches mkdocs.yml)
+export const DOCS = {
+    concepts: {
+        bundleLifecycle: 'https://codalab-worksheets.readthedocs.io/en/latest/Bundle-Lifecycle',
+    },
+};

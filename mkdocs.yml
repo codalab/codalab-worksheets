@@ -38,6 +38,7 @@ nav:
     - Competitions: Competitions.md
     - Storage Externalization: Externalization.md
     - Checkpoints: Checkpoints.md
+    - Lifecycle of a Bundle: Bundle-Lifecycle.md
   - Reference:
     - CLI Reference: CLI-Reference.md
     - REST API Reference: REST-API-Reference.md
