@@ -1,20 +1,21 @@
 // @flow
 import React, { useEffect } from 'react';
+import classNames from 'classnames';
 import { withStyles } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import BundleRow from './BundleRow';
-import { getIds } from '../../../../util/worksheet_utils';
-import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import IconButton from '@material-ui/core/IconButton';
 import SaveIcon from '@material-ui/icons/Save';
 import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
-import classNames from 'classnames';
+import BundleRow from './BundleRow';
+import BundleStateTooltip from '../../../BundleStateTooltip';
+import { getIds } from '../../../../util/worksheet_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 import { fetchAsyncBundleContents } from '../../../../util/apiWrapper';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
@@ -153,6 +154,7 @@ class TableItem extends React.Component<{
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
         let headerHtml = headerItems.map((item, index) => {
+            const showStateTooltip = item === 'state';
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
@@ -189,6 +191,7 @@ class TableItem extends React.Component<{
                         </Tooltip>
                     )}
                     {item}
+                    {showStateTooltip && <BundleStateTooltip />}
                 </TableCell>
             );
         });
