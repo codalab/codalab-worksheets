@@ -165,6 +165,9 @@ def mimic_bundles(
             new_info.pop('uuid', None)
             new_info.pop('id', None)
 
+            # Remove state_details, as this field is not stored in the db.
+            new_info.pop('state_details')
+
             # Only change the name if the output name is supplied.
             new_metadata = new_info['metadata']
             if new_output_name:
