@@ -17,25 +17,29 @@ class BundleStateTable extends React.Component {
         super(props);
     }
 
+    roundTime(time) {
+        return Math.abs(Math.round(time));
+    }
+
     getTimePassed() {
         const created = new Date(this.props.bundle?.created?.value);
         const now = new Date();
 
-        const secondsPassed = (now.getTime() - created.getTime()) / 1000;
+        const secondsPassed = this.roundTime((now.getTime() - created.getTime()) / 1000);
         if (secondsPassed < 60) {
-            const secondText = secondsPassed === 1 ? 'second' : 'seconds';
-            return `${Math.abs(Math.round(secondsPassed))} ${secondText}`;
+            const secondText = secondsPassed <= 1 ? 'second' : 'seconds';
+            return `${secondsPassed} ${secondText}`;
         }
 
-        const minutesPassed = secondsPassed / 60;
+        const minutesPassed = this.roundTime(secondsPassed / 60);
         if (minutesPassed < 60) {
-            const minuteText = minutesPassed === 1 ? 'minute' : 'minutes';
-            return `${Math.abs(Math.round(minutesPassed))} ${minuteText}`;
+            const minuteText = minutesPassed <= 1 ? 'minute' : 'minutes';
+            return `${minutesPassed} ${minuteText}`;
         }
 
-        const hoursPassed = minutesPassed / 60;
-        const hoursText = hoursPassed === 1 ? 'hour' : 'hours';
-        return `${Math.abs(Math.round(hoursPassed))} ${hoursText}`;
+        const hoursPassed = this.roundTime(minutesPassed / 60);
+        const hoursText = hoursPassed <= 1 ? 'hour' : 'hours';
+        return `${hoursPassed} ${hoursText}`;
     }
 
     render() {
