@@ -96,7 +96,7 @@ class EditableFieldBase extends React.Component<{
 
     render() {
         if (!this.props.canEdit) {
-            return <span style={{ color: '#225ea8' }}>{this.state.value || '<none>'}</span>;
+            return <span style={{ color: '#225ea8' }}>{this.state.value || '<enter>'}</span>;
         }
         if (!this.state.editing) {
             return (
@@ -105,7 +105,7 @@ class EditableFieldBase extends React.Component<{
                     onClick={this.onClick}
                     style={{ color: '#225ea8' }}
                 >
-                    {this.state.value || '<none>'}
+                    {this.state.value || '<enter>'}
                 </span>
             );
         } else {

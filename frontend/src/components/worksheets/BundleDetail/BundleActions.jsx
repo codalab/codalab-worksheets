@@ -1,5 +1,6 @@
 // @flow
 import * as React from 'react';
+import { withStyles } from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/apiWrapper';
@@ -54,7 +55,7 @@ class BundleActions extends React.Component<{
     };
 
     render() {
-        const { bundleInfo, editPermission } = this.props;
+        const { bundleInfo, classes, editPermission } = this.props;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
         const isKillableBundle = bundleInfo.state === 'running' || bundleInfo.state === 'preparing';
@@ -63,50 +64,72 @@ class BundleActions extends React.Component<{
             bundleInfo.state !== 'starting' &&
             bundleInfo.state !== 'created' &&
             bundleInfo.state !== 'staged';
+
         return isRunBundle ? (
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                {isKillableBundle && (
-                    <Button
-                        variant='text'
-                        color='primary'
-                        onClick={this.kill}
-                        disabled={!editPermission}
-                    >
-                        Kill
-                    </Button>
-                )}
+            <div className={classes.actionsContainer}>
                 {isDownloadableRunBundle && (
                     <Button
-                        variant='contained'
+                        classes={{ root: classes.actionButton }}
+                        variant='outlined'
                         color='primary'
                         onClick={() => {
                             window.open(bundleDownloadUrl, '_blank');
                         }}
                     >
-                        Download
+                        <span className='glyphicon glyphicon-download-alt' />
                     </Button>
                 )}
-                <Button
-                    variant='contained'
-                    color='primary'
-                    onClick={this.rerun}
-                    disabled={!editPermission}
-                >
-                    Edit and Rerun
-                </Button>
+                {editPermission && (
+                    <>
+                        <Button
+                            classes={{ root: classes.actionButton }}
+                            variant='outlined'
+                            color='primary'
+                            onClick={this.rerun}
+                        >
+                            Edit & Rerun
+                        </Button>
+                        {isKillableBundle && (
+                            <Button
+                                classes={{ root: classes.actionButton }}
+                                variant='contained'
+                                color='primary'
+                                onClick={this.kill}
+                            >
+                                Kill
+                            </Button>
+                        )}
+                    </>
+                )}
             </div>
         ) : (
-            <Button
-                variant='contained'
-                color='primary'
-                onClick={() => {
-                    window.open(bundleDownloadUrl, '_blank');
-                }}
-            >
-                Download
-            </Button>
+            <div className={classes.actionsContainer}>
+                <Button
+                    classes={{ root: classes.actionButton }}
+                    variant='outlined'
+                    color='primary'
+                    onClick={() => {
+                        window.open(bundleDownloadUrl, '_blank');
+                    }}
+                >
+                    <span className='glyphicon glyphicon-download-alt' />
+                </Button>
+            </div>
         );
     }
 }
 
-export default BundleActions;
+const styles = () => ({
+    actionsContainer: {
+        padding: '0 10px',
+    },
+    actionButton: {
+        minWidth: 'auto',
+        padding: '8px 10px',
+        marginLeft: '0 !important', // override default
+        marginRight: 12,
+        lineHeight: '14px',
+    },
+});
+
+export default withStyles(styles)(BundleActions);

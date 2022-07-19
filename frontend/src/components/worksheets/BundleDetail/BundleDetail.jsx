@@ -25,6 +25,8 @@ const BundleDetail = ({
     showDetail,
     handleDetailClick,
     editPermission,
+    sidebarExpanded,
+    hideBundlePageLink,
 }) => {
     const [errorMessages, setErrorMessages] = useState([]);
     const [bundleInfo, setBundleInfo] = useState(null);
@@ -102,6 +104,7 @@ const BundleDetail = ({
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
+            bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
             bundleInfo.metadataType = response.data.meta.metadata_type;
             setBundleInfo(bundleInfo);
         },
@@ -220,6 +223,8 @@ const BundleDetail = ({
                     bundleInfo={bundleInfo}
                     onUpdate={onUpdate}
                     onMetaDataChange={mutateMetadata}
+                    expanded={sidebarExpanded}
+                    hidePageLink={hideBundlePageLink}
                 />
             }
         >
