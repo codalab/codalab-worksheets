@@ -494,7 +494,7 @@ class Worker:
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
-            run.container
+            run.container_id
             for run in self.runs.values()
             if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
             and run.container_id is not None
@@ -728,7 +728,7 @@ class Worker:
             try:
                 run_state = self.runs[uuid]
                 container_ip = docker_utils.get_container_ip(
-                    self.worker_docker_network.name, run_state.container
+                    self.worker_docker_network.name, run_state.container_id
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((container_ip, port))

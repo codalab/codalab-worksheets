@@ -241,6 +241,7 @@ Name | Type
 `command` | String
 `data_hash` | String
 `state` | String
+`state_details` | String
 `owner` | Relationship([users](#users))
 `frozen` | DateTime
 `is_anonymous` | Boolean
