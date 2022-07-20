@@ -13,7 +13,6 @@ class BundleRoute extends React.Component {
     render() {
         const { uuid } = this.props.match.params;
         const { classes } = this.props;
-
         return (
             <div className={classes.bundleContainer}>
                 <BundleDetail uuid={uuid} onUpdate={() => {}} sidebarExpanded hideBundlePageLink />

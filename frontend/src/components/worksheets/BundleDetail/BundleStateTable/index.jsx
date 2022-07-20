@@ -101,19 +101,3 @@ const styles = () => ({
 });
 
 export default withStyles(styles)(BundleStateTable);
-
-// import { renderDuration } from '../../../util/worksheet_utils';
-// import BundleStateTooltip from '../../BundleStateTooltip';
-
-// const bundleRunTime = bundleInfo.metadata.time
-//     ? renderDuration(bundleInfo.metadata.time)
-//     : '-- --';
-
-{
-    /* {isRunBundle ? (
-                    <div>
-                        <ConfigLabel label='Run time: ' inline={true} />
-                        <div className={classes.dataText}>{bundleRunTime}</div>
-                    </div>
-                ) : null} */
-}
