@@ -1,7 +1,7 @@
 name: Test
 on:
   push:
-    branches: [ master, k8s-runtime ]
+    branches: [ master, k8sruntime ]
   pull_request:
 
 jobs:
@@ -91,7 +91,7 @@ jobs:
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
           # Gives us the branch name of the PR if on a pull_request-triggered build,
           # otherwise, "master" if on a push-triggered build
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
           SERVICE: ${{ matrix.service }}
 
   test_backend:
@@ -135,7 +135,7 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests using Docker runtime
         if: matrix.runtime == 'docker'
         run: |
@@ -144,7 +144,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
           CODALAB_LINK_MOUNTS: /tmp
       - uses: actions/setup-go@v3
         if: matrix.runtime == 'kubernetes'
@@ -158,7 +158,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
         if: always()
@@ -200,7 +200,7 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests
         # Make sure restarting worker doesn't cause any issues (ie in serialization/deserialization)
         run: |
@@ -209,7 +209,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Save logs
         run: |
           mkdir /tmp/logs
@@ -249,7 +249,7 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run shared filesystem tests
         run: |
           sh ./tests/test-setup.sh
@@ -257,7 +257,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
         if: always()
@@ -305,14 +305,14 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION} --protected-mode
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Save logs
         if: always()
         run: |
@@ -354,14 +354,14 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests
         run: |
           CODALAB_DEFAULT_BUNDLE_STORE_NAME=store$(date +%s) python3 codalab_service.py start --services default --version ${VERSION} --protected-mode
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Save logs
         if: always()
         run: |
@@ -404,7 +404,7 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default no-worker worker-preemptible --version ${VERSION}
@@ -414,7 +414,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
           CODALAB_USERNAME: codalab
           CODALAB_PASSWORD: codalab
       - name: Save logs
@@ -469,14 +469,14 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default azurite --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
           CODALAB_LINK_MOUNTS: /tmp
           CODALAB_ALWAYS_USE_AZURE_BLOB_BETA: 1
       - name: Save logs
@@ -519,7 +519,7 @@ jobs:
           sudo service mysql stop
           python3 codalab_service.py build services --version ${VERSION} --pull
         env:
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Run tests
         run: |
           python3 codalab_service.py start --services default --version ${VERSION}
@@ -527,7 +527,7 @@ jobs:
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
-          VERSION: ${{ github.head_ref || 'master' }}
+          VERSION: ${{ github.head_ref || 'k8sruntime' }}
       - name: Upload screenshots on failure
         uses: actions/upload-artifact@v1
         if: failure()
