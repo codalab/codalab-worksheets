@@ -1,4 +1,3 @@
-import docker
 import glob
 import logging
 import os
@@ -7,11 +6,11 @@ import time
 import traceback
 from typing import Dict
 
-import codalab.worker.docker_utils as docker_utils
-
 from collections import namedtuple
+from .docker_utils import DockerException, DockerUserErrorException
 from pathlib import Path
 
+from codalab.worker.runtime import RuntimeAPIError
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
 from codalab.worker.bundle_state import State, DependencyKey
@@ -171,6 +170,7 @@ class RunStateMachine(StateTransitioner):
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
         shared_memory_size_gb,  # Shared memory size for the run container (in GB)
+        bundle_runtime,  # Runtime used to run bundles (docker or kubernetes)
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -186,8 +186,8 @@ class RunStateMachine(StateTransitioner):
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
-        # todo aditya: docker_runtime will be None if the worker is a singularity worker. handle this.
         self.docker_runtime = docker_runtime
+        self.bundle_runtime = bundle_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
         # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
@@ -419,7 +419,7 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Start container
         try:
-            container_id = docker_utils.start_bundle_container(
+            container_id = self.bundle_runtime.start_bundle_container(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
@@ -428,12 +428,14 @@ class RunStateMachine(StateTransitioner):
                 network=docker_network,
                 cpuset=cpuset,
                 gpuset=gpuset,
+                request_cpus=run_state.resources.cpus,
+                request_gpus=run_state.resources.gpus,
                 memory_bytes=run_state.resources.memory,
                 runtime=self.docker_runtime,
                 shared_memory_size_gb=self.shared_memory_size_gb,
             )
             self.worker_docker_network.connect(container_id)
-        except docker_utils.DockerUserErrorException as e:
+        except DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             log_bundle_transition(
                 bundle_uuid=run_state.bundle.uuid,
@@ -469,10 +471,10 @@ class RunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = docker_utils.check_finished(
+                finished, exitcode, failure_msg = self.bundle_runtime.check_finished(
                     run_state.container_id
                 )
-            except docker_utils.DockerException:
+            except DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None
             return run_state._replace(
@@ -480,7 +482,7 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            cpu_usage, memory_usage = docker_utils.get_container_stats_with_docker_stats(
+            cpu_usage, memory_usage = self.bundle_runtime.get_container_stats_with_docker_stats(
                 run_state.container_id
             )
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
@@ -488,7 +490,7 @@ class RunStateMachine(StateTransitioner):
 
             kill_messages = []
 
-            run_stats = docker_utils.get_container_stats(run_state.container_id)
+            run_stats = self.bundle_runtime.get_container_stats(run_state.container_id)
 
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
@@ -497,7 +499,9 @@ class RunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
             )
 
-            container_time_total = docker_utils.get_container_running_time(run_state.container_id)
+            container_time_total = self.bundle_runtime.get_container_running_time(
+                run_state.container_id
+            )
             run_state = run_state._replace(
                 container_time_total=container_time_total,
                 container_time_user=run_stats.get(
@@ -559,11 +563,11 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.CLEANING_UP,
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
-            if docker_utils.container_exists(run_state.container_id):
+            if self.bundle_runtime.container_exists(run_state.container_id):
                 try:
-                    docker_utils.kill(run_state.container_id)
-                except docker.errors.APIError:
-                    finished, _, _ = docker_utils.check_finished(run_state.container_id)
+                    self.bundle_runtime.remove(run_state.container_id)
+                except RuntimeAPIError:
+                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container_id)
                     if not finished:
                         logger.error(traceback.format_exc())
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
@@ -599,20 +603,20 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.container_id is not None:
-            while docker_utils.container_exists(run_state.container_id):
+            while self.bundle_runtime.container_exists(run_state.container_id):
                 try:
-                    finished, _, _ = docker_utils.check_finished(run_state.container_id)
+                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container_id)
                     if finished:
-                        docker_utils.remove(run_state.container_id)
+                        self.bundle_runtime.remove(run_state.container_id)
                         run_state = run_state._replace(container=None, container_id=None)
                         break
                     else:
                         try:
-                            docker_utils.kill(run_state.container_id)
-                        except docker.errors.APIError:
+                            self.bundle_runtime.kill(run_state.container_id)
+                        except RuntimeAPIError:
                             logger.error(traceback.format_exc())
                             time.sleep(1)
-                except docker.errors.APIError:
+                except RuntimeAPIError:
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 
