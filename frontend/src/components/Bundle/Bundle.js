@@ -2,6 +2,7 @@
 import * as React from 'react';
 import SubHeader from '../SubHeader';
 import ContentWrapper from '../ContentWrapper';
+import BundleStateTooltip from '../BundleStateTooltip';
 import HelpTooltip from '../HelpTooltip';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
@@ -386,21 +387,22 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
         createRow(
             bundleInfo,
             bundleMetadataChanged,
-            'state',
-            <span className={bundleStateClass}>{bundleInfo.state}</span>,
+            <span>
+                state
+                <BundleStateTooltip
+                    bundleState={bundleInfo.state}
+                    bundleType={bundleInfo.bundle_type}
+                    style={{ verticalAlign: 'text-top' }}
+                />
+            </span>,
+            <>
+                <span className={bundleStateClass}>{bundleInfo.state}</span>
+                <div>{bundleInfo.state_details}</div>
+            </>,
         ),
     );
 
     if (bundleInfo.bundle_type === 'run') {
-        if (bundleInfo.metadata.run_status)
-            rows.push(
-                createRow(
-                    bundleInfo,
-                    bundleMetadataChanged,
-                    'run_status',
-                    bundleInfo.metadata.run_status,
-                ),
-            );
         rows.push(createRow(bundleInfo, bundleMetadataChanged, 'time', bundleInfo.metadata.time));
     }
 
