@@ -14,7 +14,6 @@ class SQLiteModel(BundleModel):
         # https://docs.sqlalchemy.org/en/13/dialects/sqlite.html#threading-pooling-behavior
         engine = create_engine(
             'sqlite:///:memory:',
-            strategy='threadlocal',
             encoding='utf-8',
             connect_args={'check_same_thread': False},
             poolclass=StaticPool,

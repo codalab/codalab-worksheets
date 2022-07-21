@@ -43,7 +43,6 @@ class MySQLModel(BundleModel):
             raise UsageError('Engine URL should start with mysql://')
         engine = create_engine(
             engine_url,
-            strategy='threadlocal',
             pool_size=20,
             max_overflow=100,
             pool_recycle=3600,
