@@ -94,7 +94,7 @@ class Worker:
 
         self.docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
         self.cpuset = cpuset
-        self.gpuset = gpuset
+        self.gpuset = [0]
         self.max_memory = (
             min(max_memory, psutil.virtual_memory().total)
             if max_memory is not None
@@ -434,7 +434,7 @@ class Worker:
             'tag': self.tag,
             'group_name': self.group_name,
             'cpus': len(self.cpuset),
-            'gpus': 1,
+            'gpus': len(self.gpuset),
             'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
             'dependencies': self.cached_dependencies,
