@@ -1,4 +1,13 @@
-apache-beam[azure,gcp]==2.36.0
+apache-beam[azure]==2.36.0
+
+# GCP requirements for apache-beam. Note: when upgrading
+# apache-beam, make sure these requirements are also upgraded
+# accordingly according to Beam's GCP requirements
+# (https://github.com/apache/beam/blob/master/sdks/python/setup.py).
+cachetools>=3.1.0,<5
+google-apitools>=0.5.31,<0.5.32
+google-auth>=1.18.0,<3
+
 bottle==0.12.19
 dataclasses==0.7;python_version<'3.7'
 docker==4.3.0
