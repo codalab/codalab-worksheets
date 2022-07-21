@@ -42,11 +42,7 @@ class MySQLModel(BundleModel):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with mysql://')
         engine = create_engine(
-            engine_url,
-            pool_size=20,
-            max_overflow=100,
-            pool_recycle=3600,
-            encoding='utf-8',
+            engine_url, pool_size=20, max_overflow=100, pool_recycle=3600, encoding='utf-8',
         )
         super(MySQLModel, self).__init__(engine, default_user_info, root_user_id, system_user_id)
 
