@@ -88,8 +88,8 @@ class Worker:
         self.bundle_service = bundle_service
 
         self.docker = docker.from_env(timeout=DEFAULT_DOCKER_TIMEOUT)
-        self.cpuset = cpuset
-        self.gpuset = gpuset
+        self.cpuset = [0]
+        self.gpuset = [0]
         self.max_memory = (
             min(max_memory, psutil.virtual_memory().total)
             if max_memory is not None
