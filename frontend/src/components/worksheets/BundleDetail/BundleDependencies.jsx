@@ -18,7 +18,7 @@ class BundleDependencies extends React.PureComponent {
         const dependencies = bundle.dependencies.value;
 
         if (!dependencies.length) {
-            return <div>{'<none>'}</div>;
+            return <div>none</div>;
         }
 
         const dependenciesTable = [];

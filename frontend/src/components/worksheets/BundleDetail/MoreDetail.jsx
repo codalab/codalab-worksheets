@@ -16,11 +16,11 @@ class MoreDetail extends React.Component {
     }
 
     render() {
-        const bundle = this.props.bundle;
+        const { bundle, onUpdate } = this.props;
         const bundleType = bundle.bundle_type.value;
         const isRunBundle = bundleType === 'run';
         const isUploadedBundle = bundleType === 'dataset';
-        const isMakeBundle = bundleType === 'make';
+        const hasDependencies = !!bundle.dependencies?.value?.length;
 
         return (
             <>
@@ -110,7 +110,7 @@ class MoreDetail extends React.Component {
                     </>
                 )}
 
-                {(isRunBundle || isMakeBundle) && (
+                {hasDependencies && (
                     <BundleFieldTable title='Dependencies'>
                         <BundleFieldRow
                             label='Failed Dependencies'

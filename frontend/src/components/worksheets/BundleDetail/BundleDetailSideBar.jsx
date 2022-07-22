@@ -88,7 +88,7 @@ class BundleDetailSideBar extends React.Component {
                         onChange={(store) => onUpdate({ store })}
                     />
                 </BundleFieldTable>
-                {showMoreDetail && <MoreDetail bundle={bundle} />}
+                {showMoreDetail && <MoreDetail bundle={bundle} onUpdate={onUpdate} />}
                 <CollapseButton
                     containerClass={classes.collapseBtn}
                     label='More Detail'
