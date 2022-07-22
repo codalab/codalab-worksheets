@@ -14,22 +14,22 @@ class BundleDependencies extends React.PureComponent {
     }
 
     render() {
-        const { bundleInfo } = this.props;
-        const dependencies = bundleInfo.dependencies;
+        const { bundle } = this.props;
+        const dependencies = bundle.dependencies.value;
 
         if (!dependencies.length) {
-            return <div>None</div>;
+            return <div>{'<none>'}</div>;
         }
 
-        const dependencies_table = [];
+        const dependenciesTable = [];
         dependencies.forEach((dep, i) => {
-            let dep_bundle_url = '/bundles/' + dep.parent_uuid;
-            dependencies_table.push(
+            const depBundleUrl = '/bundles/' + dep.parent_uuid;
+            dependenciesTable.push(
                 <TableRow key={dep.parent_uuid + i}>
                     <TableCell>
                         {dep.child_path}
                         <br /> &rarr; {dep.parent_name}(
-                        <a href={dep_bundle_url} target='_blank'>
+                        <a href={depBundleUrl} target='_blank'>
                             {shorten_uuid(dep.parent_uuid)}
                         </a>
                         ){dep.parent_path ? '/' + dep.parent_path : ''}
@@ -40,7 +40,7 @@ class BundleDependencies extends React.PureComponent {
 
         return (
             <Table>
-                <TableBody>{dependencies_table}</TableBody>
+                <TableBody>{dependenciesTable}</TableBody>
             </Table>
         );
     }

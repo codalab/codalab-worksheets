@@ -10,8 +10,8 @@ class BundleHostWorksheets extends React.Component {
     }
 
     render() {
-        const { bundleInfo, classes } = this.props;
-        const hostWorksheets = bundleInfo.host_worksheets;
+        const { bundle, classes } = this.props;
+        const hostWorksheets = bundle.host_worksheets.value;
 
         if (!hostWorksheets.length) {
             return <div>None</div>;

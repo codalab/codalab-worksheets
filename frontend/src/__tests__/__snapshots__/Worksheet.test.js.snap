@@ -35,7 +35,7 @@ Object {
                       class="editable-field"
                       style="color: rgb(34, 94, 168);"
                     >
-                      &lt;enter&gt;
+                      &lt;none&gt;
                     </span>
                   </h5>
                   <div
@@ -84,7 +84,7 @@ Object {
                         class="editable-field"
                         style="color: rgb(34, 94, 168);"
                       >
-                        &lt;enter&gt;
+                        &lt;none&gt;
                       </span>
                     </div>
                   </div>
@@ -860,7 +860,7 @@ Object {
                     class="editable-field"
                     style="color: rgb(34, 94, 168);"
                   >
-                    &lt;enter&gt;
+                    &lt;none&gt;
                   </span>
                 </h5>
                 <div
@@ -909,7 +909,7 @@ Object {
                       class="editable-field"
                       style="color: rgb(34, 94, 168);"
                     >
-                      &lt;enter&gt;
+                      &lt;none&gt;
                     </span>
                   </div>
                 </div>

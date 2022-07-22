@@ -6,7 +6,7 @@ class CopyIcon extends React.Component {
     }
 
     render() {
-        const fill = this.props.fill || 'rgb(170, 170, 170)';
+        const fill = this.props.fill || '#8895A7'; // grey.darker
         return (
             <svg viewBox='0 0 488.3 488.3'>
                 <g>

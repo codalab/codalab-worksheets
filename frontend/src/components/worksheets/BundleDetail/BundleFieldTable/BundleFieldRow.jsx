@@ -2,7 +2,7 @@ import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
-import HelpIcon from '@material-ui/icons/Help';
+import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import { BundleEditableField } from '../../../EditableField';
 import Copy from '../../../Copy';
 
@@ -34,8 +34,9 @@ class BundleFieldRow extends React.Component {
         const dataType = field.type;
         const canEdit = field.editable;
         const uuid = field.bundle_uuid;
-        const value = this.props.value || field.value; // allow custom value
         const description = this.props.description || field.description; // allow custom description
+        const value = this.props.value || field.value; // allow custom value
+        const copyValue = this.props.copyValue || value; // allow custom copy value
 
         if (!label || (!value && !canEdit)) {
             return null;
@@ -53,7 +54,10 @@ class BundleFieldRow extends React.Component {
                             classes={{ tooltip: classes.tooltipContainer }}
                         >
                             <span className={classes.tooltipIcon}>
-                                <HelpIcon fontSize='inherit' style={{ verticalAlign: 'middle' }} />
+                                <HelpOutlineOutlinedIcon
+                                    fontSize='inherit'
+                                    style={{ verticalAlign: 'sub' }}
+                                />
                             </span>
                         </Tooltip>
                     )}
@@ -73,7 +77,7 @@ class BundleFieldRow extends React.Component {
                     ) : (
                         <div className={classes.dataContainer}>
                             <Typography noWrap={noWrap}>{value}</Typography>
-                            {allowCopy && <Copy message={`${label} Copied!`} text={value} />}
+                            {allowCopy && <Copy message={`${label} Copied!`} text={copyValue} />}
                         </div>
                     )}
                 </td>
@@ -90,7 +94,7 @@ const styles = (theme) => ({
     tooltipIcon: {
         display: 'inline-block',
         verticalAlign: 'inherit',
-        color: theme.color.grey.base,
+        color: theme.color.grey.dark,
         paddingLeft: theme.spacing.unit,
         paddingRight: theme.spacing.unit,
         fontSize: 'small',

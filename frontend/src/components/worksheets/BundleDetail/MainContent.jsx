@@ -43,9 +43,12 @@ class MainContent extends React.Component<{
 
     render() {
         const { classes, bundleInfo, stdout, stderr, fileContents } = this.props;
+        const uuid = bundleInfo.uuid;
+        const stdoutUrl = '/rest/bundles/' + uuid + '/contents/blob/stdout';
+        const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
         const command = bundleInfo.command;
-        const failure_message = bundleInfo.metadata.failure_message;
-        let isRunningBundle =
+        const failureMessage = bundleInfo.metadata.failure_message;
+        const isRunningBundle =
             bundleInfo.bundle_type === 'run' &&
             (bundleInfo.state === 'running' ||
                 bundleInfo.state === 'preparing' ||
@@ -56,16 +59,14 @@ class MainContent extends React.Component<{
             <div className={classes.outter}>
                 <Grid container>
                     {/** Failure components ================================================================= */}
-                    {failure_message && (
-                        <Grid container>
+                    {failureMessage && (
+                        <Grid classes={{ container: classes.failureContainer }} container>
                             <CollapseButton
                                 label='Failure Message'
                                 collapsed={this.state.showFailureMessage}
                                 onClick={() => this.toggleShowFailureMessage()}
                             />
-                            {this.state.showFailureMessage && (
-                                <CodeSnippet code={failure_message} variant='failure' />
-                            )}
+                            {this.state.showFailureMessage && <CodeSnippet code={failureMessage} />}
                         </Grid>
                     )}
                     {/** Command components ================================================================= */}
@@ -90,7 +91,9 @@ class MainContent extends React.Component<{
                                     collapsed={this.state.showStdOut}
                                     onClick={() => this.toggleStdOut()}
                                 />
-                                {this.state.showStdOut && <CodeSnippet code={stdout} />}
+                                {this.state.showStdOut && (
+                                    <CodeSnippet code={stdout} href={stdoutUrl} />
+                                )}
                             </Grid>
                         )}
                         {stderr && (
@@ -100,7 +103,9 @@ class MainContent extends React.Component<{
                                     collapsed={this.state.showStdError}
                                     onClick={() => this.toggleStdError()}
                                 />
-                                {this.state.showStdError && <CodeSnippet code={stderr} />}
+                                {this.state.showStdError && (
+                                    <CodeSnippet code={stderr} href={stderrUrl} />
+                                )}
                             </Grid>
                         )}
                     </Grid>
@@ -121,6 +126,7 @@ class MainContent extends React.Component<{
                                     <FileBrowserLite
                                         uuid={bundleInfo.uuid}
                                         isRunningBundle={isRunningBundle}
+                                        showBreadcrumbs
                                     />
                                 </div>
                             )}
@@ -144,6 +150,9 @@ const styles = (theme) => ({
         flexShrink: 1,
         overflow: 'auto',
         whiteSpace: 'pre-wrap',
+    },
+    failureContainer: {
+        color: theme.color.red.base,
     },
     greyBorder: {
         border: `1px solid ${theme.color.grey.light}`,

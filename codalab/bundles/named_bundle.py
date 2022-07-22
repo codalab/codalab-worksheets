@@ -18,7 +18,7 @@ class NamedBundle(Bundle):
     # Don't format specs
     # fmt: off
     METADATA_SPECS = [
-        MetadataSpec('name', str, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, short_key='n',),
+        MetadataSpec('name', str, 'Bundle names can only contain letters, digits, underscores, dots and dashes. Names can only start with a letter or an underscore.', short_key='n'),
         MetadataSpec('description', str, 'Full description of the bundle.', short_key='d'),
         MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG',),
         MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),

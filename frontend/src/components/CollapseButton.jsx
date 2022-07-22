@@ -23,11 +23,18 @@ class CollapseButton extends React.Component {
     }
 
     render() {
-        const { collapsed, collapseUp, collapsedLabel, label, onClick } = this.props;
+        const {
+            containerClass,
+            collapsed,
+            collapseUp,
+            collapsedLabel,
+            label,
+            onClick,
+        } = this.props;
         const currentLabel = collapsed && collapsedLabel ? collapsedLabel : label;
 
         return (
-            <div>
+            <div className={containerClass}>
                 <Button onClick={onClick} size='small' color='inherit'>
                     {currentLabel}
                     {collapsed ? (
