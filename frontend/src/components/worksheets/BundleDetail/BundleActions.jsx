@@ -1,7 +1,10 @@
 // @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
+import IconButton from '@material-ui/core/IconButton';
+import CloseIcon from '@material-ui/icons/Close';
 import Button from '@material-ui/core/Button';
+import Snackbar from '@material-ui/core/Snackbar';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/apiWrapper';
 
@@ -9,6 +12,13 @@ class BundleActions extends React.Component<{
     bundleInfo: {},
     onComplete: () => any,
 }> {
+    constructor(props) {
+        super(props);
+        this.state = {
+            killSnackbarIsOpen: false,
+        };
+    }
+
     static defaultProps = {
         onComplete: () => undefined,
     };
@@ -40,10 +50,31 @@ class BundleActions extends React.Component<{
         this.props.rerunItem(run);
     };
 
+    handleOpenKillSnackbar = () => {
+        this.setState({ killSnackbarIsOpen: true });
+    };
+
+    handleCloseKillSnackbar = () => {
+        this.setState({ killSnackbarIsOpen: false });
+    };
+
+    killSnackbarAction = (
+        <IconButton
+            size='small'
+            aria-label='close'
+            color='inherit'
+            onClick={this.handleCloseKillSnackbar}
+        >
+            <CloseIcon fontSize='small' />
+        </IconButton>
+    );
+
     kill = () => {
         const { bundleInfo } = this.props;
+        this.handleOpenKillSnackbar();
         executeCommand(buildTerminalCommand(['kill', bundleInfo.uuid])).then(() => {
             this.props.onComplete();
+            this.handleCloseKillSnackbar();
         });
     };
 
@@ -90,14 +121,23 @@ class BundleActions extends React.Component<{
                             Edit & Rerun
                         </Button>
                         {isKillableBundle && (
-                            <Button
-                                classes={{ root: classes.actionButton }}
-                                variant='contained'
-                                color='primary'
-                                onClick={this.kill}
-                            >
-                                Kill
-                            </Button>
+                            <>
+                                <Button
+                                    classes={{ root: classes.actionButton }}
+                                    variant='contained'
+                                    color='primary'
+                                    onClick={this.kill}
+                                >
+                                    Kill
+                                </Button>
+                                <Snackbar
+                                    classes={{ root: classes.snackbar }}
+                                    open={this.state.killSnackbarIsOpen}
+                                    onClose={this.handleCloseKillSnackbar}
+                                    message='Executing kill command...'
+                                    action={this.killSnackbarAction}
+                                />
+                            </>
                         )}
                     </>
                 )}
@@ -129,6 +169,9 @@ const styles = () => ({
         marginLeft: '0 !important', // override default
         marginRight: 12,
         lineHeight: '14px',
+    },
+    snackbar: {
+        marginBottom: 40,
     },
 });
 
