@@ -21,6 +21,8 @@ class MoreDetail extends React.Component {
         const isRunBundle = bundleType === 'run';
         const isUploadedBundle = bundleType === 'dataset';
         const hasDependencies = !!bundle.dependencies?.value?.length;
+        const hasExclusions =
+            bundle.exclude_patterns?.value?.length || bundle.exclude_patterns?.editable;
 
         return (
             <>
@@ -99,32 +101,7 @@ class MoreDetail extends React.Component {
                             />
                             <BundleFieldRow label='Total Time' field={bundle.time} />
                         </BundleFieldTable>
-
-                        <BundleFieldTable title='Contents'>
-                            <BundleFieldRow
-                                label='Exclude Patterns'
-                                field={bundle.exclude_patterns}
-                                onChange={(exclude_patterns) => onUpdate({ exclude_patterns })}
-                            />
-                        </BundleFieldTable>
                     </>
-                )}
-
-                {hasDependencies && (
-                    <BundleFieldTable title='Dependencies'>
-                        <BundleFieldRow
-                            label='Failed Dependencies'
-                            field={bundle.allow_failed_dependencies}
-                            onChange={(allow_failed_dependencies) =>
-                                onUpdate({ allow_failed_dependencies })
-                            }
-                        />
-                        <BundleFieldRow
-                            label='Dependencies'
-                            field={bundle.dependencies}
-                            value={<BundleDependencies bundle={bundle} />}
-                        />
-                    </BundleFieldTable>
                 )}
 
                 {isUploadedBundle && (
@@ -148,6 +125,34 @@ class MoreDetail extends React.Component {
                             label='Link Format'
                             field={bundle.link_format}
                             onChange={(link_format) => onUpdate({ link_format })}
+                        />
+                    </BundleFieldTable>
+                )}
+
+                {hasExclusions && (
+                    <BundleFieldTable title='Contents'>
+                        <BundleFieldRow
+                            label='Exclude Patterns'
+                            field={bundle.exclude_patterns}
+                            onChange={(exclude_patterns) => onUpdate({ exclude_patterns })}
+                        />
+                    </BundleFieldTable>
+                )}
+
+                {hasDependencies && (
+                    <BundleFieldTable title='Dependencies'>
+                        <BundleFieldRow
+                            label='Failed Dependencies'
+                            field={bundle.allow_failed_dependencies}
+                            onChange={(allow_failed_dependencies) =>
+                                onUpdate({ allow_failed_dependencies })
+                            }
+                        />
+                        <BundleFieldRow
+                            label='Dependencies'
+                            description='Bundles that this bundle depends on.'
+                            field={bundle.dependencies}
+                            value={<BundleDependencies bundle={bundle} />}
                         />
                     </BundleFieldTable>
                 )}

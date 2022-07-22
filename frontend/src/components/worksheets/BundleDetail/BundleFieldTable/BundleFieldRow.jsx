@@ -28,18 +28,26 @@ class BundleFieldRow extends React.Component {
     }
 
     render() {
-        const { allowCopy, classes, label, onChange, noWrap } = this.props;
+        const { allowCopy, classes, onChange, noWrap } = this.props;
         const field = this.props.field || {};
         const name = field.name;
         const dataType = field.type;
         const canEdit = field.editable;
         const uuid = field.bundle_uuid;
-        const description = this.props.description || field.description; // allow custom description
-        const value = this.props.value || field.value; // allow custom value
-        const copyValue = this.props.copyValue || value; // allow custom copy value
 
-        if (!label || (!value && !canEdit)) {
-            return null;
+        // allow props to override field values
+        const label = this.props.label || field.name;
+        const description = this.props.description || field.description;
+        const value = this.props.value || field.value;
+        const copyValue = this.props.copyValue || value;
+
+        if (!canEdit) {
+            if (dataType === 'list' && (!value.length || !value[0])) {
+                return null;
+            }
+            if (dataType === 'str' && !value) {
+                return null;
+            }
         }
 
         return (

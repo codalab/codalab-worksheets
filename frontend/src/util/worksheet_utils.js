@@ -388,6 +388,7 @@ export function formatBundle(bundle) {
         'last_updated',
         'cpu_usage',
         'memory_usage',
+        'request_network',
     ];
 
     const result = {};
