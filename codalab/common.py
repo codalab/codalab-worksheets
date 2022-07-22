@@ -380,3 +380,13 @@ def parse_linked_bundle_url(url):
         archive_subpath=archive_subpath,
         bundle_uuid=bundle_uuid,
     )
+
+
+class BundleRuntime(Enum):
+    """Possible runtimes for jobs. URLs for the
+    corresponding storage type will begin with the
+    scheme specified.
+    """
+
+    DOCKER = "docker"
+    SINGULARITY = "singularity"
