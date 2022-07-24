@@ -453,7 +453,7 @@ class RunStateMachine(StateTransitioner):
 
         return run_state._replace(
             stage=RunStage.RUNNING,
-            run_status='Running job in container',
+            run_status='Running job in container.',
             container_id=container_id,
             container=None,
             docker_image=image_state.digest,

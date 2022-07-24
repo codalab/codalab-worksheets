@@ -72,6 +72,7 @@ class ConfigPanel extends React.Component<{
 const styles = (theme) => ({
     container: {
         flexGrow: 1,
+        flexWrap: 'nowrap',
         height: '100%',
         maxWidth: '100%',
     },
@@ -88,7 +89,7 @@ const styles = (theme) => ({
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
-        maxWidth: '50%',
+        minWidth: '400px',
         flexGrow: 1,
     },
     buttons: {
