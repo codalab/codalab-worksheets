@@ -83,7 +83,9 @@ class BundleStateTable extends React.Component {
                                             title={isCurrent && stateDetails}
                                             isActive={isCurrent}
                                         />
-                                        {time && <span className={classes.timeContainer}>{time}</span>}
+                                        {time && (
+                                            <span className={classes.timeContainer}>{time}</span>
+                                        )}
                                     </div>
                                     {!isLast && (
                                         <div className={classes.arrowContainer}>
