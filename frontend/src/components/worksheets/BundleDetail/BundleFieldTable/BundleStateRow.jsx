@@ -112,7 +112,7 @@ const styles = (theme) => ({
         marginTop: 5,
         paddingLeft: 5,
         fontSize: '11px',
-        color: theme.color.grey.darker,
+        color: theme.color.grey.dark,
     },
     arrowContainer: {
         display: 'flex',
