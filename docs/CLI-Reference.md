@@ -24,7 +24,7 @@ Usage: `cl <command> <arguments>`
       -i, --ignore               Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
       -l, --link                 Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -a, --use-azure-blob-beta  Use Azure Blob Storage to store files (beta feature).
-      -n, --name                 Bundle names can only contain letters, digits, underscores, dots and dashes. Names can only start with a letter or an underscore.
+      -n, --name                 Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes.
       -d, --description          Full description of the bundle.
       --tags                     Space-separated list of tags used for search (e.g., machine-learning).
       --license                  The license under which this program/dataset is released.
@@ -41,7 +41,7 @@ Usage: `cl <command> <arguments>`
     Arguments:
       target_spec                  [<key>:][[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -n, --name                   Bundle names can only contain letters, digits, underscores, dots and dashes. Names can only start with a letter or an underscore.
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
@@ -56,7 +56,7 @@ Usage: `cl <command> <arguments>`
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -i, --interactive            Beta feature - Start an interactive session to construct your run command.
-      -n, --name                   Bundle names can only contain letters, digits, underscores, dots and dashes. Names can only start with a letter or an underscore.
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes.
       -d, --description            Full description of the bundle.
       --tags                       Space-separated list of tags used for search (e.g., machine-learning).
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
@@ -197,7 +197,7 @@ Usage: `cl <command> <arguments>`
     Any provided metadata arguments will override the original metadata in mimicked bundles.
     Arguments:
       bundles                      Bundles: old_input_1 ... old_input_n old_output new_input_1 ... new_input_n ([[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)).
-      -n, --name                   Bundle names can only contain letters, digits, underscores, dots and dashes. Names can only start with a letter or an underscore. (for makes and runs)
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes. (for makes and runs)
       -d, --description            Full description of the bundle. (for makes and runs)
       --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
@@ -227,7 +227,7 @@ Usage: `cl <command> <arguments>`
     Arguments:
       macro_name                   Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).
       bundles                      Bundles: new_input_1 ... new_input_n named_input_name:named_input_bundle other_named_input_name:other_named_input_bundle ([[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>))
-      -n, --name                   Bundle names can only contain letters, digits, underscores, dots and dashes. Names can only start with a letter or an underscore. (for makes and runs)
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes. (for makes and runs)
       -d, --description            Full description of the bundle. (for makes and runs)
       --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
