@@ -77,12 +77,14 @@ class BundleStateTable extends React.Component {
                             const time = this.getTime(state);
                             return (
                                 <>
-                                    <BundleStateBox
-                                        state={state}
-                                        title={isCurrent && stateDetails}
-                                        isActive={isCurrent}
-                                    />
-                                    {time && <div className={classes.timeContainer}>{time}</div>}
+                                    <div className={classes.stateBoxContainer}>
+                                        <BundleStateBox
+                                            state={state}
+                                            title={isCurrent && stateDetails}
+                                            isActive={isCurrent}
+                                        />
+                                        {time && <span className={classes.timeContainer}>{time}</span>}
+                                    </div>
                                     {!isLast && (
                                         <div className={classes.arrowContainer}>
                                             <ArrowDownwardIcon fontSize='small' />
@@ -104,8 +106,10 @@ const styles = (theme) => ({
         marginBottom: 16,
     },
     timeContainer: {
-        margin: '2px 0',
-        fontSize: '12px',
+        position: 'absolute',
+        marginTop: 5,
+        paddingLeft: 5,
+        fontSize: '11px',
         color: theme.color.grey.darker,
     },
     arrowContainer: {
