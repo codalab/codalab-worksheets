@@ -695,8 +695,8 @@ class RunStateMachine(StateTransitioner):
                 logger.debug('Uploading results for run with UUID %s', run_state.bundle.uuid)
 
                 def progress_callback(bytes_uploaded):
-                    run_status = 'Uploading results: %s bytes uploaded (archived size)' % size_str(
-                        bytes_uploaded
+                    run_status = 'Uploading results: %s uploaded (archived size)' % size_str(
+                        bytes_uploaded, include_bytes=True,
                     )
                     self.uploading[run_state.bundle.uuid]['run_status'] = run_status
                     return True
