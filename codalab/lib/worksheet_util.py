@@ -189,7 +189,7 @@ def get_worksheet_lines(worksheet_info):
 def get_formatted_metadata(cls, metadata, raw=False, show_hidden=False):
     """
     Input:
-        cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
+        cls: bundle subclass (e.g. DatasetBundle, RunBundle, ProgramBundle)
         metadata: bundle metadata
         raw: boolean value indicating if the raw value needs to be returned
     Return an object containing the key and formatted value of metadata.

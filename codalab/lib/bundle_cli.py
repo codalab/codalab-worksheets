@@ -2405,6 +2405,9 @@ class BundleCLI(object):
                 # Display basic info
                 self.print_basic_info(info)
 
+                # Display bundle locations
+                self.print_bundle_locations(client, info, args.raw)
+
                 # Display verbose info
                 if args.verbose:
                     self.print_line()
@@ -2463,10 +2466,24 @@ class BundleCLI(object):
         lines.append(self.key_value_str('Created', info.get('created')))
         lines.append(self.key_value_str('Size', info.get('data_size')))
 
-        if 'store' in info:
-            lines.append(self.key_value_str('Store', info.get('store')))
-
         print('\n'.join(lines), file=self.stdout)
+
+    def print_bundle_locations(self, client, info, raw):
+        """
+        print >>self.stdout - bundle stores
+        """
+        bundle_locations = client.get_bundle_locations((info['uuid']))
+        if len(bundle_locations) > 0:
+            lines = []
+            if raw:
+                bundle_locations = str(bundle_locations)
+                lines.append(self.key_value_str('Stores', bundle_locations))
+            else:
+                bundle_locations = [
+                    location.get('attributes').get('name') for location in bundle_locations
+                ]
+                lines.append(self.key_value_str('Stores', ','.join(bundle_locations)))
+            print('\n'.join(lines), file=self.stdout)
 
     def print_resource_info(self, info):
         """
