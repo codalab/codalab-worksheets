@@ -1144,7 +1144,7 @@ def test_upload_default_bundle_store(ctx):
     )
     # Upload a bundle, which should output to bundle store by default
     uuid = _run_command([cl, 'upload', '-c', 'hello'])
-    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
+    check_contains(bundle_store_name, _run_command([cl, "info", "-f", "store", uuid]))
 
 
 @TestModule.register('store_add')
