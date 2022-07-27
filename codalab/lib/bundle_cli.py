@@ -2416,8 +2416,7 @@ class BundleCLI(object):
                         self.print_time_info(info)
                     if bundle_type == 'dataset':
                         self.print_source_info(info)
-                    if info.get('dependencies'):
-                        self.print_dependencies(info)
+                    self.print_dependencies(info)
                     self.print_host_worksheets(info)
                     self.print_contents(client, info)
 
@@ -2442,30 +2441,29 @@ class BundleCLI(object):
         """
         print >>self.stdout - the basic information for a bundle (key/value pairs).
         """
+        keys = [
+            'state',
+            'uuid',
+            'name',
+            'description',
+            'tags',
+            'owner',
+            'permission',
+            'group_permissions',
+            'created',
+            'data_size',
+        ]
         lines = []
-        lines.append(self.key_value_str('State', info.get('state')))
-        lines.append(self.key_value_str('UUID', info.get('uuid')))
-        lines.append(self.key_value_str('Name', info.get('name')))
-
-        if 'description' in info:
-            lines.append(self.key_value_str('Description', info.get('description')))
-
-        if 'tags' in info:
-            lines.append(self.key_value_str('Tags', info.get('tags')))
-
-        lines.append(self.key_value_str('Owner', self.simple_user_str(info['owner'])))
-        lines.append(self.key_value_str('Permissions', permission_str(info['permission'])))
-
-        if 'group_permissions' in info:
-            lines.append(
-                self.key_value_str(
-                    'Group Permissions', group_permissions_str(info['group_permissions'])
-                )
-            )
-
-        lines.append(self.key_value_str('Created', info.get('created')))
-        lines.append(self.key_value_str('Size', info.get('data_size')))
-
+        for key in keys:
+            if key in info:
+                value = info[key]
+                if key == 'owner':
+                    value = self.simple_user_str(value)
+                if key == 'permission':
+                    value = permission_str(value)
+                if key == 'group_permissions':
+                    value = group_permissions_str(value)
+                lines.append(self.key_value_str(key, value))
         print('\n'.join(lines), file=self.stdout)
 
     def print_bundle_locations(self, client, info, raw):
@@ -2477,31 +2475,36 @@ class BundleCLI(object):
             lines = []
             if raw:
                 bundle_locations = str(bundle_locations)
-                lines.append(self.key_value_str('Stores', bundle_locations))
+                lines.append(self.key_value_str('store', bundle_locations))
             else:
                 bundle_locations = [
                     location.get('attributes').get('name') for location in bundle_locations
                 ]
-                lines.append(self.key_value_str('Stores', ','.join(bundle_locations)))
+                lines.append(self.key_value_str('store', ','.join(bundle_locations)))
             print('\n'.join(lines), file=self.stdout)
 
     def print_resource_info(self, info):
         """
         print >>self.stdout - run bundle resource information
         """
+        keys = [
+            'request_disk',
+            'request_memory',
+            'request_cpus',
+            'request_gpus',
+            'request_docker_image',
+            'docker_image',
+            'request_queue',
+            'request_priority',
+            'request_network',
+            'on_preemptible_worker',
+        ]
         lines = []
-        lines.append(self.key_value_str('Disk', info.get('request_disk')))
-        lines.append(self.key_value_str('Memory', info.get('request_memory')))
-        lines.append(self.key_value_str('CPUs', info.get('request_cpus')))
-        lines.append(self.key_value_str('GPUs', info.get('request_gpus')))
-        lines.append(self.key_value_str('Docker Image Requested', info.get('request_docker_image')))
-        lines.append(self.key_value_str('Docker Image Used', info.get('docker_image')))
-        lines.append(self.key_value_str('Queue', info.get('request_queue')))
-        lines.append(self.key_value_str('Priority', info.get('request_priority')))
-        lines.append(self.key_value_str('Network', info.get('request_network')))
-        lines.append(self.key_value_str('Preemptible', info.get('on_preemptible_worker')))
+        for key in keys:
+            if key in info:
+                lines.append(self.key_value_str(key, info[key]))
 
-        print('RESOURCES', file=self.stdout)
+        print('Resources', file=self.stdout)
         print('\n'.join(lines), file=self.stdout)
         self.print_line()
 
@@ -2509,15 +2512,20 @@ class BundleCLI(object):
         """
         print >>self.stdout - run bundle time information
         """
+        keys = [
+            'request_time',
+            'time_preparing',
+            'time_running',
+            'time_uploading_results',
+            'time_cleaning_up',
+            'time',
+        ]
         lines = []
-        lines.append(self.key_value_str('Time Allowed', info.get('request_time')))
-        lines.append(self.key_value_str('Time Preparing', info.get('time_preparing')))
-        lines.append(self.key_value_str('Time Running', info.get('time_running')))
-        lines.append(self.key_value_str('Time Uploading', info.get('time_uploading_results')))
-        lines.append(self.key_value_str('Time Cleaning Up', info.get('time_cleaning_up')))
-        lines.append(self.key_value_str('Total Time', info.get('time')))
+        for key in keys:
+            if key in info:
+                lines.append(self.key_value_str(key, info[key]))
 
-        print('TIME', file=self.stdout)
+        print('Time', file=self.stdout)
         print('\n'.join(lines), file=self.stdout)
         self.print_line()
 
@@ -2525,13 +2533,23 @@ class BundleCLI(object):
         """
         print >>self.stdout - uploaded bundle source information
         """
+        keys = [
+            'license',
+            'source_url',
+            'link_url',
+            'link_format',
+        ]
         lines = []
-        lines.append(self.key_value_str('License', info.get('license')))
-        lines.append(self.key_value_str('Source URL', info.get('source_url')))
-        lines.append(self.key_value_str('Link URL', info.get('link_url')))
-        lines.append(self.key_value_str('Link Format', info.get('link_format')))
+        has_source_info = False
+        for key in keys:
+            if key in info:
+                has_source_info = True
+                lines.append(self.key_value_str(key, info[key]))
 
-        print('SOURCES', file=self.stdout)
+        if not has_source_info:
+            return
+
+        print('Sources', file=self.stdout)
         print('\n'.join(lines), file=self.stdout)
         self.print_line()
 
@@ -2539,10 +2557,16 @@ class BundleCLI(object):
         """
         print >>self.stdout - bundle dependency information
         """
-        lines = []
-        lines.append(self.key_value_str('Allow Failed', info.get('allow_failed_dependencies')))
+        dependencies = info.get('dependencies')
+        if not dependencies:
+            return
 
-        for dep in info['dependencies']:
+        lines = []
+        lines.append(
+            self.key_value_str('allow_failed_dependencies', info.get('allow_failed_dependencies'))
+        )
+
+        for dep in dependencies:
             child = dep['child_path']
             parent = path_util.safe_join(
                 contents_str(dep['parent_name']) + '(' + dep['parent_uuid'] + ')',
@@ -2550,7 +2574,7 @@ class BundleCLI(object):
             )
             lines.append(self.key_value_str(child, parent))
 
-        print('DEPENDENCIES', file=self.stdout)
+        print('Dependencies', file=self.stdout)
         print('\n'.join(lines), file=self.stdout)
         self.print_line()
 
@@ -2558,7 +2582,7 @@ class BundleCLI(object):
         """
         print >>self.stdout - list of host worksheets
         """
-        print('HOST WORKSHEETS', file=self.stdout)
+        print('Host Worksheets', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
             print(self.worksheet_url_and_name(host_worksheet_info), file=self.stdout)
         self.print_line()
@@ -2567,11 +2591,10 @@ class BundleCLI(object):
         """
         print >>self.stdout - contents previews including stderr and stdout
         """
-        print('CONTENTS', file=self.stdout)
+        print('Contents', file=self.stdout)
 
-        exclude_patterns = info.get('exclude_patterns')
-        if exclude_patterns:
-            print(self.key_value_str('Exclude Patterns', exclude_patterns))
+        if 'exclude_patterns' in info:
+            print(self.key_value_str('exclude_patterns', info['exclude_patterns']))
             self.print_line()
 
         def wrap(string):

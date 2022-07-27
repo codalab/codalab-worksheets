@@ -661,11 +661,11 @@ def test_basic(ctx):
 
     # info
     check_contains(
-        ['State', 'UUID', 'Name', 'Owner', 'Permissions', 'Created', 'Size',],
+        ['state', 'uuid', 'name', 'owner', 'permission', 'created', 'data_size',],
         _run_command([cl, 'info', uuid]),
     )
-    check_contains('License', _run_command([cl, 'info', '--raw', '--verbose', uuid]))
-    check_contains(['HOST WORKSHEETS', 'CONTENTS'], _run_command([cl, 'info', '--verbose', uuid]))
+    check_contains('license', _run_command([cl, 'info', '--raw', '--verbose', uuid]))
+    check_contains(['Host Worksheets', 'Contents'], _run_command([cl, 'info', '--verbose', uuid]))
 
     # test interpret_file_genpath
     check_equals(' '.join(test_path_contents('a.txt').splitlines(False)), get_info(uuid, '/'))
