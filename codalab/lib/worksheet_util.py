@@ -192,9 +192,9 @@ def get_formatted_metadata(cls, metadata, raw=False, show_hidden=False):
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
         metadata: bundle metadata
         raw: boolean value indicating if the raw value needs to be returned
-    Return a list of tuples containing the key and formatted value of metadata.
+    Return an object containing the key and formatted value of metadata.
     """
-    result = []
+    result = {}
     for spec in cls.METADATA_SPECS:
         if spec.hidden and not show_hidden:
             continue
@@ -202,14 +202,14 @@ def get_formatted_metadata(cls, metadata, raw=False, show_hidden=False):
         if not raw:
             if key not in metadata:
                 continue
-            if metadata[key] == '' or metadata[key] == []:
+            if metadata[key] == '' or metadata[key] == [] or metadata[key] == ['']:
                 continue
             value = apply_func(spec.formatting, metadata.get(key))
             if isinstance(value, list):
                 value = ' '.join(value)
         else:
             value = metadata.get(key)
-        result.append((key, value))
+        result[key] = value
     return result
 
 

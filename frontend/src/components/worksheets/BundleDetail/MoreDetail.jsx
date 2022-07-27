@@ -142,7 +142,7 @@ class MoreDetail extends React.Component {
                 {hasDependencies && (
                     <BundleFieldTable title='Dependencies'>
                         <BundleFieldRow
-                            label='Failed Dependencies'
+                            label='Allow Failed'
                             field={bundle.allow_failed_dependencies}
                             onChange={(allow_failed_dependencies) =>
                                 onUpdate({ allow_failed_dependencies })

@@ -2364,7 +2364,6 @@ class BundleCLI(object):
     def do_info_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
         bundles = client.fetch(
             'bundles',
             params={
@@ -2374,7 +2373,6 @@ class BundleCLI(object):
                 + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
             },
         )
-
         for i, info in enumerate(bundles):
             if args.field:
                 # Display individual fields (arbitrary genpath)
@@ -2389,113 +2387,174 @@ class BundleCLI(object):
                     values.append(value)
                 print('\t'.join(map(str, values)), file=self.stdout)
             else:
-                # Display all the fields
                 if i > 0:
-                    print()
-                self.print_basic_info(client, info, args.raw)
+                    self.print_line()
+
+                bundle_type = info['bundle_type']
+                cls = get_bundle_subclass(bundle_type)
+                show_hidden = client.fetch('user')['is_root_user']
+                metadata = worksheet_util.get_formatted_metadata(
+                    cls, info['metadata'], args.raw, show_hidden
+                )
+
+                # Add metadata fields to top-level info
+                info.update(metadata)
+
+                # Display basic info
+                self.print_basic_info(info)
+
+                # Display verbose info
                 if args.verbose:
-                    self.print_children(info)
+                    self.print_line()
+                    if bundle_type == 'run':
+                        self.print_resource_info(info)
+                        self.print_time_info(info)
+                    if bundle_type == 'dataset':
+                        self.print_source_info(info)
+                    if info.get('dependencies'):
+                        self.print_dependencies(info)
                     self.print_host_worksheets(info)
-                    self.print_permissions(info)
                     self.print_contents(client, info)
 
         # Headless client should fire OpenBundle UI action if no special flags used
-        if self.headless and not (args.field or args.raw or args.verbose):
+        if self.headless and not (args.field or args.raw):
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
 
     @staticmethod
     def key_value_str(key, value):
-        return '%-26s: %s' % (
+        return '%-26s %s' % (
             key,
             formatting.verbose_contents_str(str(value) if value is not None else None),
         )
 
-    def print_basic_info(self, client, info, raw):
+    def print_line(self):
         """
-        print >>self.stdout, the basic information for a bundle (key/value pairs).
+        print >>self.stdout - a blank line
         """
+        print(' ', file=self.stdout)
 
-        metadata = info['metadata']
-        lines = []  # The output that we're accumulating
+    def print_basic_info(self, info):
+        """
+        print >>self.stdout - the basic information for a bundle (key/value pairs).
+        """
+        lines = []
+        lines.append(self.key_value_str('State', info.get('state')))
+        lines.append(self.key_value_str('UUID', info.get('uuid')))
+        lines.append(self.key_value_str('Name', info.get('name')))
 
-        # Bundle fields
-        for key in (
-            'bundle_type',
-            'uuid',
-            'data_hash',
-            'state',
-            'command',
-            'frozen',
-            'is_anonymous',
-        ):
-            if not raw:
-                if key not in info:
-                    continue
-            lines.append(self.key_value_str(key, info.get(key)))
+        if 'description' in info:
+            lines.append(self.key_value_str('Description', info.get('description')))
 
-        # Owner info
-        lines.append(self.key_value_str('owner', self.simple_user_str(info['owner'])))
+        if 'tags' in info:
+            lines.append(self.key_value_str('Tags', info.get('tags')))
 
-        # Metadata fields (standard)
-        cls = get_bundle_subclass(info['bundle_type'])
+        lines.append(self.key_value_str('Owner', self.simple_user_str(info['owner'])))
+        lines.append(self.key_value_str('Permissions', permission_str(info['permission'])))
 
-        # Show all hidden fields for root user
-        show_hidden = client.fetch('user')['is_root_user']
-
-        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw, show_hidden):
-            lines.append(self.key_value_str(key, value))
-
-        bundle_locations = client.get_bundle_locations((info.get('uuid')))
-        if len(bundle_locations) > 0:
-            if raw:
-                bundle_locations = str(bundle_locations)
-                lines.append(self.key_value_str('bundle stores', bundle_locations))
-            else:
-                bundle_locations = [
-                    location.get('attributes').get('name') for location in bundle_locations
-                ]
-                lines.append(self.key_value_str('bundle stores', ','.join(bundle_locations)))
-
-        # Metadata fields (non-standard)
-        standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
-        for key, value in metadata.items():
-            if key in standard_keys:
-                continue
-            lines.append(self.key_value_str(key, value))
-
-        # Dependencies (both hard dependencies and soft)
-        def display_dependencies(label, deps):
-            lines.append(label + ':')
-            for dep in deps:
-                child = dep['child_path']
-                parent = path_util.safe_join(
-                    contents_str(dep['parent_name']) + '(' + dep['parent_uuid'] + ')',
-                    dep['parent_path'],
+        if 'group_permissions' in info:
+            lines.append(
+                self.key_value_str(
+                    'Group Permissions', group_permissions_str(info['group_permissions'])
                 )
-                lines.append('  %s: %s' % (child, parent))
+            )
 
-        if info['dependencies']:
-            deps = info['dependencies']
-            display_dependencies('dependencies', deps)
+        lines.append(self.key_value_str('Created', info.get('created')))
+        lines.append(self.key_value_str('Size', info.get('data_size')))
+
+        if 'store' in info:
+            lines.append(self.key_value_str('Store', info.get('store')))
 
         print('\n'.join(lines), file=self.stdout)
 
-    def print_children(self, info):
-        print('children:', file=self.stdout)
-        for child in info['children']:
-            print("  %s" % self.simple_bundle_str(child), file=self.stdout)
+    def print_resource_info(self, info):
+        """
+        print >>self.stdout - run bundle resource information
+        """
+        lines = []
+        lines.append(self.key_value_str('Disk', info.get('request_disk')))
+        lines.append(self.key_value_str('Memory', info.get('request_memory')))
+        lines.append(self.key_value_str('CPUs', info.get('request_cpus')))
+        lines.append(self.key_value_str('GPUs', info.get('request_gpus')))
+        lines.append(self.key_value_str('Docker Image Requested', info.get('request_docker_image')))
+        lines.append(self.key_value_str('Docker Image Used', info.get('docker_image')))
+        lines.append(self.key_value_str('Queue', info.get('request_queue')))
+        lines.append(self.key_value_str('Priority', info.get('request_priority')))
+        lines.append(self.key_value_str('Network', info.get('request_network')))
+        lines.append(self.key_value_str('Preemptible', info.get('on_preemptible_worker')))
+
+        print('RESOURCES', file=self.stdout)
+        print('\n'.join(lines), file=self.stdout)
+        self.print_line()
+
+    def print_time_info(self, info):
+        """
+        print >>self.stdout - run bundle time information
+        """
+        lines = []
+        lines.append(self.key_value_str('Time Allowed', info.get('request_time')))
+        lines.append(self.key_value_str('Time Preparing', info.get('time_preparing')))
+        lines.append(self.key_value_str('Time Running', info.get('time_running')))
+        lines.append(self.key_value_str('Time Uploading', info.get('time_uploading_results')))
+        lines.append(self.key_value_str('Time Cleaning Up', info.get('time_cleaning_up')))
+        lines.append(self.key_value_str('Total Time', info.get('time')))
+
+        print('TIME', file=self.stdout)
+        print('\n'.join(lines), file=self.stdout)
+        self.print_line()
+
+    def print_source_info(self, info):
+        """
+        print >>self.stdout - uploaded bundle source information
+        """
+        lines = []
+        lines.append(self.key_value_str('License', info.get('license')))
+        lines.append(self.key_value_str('Source URL', info.get('source_url')))
+        lines.append(self.key_value_str('Link URL', info.get('link_url')))
+        lines.append(self.key_value_str('Link Format', info.get('link_format')))
+
+        print('SOURCES', file=self.stdout)
+        print('\n'.join(lines), file=self.stdout)
+        self.print_line()
+
+    def print_dependencies(self, info):
+        """
+        print >>self.stdout - bundle dependency information
+        """
+        lines = []
+        lines.append(self.key_value_str('Allow Failed', info.get('allow_failed_dependencies')))
+
+        for dep in info['dependencies']:
+            child = dep['child_path']
+            parent = path_util.safe_join(
+                contents_str(dep['parent_name']) + '(' + dep['parent_uuid'] + ')',
+                dep['parent_path'],
+            )
+            lines.append(self.key_value_str(child, parent))
+
+        print('DEPENDENCIES', file=self.stdout)
+        print('\n'.join(lines), file=self.stdout)
+        self.print_line()
 
     def print_host_worksheets(self, info):
-        print('host_worksheets:', file=self.stdout)
+        """
+        print >>self.stdout - list of host worksheets
+        """
+        print('HOST WORKSHEETS', file=self.stdout)
         for host_worksheet_info in info['host_worksheets']:
-            print("  %s" % self.worksheet_url_and_name(host_worksheet_info), file=self.stdout)
-
-    def print_permissions(self, info):
-        print('permission: %s' % permission_str(info['permission']), file=self.stdout)
-        print('group_permissions:', file=self.stdout)
-        print('  %s' % group_permissions_str(info.get('group_permissions', [])), file=self.stdout)
+            print(self.worksheet_url_and_name(host_worksheet_info), file=self.stdout)
+        self.print_line()
 
     def print_contents(self, client, info):
+        """
+        print >>self.stdout - contents previews including stderr and stdout
+        """
+        print('CONTENTS', file=self.stdout)
+
+        exclude_patterns = info.get('exclude_patterns')
+        if exclude_patterns:
+            print(self.key_value_str('Exclude Patterns', exclude_patterns))
+            self.print_line()
+
         def wrap(string):
             return '=== ' + string + ' preview ==='
 
