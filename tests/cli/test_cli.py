@@ -656,11 +656,17 @@ def test_basic(ctx):
     check_equals('a2.txt', get_info(uuid, 'name'))
     check_contains(['c', 'd', 'e'], get_info(uuid, 'tags'))
 
-    # cat, info
+    # cat
     check_equals(test_path_contents('a.txt'), _run_command([cl, 'cat', uuid]))
-    check_contains(['bundle_type', 'uuid', 'owner', 'created'], _run_command([cl, 'info', uuid]))
-    check_contains('license', _run_command([cl, 'info', '--raw', uuid]))
-    check_contains(['host_worksheets', 'contents'], _run_command([cl, 'info', '--verbose', uuid]))
+
+    # info
+    check_contains(
+        ['State', 'UUID', 'Name', 'Owner', 'Permissions', 'Created', 'Size',],
+        _run_command([cl, 'info', uuid]),
+    )
+    check_contains('License', _run_command([cl, 'info', '--raw', '--verbose', uuid]))
+    check_contains(['HOST WORKSHEETS', 'CONTENTS'], _run_command([cl, 'info', '--verbose', uuid]))
+
     # test interpret_file_genpath
     check_equals(' '.join(test_path_contents('a.txt').splitlines(False)), get_info(uuid, '/'))
 
@@ -1315,7 +1321,7 @@ def test_make(ctx):
     # make
     uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2])
     wait(uuid3)
-    check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
+    check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', '-v', uuid3]))
     # anonymous make
     uuid4 = _run_command([cl, 'make', uuid3, '--name', 'foo'])
     wait(uuid4)
