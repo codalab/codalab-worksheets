@@ -2364,6 +2364,7 @@ class BundleCLI(object):
     def do_info_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
         bundles = client.fetch(
             'bundles',
             params={
@@ -2373,6 +2374,7 @@ class BundleCLI(object):
                 + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
             },
         )
+
         for i, info in enumerate(bundles):
             if args.field:
                 # Display individual fields (arbitrary genpath)
