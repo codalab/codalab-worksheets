@@ -271,7 +271,7 @@ class LinkedBundlePath:
             account_name=AZURE_BLOB_ACCOUNT_NAME,
             container_name=AZURE_BLOB_CONTAINER_NAME,
             account_key=AZURE_BLOB_ACCOUNT_KEY,
-            expiry=datetime.datetime.now() + datetime.timedelta(hours=1),
+            expiry=datetime.datetime.now() + datetime.timedelta(hours=3),
             blob_name=blob_name,
         )
         return f"{AZURE_BLOB_HTTP_ENDPOINT}/{AZURE_BLOB_CONTAINER_NAME}/{blob_name}?{sas_token}"
