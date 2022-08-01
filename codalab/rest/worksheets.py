@@ -347,17 +347,14 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
-    items = result.get('items', [])
+    items = result.get('items')
 
     # Update worksheet item sort keys if needed.
-    for item in items:
-        if item['sort_key'] is None:
-            update_worksheet_items(
-                result, [Worksheet.Item.as_tuple(i) for i in items], convert_items=False
-            )
-            worksheet = local.model.get_worksheet(uuid, fetch_items=fetch_items)  # get updated info
-            result = worksheet.to_dict()
-            break
+    if items and any(item['sort_key'] is None for item in items):
+        items = [Worksheet.Item.as_tuple(i) for i in items]  # convert items
+        update_worksheet_items(result, items, convert_items=False)  # update sort keys
+        worksheet = local.model.get_worksheet(uuid, fetch_items=fetch_items)  # get updated info
+        result = worksheet.to_dict()
 
     # Set worksheet permission.
     result['permission'] = permission
