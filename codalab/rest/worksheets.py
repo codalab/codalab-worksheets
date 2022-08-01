@@ -325,6 +325,19 @@ def get_worksheets_landing():
 def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
+
+    Note that this helper scans worksheet items for null sort keys and updates
+    them in the database if needed.
+
+    Context around item sort keys:
+        When bundles are created via web, they are assigned a numeric sort_key.
+        When bundles are created via CLI, they are assigned a null sort_key.
+
+        This is due to the fact that, unlike the web UI, the CLI doesn't have
+        the appropriate after_sort_key readily availble.
+
+        Instead of fetching the appropriate after_sort_key via CLI every time a
+        user creates a new bundle, we normalize sort keys here if needed.
     """
     worksheet = local.model.get_worksheet(uuid, fetch_items=fetch_items)
     check_worksheet_has_read_permission(local.model, request.user, worksheet)
@@ -334,6 +347,19 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
+    items = result.get('items', [])
+
+    # Update worksheet item sort keys if needed.
+    for item in items:
+        if item['sort_key'] is None:
+            update_worksheet_items(
+                result, [Worksheet.Item.as_tuple(i) for i in items], convert_items=False
+            )
+            worksheet = local.model.get_worksheet(uuid, fetch_items=fetch_items)  # get updated info
+            result = worksheet.to_dict()
+            break
+
+    # Set worksheet permission.
     result['permission'] = permission
     is_anonymous = permission < GROUP_OBJECT_PERMISSION_READ or (
         worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL
