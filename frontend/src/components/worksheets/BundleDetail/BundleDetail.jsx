@@ -1,23 +1,21 @@
 // @flow
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import * as $ from 'jquery';
-// import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
-
-import ConfigurationPanel from '../ConfigPanel';
-import MainContent from './MainContent';
-import BundleDetailSideBar from './BundleDetailSideBar';
-import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
+
+import ConfigurationPanel from '../ConfigPanel';
+import ErrorMessage from '../ErrorMessage';
+import MainContent from './MainContent';
+import BundleDetailSideBar from './BundleDetailSideBar';
+import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
     // Callback on metadata change.
     bundleMetadataChanged,
-    onClose,
     onOpen,
     onUpdate,
     rerunItem,
@@ -27,6 +25,7 @@ const BundleDetail = ({
     editPermission,
     sidebarExpanded,
     hideBundlePageLink,
+    showBorder,
 }) => {
     const [errorMessages, setErrorMessages] = useState([]);
     const [bundleInfo, setBundleInfo] = useState(null);
@@ -196,9 +195,18 @@ const BundleDetail = ({
         }
     };
 
+    if (errorMessages.length) {
+        const status = errorMessages[0].response?.status;
+        if (status === 404) {
+            return <ErrorMessage message={`Not found: '/bundles/${uuid}'`} />;
+        }
+        return <ErrorMessage message={`Unable to fetch bundle uuid: ${uuid}.`} />;
+    }
+
     if (!bundleInfo) {
         return <div></div>;
     }
+
     if (bundleInfo.bundle_type === 'private') {
         return <div>Detail not available for this bundle</div>;
     }
@@ -227,6 +235,7 @@ const BundleDetail = ({
                     hidePageLink={hideBundlePageLink}
                 />
             }
+            showBorder={showBorder}
         >
             <MainContent
                 bundleInfo={bundleInfo}
