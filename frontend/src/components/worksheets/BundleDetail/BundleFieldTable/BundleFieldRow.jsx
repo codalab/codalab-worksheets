@@ -25,6 +25,30 @@ import Copy from '../../../Copy';
 class BundleFieldRow extends React.Component {
     constructor(props) {
         super(props);
+        this.state = {
+            title: this.getTitle(),
+        };
+    }
+
+    getTitle() {
+        const field = this.props.field || {};
+        const description = this.props.description || field.description;
+        if (!description) {
+            return;
+        }
+        const name = field.name;
+        if (!name) {
+            return description;
+        }
+        const title = (
+            <>
+                {description}
+                <br />
+                <br />
+                Search Key: '{name}'
+            </>
+        );
+        return title;
     }
 
     render() {
@@ -37,7 +61,6 @@ class BundleFieldRow extends React.Component {
 
         // allow props to override field values
         const label = this.props.label || field.name;
-        const description = this.props.description || field.description;
         const value = this.props.value || field.value;
         const copyValue = this.props.copyValue || value;
 
@@ -56,9 +79,9 @@ class BundleFieldRow extends React.Component {
                     <Typography variant='subtitle2' inline>
                         {label}
                     </Typography>
-                    {description && (
+                    {this.state.title && (
                         <Tooltip
-                            title={description}
+                            title={this.state.title}
                             classes={{ tooltip: classes.tooltipContainer }}
                         >
                             <span className={classes.tooltipIcon}>
