@@ -98,18 +98,17 @@ class BundleActions extends React.Component<{
 
         return isRunBundle ? (
             <div className={classes.actionsContainer}>
-                {isDownloadableRunBundle && (
-                    <Button
-                        classes={{ root: classes.actionButton }}
-                        variant='outlined'
-                        color='primary'
-                        onClick={() => {
-                            window.open(bundleDownloadUrl, '_blank');
-                        }}
-                    >
-                        <span className='glyphicon glyphicon-download-alt' />
-                    </Button>
-                )}
+                <Button
+                    classes={{ root: classes.actionButton }}
+                    variant='outlined'
+                    color='primary'
+                    disabled={!isDownloadableRunBundle}
+                    onClick={() => {
+                        window.open(bundleDownloadUrl, '_blank');
+                    }}
+                >
+                    <span className='glyphicon glyphicon-download-alt' />
+                </Button>
                 {editPermission && (
                     <>
                         <Button

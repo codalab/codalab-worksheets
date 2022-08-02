@@ -1,12 +1,29 @@
 import React from 'react';
-export default () => (
-    <div
-        style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-        }}
-    >
-        <img alt='Loading' src={`${process.env.PUBLIC_URL}/img/Preloader_Small.gif`} />
-    </div>
-);
+import { withStyles } from '@material-ui/core/styles';
+import CircularProgress from '@material-ui/core/CircularProgress';
+
+class Loading extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        const { classes, style } = this.props;
+        return (
+            <div className={classes.container} style={style}>
+                <CircularProgress color='inherit' size={14} />
+            </div>
+        );
+    }
+}
+
+const styles = (theme) => ({
+    container: {
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        color: theme.color.primary.base,
+    },
+});
+
+export default withStyles(styles)(Loading);

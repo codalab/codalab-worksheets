@@ -5,6 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import CollapseButton from '../../CollapseButton';
 import CodeSnippet from '../../CodeSnippet';
+import Loading from '../../Loading';
 
 class MainContent extends React.Component<{
     bundleInfo: {},
@@ -13,13 +14,16 @@ class MainContent extends React.Component<{
     fileContents: string | null,
     classes: {},
 }> {
-    state = {
-        showCommand: true,
-        showFailureMessage: true,
-        showStdOut: true,
-        showStdError: true,
-        showFileBrowser: true,
-    };
+    constructor(props) {
+        super(props);
+        this.state = {
+            showCommand: true,
+            showFailureMessage: true,
+            showStdOut: true,
+            showStdError: true,
+            showFileBrowser: true,
+        };
+    }
 
     toggleCommand() {
         this.setState({ showCommand: !this.state.showCommand });
@@ -54,6 +58,9 @@ class MainContent extends React.Component<{
                 bundleInfo.state === 'preparing' ||
                 bundleInfo.state === 'starting' ||
                 bundleInfo.state === 'staged');
+        const state = this.props.bundleInfo.state;
+        const finalStates = ['ready', 'failed', 'killed'];
+        const isLoading = !finalStates.includes(state);
 
         return (
             <div className={classes.outter}>
@@ -82,56 +89,62 @@ class MainContent extends React.Component<{
                             )}
                         </Grid>
                     )}
-                    {/** Stdout/stderr components ================================================================= */}
-                    <Grid container>
-                        {stdout && (
+                    {isLoading ? (
+                        <Loading />
+                    ) : (
+                        <>
+                            {/** Stdout/stderr components ================================================================= */}
                             <Grid container>
-                                <CollapseButton
-                                    label='Stdout'
-                                    collapsed={this.state.showStdOut}
-                                    onClick={() => this.toggleStdOut()}
-                                />
-                                {this.state.showStdOut && (
-                                    <CodeSnippet code={stdout} href={stdoutUrl} />
+                                {stdout && (
+                                    <Grid container>
+                                        <CollapseButton
+                                            label='Stdout'
+                                            collapsed={this.state.showStdOut}
+                                            onClick={() => this.toggleStdOut()}
+                                        />
+                                        {this.state.showStdOut && (
+                                            <CodeSnippet code={stdout} href={stdoutUrl} />
+                                        )}
+                                    </Grid>
+                                )}
+                                {stderr && (
+                                    <Grid container>
+                                        <CollapseButton
+                                            label='Stderr'
+                                            collapsed={this.state.showStdError}
+                                            onClick={() => this.toggleStdError()}
+                                        />
+                                        {this.state.showStdError && (
+                                            <CodeSnippet code={stderr} href={stderrUrl} />
+                                        )}
+                                    </Grid>
                                 )}
                             </Grid>
-                        )}
-                        {stderr && (
-                            <Grid container>
-                                <CollapseButton
-                                    label='Stderr'
-                                    collapsed={this.state.showStdError}
-                                    onClick={() => this.toggleStdError()}
-                                />
-                                {this.state.showStdError && (
-                                    <CodeSnippet code={stderr} href={stderrUrl} />
-                                )}
-                            </Grid>
-                        )}
-                    </Grid>
-                    {/** Bundle contents browser ================================================================== */}
-                    <CollapseButton
-                        label={fileContents ? 'Contents' : 'Files'}
-                        collapsed={this.state.showFileBrowser}
-                        onClick={() => this.toggleFileViewer()}
-                    />
-                    {this.state.showFileBrowser ? (
-                        <Grid item xs={12}>
-                            {fileContents ? (
-                                <div className={`${classes.snippet} ${classes.greyBorder}`}>
-                                    {fileContents}
-                                </div>
-                            ) : (
-                                <div className={classes.snippet}>
-                                    <FileBrowserLite
-                                        uuid={bundleInfo.uuid}
-                                        isRunningBundle={isRunningBundle}
-                                        showBreadcrumbs
-                                    />
-                                </div>
-                            )}
-                        </Grid>
-                    ) : null}
+                            {/** Bundle contents browser ================================================================== */}
+                            <CollapseButton
+                                label={fileContents ? 'Contents' : 'Files'}
+                                collapsed={this.state.showFileBrowser}
+                                onClick={() => this.toggleFileViewer()}
+                            />
+                            {this.state.showFileBrowser ? (
+                                <Grid item xs={12}>
+                                    {fileContents ? (
+                                        <div className={`${classes.snippet} ${classes.greyBorder}`}>
+                                            {fileContents}
+                                        </div>
+                                    ) : (
+                                        <div className={classes.snippet}>
+                                            <FileBrowserLite
+                                                uuid={bundleInfo.uuid}
+                                                isRunningBundle={isRunningBundle}
+                                                showBreadcrumbs
+                                            />
+                                        </div>
+                                    )}
+                                </Grid>
+                            ) : null}
+                        </>
+                    )}
                 </Grid>
             </div>
         );
