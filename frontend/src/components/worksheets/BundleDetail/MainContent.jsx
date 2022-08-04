@@ -1,13 +1,10 @@
 // @flow
 import * as React from 'react';
-import classNames from 'classnames';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import { renderDuration } from '../../../util/worksheet_utils';
 import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
-import Button from '@material-ui/core/Button';
-import ChevronRightIcon from '@material-ui/icons/ChevronRight';
-import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
+import CollapseButton from '../../CollapseButton';
+import CodeSnippet from '../../CodeSnippet';
 
 class MainContent extends React.Component<{
     bundleInfo: {},
@@ -17,10 +14,20 @@ class MainContent extends React.Component<{
     classes: {},
 }> {
     state = {
+        showCommand: true,
+        showFailureMessage: true,
         showStdOut: true,
         showStdError: true,
         showFileBrowser: true,
     };
+
+    toggleCommand() {
+        this.setState({ showCommand: !this.state.showCommand });
+    }
+
+    toggleShowFailureMessage() {
+        this.setState({ showFailureMessage: !this.state.showFailureMessage });
+    }
 
     toggleFileViewer() {
         this.setState({ showFileBrowser: !this.state.showFileBrowser });
@@ -36,7 +43,12 @@ class MainContent extends React.Component<{
 
     render() {
         const { classes, bundleInfo, stdout, stderr, fileContents } = this.props;
-        let isRunningBundle =
+        const uuid = bundleInfo.uuid;
+        const stdoutUrl = '/rest/bundles/' + uuid + '/contents/blob/stdout';
+        const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
+        const command = bundleInfo.command;
+        const failureMessage = bundleInfo.metadata.failure_message;
+        const isRunningBundle =
             bundleInfo.bundle_type === 'run' &&
             (bundleInfo.state === 'running' ||
                 bundleInfo.state === 'preparing' ||
@@ -46,90 +58,75 @@ class MainContent extends React.Component<{
         return (
             <div className={classes.outter}>
                 <Grid container>
+                    {/** Failure components ================================================================= */}
+                    {failureMessage && (
+                        <Grid classes={{ container: classes.failureContainer }} container>
+                            <CollapseButton
+                                label='Failure Message'
+                                collapsed={this.state.showFailureMessage}
+                                onClick={() => this.toggleShowFailureMessage()}
+                            />
+                            {this.state.showFailureMessage && <CodeSnippet code={failureMessage} />}
+                        </Grid>
+                    )}
+                    {/** Command components ================================================================= */}
+                    {command && (
+                        <Grid container>
+                            <CollapseButton
+                                label='Command'
+                                collapsed={this.state.showCommand}
+                                onClick={() => this.toggleCommand()}
+                            />
+                            {this.state.showCommand && (
+                                <CodeSnippet code={command} copyMessage='Command Copied!' />
+                            )}
+                        </Grid>
+                    )}
                     {/** Stdout/stderr components ================================================================= */}
                     <Grid container>
                         {stdout && (
                             <Grid container>
-                                <Button
-                                    onClick={(e) => this.toggleStdOut()}
-                                    size='small'
-                                    color='inherit'
-                                    aria-label='Show stdout'
-                                >
-                                    {'Stdout'}
-                                    {this.state.showStdOut ? (
-                                        <KeyboardArrowDownIcon />
-                                    ) : (
-                                        <ChevronRightIcon />
-                                    )}
-                                </Button>
+                                <CollapseButton
+                                    label='Stdout'
+                                    collapsed={this.state.showStdOut}
+                                    onClick={() => this.toggleStdOut()}
+                                />
                                 {this.state.showStdOut && (
-                                    <Grid item xs={12}>
-                                        <div
-                                            className={classNames({
-                                                [classes.snippet]: true,
-                                                [classes.greyBackground]: true,
-                                            })}
-                                        >
-                                            {stdout}
-                                        </div>
-                                    </Grid>
+                                    <CodeSnippet code={stdout} href={stdoutUrl} />
                                 )}
                             </Grid>
                         )}
                         {stderr && (
                             <Grid container>
-                                <Button
-                                    onClick={(e) => this.toggleStdError()}
-                                    size='small'
-                                    color='inherit'
-                                    aria-label='Show stderr'
-                                >
-                                    {'Stderr'}
-                                    {this.state.showStdError ? (
-                                        <KeyboardArrowDownIcon />
-                                    ) : (
-                                        <ChevronRightIcon />
-                                    )}
-                                </Button>
+                                <CollapseButton
+                                    label='Stderr'
+                                    collapsed={this.state.showStdError}
+                                    onClick={() => this.toggleStdError()}
+                                />
                                 {this.state.showStdError && (
-                                    <Grid item xs={12}>
-                                        <div
-                                            className={classNames({
-                                                [classes.snippet]: true,
-                                                [classes.greyBackground]: true,
-                                            })}
-                                        >
-                                            {stderr}
-                                        </div>
-                                    </Grid>
+                                    <CodeSnippet code={stderr} href={stderrUrl} />
                                 )}
                             </Grid>
                         )}
                     </Grid>
                     {/** Bundle contents browser ================================================================== */}
-                    <Button
-                        onClick={(e) => this.toggleFileViewer()}
-                        size='small'
-                        color='inherit'
-                        aria-label='Expand file viewer'
-                    >
-                        {fileContents ? 'Contents' : 'Files'}
-                        {this.state.showFileBrowser ? (
-                            <KeyboardArrowDownIcon />
-                        ) : (
-                            <ChevronRightIcon />
-                        )}
-                    </Button>
+                    <CollapseButton
+                        label={fileContents ? 'Contents' : 'Files'}
+                        collapsed={this.state.showFileBrowser}
+                        onClick={() => this.toggleFileViewer()}
+                    />
                     {this.state.showFileBrowser ? (
                         <Grid item xs={12}>
                             {fileContents ? (
-                                <div className={classes.snippet}>{fileContents}</div>
+                                <div className={`${classes.snippet} ${classes.greyBorder}`}>
+                                    {fileContents}
+                                </div>
                             ) : (
                                 <div className={classes.snippet}>
                                     <FileBrowserLite
                                         uuid={bundleInfo.uuid}
                                         isRunningBundle={isRunningBundle}
+                                        showBreadcrumbs
                                     />
                                 </div>
                             )}
@@ -145,12 +142,6 @@ const styles = (theme) => ({
     outter: {
         flex: 1,
     },
-    row: {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
     snippet: {
         fontFamily: 'monospace',
         maxHeight: 300,
@@ -160,8 +151,11 @@ const styles = (theme) => ({
         overflow: 'auto',
         whiteSpace: 'pre-wrap',
     },
-    greyBackground: {
-        backgroundColor: theme.color.grey.lightest,
+    failureContainer: {
+        color: theme.color.red.base,
+    },
+    greyBorder: {
+        border: `1px solid ${theme.color.grey.light}`,
     },
 });
 
