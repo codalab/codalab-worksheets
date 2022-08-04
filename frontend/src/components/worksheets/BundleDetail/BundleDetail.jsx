@@ -27,7 +27,6 @@ const BundleDetail = ({
     hideBundlePageLink,
     showBorder,
 }) => {
-    const [errorMessages, setErrorMessages] = useState([]);
     const [bundleInfo, setBundleInfo] = useState(null);
     const [fileContents, setFileContents] = useState(null);
     const [stdout, setStdout] = useState(null);
@@ -36,12 +35,15 @@ const BundleDetail = ({
     const [open, setOpen] = useState(true);
     const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
+    const [contentErrors, setContentErrors] = useState([]);
+    const [metadataErrors, setMetadataErrors] = useState([]);
     const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
             setPrevUuid(uuid);
-            setErrorMessages([]);
+            setContentErrors([]);
+            setMetadataErrors([]);
         }
     }, [uuid]);
 
@@ -79,7 +81,7 @@ const BundleDetail = ({
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                    setMetadataErrors((metadataErrors) => metadataErrors.concat([error]));
                 })
                 .finally(() => {
                     setFetchingMetadata(false);
@@ -106,6 +108,7 @@ const BundleDetail = ({
             bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
             bundleInfo.metadataType = response.data.meta.metadata_type;
             setBundleInfo(bundleInfo);
+            setMetadataErrors([]);
         },
     });
 
@@ -119,7 +122,7 @@ const BundleDetail = ({
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                    setContentErrors((contentErrors) => contentErrors.concat([error]));
                 })
                 .finally(() => {
                     setFetchingContent(false);
@@ -183,6 +186,7 @@ const BundleDetail = ({
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
             updateBundleDetail(response);
+            setContentErrors([]);
         },
     });
 
@@ -196,15 +200,8 @@ const BundleDetail = ({
     };
 
     if (!bundleInfo) {
-        if (errorMessages.length) {
-            const statuses = errorMessages.map((e) => e.response?.status);
-            if (statuses.includes(404)) {
-                return <ErrorMessage message={`Not found: '/bundles/${uuid}'`} />;
-            }
-            if (statuses.includes(500)) {
-                return <ErrorMessage message='Internal Server Error' />;
-            }
-            return <ErrorMessage message={`Could not fetch: '/bundles/${uuid}'`} />;
+        if (metadataErrors.length) {
+            return <ErrorMessage message='Error: Bundle Unavailable' />;
         }
         return <div></div>;
     }

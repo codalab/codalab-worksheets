@@ -25,9 +25,20 @@ import Copy from '../../../Copy';
 class BundleFieldRow extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {
-            title: this.getTitle(),
-        };
+    }
+
+    checkHideRow() {
+        const field = this.props.field || {};
+        const value = this.props.value || field?.value;
+        if (!field.editable) {
+            if (!value) {
+                return true;
+            }
+            if (field.type === 'list' && (!value.length || !value[0])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     getTitle() {
@@ -53,6 +64,8 @@ class BundleFieldRow extends React.Component {
 
     render() {
         const { allowCopy, classes, onChange, noWrap } = this.props;
+        const hideRow = this.checkHideRow();
+        const title = this.getTitle();
         const field = this.props.field || {};
         const name = field.name;
         const dataType = field.type;
@@ -64,13 +77,8 @@ class BundleFieldRow extends React.Component {
         const value = this.props.value || field.value;
         const copyValue = this.props.copyValue || value;
 
-        if (!canEdit) {
-            if (dataType === 'list' && (!value.length || !value[0])) {
-                return null;
-            }
-            if (dataType === 'str' && !value) {
-                return null;
-            }
+        if (hideRow) {
+            return null;
         }
 
         return (
@@ -79,11 +87,8 @@ class BundleFieldRow extends React.Component {
                     <Typography variant='subtitle2' inline>
                         {label}
                     </Typography>
-                    {this.state.title && (
-                        <Tooltip
-                            title={this.state.title}
-                            classes={{ tooltip: classes.tooltipContainer }}
-                        >
+                    {title && (
+                        <Tooltip title={title} classes={{ tooltip: classes.tooltipContainer }}>
                             <span className={classes.tooltipIcon}>
                                 <HelpOutlineOutlinedIcon
                                     fontSize='inherit'
