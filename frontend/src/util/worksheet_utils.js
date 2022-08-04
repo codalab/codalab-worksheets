@@ -122,10 +122,11 @@ export function serializeFormat(formatted, type) {
     }
 }
 
-export function renderPermissions(state) {
+export function renderPermissions(state, style = {}) {
     // Render permissions:
     // - state.permission_spec (what user has)
     // - state.group_permissions (what other people have)
+    // - style (optional custom container styles)
     if (!state.permission_spec) return;
 
     function permissionToClass(permission) {
@@ -147,7 +148,7 @@ export function renderPermissions(state) {
     }
 
     return (
-        <div>
+        <div style={style}>
             &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
