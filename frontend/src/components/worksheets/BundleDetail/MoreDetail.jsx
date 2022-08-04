@@ -15,20 +15,14 @@ class MoreDetail extends React.Component {
         super(props);
     }
 
-    getShowSources() {
+    checkSources() {
         const bundle = this.props.bundle;
-        const bundleType = bundle.bundle_type.value;
-        if (bundleType !== 'dataset') {
-            return false;
-        }
-        if (
-            license?.editable ||
-            license?.value ||
-            source_url?.value ||
-            link_url?.value ||
-            link_format?.value
-        ) {
-            return true;
+        const sourceFields = ['license', 'source_url', 'link_url', 'link_format'];
+        for (let i in sourceFields) {
+            const field = sourceFields[i];
+            if (bundle[field]?.editable || bundle[field]?.value) {
+                return true;
+            }
         }
         return false;
     }
@@ -37,11 +31,12 @@ class MoreDetail extends React.Component {
         const { bundle, onUpdate } = this.props;
         const bundleType = bundle.bundle_type.value;
         const exclusions = bundle.exclude_patterns;
-        const showTime = bundle.time?.value || bundle.request_time?.editable;
+
         const showResources = bundleType === 'run';
+        const showSources = bundleType === 'dataset' ? this.checkSources() : false;
         const showExclusions = exclusions?.value.length || exclusions?.editable;
+        const showTime = bundle.time?.value || bundle.request_time?.editable;
         const showDependencies = !!bundle.dependencies?.value?.length;
-        const showSources = this.getShowSources();
 
         return (
             <>

@@ -126,7 +126,7 @@ export function renderPermissions(state, style = {}) {
     // Render permissions:
     // - state.permission_spec (what user has)
     // - state.group_permissions (what other people have)
-    // - style (optional custom container styles)
+    // - style (optional container styles)
     if (!state.permission_spec) return;
 
     function permissionToClass(permission) {

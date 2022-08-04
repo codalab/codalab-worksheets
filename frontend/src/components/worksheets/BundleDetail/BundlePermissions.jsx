@@ -18,8 +18,8 @@ class BundlePermissions extends React.Component {
         const { bundleInfo, classes, showDialog, onClick, onChange } = this.props;
         const { uuid, permission_spec, group_permissions } = bundleInfo;
         const style = {
-            whiteSpace: 'nowrap',
             maxWidth: 168,
+            whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
         };
