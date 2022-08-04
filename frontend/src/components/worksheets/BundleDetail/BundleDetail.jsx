@@ -195,15 +195,17 @@ const BundleDetail = ({
         }
     };
 
-    if (errorMessages.length) {
-        const status = errorMessages[0].response?.status;
-        if (status === 404) {
-            return <ErrorMessage message={`Not found: '/bundles/${uuid}'`} />;
-        }
-        return <ErrorMessage message={`Unable to fetch bundle uuid: ${uuid}.`} />;
-    }
-
     if (!bundleInfo) {
+        if (errorMessages.length) {
+            const statuses = errorMessages.map((e) => e.response?.status);
+            if (statuses.includes(404)) {
+                return <ErrorMessage message={`Not found: '/bundles/${uuid}'`} />;
+            }
+            if (statuses.includes(500)) {
+                return <ErrorMessage message='Internal Server Error' />;
+            }
+            return <ErrorMessage message={`Could not fetch: '/bundles/${uuid}'`} />;
+        }
         return <div></div>;
     }
 
