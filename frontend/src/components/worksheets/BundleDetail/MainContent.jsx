@@ -45,22 +45,30 @@ class MainContent extends React.Component<{
         this.setState({ showStdError: !this.state.showStdError });
     }
 
+    isRunning() {
+        const bundleInfo = this.props.bundleInfo;
+        if (bundleInfo.bundle_type !== 'run') {
+            return false;
+        }
+        const runStates = ['running', 'preparing', 'starting', 'staged'];
+        return runStates.includes(bundleInfo.state);
+    }
+
     render() {
-        const { classes, bundleInfo, stdout, stderr, fileContents } = this.props;
+        const {
+            bundleInfo,
+            classes,
+            contentType,
+            fetchingContent,
+            fileContents,
+            stderr,
+            stdout,
+        } = this.props;
         const uuid = bundleInfo.uuid;
         const stdoutUrl = '/rest/bundles/' + uuid + '/contents/blob/stdout';
         const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
         const command = bundleInfo.command;
         const failureMessage = bundleInfo.metadata.failure_message;
-        const isRunningBundle =
-            bundleInfo.bundle_type === 'run' &&
-            (bundleInfo.state === 'running' ||
-                bundleInfo.state === 'preparing' ||
-                bundleInfo.state === 'starting' ||
-                bundleInfo.state === 'staged');
-        const state = this.props.bundleInfo.state;
-        const finalStates = ['ready', 'failed', 'killed'];
-        const isLoading = !finalStates.includes(state);
 
         return (
             <div className={classes.outter}>
@@ -89,7 +97,7 @@ class MainContent extends React.Component<{
                             )}
                         </Grid>
                     )}
-                    {isLoading ? (
+                    {fetchingContent ? (
                         <Loading />
                     ) : (
                         <>
@@ -121,28 +129,34 @@ class MainContent extends React.Component<{
                                 )}
                             </Grid>
                             {/** Bundle contents browser ================================================================== */}
-                            <CollapseButton
-                                label={fileContents ? 'Contents' : 'Files'}
-                                collapsed={this.state.showFileBrowser}
-                                onClick={() => this.toggleFileViewer()}
-                            />
-                            {this.state.showFileBrowser ? (
-                                <Grid item xs={12}>
-                                    {fileContents ? (
-                                        <div className={`${classes.snippet} ${classes.greyBorder}`}>
-                                            {fileContents}
-                                        </div>
-                                    ) : (
-                                        <div className={classes.snippet}>
-                                            <FileBrowserLite
-                                                uuid={bundleInfo.uuid}
-                                                isRunningBundle={isRunningBundle}
-                                                showBreadcrumbs
-                                            />
-                                        </div>
+                            {contentType && (
+                                <>
+                                    <CollapseButton
+                                        label={fileContents ? 'Contents' : 'Files'}
+                                        collapsed={this.state.showFileBrowser}
+                                        onClick={() => this.toggleFileViewer()}
+                                    />
+                                    {this.state.showFileBrowser && (
+                                        <Grid item xs={12}>
+                                            {fileContents ? (
+                                                <div
+                                                    className={`${classes.snippet} ${classes.greyBorder}`}
+                                                >
+                                                    {fileContents}
+                                                </div>
+                                            ) : (
+                                                <div className={classes.snippet}>
+                                                    <FileBrowserLite
+                                                        uuid={bundleInfo.uuid}
+                                                        isRunningBundle={this.isRunning()}
+                                                        showBreadcrumbs
+                                                    />
+                                                </div>
+                                            )}
+                                        </Grid>
                                     )}
-                                </Grid>
-                            ) : null}
+                                </>
+                            )}
                         </>
                     )}
                 </Grid>
