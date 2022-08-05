@@ -334,7 +334,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
         When bundles are created via CLI, they are assigned a null sort_key.
 
         This is due to the fact that, unlike the web UI, the CLI doesn't have
-        the appropriate after_sort_key readily availble.
+        the appropriate after_sort_key readily available.
 
         Instead of fetching the appropriate after_sort_key via CLI every time a
         user creates a new bundle, we normalize sort keys here if needed.
