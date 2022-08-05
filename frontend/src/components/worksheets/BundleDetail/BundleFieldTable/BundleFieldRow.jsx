@@ -51,15 +51,7 @@ class BundleFieldRow extends React.Component {
         if (!name) {
             return description;
         }
-        const title = (
-            <>
-                {description}
-                <br />
-                <br />
-                Search Key: '{name}'
-            </>
-        );
-        return title;
+        return `[${name}] ${description}`;
     }
 
     render() {
