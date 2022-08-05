@@ -70,6 +70,7 @@ const styles = (theme) => ({
         fontSize: 12,
         paddingLeft: 15,
         color: theme.color.grey.darkest,
+        cursor: 'default',
     },
     tooltip: {
         fontSize: 14,
