@@ -37,6 +37,7 @@ class MoreDetail extends React.Component {
         const showExclusions = exclusions?.value.length || exclusions?.editable;
         const showTime = bundle.time?.value || bundle.request_time?.editable;
         const showDependencies = !!bundle.dependencies?.value?.length;
+        const showHostWorksheets = !!bundle.host_worksheets?.value.length;
 
         return (
             <>
@@ -158,14 +159,16 @@ class MoreDetail extends React.Component {
                         />
                     </BundleFieldTable>
                 )}
-                <BundleFieldTable title='Worksheets'>
-                    <BundleFieldRow
-                        label='Host Worksheets'
-                        description='Worksheets associated with this bundle.'
-                        field={bundle.host_worksheets}
-                        value={<BundleHostWorksheets bundle={bundle} />}
-                    />
-                </BundleFieldTable>
+                {showHostWorksheets && (
+                    <BundleFieldTable title='Worksheets'>
+                        <BundleFieldRow
+                            label='Host Worksheets'
+                            description='Worksheets associated with this bundle.'
+                            field={bundle.host_worksheets}
+                            value={<BundleHostWorksheets bundle={bundle} />}
+                        />
+                    </BundleFieldTable>
+                )}
             </>
         );
     }
