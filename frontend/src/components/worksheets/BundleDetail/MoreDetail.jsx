@@ -74,6 +74,8 @@ class MoreDetail extends React.Component {
                             allowCopy
                             noWrap
                         />
+                        <BundleFieldRow label='Remote' field={bundle.remote} />
+                        <BundleFieldRow label='Preemptible' field={bundle.on_preemptible_worker} />
                         <BundleFieldRow
                             label='Queue'
                             field={bundle.request_queue}
@@ -89,7 +91,6 @@ class MoreDetail extends React.Component {
                             field={bundle.request_network}
                             onChange={(request_network) => onUpdate({ request_network })}
                         />
-                        <BundleFieldRow label='Preemptible' field={bundle.on_preemptible_worker} />
                     </BundleFieldTable>
                 )}
                 {showTime && (
