@@ -74,7 +74,6 @@ class MoreDetail extends React.Component {
                             allowCopy
                             noWrap
                         />
-                        <BundleFieldRow label='Remote' field={bundle.remote} />
                         <BundleFieldRow label='Preemptible' field={bundle.on_preemptible_worker} />
                         <BundleFieldRow
                             label='Queue'
