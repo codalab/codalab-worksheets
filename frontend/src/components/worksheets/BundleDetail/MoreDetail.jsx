@@ -1,6 +1,5 @@
 import React from 'react';
 import { BundleFieldTable, BundleFieldRow } from './BundleFieldTable/';
-import BundleDependencies from './BundleDependencies';
 import BundleHostWorksheets from './BundleHostWorksheets';
 
 /**
@@ -20,7 +19,6 @@ class MoreDetail extends React.Component {
         const bundleType = bundle.bundle_type.value;
         const isRunBundle = bundleType === 'run';
         const isUploadedBundle = bundleType === 'dataset';
-        const hasDependencies = !!bundle.dependencies?.value?.length;
         const hasExclusions =
             bundle.exclude_patterns?.value?.length || bundle.exclude_patterns?.editable;
 
@@ -81,6 +79,13 @@ class MoreDetail extends React.Component {
                                 label='Preemptible'
                                 field={bundle.on_preemptible_worker}
                             />
+                            <BundleFieldRow
+                                label='Failed Dependencies'
+                                field={bundle.allow_failed_dependencies}
+                                onChange={(allow_failed_dependencies) =>
+                                    onUpdate({ allow_failed_dependencies })
+                                }
+                            />
                         </BundleFieldTable>
 
                         <BundleFieldTable title='Time'>
@@ -135,24 +140,6 @@ class MoreDetail extends React.Component {
                             label='Exclude Patterns'
                             field={bundle.exclude_patterns}
                             onChange={(exclude_patterns) => onUpdate({ exclude_patterns })}
-                        />
-                    </BundleFieldTable>
-                )}
-
-                {hasDependencies && (
-                    <BundleFieldTable title='Dependencies'>
-                        <BundleFieldRow
-                            label='Allow Failed'
-                            field={bundle.allow_failed_dependencies}
-                            onChange={(allow_failed_dependencies) =>
-                                onUpdate({ allow_failed_dependencies })
-                            }
-                        />
-                        <BundleFieldRow
-                            label='Dependencies'
-                            description='Bundles that this bundle depends on.'
-                            field={bundle.dependencies}
-                            value={<BundleDependencies bundle={bundle} />}
                         />
                     </BundleFieldTable>
                 )}

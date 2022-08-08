@@ -155,10 +155,15 @@ class BundleDependencySchema(PlainSchema):
     parent_uuid = fields.String(validate=validate_uuid)
     parent_path = fields.String(missing="")
     parent_name = fields.Method('get_parent_name', dump_only=True)  # for convenience
+    parent_state = fields.Method('get_parent_state', dump_only=True)  # for convenience
 
     def get_parent_name(self, dep):
         uuid = dep['parent_uuid']
         return local.model.get_bundle_names([uuid]).get(uuid)
+
+    def get_parent_state(self, dep):
+        uuid = dep['parent_uuid']
+        return local.model.get_bundle_state(uuid)
 
 
 class BundlePermissionSchema(Schema):

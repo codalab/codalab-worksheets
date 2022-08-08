@@ -196,6 +196,7 @@ Name | Type
 `parent_uuid` | String
 `parent_path` | String
 `parent_name` | Method
+`parent_state` | Method
 
 ## bundle_locations
 

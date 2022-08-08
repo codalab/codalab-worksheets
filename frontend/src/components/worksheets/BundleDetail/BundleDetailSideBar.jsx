@@ -4,6 +4,7 @@ import { formatBundle, shorten_uuid } from '../../../util/worksheet_utils';
 import CollapseButton from '../../CollapseButton';
 import NewWindowLink from '../../NewWindowLink';
 import { BundleFieldTable, BundleFieldRow, BundleStateRow } from './BundleFieldTable/';
+import BundleDependencies from './BundleDependencies';
 import BundlePermissions from './BundlePermissions';
 import MoreDetail from './MoreDetail';
 
@@ -37,6 +38,7 @@ class BundleDetailSideBar extends React.Component {
         const bundle = formatBundle(bundleInfo);
         const uuid = bundle.uuid.value;
         const isAnonymous = bundle.is_anonymous.value;
+        const hasDependencies = !!bundle.dependencies?.value?.length;
 
         return (
             <div className={classes.sidebar}>
@@ -88,6 +90,11 @@ class BundleDetailSideBar extends React.Component {
                         onChange={(store) => onUpdate({ store })}
                     />
                 </BundleFieldTable>
+                {hasDependencies && (
+                    <BundleFieldTable title='Dependencies' style={{ marginTop: 4 }}>
+                        <BundleDependencies bundle={bundle} />
+                    </BundleFieldTable>
+                )}
                 {showMoreDetail && <MoreDetail bundle={bundle} onUpdate={onUpdate} />}
                 <CollapseButton
                     containerClass={classes.collapseBtn}
