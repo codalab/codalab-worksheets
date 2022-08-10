@@ -1988,6 +1988,11 @@ class Worksheet extends React.Component {
                                     >
                                         <ExpandMoreIcon size='medium' />
                                     </Button>
+                                    {(this.state.updating || !info) && (
+                                        <div className={classes.loaderContainer}>
+                                            <Loading />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -2031,8 +2036,6 @@ class Worksheet extends React.Component {
                         {this.state.messagePopover.messageContent}
                     </div>
                 </Popover>
-                {this.state.updating && <Loading />}
-                {!info && <Loading />}
             </React.Fragment>
         );
     }
@@ -2083,6 +2086,9 @@ const styles = (theme) => ({
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
+    },
+    loaderContainer: {
+        marginTop: 35,
     },
 });
 

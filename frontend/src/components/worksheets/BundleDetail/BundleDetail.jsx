@@ -35,6 +35,7 @@ const BundleDetail = ({
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
+    const [contentType, setContentType] = useState('');
     const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
     const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
@@ -113,18 +114,14 @@ const BundleDetail = ({
     const fetcherContents = (url) => {
         if (!fetchingContent) {
             setFetchingContent(true);
-            return apiWrapper
-                .get(url)
-                .catch((error) => {
-                    // If contents aren't available yet, then also clear stdout and stderr.
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
-                })
-                .finally(() => {
-                    setFetchingContent(false);
-                });
+            return apiWrapper.get(url).catch((error) => {
+                // If contents aren't available yet, then also clear stdout and stderr.
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
+                setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                setFetchingContent(false);
+            });
         }
     };
 
@@ -184,6 +181,8 @@ const BundleDetail = ({
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
             updateBundleDetail(response);
+            setContentType(response.data?.type);
+            setFetchingContent(false);
         },
     });
 
@@ -233,6 +232,8 @@ const BundleDetail = ({
                 stdout={stdout}
                 stderr={stderr}
                 fileContents={fileContents}
+                fetchingContent={fetchingContent}
+                contentType={contentType}
             />
         </ConfigurationPanel>
     );
