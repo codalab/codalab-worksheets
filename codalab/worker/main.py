@@ -426,13 +426,13 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except docker_utils.DockerException:
+        all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except DockerException:
         all_gpus = {}
     # Docker socket can't be used
     except requests.exceptions.ConnectionError:
         try:
-            all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+            all_gpus = DockerRuntime().get_nvidia_devices(use_docker=False)
         except SingularityError:
             all_gpus = {}
 
