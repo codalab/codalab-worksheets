@@ -43,16 +43,16 @@ const styles = (theme) => ({
         borderRadius: '100%',
     },
     ready: {
-        background: `radial-gradient(circle at 2px 2px, ${theme.color.green.light}, ${theme.color.green.darkest})`,
+        backgroundColor: theme.color.green.base,
     },
     pending: {
-        background: `radial-gradient(circle at 2px 2px, ${theme.color.yellow.base}, ${theme.color.yellow.darkest})`,
+        backgroundColor: theme.color.yellow.base,
     },
     failed: {
-        background: `radial-gradient(circle at 2px 2px, ${theme.color.red.light}, ${theme.color.red.darkest})`,
+        backgroundColor: theme.color.red.base,
     },
     offline: {
-        background: `radial-gradient(circle at 2px 2px, ${theme.color.grey.dark}, ${theme.color.grey.darkest})`,
+        backgroundColor: theme.color.grey.darker,
     },
     tooltip: {
         fontSize: 14,

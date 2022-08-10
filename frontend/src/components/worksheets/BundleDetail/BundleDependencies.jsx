@@ -1,6 +1,5 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import Tooltip from '@material-ui/core/Tooltip';
 import { shorten_uuid } from '../../../util/worksheet_utils';
 import BundleStateIndicator from './BundleStateIndicator';
 
@@ -12,14 +11,6 @@ class BundleDependencies extends React.PureComponent {
         super(props);
     }
 
-    getTitle(dep = {}) {
-        const uuid = shorten_uuid(dep.parent_uuid);
-        if (dep.parent_name === dep.child_path) {
-            return `${dep.parent_name} (${uuid})`;
-        }
-        return `${dep.parent_name} (${uuid}) as ${dep.child_path}`;
-    }
-
     render() {
         const { bundle, classes } = this.props;
         const dependencies = bundle.dependencies.value;
@@ -29,20 +20,22 @@ class BundleDependencies extends React.PureComponent {
         }
 
         return dependencies.map((dep) => {
-            const name = dep.child_path || dep.parent_name;
+            const name = dep.parent_name;
+            const alias = name === dep.child_path ? null : dep.child_path;
             const state = dep.parent_state;
             const uuid = dep.parent_uuid;
             const href = '/bundles/' + uuid;
-            const title = this.getTitle(dep);
             return (
-                <div className={classes.container} key={uuid}>
-                    <div className={classes.truncate}>
+                <div className={classes.depContainer} key={uuid}>
+                    <div className={classes.stateContainer}>
                         <BundleStateIndicator state={state} />
-                        <Tooltip title={title} classes={{ tooltip: classes.tooltip }}>
-                            <a className={classes.link} href={href} target='_blank'>
-                                {name}
-                            </a>
-                        </Tooltip>
+                    </div>
+                    <div className={classes.nameContainer}>
+                        {name} (
+                        <a className={classes.uuidLink} href={href} target='_blank'>
+                            {shorten_uuid(uuid)}
+                        </a>
+                        ){alias && <div className={classes.alias}>as {alias}</div>}
                     </div>
                 </div>
             );
@@ -51,22 +44,24 @@ class BundleDependencies extends React.PureComponent {
 }
 
 const styles = (theme) => ({
-    container: {
-        marginBottom: 2,
-    },
-    truncate: {
-        width: '100%',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-    },
-    link: {
-        paddingLeft: 5,
+    depContainer: {
+        display: 'flex',
+        marginBottom: 4,
         fontSize: 14,
+    },
+    nameContainer: {
+        paddingLeft: 5,
+    },
+    uuidLink: {
         color: theme.color.primary.dark,
         '&:hover': {
             color: theme.color.primary.base,
         },
+    },
+    alias: {
+        paddingLeft: 15,
+        fontSize: 12,
+        color: theme.color.grey.darkest,
     },
     tooltip: {
         fontSize: 14,
