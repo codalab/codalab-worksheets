@@ -215,7 +215,9 @@ class BlobStorageUploader(Uploader):
         bundle_conn_str=None,
         index_conn_str=None,
         progress_callback=None,
-    ):
+    ):  
+        import datetime
+        time1 = datetime.datetime.now()
         if unpack_archive:
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
         else:
@@ -227,7 +229,7 @@ class BlobStorageUploader(Uploader):
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
             bytes_uploaded = 0
-            CHUNK_SIZE = 16 * 1024
+            CHUNK_SIZE = 4 * 1024
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
@@ -241,7 +243,8 @@ class BlobStorageUploader(Uploader):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
-
+            time2 = datetime.datetime.now()
+            print("== Upload time is: {}".format(time2 - time1))
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -252,6 +255,10 @@ class BlobStorageUploader(Uploader):
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
                 )
+
+                time3 = datetime.datetime.now()
+                print("== Generate index time is: {}".format(time3 - time2))
+
                 if bundle_conn_str is not None:
                     os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
                 with FileSystems.create(
@@ -268,6 +275,8 @@ class BlobStorageUploader(Uploader):
                             should_resume = progress_callback(bytes_uploaded)
                             if not should_resume:
                                 raise Exception('Upload aborted by client')
+                time4 = datetime.datetime.now()
+                print("== Upload index time is: {}".format(time4- time3))
         except Exception as err:
             raise err
         finally:  # restore the origin connection string
