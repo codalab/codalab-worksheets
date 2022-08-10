@@ -1,30 +1,31 @@
 import * as React from 'react';
-import Bundle from '../components/Bundle/Bundle';
+import { withStyles } from '@material-ui/core';
+import BundleDetail from '../components/worksheets/BundleDetail';
 
 /**
  * This route page displays a bundle's metadata and contents.
  */
-class BundleRoute extends React.Component<> {
-    /** Prop default values. */
-    static defaultProps = {
-        // key: value,
-    };
-
-    /** Constructor. */
+class BundleRoute extends React.Component {
     constructor(props) {
         super(props);
-        const { uuid } = this.props.match.params;
-        this.state = {
-            bundleInfo: null,
-            uuid,
-        };
     }
 
-    /** Renderer. */
     render() {
         const { uuid } = this.props.match.params;
-        return <Bundle uuid={uuid} isStandalonePage={true} />;
+        const { classes } = this.props;
+        return (
+            <div className={classes.bundleContainer}>
+                <BundleDetail uuid={uuid} onUpdate={() => {}} sidebarExpanded hideBundlePageLink />
+            </div>
+        );
     }
 }
 
-export default BundleRoute;
+const styles = (theme) => ({
+    bundleContainer: {
+        margin: '12px 10px',
+        border: `2px solid ${theme.color.grey.light}`,
+    },
+});
+
+export default withStyles(styles)(BundleRoute);

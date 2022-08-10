@@ -1,9 +1,7 @@
 // @flow
 import * as React from 'react';
-import classNames from 'classnames';
-
 import { withStyles } from '@material-ui/core/styles';
-import HelpIcon from '@material-ui/icons/Help';
+import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
 
@@ -28,7 +26,10 @@ class ConfigLabel extends React.Component<{
                 {!tooltip ? null : (
                     <Tooltip title={tooltip} classes={{ tooltip: classes.tooltipBox }}>
                         <span className={classes.tooltipIcon}>
-                            <HelpIcon fontSize='inherit' style={{ verticalAlign: 'middle' }} />
+                            <HelpOutlineOutlinedIcon
+                                fontSize='inherit'
+                                style={{ verticalAlign: 'sub' }}
+                            />
                         </span>
                     </Tooltip>
                 )}
@@ -56,7 +57,7 @@ const styles = (theme) => ({
         padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
-        color: theme.color.grey.base,
+        color: theme.color.grey.dark,
         paddingLeft: theme.spacing.unit,
         paddingRight: theme.spacing.unit,
         fontSize: 'small',

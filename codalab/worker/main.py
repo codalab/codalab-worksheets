@@ -13,12 +13,13 @@ import stat
 import sys
 import psutil
 
+from codalab.common import SingularityError
 from codalab.common import BundleRuntime
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
 from .worker import Worker
-from codalab.worker.docker_utils import DockerRuntime
+from codalab.worker.docker_utils import DockerRuntime, DockerException
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
@@ -124,14 +125,10 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--bundle-runtime',
-        choices=[
-            BundleRuntime.DOCKER.value,
-            BundleRuntime.KUBERNETES.value,
-            BundleRuntime.SINGULARITY.value,
-        ],
-        default=BundleRuntime.DOCKER.value,
-        help='The runtime through which the worker will run bundles. The options are docker (default), kubernetes, or singularity',
+        '--container-runtime',
+        choices=['docker', 'singularity'],
+        default='docker',
+        help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -424,10 +421,15 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except Exception:
+        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except docker_utils.DockerException:
         all_gpus = {}
-        # TODO: do this same check for the Kubernetes runtime.
+    # Docker socket can't be used
+    except requests.exceptions.ConnectionError:
+        try:
+            all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+        except SingularityError:
+            all_gpus = {}
 
     if arg == 'ALL':
         return set(all_gpus.values())

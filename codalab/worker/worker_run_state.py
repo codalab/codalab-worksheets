@@ -453,7 +453,7 @@ class RunStateMachine(StateTransitioner):
 
         return run_state._replace(
             stage=RunStage.RUNNING,
-            run_status='Running job in container',
+            run_status='Running job in container.',
             container_id=container_id,
             container=None,
             docker_image=image_state.digest,
@@ -482,7 +482,7 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            (cpu_usage, memory_usage,) = self.bundle_runtime.get_container_stats_with_docker_stats(
+            cpu_usage, memory_usage = self.bundle_runtime.get_container_stats_with_docker_stats(
                 run_state.container_id
             )
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
@@ -695,8 +695,8 @@ class RunStateMachine(StateTransitioner):
                 logger.debug('Uploading results for run with UUID %s', run_state.bundle.uuid)
 
                 def progress_callback(bytes_uploaded):
-                    run_status = 'Uploading results: %s done (archived size)' % size_str(
-                        bytes_uploaded
+                    run_status = 'Uploading results: %s uploaded (archived size)' % size_str(
+                        bytes_uploaded, include_bytes=True,
                     )
                     self.uploading[run_state.bundle.uuid]['run_status'] = run_status
                     return True

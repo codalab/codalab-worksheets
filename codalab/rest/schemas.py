@@ -195,6 +195,7 @@ class BundleSchema(Schema):
     command = fields.String(allow_none=True, validate=validate_ascii)
     data_hash = fields.String()
     state = fields.String()
+    state_details = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
@@ -237,8 +238,9 @@ class BundleStoreSchema(Schema):
 
 
 class BundleLocationSchema(Schema):
-    bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
-    bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
+    id = fields.String(validate=validate_uuid, attribute='uuid')
+    bundle_uuid = fields.String(validate=validate_uuid, attribute='bundle_uuid')
+    bundle_store_uuid = fields.String(validate=validate_uuid, attribute='bundle_store_uuid')
 
     class Meta:
         type_ = 'bundle_locations'
