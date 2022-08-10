@@ -91,10 +91,7 @@ class KubernetesRuntime(Runtime):
         command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
         working_directory = '/' + uuid
         container_name = 'codalab-run-%s' % uuid
-        limits = {
-            'cpu': request_cpus,
-            'memory': memory_bytes
-        }
+        limits = {'cpu': request_cpus, 'memory': memory_bytes}
         if request_gpus > 0:
             limits['nvidia.com/gpu'] = request_gpus  # Configure NVIDIA GPUs
         config: Dict[str, Any] = {
@@ -112,9 +109,7 @@ class KubernetesRuntime(Runtime):
                             {'name': 'HOME', 'value': working_directory},
                             {'name': 'CODALAB', 'value': 'true'},
                         ],
-                        'resources': {
-                            'limits': limits
-                        },
+                        'resources': {'limits': limits},
                         # Mount only the needed dependencies as read-only and the working directory of the bundle,
                         # rather than mounting all of self.work_dir.
                         'volumeMounts': [

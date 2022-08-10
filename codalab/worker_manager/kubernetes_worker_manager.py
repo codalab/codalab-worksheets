@@ -147,7 +147,6 @@ class KubernetesWorkerManager(WorkerManager):
                     }
                 ],
                 'volumes': [
-                    {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}}, # TODO (Ashwin): don't mount this?
                     {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
                     {
                         "name": self.nfs_volume_name,

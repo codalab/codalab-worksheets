@@ -12,6 +12,7 @@ import socket
 import stat
 import sys
 import psutil
+import requests
 
 from codalab.common import SingularityError
 from codalab.common import BundleRuntime
@@ -125,10 +126,14 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--container-runtime',
-        choices=['docker', 'singularity'],
-        default='docker',
-        help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
+        '--bundle-runtime',
+        choices=[
+            BundleRuntime.DOCKER.value,
+            BundleRuntime.KUBERNETES.value,
+            BundleRuntime.SINGULARITY.value,
+        ],
+        default=BundleRuntime.DOCKER.value,
+        help='The runtime through which the worker will run bundles. The options are docker (default), kubernetes, or singularity',
     )
     parser.add_argument(
         '--idle-seconds',

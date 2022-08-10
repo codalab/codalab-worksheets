@@ -434,7 +434,7 @@ class Worker:
             'tag': self.tag,
             'group_name': self.group_name,
             'cpus': len(self.cpuset),
-            'gpus': 1,
+            'gpus': len(self.gpuset),
             'memory_bytes': self.max_memory,
             'free_disk_bytes': self.free_disk_bytes,
             'dependencies': self.cached_dependencies,
