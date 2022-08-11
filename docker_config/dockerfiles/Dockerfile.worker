@@ -67,7 +67,6 @@ RUN python3 -m pip install --user --upgrade pip==20.3.4; \
     python3 -m pip install --no-cache-dir -r requirements.txt;
 
 # Install code
-
 COPY setup.py setup.py
 RUN python3 -m pip install --no-cache-dir -e .
 COPY codalab/lib codalab/lib
