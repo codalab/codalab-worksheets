@@ -27,6 +27,12 @@ class BundleFieldRow extends React.Component {
         super(props);
     }
 
+    /**
+     * Returns true if this field should be hidden.
+     * We should only show fields that either have values or are editable.
+     *
+     * @returns {bool}
+     */
     checkHideRow() {
         const field = this.props.field || {};
         const value = this.props.value || field?.value;
