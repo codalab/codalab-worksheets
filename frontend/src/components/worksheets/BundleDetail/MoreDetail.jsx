@@ -14,102 +14,107 @@ class MoreDetail extends React.Component {
         super(props);
     }
 
+    checkSources() {
+        const bundle = this.props.bundle;
+        const sourceFields = ['license', 'source_url', 'link_url', 'link_format'];
+        for (let i in sourceFields) {
+            const field = sourceFields[i];
+            if (bundle[field]?.editable || bundle[field]?.value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     render() {
         const { bundle, onUpdate } = this.props;
         const bundleType = bundle.bundle_type.value;
-        const isRunBundle = bundleType === 'run';
-        const isUploadedBundle = bundleType === 'dataset';
-        const hasExclusions =
-            bundle.exclude_patterns?.value?.length || bundle.exclude_patterns?.editable;
+        const exclusions = bundle.exclude_patterns;
+
+        const showResources = bundleType === 'run';
+        const showSources = bundleType === 'dataset' ? this.checkSources() : false;
+        const showExclusions = exclusions?.value.length || exclusions?.editable;
+        const showTime = bundle.time?.value || bundle.request_time?.editable;
+        const showHostWorksheets = !!bundle.host_worksheets?.value.length;
 
         return (
             <>
-                {isRunBundle && (
-                    <>
-                        <BundleFieldTable title='Resources'>
-                            <BundleFieldRow
-                                label='Disk'
-                                field={bundle.request_disk}
-                                onChange={(request_disk) => onUpdate({ request_disk })}
-                            />
-                            <BundleFieldRow
-                                label='Memory'
-                                field={bundle.request_memory}
-                                onChange={(request_memory) => onUpdate({ request_memory })}
-                            />
-                            <BundleFieldRow
-                                label='CPUs'
-                                field={bundle.request_cpus}
-                                onChange={(request_cpus) => onUpdate({ request_cpus })}
-                            />
-                            <BundleFieldRow
-                                label='GPUs'
-                                field={bundle.request_gpus}
-                                onChange={(request_gpus) => onUpdate({ request_gpus })}
-                            />
-                            <BundleFieldRow
-                                label='Docker Image Requested'
-                                field={bundle.request_docker_image}
-                                onChange={(request_docker_image) =>
-                                    onUpdate({ request_docker_image })
-                                }
-                            />
-                            <BundleFieldRow
-                                label='Docker Image Used'
-                                field={bundle.docker_image}
-                                allowCopy
-                                noWrap
-                            />
-                            <BundleFieldRow
-                                label='Queue'
-                                field={bundle.request_queue}
-                                onChange={(request_queue) => onUpdate({ request_queue })}
-                            />
-                            <BundleFieldRow
-                                label='Priority'
-                                field={bundle.request_priority}
-                                onChange={(request_priority) => onUpdate({ request_priority })}
-                            />
-                            <BundleFieldRow
-                                label='Network'
-                                field={bundle.request_network}
-                                onChange={(request_network) => onUpdate({ request_network })}
-                            />
-                            <BundleFieldRow
-                                label='Preemptible'
-                                field={bundle.on_preemptible_worker}
-                            />
-                            <BundleFieldRow
-                                label='Failed Dependencies'
-                                field={bundle.allow_failed_dependencies}
-                                onChange={(allow_failed_dependencies) =>
-                                    onUpdate({ allow_failed_dependencies })
-                                }
-                            />
-                        </BundleFieldTable>
-
-                        <BundleFieldTable title='Time'>
-                            <BundleFieldRow
-                                label='Time Allowed'
-                                field={bundle.request_time}
-                                onChange={(request_time) => onUpdate({ request_time })}
-                            />
-                            <BundleFieldRow label='Time Preparing' field={bundle.time_preparing} />
-                            <BundleFieldRow label='Time Running' field={bundle.time_running} />
-                            <BundleFieldRow
-                                label='Time Uploading'
-                                field={bundle.time_uploading_results}
-                            />
-                            <BundleFieldRow
-                                label='Time Cleaning Up'
-                                field={bundle.time_cleaning_up}
-                            />
-                            <BundleFieldRow label='Total Time' field={bundle.time} />
-                        </BundleFieldTable>
-                    </>
+                {showResources && (
+                    <BundleFieldTable title='Resources'>
+                        <BundleFieldRow
+                            label='Disk'
+                            field={bundle.request_disk}
+                            onChange={(request_disk) => onUpdate({ request_disk })}
+                        />
+                        <BundleFieldRow
+                            label='Memory'
+                            field={bundle.request_memory}
+                            onChange={(request_memory) => onUpdate({ request_memory })}
+                        />
+                        <BundleFieldRow
+                            label='CPUs'
+                            field={bundle.request_cpus}
+                            onChange={(request_cpus) => onUpdate({ request_cpus })}
+                        />
+                        <BundleFieldRow
+                            label='GPUs'
+                            field={bundle.request_gpus}
+                            onChange={(request_gpus) => onUpdate({ request_gpus })}
+                        />
+                        <BundleFieldRow
+                            label='Docker Image Requested'
+                            field={bundle.request_docker_image}
+                            onChange={(request_docker_image) => onUpdate({ request_docker_image })}
+                        />
+                        <BundleFieldRow
+                            label='Docker Image Used'
+                            field={bundle.docker_image}
+                            allowCopy
+                            noWrap
+                        />
+                        <BundleFieldRow label='Preemptible' field={bundle.on_preemptible_worker} />
+                        <BundleFieldRow
+                            label='Queue'
+                            field={bundle.request_queue}
+                            onChange={(request_queue) => onUpdate({ request_queue })}
+                        />
+                        <BundleFieldRow
+                            label='Priority'
+                            field={bundle.request_priority}
+                            onChange={(request_priority) => onUpdate({ request_priority })}
+                        />
+                        <BundleFieldRow
+                            label='Network'
+                            field={bundle.request_network}
+                            onChange={(request_network) => onUpdate({ request_network })}
+                        />
+                        <BundleFieldRow
+                            label='Failed Dependencies'
+                            field={bundle.allow_failed_dependencies}
+                            onChange={(allow_failed_dependencies) =>
+                                onUpdate({ allow_failed_dependencies })
+                            }
+                        />
+                    </BundleFieldTable>
                 )}
-
-                {isUploadedBundle && (
+                {showTime && (
+                    <BundleFieldTable title='Time'>
+                        <BundleFieldRow
+                            label='Time Allowed'
+                            field={bundle.request_time}
+                            onChange={(request_time) => onUpdate({ request_time })}
+                        />
+                        <BundleFieldRow label='Time Preparing' field={bundle.time_preparing} />
+                        <BundleFieldRow label='Time Running' field={bundle.time_running} />
+                        <BundleFieldRow
+                            label='Time Uploading'
+                            field={bundle.time_uploading_results}
+                        />
+                        <BundleFieldRow label='Time Cleaning Up' field={bundle.time_cleaning_up} />
+                        <BundleFieldRow label='Total Time' field={bundle.time} />
+                    </BundleFieldTable>
+                )}
+                {showSources && (
                     <BundleFieldTable title='Sources'>
                         <BundleFieldRow
                             label='License'
@@ -133,8 +138,7 @@ class MoreDetail extends React.Component {
                         />
                     </BundleFieldTable>
                 )}
-
-                {hasExclusions && (
+                {showExclusions && (
                     <BundleFieldTable title='Contents'>
                         <BundleFieldRow
                             label='Exclude Patterns'
@@ -143,14 +147,16 @@ class MoreDetail extends React.Component {
                         />
                     </BundleFieldTable>
                 )}
-
-                <BundleFieldTable title='Worksheets'>
-                    <BundleFieldRow
-                        label='Host Worksheets'
-                        field={bundle.host_worksheets}
-                        value={<BundleHostWorksheets bundle={bundle} />}
-                    />
-                </BundleFieldTable>
+                {showHostWorksheets && (
+                    <BundleFieldTable title='Worksheets'>
+                        <BundleFieldRow
+                            label='Host Worksheets'
+                            description='Worksheets associated with this bundle.'
+                            field={bundle.host_worksheets}
+                            value={<BundleHostWorksheets bundle={bundle} />}
+                        />
+                    </BundleFieldTable>
+                )}
             </>
         );
     }

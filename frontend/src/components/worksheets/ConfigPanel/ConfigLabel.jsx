@@ -54,7 +54,6 @@ const styles = (theme) => ({
     },
     tooltipBox: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
         color: theme.color.grey.dark,
