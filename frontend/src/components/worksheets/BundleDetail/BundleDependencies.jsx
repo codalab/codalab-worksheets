@@ -59,7 +59,7 @@ const styles = (theme) => ({
         },
     },
     alias: {
-        paddingLeft: 15,
+        paddingLeft: 12,
         fontSize: 12,
         color: theme.color.grey.darkest,
     },
