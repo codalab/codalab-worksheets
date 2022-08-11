@@ -66,26 +66,27 @@ export function renderDate(epochSeconds) {
     return dt.toDateString() + ' ' + padInt(hour, 2) + ':' + padInt(min, 2) + ':' + padInt(sec, 2);
 }
 
-export function renderSize(size) {
+export function renderSize(size, includeBytes = false) {
     // size: number of bytes
+    // includeBytes: whether or not to include 'bytes' string in the return value
     // Return a human-readable string.
     var units = ['', 'k', 'm', 'g', 't'];
     for (var i = 0; i < units.length; i++) {
-        var unit = units[i];
+        const unit = includeBytes && units[i] === '' ? ' bytes' : units[i];
         if (size < 100 && size !== Math.floor(size)) return Math.round(size * 10) / 10.0 + unit;
         if (size < 1024) return Math.round(size) + unit;
         size /= 1024.0;
     }
 }
 
-export function renderFormat(value, type) {
+export function renderFormat(value, type, includeBytes = false) {
     switch (type) {
         case 'list':
             return value.join(' ');
         case 'date':
             return renderDate(value);
         case 'size':
-            return renderSize(value);
+            return renderSize(value, includeBytes);
         case 'duration':
             return renderDuration(value);
         case 'bool':
@@ -122,10 +123,11 @@ export function serializeFormat(formatted, type) {
     }
 }
 
-export function renderPermissions(state) {
+export function renderPermissions(state, style = {}) {
     // Render permissions:
     // - state.permission_spec (what user has)
     // - state.group_permissions (what other people have)
+    // - style (optional container styles)
     if (!state.permission_spec) return;
 
     function permissionToClass(permission) {
@@ -147,7 +149,7 @@ export function renderPermissions(state) {
     }
 
     return (
-        <div>
+        <div style={style}>
             &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
@@ -405,7 +407,7 @@ export function formatBundle(bundle) {
         if (unformattedFields.includes(field)) {
             const value = mergedBundle[field];
             const type = result[field].type;
-            result[field].value = renderFormat(value, type);
+            result[field].value = renderFormat(value, type, true);
         } else {
             result[field].value = mergedBundle[field];
         }

@@ -15,16 +15,21 @@ class BundleRoute extends React.Component {
         const { classes } = this.props;
         return (
             <div className={classes.bundleContainer}>
-                <BundleDetail uuid={uuid} onUpdate={() => {}} sidebarExpanded hideBundlePageLink />
+                <BundleDetail
+                    uuid={uuid}
+                    onUpdate={() => {}}
+                    sidebarExpanded
+                    hideBundlePageLink
+                    showBorder
+                />
             </div>
         );
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     bundleContainer: {
         margin: '12px 10px',
-        border: `2px solid ${theme.color.grey.light}`,
     },
 });
 

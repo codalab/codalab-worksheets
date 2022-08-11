@@ -17,12 +17,18 @@ class BundlePermissions extends React.Component {
     render() {
         const { bundleInfo, classes, showDialog, onClick, onChange } = this.props;
         const { uuid, permission_spec, group_permissions } = bundleInfo;
+        const style = {
+            maxWidth: 168,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+        };
 
         return (
             <>
                 <div onClick={onClick} className={classes.permissionsContainer}>
                     <div className={classes.permissions}>
-                        {renderPermissions(bundleInfo)}
+                        {renderPermissions(bundleInfo, style)}
                         {showDialog ? (
                             <KeyboardArrowDownIcon fontSize='small' />
                         ) : (
