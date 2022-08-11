@@ -35,7 +35,7 @@ class BundleStateBox extends React.Component {
 
         return (
             <Tooltip
-                classes={{ tooltip: classes.tooltipContainer }}
+                classes={{ tooltip: classes.tooltip }}
                 disableHoverListener={!title}
                 title={title}
             >
@@ -50,9 +50,8 @@ class BundleStateBox extends React.Component {
 }
 
 const styles = (theme) => ({
-    tooltipContainer: {
+    tooltip: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     baseState: {
         display: 'inline-block',

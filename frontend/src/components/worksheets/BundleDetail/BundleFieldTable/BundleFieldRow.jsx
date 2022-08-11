@@ -41,23 +41,9 @@ class BundleFieldRow extends React.Component {
         return false;
     }
 
-    getTitle() {
-        const field = this.props.field || {};
-        const description = this.props.description || field.description;
-        if (!description) {
-            return;
-        }
-        const name = field.name;
-        if (!name) {
-            return description;
-        }
-        return `[${name}] ${description}`;
-    }
-
     render() {
         const { allowCopy, classes, onChange, noWrap } = this.props;
         const hideRow = this.checkHideRow();
-        const title = this.getTitle();
         const field = this.props.field || {};
         const name = field.name;
         const dataType = field.type;
@@ -66,6 +52,7 @@ class BundleFieldRow extends React.Component {
 
         // allow props to override field values
         const label = this.props.label || field.name;
+        const description = this.props.description || field.description;
         const value = this.props.value || field.value;
         const copyValue = this.props.copyValue || value;
 
@@ -79,8 +66,8 @@ class BundleFieldRow extends React.Component {
                     <Typography variant='subtitle2' inline>
                         {label}
                     </Typography>
-                    {title && (
-                        <Tooltip title={title} classes={{ tooltip: classes.tooltipContainer }}>
+                    {description && (
+                        <Tooltip title={description} classes={{ tooltip: classes.tooltip }}>
                             <span className={classes.tooltipIcon}>
                                 <HelpOutlineOutlinedIcon
                                     fontSize='inherit'
@@ -115,9 +102,8 @@ class BundleFieldRow extends React.Component {
 }
 
 const styles = (theme) => ({
-    tooltipContainer: {
+    tooltip: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
         display: 'inline-block',
