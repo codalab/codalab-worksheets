@@ -67,9 +67,16 @@ class BundleDetailSideBar extends React.Component {
                         field={bundle.tags}
                         onChange={(tags) => onUpdate({ tags })}
                     />
-                    {!isAnonymous && <BundleFieldRow label='Owner' field={bundle.user_name} />}
+                    {!isAnonymous && (
+                        <BundleFieldRow
+                            label='Owner'
+                            description='The user who owns this bundle.'
+                            field={bundle.user_name}
+                        />
+                    )}
                     <BundleFieldRow
                         label='Permissions'
+                        description='Click the right arrow to expand permissions settings.'
                         field={bundle.permission}
                         value={
                             <BundlePermissions
@@ -82,6 +89,7 @@ class BundleDetailSideBar extends React.Component {
                     />
                     <BundleFieldRow label='Created' field={bundle.created} />
                     <BundleFieldRow label='Size' field={bundle.data_size} />
+                    <BundleFieldRow label='Remote' field={bundle.remote} />
                     <BundleFieldRow
                         label='Store'
                         field={bundle.store}

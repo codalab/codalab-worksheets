@@ -31,7 +31,7 @@ export default class extends React.Component {
     render() {
         return (
             <div>
-                {this.state.loading && <Loading />}
+                {this.state.loading && <Loading style={{ marginTop: 30 }} />}
                 {this.state.error && (
                     <ErrorMessage message={'Error. Please provide a worksheet uuid'} />
                 )}

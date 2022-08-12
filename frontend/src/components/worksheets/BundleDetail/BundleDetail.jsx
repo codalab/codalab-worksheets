@@ -1,23 +1,21 @@
 // @flow
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import * as $ from 'jquery';
-// import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
-
-import ConfigurationPanel from '../ConfigPanel';
-import MainContent from './MainContent';
-import BundleDetailSideBar from './BundleDetailSideBar';
-import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
+
+import ConfigurationPanel from '../ConfigPanel';
+import ErrorMessage from '../ErrorMessage';
+import MainContent from './MainContent';
+import BundleDetailSideBar from './BundleDetailSideBar';
+import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
     // Callback on metadata change.
     bundleMetadataChanged,
-    onClose,
     onOpen,
     onUpdate,
     rerunItem,
@@ -27,22 +25,26 @@ const BundleDetail = ({
     editPermission,
     sidebarExpanded,
     hideBundlePageLink,
+    showBorder,
 }) => {
-    const [errorMessages, setErrorMessages] = useState([]);
     const [bundleInfo, setBundleInfo] = useState(null);
     const [fileContents, setFileContents] = useState(null);
     const [stdout, setStdout] = useState(null);
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
+    const [contentType, setContentType] = useState('');
     const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
+    const [contentErrors, setContentErrors] = useState([]);
+    const [metadataErrors, setMetadataErrors] = useState([]);
     const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
             setPrevUuid(uuid);
-            setErrorMessages([]);
+            setContentErrors([]);
+            setMetadataErrors([]);
         }
     }, [uuid]);
 
@@ -80,7 +82,7 @@ const BundleDetail = ({
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                    setMetadataErrors((metadataErrors) => metadataErrors.concat([error]));
                 })
                 .finally(() => {
                     setFetchingMetadata(false);
@@ -107,24 +109,21 @@ const BundleDetail = ({
             bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
             bundleInfo.metadataType = response.data.meta.metadata_type;
             setBundleInfo(bundleInfo);
+            setMetadataErrors([]);
         },
     });
 
     const fetcherContents = (url) => {
         if (!fetchingContent) {
             setFetchingContent(true);
-            return apiWrapper
-                .get(url)
-                .catch((error) => {
-                    // If contents aren't available yet, then also clear stdout and stderr.
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
-                })
-                .finally(() => {
-                    setFetchingContent(false);
-                });
+            return apiWrapper.get(url).catch((error) => {
+                // If contents aren't available yet, then also clear stdout and stderr.
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
+                setContentErrors((contentErrors) => contentErrors.concat([error]));
+                setFetchingContent(false);
+            });
         }
     };
 
@@ -184,6 +183,9 @@ const BundleDetail = ({
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
             updateBundleDetail(response);
+            setContentErrors([]);
+            setContentType(response.data?.type);
+            setFetchingContent(false);
         },
     });
 
@@ -197,8 +199,12 @@ const BundleDetail = ({
     };
 
     if (!bundleInfo) {
+        if (metadataErrors.length) {
+            return <ErrorMessage message='Error: Bundle Unavailable' />;
+        }
         return <div></div>;
     }
+
     if (bundleInfo.bundle_type === 'private') {
         return <div>Detail not available for this bundle</div>;
     }
@@ -227,12 +233,15 @@ const BundleDetail = ({
                     hidePageLink={hideBundlePageLink}
                 />
             }
+            showBorder={showBorder}
         >
             <MainContent
                 bundleInfo={bundleInfo}
                 stdout={stdout}
                 stderr={stderr}
                 fileContents={fileContents}
+                fetchingContent={fetchingContent}
+                contentType={contentType}
             />
         </ConfigurationPanel>
     );

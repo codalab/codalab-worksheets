@@ -34,7 +34,11 @@ class BundleStateBox extends React.Component {
         const activeClass = this.getActiveClass(state);
 
         return (
-            <Tooltip title={title} disableHoverListener={!title}>
+            <Tooltip
+                classes={{ tooltip: classes.tooltip }}
+                disableHoverListener={!title}
+                title={title}
+            >
                 <div className={`${classes.baseState} ${activeClass}`}>
                     <Typography inline color='inherit'>
                         {state}
@@ -46,6 +50,9 @@ class BundleStateBox extends React.Component {
 }
 
 const styles = (theme) => ({
+    tooltip: {
+        fontSize: 14,
+    },
     baseState: {
         display: 'inline-block',
         borderRadius: '5px',
