@@ -23,7 +23,6 @@ class BundleStateTest(unittest.TestCase):
                     'parent_uuid': 'parent_uuid_0',
                     'parent_path': 'parent_path_0',
                     'parent_name': 'parent_name_0',
-                    'parent_state': 'parent_state_0',
                 },
                 {
                     'child_uuid': 'child_uuid_1',
@@ -31,7 +30,6 @@ class BundleStateTest(unittest.TestCase):
                     'parent_uuid': 'parent_uuid_1',
                     'parent_path': 'parent_path_1',
                     'parent_name': 'parent_name_1',
-                    'parent_state': 'parent_state_1',
                 },
             ],
             'location': 'location',
@@ -61,7 +59,6 @@ class BundleStateTest(unittest.TestCase):
             [
                 Dependency(
                     parent_name='parent_name_0',
-                    parent_state='parent_state_0',
                     parent_path='parent_path_0',
                     parent_uuid='parent_uuid_0',
                     child_path='child_path_0',
@@ -70,7 +67,6 @@ class BundleStateTest(unittest.TestCase):
                 ),
                 Dependency(
                     parent_name='parent_name_1',
-                    parent_state='parent_state_1',
                     parent_path='parent_path_1',
                     parent_uuid='parent_uuid_1',
                     child_path='child_path_1',
@@ -84,7 +80,6 @@ class BundleStateTest(unittest.TestCase):
             [
                 {
                     'parent_name': 'parent_name_0',
-                    'parent_state': 'parent_state_0',
                     'parent_path': 'parent_path_0',
                     'parent_uuid': 'parent_uuid_0',
                     'child_path': 'child_path_0',
@@ -93,7 +88,6 @@ class BundleStateTest(unittest.TestCase):
                 },
                 {
                     'parent_name': 'parent_name_1',
-                    'parent_state': 'parent_state_1',
                     'parent_path': 'parent_path_1',
                     'parent_uuid': 'parent_uuid_1',
                     'child_path': 'child_path_1',
