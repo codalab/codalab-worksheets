@@ -55,10 +55,6 @@ class BundleStateTable extends React.Component {
         const currentState = bundle.state.value;
         const inFinalState = finalStates.includes(currentState);
 
-
-        // TODO: show status in a way that is less jumpy
-
-
         if (inFinalState) {
             return (
                 <BundleFieldRow
@@ -104,7 +100,7 @@ class BundleStateTable extends React.Component {
                 <BundleFieldRow
                     label='Status'
                     description="Additional information about the bundle's current state."
-                    field={bundle.state_details}
+                    value={<div className={classes.stateDetails}>{stateDetails}</div>}
                 />
             </>
         );
@@ -115,6 +111,16 @@ const styles = (theme) => ({
     stateGraphic: {
         textAlign: 'center',
         marginBottom: 8,
+    },
+    stateDetails: {
+        width: 184,
+        paddingTop: 5,
+        paddingBottom: 5,
+        paddingLeft: 8,
+        paddingRight: 8,
+        border: `1px solid ${theme.color.grey.base}`,
+        backgroundColor: theme.color.grey.lightest,
+        borderRadius: 5,
     },
     timeContainer: {
         position: 'absolute',

@@ -168,18 +168,19 @@ const BundleDetail = ({
                     stateUpdate[name] = null;
                 }
             });
-            Promise.all(fetchRequests).then((r) => {
-                setFileContents(stateUpdate['fileContents']);
-                if ('stdout' in stateUpdate) {
-                    setStdout(stateUpdate['stdout']);
-                }
-                if ('stderr' in stateUpdate) {
-                    setStderr(stateUpdate['stderr']);
-                }
-            })
-            .finally(() => {
-                setFetchingContent(false);
-            });
+            Promise.all(fetchRequests)
+                .then((r) => {
+                    setFileContents(stateUpdate['fileContents']);
+                    if ('stdout' in stateUpdate) {
+                        setStdout(stateUpdate['stdout']);
+                    }
+                    if ('stderr' in stateUpdate) {
+                        setStderr(stateUpdate['stderr']);
+                    }
+                })
+                .finally(() => {
+                    setFetchingContent(false);
+                });
         }
     };
     useSWR(urlContents, fetcherContents, {
