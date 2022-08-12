@@ -66,38 +66,43 @@ class BundleStateTable extends React.Component {
         }
 
         return (
-            <BundleFieldRow
-                label='State'
-                description="The bundle lifecycle diagram to the right indicates this bundle's current state."
-                value={
-                    <div className={classes.stateGraphic}>
-                        {states.map((state) => {
-                            const isCurrent = currentState === state;
-                            const isLast = finalStates.includes(state);
-                            const time = this.getTime(state);
-                            return (
-                                <>
-                                    <div className={classes.stateBoxContainer}>
-                                        <BundleStateBox
-                                            state={state}
-                                            title={isCurrent && stateDetails}
-                                            isActive={isCurrent}
-                                        />
-                                        {time && (
-                                            <span className={classes.timeContainer}>{time}</span>
-                                        )}
-                                    </div>
-                                    {!isLast && (
-                                        <div className={classes.arrowContainer}>
-                                            <ArrowDownwardIcon fontSize='small' />
+            <>
+                <BundleFieldRow
+                    label='State'
+                    description="The bundle lifecycle diagram to the right indicates this bundle's current state."
+                    value={
+                        <div className={classes.stateGraphic}>
+                            {states.map((state) => {
+                                const isCurrent = currentState === state;
+                                const isLast = finalStates.includes(state);
+                                const time = this.getTime(state);
+                                return (
+                                    <>
+                                        <div className={classes.stateBoxContainer}>
+                                            <BundleStateBox state={state} isActive={isCurrent} />
+                                            {time && (
+                                                <span className={classes.timeContainer}>
+                                                    {time}
+                                                </span>
+                                            )}
                                         </div>
-                                    )}
-                                </>
-                            );
-                        })}
-                    </div>
-                }
-            />
+                                        {!isLast && (
+                                            <div className={classes.arrowContainer}>
+                                                <ArrowDownwardIcon fontSize='small' />
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })}
+                        </div>
+                    }
+                />
+                <BundleFieldRow
+                    label='Status'
+                    description="Additional information about the bundle's current state."
+                    field={bundle.state_details}
+                />
+            </>
         );
     }
 }
@@ -105,7 +110,7 @@ class BundleStateTable extends React.Component {
 const styles = (theme) => ({
     stateGraphic: {
         textAlign: 'center',
-        marginBottom: 16,
+        marginBottom: 8,
     },
     timeContainer: {
         position: 'absolute',

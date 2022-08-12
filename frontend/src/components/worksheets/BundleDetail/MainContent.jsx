@@ -70,6 +70,10 @@ class MainContent extends React.Component<{
         const command = bundleInfo.command;
         const failureMessage = bundleInfo.metadata.failure_message;
 
+
+        // TODO: Fix loading issue
+
+
         return (
             <div className={classes.outter}>
                 <Grid container>
