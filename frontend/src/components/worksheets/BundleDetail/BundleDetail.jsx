@@ -143,6 +143,7 @@ const BundleDetail = ({
                 })
                 .finally(() => {
                     setPendingFileSummaryFetches((f) => f - 1);
+                    setFetchingContent(false);
                 });
         } else if (info.type === 'directory') {
             // Get stdout/stderr (important to set things to null).
@@ -175,6 +176,9 @@ const BundleDetail = ({
                 if ('stderr' in stateUpdate) {
                     setStderr(stateUpdate['stderr']);
                 }
+            })
+            .finally(() => {
+                setFetchingContent(false);
             });
         }
     };
@@ -185,7 +189,6 @@ const BundleDetail = ({
             updateBundleDetail(response);
             setContentErrors([]);
             setContentType(response.data?.type);
-            setFetchingContent(false);
         },
     });
 

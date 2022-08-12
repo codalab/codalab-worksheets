@@ -55,6 +55,10 @@ class BundleStateTable extends React.Component {
         const currentState = bundle.state.value;
         const inFinalState = finalStates.includes(currentState);
 
+
+        // TODO: show status in a way that is less jumpy
+
+
         if (inFinalState) {
             return (
                 <BundleFieldRow
