@@ -13,22 +13,23 @@ class BundleStateIndicator extends React.Component {
 
     getStateClass() {
         const { classes, state } = this.props;
-        if (state === 'ready') {
-            return classes.ready;
-        }
-        if (state === 'failed' || state === 'killed') {
+        if (!state || state === 'failed' || state === 'killed') {
             return classes.failed;
         }
         if (state === 'worker_offline') {
             return classes.offline;
+        }
+        if (state === 'ready') {
+            return classes.ready;
         }
         return classes.pending;
     }
 
     render() {
         const { classes, state } = this.props;
+        const title = state || 'not found';
         return (
-            <Tooltip classes={{ tooltip: classes.tooltip }} title={state}>
+            <Tooltip classes={{ tooltip: classes.tooltip }} title={title}>
                 <div className={`${classes.base} ${this.getStateClass()}`} />
             </Tooltip>
         );

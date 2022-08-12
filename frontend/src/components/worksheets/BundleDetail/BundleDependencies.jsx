@@ -20,7 +20,7 @@ class BundleDependencies extends React.PureComponent {
         }
 
         return dependencies.map((dep) => {
-            const name = dep.parent_name;
+            const name = dep.parent_name || dep.child_path;
             const alias = name === dep.child_path ? null : dep.child_path;
             const state = dep.parent_state;
             const uuid = dep.parent_uuid;

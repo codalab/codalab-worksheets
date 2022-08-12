@@ -8,7 +8,7 @@ from marshmallow import Schema as PlainSchema, ValidationError, validate, valida
 from marshmallow_jsonapi import Schema, fields
 from marshmallow.fields import Field
 
-from codalab.common import UsageError
+from codalab.common import UsageError, NotFoundError
 from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib.spec_util import SUB_PATH_REGEX, NAME_REGEX, UUID_REGEX
@@ -163,7 +163,10 @@ class BundleDependencySchema(PlainSchema):
 
     def get_parent_state(self, dep):
         uuid = dep['parent_uuid']
-        return local.model.get_bundle_state(uuid)
+        try:
+            return local.model.get_bundle_state(uuid)
+        except NotFoundError:
+            return None
 
 
 class BundlePermissionSchema(Schema):

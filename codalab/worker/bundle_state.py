@@ -34,7 +34,7 @@ DependencyKey = namedtuple('DependencyKey', 'parent_uuid parent_path')
 # Location is an optional key that holds the actual path to the dependency bundle on shared bundle
 # mount worker machines
 Dependency = namedtuple(
-    'Dependency', 'parent_name parent_path parent_uuid child_path child_uuid location'
+    'Dependency', 'parent_name parent_state parent_path parent_uuid child_path child_uuid location'
 )
 
 
@@ -85,6 +85,7 @@ class BundleInfo(object):
         self.dependencies = [
             Dependency(
                 parent_name=dep["parent_name"],
+                parent_state=dep["parent_state"],
                 parent_path=dep["parent_path"],
                 parent_uuid=dep["parent_uuid"],
                 child_path=dep["child_path"],
