@@ -1,6 +1,7 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
+import { FINAL_BUNDLE_STATES } from '../../../../constants';
 import BundleStateBox from '../BundleStateBox';
 import BundleFieldRow from './BundleFieldRow';
 
@@ -14,12 +15,8 @@ import BundleFieldRow from './BundleFieldRow';
 class BundleStateTable extends React.Component {
     constructor(props) {
         super(props);
-
-        const finalStates = ['ready', 'failed', 'killed', 'worker_offline'];
         const states = this.getStates();
-
         this.state = {
-            finalStates,
             states,
         };
     }
@@ -50,10 +47,10 @@ class BundleStateTable extends React.Component {
 
     render() {
         const { bundle, classes } = this.props;
-        const { states, finalStates } = this.state;
+        const { states } = this.state;
         const stateDetails = bundle.state_details?.value;
         const currentState = bundle.state.value;
-        const inFinalState = finalStates.includes(currentState);
+        const inFinalState = FINAL_BUNDLE_STATES.includes(currentState);
 
         if (inFinalState) {
             return (
@@ -74,7 +71,7 @@ class BundleStateTable extends React.Component {
                         <div className={classes.stateGraphic}>
                             {states.map((state) => {
                                 const isCurrent = currentState === state;
-                                const isLast = finalStates.includes(state);
+                                const isLast = FINAL_BUNDLE_STATES.includes(state);
                                 const time = this.getTime(state);
                                 return (
                                     <>

@@ -376,6 +376,7 @@ export function formatBundle(bundle) {
 
     // these fields will receive extra formatting below
     const unformattedFields = [
+        'allow_failed_dependencies',
         'created',
         'data_size',
         'on_preemptible_worker',
