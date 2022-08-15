@@ -31,6 +31,7 @@ class BundleRoute extends React.Component {
 const styles = () => ({
     bundleContainer: {
         margin: '12px 10px',
+        paddingBottom: 36,
     },
 });
 
