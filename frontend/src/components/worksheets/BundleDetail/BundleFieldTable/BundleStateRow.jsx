@@ -36,6 +36,9 @@ class BundleStateTable extends React.Component {
 
     getTime(state) {
         const bundle = this.props.bundle;
+        if (state === 'preparing') {
+            return bundle.time_preparing?.value;
+        }
         if (state === 'running') {
             return bundle.time_running?.value || bundle.time?.value;
         }
@@ -63,7 +66,7 @@ class BundleStateTable extends React.Component {
                 label='State'
                 description="The bundle lifecycle diagram to the right indicates this bundle's current state."
                 value={
-                    <>
+                    <div className={classes.stateInfoContainer}>
                         <div className={classes.stateGraphic}>
                             {states.map((state) => {
                                 const isLast = FINAL_BUNDLE_STATES.includes(state);
@@ -93,8 +96,8 @@ class BundleStateTable extends React.Component {
                                 );
                             })}
                         </div>
-                        <div className={classes.stateDetails}>› {stateDetails}</div>
-                    </>
+                        <div className={classes.stateDetails}>{stateDetails}</div>
+                    </div>
                 }
             />
         );
@@ -102,12 +105,16 @@ class BundleStateTable extends React.Component {
 }
 
 const styles = (theme) => ({
+    stateInfoContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+    },
     stateGraphic: {
         textAlign: 'center',
         marginBottom: 8,
     },
     stateDetails: {
-        textAlign: 'center',
         minHeight: 50,
         fontSize: 11,
         color: theme.color.grey.darker,
