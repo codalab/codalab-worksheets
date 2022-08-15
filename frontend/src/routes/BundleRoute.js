@@ -18,6 +18,7 @@ class BundleRoute extends React.Component {
                 <BundleDetail
                     uuid={uuid}
                     onUpdate={() => {}}
+                    contentExpanded
                     sidebarExpanded
                     hideBundlePageLink
                     showBorder

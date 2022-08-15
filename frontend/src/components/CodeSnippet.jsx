@@ -16,10 +16,11 @@ class CodeSnippet extends React.Component {
     }
 
     render() {
-        const { classes, code, copyMessage, href } = this.props;
+        const { classes, code, copyMessage, expanded, href } = this.props;
+        const maxHeight = expanded ? 'none' : 300;
         return (
             <Grid item xs={12}>
-                <div className={classes.snippet}>
+                <div className={classes.snippet} style={{ maxHeight }}>
                     <div>{code}</div>
                     {copyMessage && <Copy message={copyMessage} text={code} />}
                     {href && <NewWindowLink href={href} />}
@@ -34,7 +35,6 @@ const styles = (theme) => ({
         display: 'flex',
         justifyContent: 'space-between',
         fontFamily: 'monospace',
-        maxHeight: 300,
         padding: 10,
         flexShrink: 1,
         overflow: 'auto',

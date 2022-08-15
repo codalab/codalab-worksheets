@@ -60,6 +60,7 @@ class MainContent extends React.Component<{
             bundleInfo,
             classes,
             contentType,
+            expanded,
             fetchingContent,
             fileContents,
             stderr,
@@ -85,7 +86,9 @@ class MainContent extends React.Component<{
                                 collapsed={this.state.showFailureMessage}
                                 onClick={() => this.toggleShowFailureMessage()}
                             />
-                            {this.state.showFailureMessage && <CodeSnippet code={failureMessage} />}
+                            {this.state.showFailureMessage && (
+                                <CodeSnippet code={failureMessage} expanded={expanded} />
+                            )}
                         </Grid>
                     )}
                     {/** Command components ================================================================= */}
@@ -97,7 +100,11 @@ class MainContent extends React.Component<{
                                 onClick={() => this.toggleCommand()}
                             />
                             {this.state.showCommand && (
-                                <CodeSnippet code={command} copyMessage='Command Copied!' />
+                                <CodeSnippet
+                                    code={command}
+                                    expanded={expanded}
+                                    copyMessage='Command Copied!'
+                                />
                             )}
                         </Grid>
                     )}
@@ -115,7 +122,11 @@ class MainContent extends React.Component<{
                                             onClick={() => this.toggleStdOut()}
                                         />
                                         {this.state.showStdOut && (
-                                            <CodeSnippet code={stdout} href={stdoutUrl} />
+                                            <CodeSnippet
+                                                code={stdout}
+                                                href={stdoutUrl}
+                                                expanded={expanded}
+                                            />
                                         )}
                                     </Grid>
                                 )}
@@ -127,7 +138,11 @@ class MainContent extends React.Component<{
                                             onClick={() => this.toggleStdError()}
                                         />
                                         {this.state.showStdError && (
-                                            <CodeSnippet code={stderr} href={stderrUrl} />
+                                            <CodeSnippet
+                                                code={stderr}
+                                                href={stderrUrl}
+                                                expanded={expanded}
+                                            />
                                         )}
                                     </Grid>
                                 )}
@@ -143,19 +158,16 @@ class MainContent extends React.Component<{
                                     {this.state.showFileBrowser && (
                                         <Grid item xs={12}>
                                             {fileContents ? (
-                                                <div
-                                                    className={`${classes.snippet} ${classes.greyBorder}`}
-                                                >
-                                                    {fileContents}
-                                                </div>
+                                                <CodeSnippet
+                                                    code={fileContents}
+                                                    expanded={expanded}
+                                                />
                                             ) : (
-                                                <div className={classes.snippet}>
-                                                    <FileBrowserLite
-                                                        uuid={bundleInfo.uuid}
-                                                        isRunningBundle={this.isRunning()}
-                                                        showBreadcrumbs
-                                                    />
-                                                </div>
+                                                <FileBrowserLite
+                                                    uuid={bundleInfo.uuid}
+                                                    isRunningBundle={this.isRunning()}
+                                                    showBreadcrumbs
+                                                />
                                             )}
                                         </Grid>
                                     )}
@@ -173,20 +185,8 @@ const styles = (theme) => ({
     outter: {
         flex: 1,
     },
-    snippet: {
-        fontFamily: 'monospace',
-        maxHeight: 300,
-        padding: 10,
-        flexWrap: 'wrap',
-        flexShrink: 1,
-        overflow: 'auto',
-        whiteSpace: 'pre-wrap',
-    },
     failureContainer: {
         color: theme.color.red.base,
-    },
-    greyBorder: {
-        border: `1px solid ${theme.color.grey.light}`,
     },
 });
 
