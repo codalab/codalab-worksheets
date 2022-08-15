@@ -30,10 +30,10 @@ class BundleStateBox extends React.Component {
     }
 
     renderStateBox() {
-        const { classes, state } = this.props;
+        const { classes, state, style } = this.props;
         const activeClass = this.getActiveClass(state);
         return (
-            <div className={`${classes.baseState} ${activeClass}`}>
+            <div className={`${classes.baseState} ${activeClass}`} style={style}>
                 <Typography inline color='inherit'>
                     {state}
                 </Typography>

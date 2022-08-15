@@ -1,6 +1,5 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
 import { FINAL_BUNDLE_STATES } from '../../../../constants';
 import BundleStateBox from '../BundleStateBox';
 import BundleFieldRow from './BundleFieldRow';
@@ -37,9 +36,6 @@ class BundleStateTable extends React.Component {
 
     getTime(state) {
         const bundle = this.props.bundle;
-        if (state === 'preparing') {
-            return bundle.time_preparing?.value;
-        }
         if (state === 'running') {
             return bundle.time_running?.value || bundle.time?.value;
         }
@@ -63,43 +59,44 @@ class BundleStateTable extends React.Component {
         }
 
         return (
-            <>
-                <BundleFieldRow
-                    label='State'
-                    description="The bundle lifecycle diagram to the right indicates this bundle's current state."
-                    value={
+            <BundleFieldRow
+                label='State'
+                description="The bundle lifecycle diagram to the right indicates this bundle's current state."
+                value={
+                    <>
                         <div className={classes.stateGraphic}>
                             {states.map((state) => {
-                                const isCurrent = currentState === state;
                                 const isLast = FINAL_BUNDLE_STATES.includes(state);
+                                const isCurrent = currentState === state;
+                                const margin = isCurrent ? '5px 0' : '0';
+                                const timeMargin = isCurrent ? '9px 0 0' : '4px 0 0';
                                 const time = this.getTime(state);
                                 return (
                                     <>
                                         <div className={classes.stateBoxContainer}>
-                                            <BundleStateBox state={state} isActive={isCurrent} />
+                                            <BundleStateBox
+                                                state={state}
+                                                isActive={isCurrent}
+                                                style={{ margin }}
+                                            />
                                             {time && (
-                                                <span className={classes.timeContainer}>
+                                                <span
+                                                    className={classes.timeContainer}
+                                                    style={{ margin: timeMargin }}
+                                                >
                                                     {time}
                                                 </span>
                                             )}
                                         </div>
-                                        {!isLast && (
-                                            <div className={classes.arrowContainer}>
-                                                <ArrowDownwardIcon fontSize='small' />
-                                            </div>
-                                        )}
+                                        {!isLast && <div className={classes.arrowContainer}>↓</div>}
                                     </>
                                 );
                             })}
                         </div>
-                    }
-                />
-                <BundleFieldRow
-                    label='Status'
-                    description="Additional information about the bundle's current state."
-                    value={<div className={classes.stateDetails}>{stateDetails}</div>}
-                />
-            </>
+                        <div className={classes.stateDetails}>› {stateDetails}</div>
+                    </>
+                }
+            />
         );
     }
 }
@@ -110,25 +107,21 @@ const styles = (theme) => ({
         marginBottom: 8,
     },
     stateDetails: {
-        width: 184,
-        paddingTop: 5,
-        paddingBottom: 5,
-        paddingLeft: 8,
-        paddingRight: 8,
-        border: `1px solid ${theme.color.grey.base}`,
-        backgroundColor: theme.color.grey.lightest,
-        borderRadius: 5,
+        textAlign: 'center',
+        minHeight: 50,
+        fontSize: 11,
+        color: theme.color.grey.darker,
     },
     timeContainer: {
         position: 'absolute',
-        marginTop: 5,
         paddingLeft: 5,
-        fontSize: '11px',
-        color: theme.color.grey.dark,
+        fontSize: 11,
+        color: theme.color.grey.darker,
     },
     arrowContainer: {
         display: 'flex',
         justifyContent: 'center',
+        lineHeight: '14px',
     },
 });
 
