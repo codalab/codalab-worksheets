@@ -2,6 +2,7 @@
 import * as React from 'react';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
+import { FINAL_BUNDLE_STATES } from '../../../constants';
 import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import CollapseButton from '../../CollapseButton';
 import CodeSnippet from '../../CodeSnippet';
@@ -69,6 +70,9 @@ class MainContent extends React.Component<{
         const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
         const command = bundleInfo.command;
         const failureMessage = bundleInfo.metadata.failure_message;
+        const state = bundleInfo.state;
+        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
+        const isLoading = !inFinalState || fetchingContent;
 
         return (
             <div className={classes.outter}>
@@ -97,7 +101,7 @@ class MainContent extends React.Component<{
                             )}
                         </Grid>
                     )}
-                    {fetchingContent ? (
+                    {isLoading ? (
                         <Loading />
                     ) : (
                         <>

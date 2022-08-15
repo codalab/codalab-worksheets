@@ -143,6 +143,7 @@ const BundleDetail = ({
                 })
                 .finally(() => {
                     setPendingFileSummaryFetches((f) => f - 1);
+                    setFetchingContent(false);
                 });
         } else if (info.type === 'directory') {
             // Get stdout/stderr (important to set things to null).
@@ -167,15 +168,19 @@ const BundleDetail = ({
                     stateUpdate[name] = null;
                 }
             });
-            Promise.all(fetchRequests).then((r) => {
-                setFileContents(stateUpdate['fileContents']);
-                if ('stdout' in stateUpdate) {
-                    setStdout(stateUpdate['stdout']);
-                }
-                if ('stderr' in stateUpdate) {
-                    setStderr(stateUpdate['stderr']);
-                }
-            });
+            Promise.all(fetchRequests)
+                .then((r) => {
+                    setFileContents(stateUpdate['fileContents']);
+                    if ('stdout' in stateUpdate) {
+                        setStdout(stateUpdate['stdout']);
+                    }
+                    if ('stderr' in stateUpdate) {
+                        setStderr(stateUpdate['stderr']);
+                    }
+                })
+                .finally(() => {
+                    setFetchingContent(false);
+                });
         }
     };
     useSWR(urlContents, fetcherContents, {
@@ -185,7 +190,6 @@ const BundleDetail = ({
             updateBundleDetail(response);
             setContentErrors([]);
             setContentType(response.data?.type);
-            setFetchingContent(false);
         },
     });
 
