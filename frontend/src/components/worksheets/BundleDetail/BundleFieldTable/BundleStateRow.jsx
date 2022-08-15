@@ -96,10 +96,7 @@ class BundleStateTable extends React.Component {
                                 );
                             })}
                         </div>
-                        <div className={classes.stateDetails}>
-                            <span className={classes.bold}>[status] </span>
-                            {stateDetails}
-                        </div>
+                        <div className={classes.stateDetails}>{stateDetails}</div>
                     </div>
                 }
             />
@@ -132,9 +129,6 @@ const styles = (theme) => ({
         display: 'flex',
         justifyContent: 'center',
         lineHeight: '14px',
-    },
-    bold: {
-        fontWeight: 500,
     },
 });
 
