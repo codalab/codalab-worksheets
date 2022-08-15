@@ -72,7 +72,6 @@ const styles = (theme) => ({
     container: {
         flexGrow: 1,
         flexWrap: 'nowrap',
-        height: '100%',
         maxWidth: '100%',
     },
     content: {
