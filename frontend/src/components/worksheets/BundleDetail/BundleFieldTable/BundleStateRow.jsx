@@ -15,6 +15,15 @@ import BundleFieldRow from './BundleFieldRow';
 class BundleStateTable extends React.Component {
     constructor(props) {
         super(props);
+
+
+
+        this.stateScrollBoxRef = React.createRef();
+        this.activeStateBoxRef = React.createRef();
+
+
+
+
         const states = this.getStates();
         this.state = {
             states,
@@ -45,6 +54,69 @@ class BundleStateTable extends React.Component {
         }
     }
 
+
+
+
+    updateScrollBox() {
+        const scrollBoxNode = this.stateScrollBoxRef.current;
+
+
+
+        // TODO: if the user scrolled the element, disable auto-scroll
+
+
+        if (!scrollBoxNode) {
+            return;
+        }
+
+
+        // todo: fade away left and right
+
+
+
+        // skip the first preceeding arrow and the first preceeding state
+        // calculate the width of the rest of the states / arrow before the first preceeding
+        // that width will be scrollLeft
+
+
+        const activeStateNode = document.querySelector('#active-state-box');
+
+
+        let skip = 2;
+        let scrollLeft = 0;
+        let isFirst = false;
+        // let prev;
+
+        let prev = activeStateNode?.previousElementSibling?.previousElementSibling?.previousElementSibling;
+
+
+
+        while (prev) {
+
+            console.log('prev', );
+
+            scrollLeft += prev.offsetWidth;
+
+            prev = prev.previousElementSibling
+        }
+
+
+
+        // console.log('no more prev');
+
+        scrollBoxNode.scrollTo({
+            left: scrollLeft,
+            behavior: 'smooth',
+        });
+
+
+    }
+
+
+
+
+
+
     render() {
         const { bundle, classes } = this.props;
         const { states } = this.state;
@@ -62,73 +134,160 @@ class BundleStateTable extends React.Component {
             );
         }
 
+
+        // TODO:
+        // auto scroll
+        // state details
+        // pockets (potentially)
+        // time
+
+        this.updateScrollBox();
+
+
         return (
-            <>
-                <BundleFieldRow
-                    label='State'
-                    description="The bundle lifecycle diagram to the right indicates this bundle's current state."
-                    value={
-                        <div className={classes.stateGraphic}>
-                            {states.map((state) => {
-                                const isCurrent = currentState === state;
-                                const isLast = FINAL_BUNDLE_STATES.includes(state);
-                                const time = this.getTime(state);
-                                return (
-                                    <>
-                                        <div className={classes.stateBoxContainer}>
-                                            <BundleStateBox state={state} isActive={isCurrent} />
-                                            {time && (
-                                                <span className={classes.timeContainer}>
-                                                    {time}
-                                                </span>
-                                            )}
-                                        </div>
-                                        {!isLast && (
-                                            <div className={classes.arrowContainer}>
-                                                <ArrowDownwardIcon fontSize='small' />
+            <tr>
+                <td colspan={2}>
+                    <div className={classes.stateInfoContainer}>
+
+                        <div ref={this.stateScrollBoxRef} className={classes.stateScrollbox}>
+
+
+
+                            <div className={`${classes.scrollBoxMask} ${classes.leftMask}`} />
+                            <div className={`${classes.scrollBoxMask} ${classes.rightMask}`} />
+
+
+
+                            <div className={classes.stateDiagram}>
+                                {states.map((state) => {
+                                    const isLast = FINAL_BUNDLE_STATES.includes(state);
+                                    const isCurrent = currentState === state;
+                                    const id = isCurrent ? 'active-state-box' : '';
+                                    const margin = isCurrent ? '0 5px' : '0';
+                                    const time = this.getTime(state);
+                                    return (
+                                        <>
+                                            <div id={id} className={classes.stateBoxContainer}>
+                                                <BundleStateBox state={state} isActive={isCurrent} style={{ margin }} />
+                                                {time && (
+                                                    <div className={classes.timeContainer}>
+                                                        {time}
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </>
-                                );
-                            })}
+
+
+                                            {!isLast && (
+                                                <div className={classes.arrowContainer}>
+                                                    →
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    }
-                />
-                <BundleFieldRow
-                    label='Status'
-                    description="Additional information about the bundle's current state."
-                    value={<div className={classes.stateDetails}>{stateDetails}</div>}
-                />
-            </>
+
+
+
+
+                        <div className={classes.stateDetails}>
+                            {/* {stateDetails} */}
+                            Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.
+                        </div>
+
+
+
+                    </div>
+                </td>
+            </tr>
         );
+
+
+
+
+
     }
 }
 
+
+
+
 const styles = (theme) => ({
-    stateGraphic: {
-        textAlign: 'center',
-        marginBottom: 8,
+
+
+    stateInfoContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        marginBottom: 24,
     },
-    stateDetails: {
-        width: 184,
-        paddingTop: 5,
-        paddingBottom: 5,
-        paddingLeft: 8,
-        paddingRight: 8,
-        border: `1px solid ${theme.color.grey.base}`,
-        backgroundColor: theme.color.grey.lightest,
-        borderRadius: 5,
+
+    stateScrollbox: {
+
+        // position: 'relative',
+
+        width: 225,
+        height: 42,
+        marginBottom: 16,
+        overflowX: 'scroll',
+        '-ms-overflow-style': 'none',
+        'scrollbar-width': 'none',
+        '&::-webkit-scrollbar': {
+            display: 'none',
+        }
+    },
+
+
+    scrollBoxMask: {
+        width: 70,
+        height: 21,
+        position: 'absolute',
+        zIndex: 1,
+    },
+
+    leftMask: {
+        left: 45,
+        backgroundImage: `linear-gradient(to left, transparent, ${theme.color.grey.lighter}, ${theme.color.grey.lighter})`,
+    },
+
+    rightMask: {
+        right: 45,
+        backgroundImage: `linear-gradient(to right, transparent, ${theme.color.grey.lighter}, ${theme.color.grey.lighter})`,
+    },
+
+
+
+    stateDiagram: {
+        position: 'relative',
+        display: 'flex',
+    },
+
+    stateBoxContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
     },
     timeContainer: {
-        position: 'absolute',
+        // position: 'absolute',
         marginTop: 5,
-        paddingLeft: 5,
-        fontSize: '11px',
-        color: theme.color.grey.dark,
+        // paddingLeft: 5,
+        fontSize: 11,
+        color: theme.color.grey.darker,
     },
     arrowContainer: {
-        display: 'flex',
-        justifyContent: 'center',
+        paddingTop: 2,
+        // color: theme.color.grey.darkest,
+    },
+
+    stateDetails: {
+        width: '100%',
+        height: 32,
+        maxHeight: 32,
+        // overflowY: 'scroll',
+        textAlign: 'center',
+        // fontSize: 11,
+        color: theme.color.grey.darker,
     },
 });
 
