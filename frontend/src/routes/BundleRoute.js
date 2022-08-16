@@ -3,7 +3,7 @@ import { withStyles } from '@material-ui/core';
 import BundleDetail from '../components/worksheets/BundleDetail';
 
 /**
- * This route page displays a bundle's metadata and contents.
+ * This page-level component renders info about a single bundle.
  */
 class BundleRoute extends React.Component {
     constructor(props) {
@@ -18,6 +18,7 @@ class BundleRoute extends React.Component {
                 <BundleDetail
                     uuid={uuid}
                     onUpdate={() => {}}
+                    contentExpanded
                     sidebarExpanded
                     hideBundlePageLink
                     showBorder
@@ -27,9 +28,16 @@ class BundleRoute extends React.Component {
     }
 }
 
+const headerHeight = '58px';
+const footerHeight = '25px';
+
 const styles = () => ({
     bundleContainer: {
-        margin: '12px 10px',
+        // We create our own content viewport to eliminate native auto-scrolling.
+        // Context: https://github.com/codalab/codalab-worksheets/issues/4204
+        height: `calc(100vh - ${headerHeight} - ${footerHeight})`,
+        overflowY: 'scroll',
+        overflowX: 'hidden',
     },
 });
 
