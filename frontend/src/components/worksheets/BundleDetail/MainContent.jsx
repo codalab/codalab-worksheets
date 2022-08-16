@@ -161,6 +161,7 @@ class MainContent extends React.Component<{
                                                 <CodeSnippet
                                                     code={fileContents}
                                                     expanded={expanded}
+                                                    noMargin
                                                 />
                                             ) : (
                                                 <FileBrowserLite
