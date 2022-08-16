@@ -110,7 +110,7 @@ class KubernetesWorkerManager(WorkerManager):
         work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
 
-        command.extend(['--bundle-runtime', BundleRuntime.KUBERNETES.value])
+        command.extend(['--bundle-runtime', BundleRuntime.KUBERNETES.value]) # todo make configurable
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
         command.extend(['--kubernetes-cert-path', self.cert_path])
