@@ -104,6 +104,7 @@ class MainContent extends React.Component<{
                                     code={command}
                                     expanded={expanded}
                                     copyMessage='Command Copied!'
+                                    noMargin={!stdout && !stderr && !contentType}
                                 />
                             )}
                         </Grid>
