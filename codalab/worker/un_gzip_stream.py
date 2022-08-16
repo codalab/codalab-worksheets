@@ -265,6 +265,12 @@ class BytesBuffer(BytesIO):
         self.__pos += len(ret)
         return ret
 
+    def peek(self, size: int):
+        b = bytearray()
+        for i in range(0, min(size, len(self.__buf))):
+            b.extend(self.__buf[i])
+        return bytes(b)[:size]
+
     def flush(self):
         pass
 
