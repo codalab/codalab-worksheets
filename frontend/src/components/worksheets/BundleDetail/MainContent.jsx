@@ -104,6 +104,7 @@ class MainContent extends React.Component<{
                                     code={command}
                                     expanded={expanded}
                                     copyMessage='Command Copied!'
+                                    noMargin={!isLoading && !stdout && !stderr && !contentType}
                                 />
                             )}
                         </Grid>
@@ -161,6 +162,7 @@ class MainContent extends React.Component<{
                                                 <CodeSnippet
                                                     code={fileContents}
                                                     expanded={expanded}
+                                                    noMargin
                                                 />
                                             ) : (
                                                 <FileBrowserLite

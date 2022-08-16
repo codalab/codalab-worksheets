@@ -6,7 +6,7 @@ import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
 
-import ConfigurationPanel from '../ConfigPanel';
+import ConfigPanel from '../ConfigPanel';
 import ErrorMessage from '../ErrorMessage';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
@@ -215,7 +215,7 @@ const BundleDetail = ({
     }
 
     return (
-        <ConfigurationPanel
+        <ConfigPanel
             //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
             ref={(node) => scrollToNewlyOpenedDetail(node)}
             buttons={
@@ -249,7 +249,7 @@ const BundleDetail = ({
                 contentType={contentType}
                 expanded={contentExpanded}
             />
-        </ConfigurationPanel>
+        </ConfigPanel>
     );
 };
 
