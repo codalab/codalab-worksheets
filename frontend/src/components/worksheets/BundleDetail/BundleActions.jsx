@@ -124,6 +124,7 @@ class BundleActions extends React.Component<{
                 <Button
                     classes={{ root: classes.downloadButton }}
                     style={!isRunBundle || !editPermission ? { marginLeft: 0 } : {}}
+                    disabled={isRunBundle ? !isDownloadableRunBundle : false}
                     variant='outlined'
                     color='primary'
                     onClick={() => {
