@@ -16,6 +16,7 @@ const BundleDetail = ({
     uuid,
     // Callback on metadata change.
     bundleMetadataChanged,
+    contentExpanded,
     onOpen,
     onUpdate,
     rerunItem,
@@ -246,6 +247,7 @@ const BundleDetail = ({
                 fileContents={fileContents}
                 fetchingContent={fetchingContent}
                 contentType={contentType}
+                expanded={contentExpanded}
             />
         </ConfigurationPanel>
     );
