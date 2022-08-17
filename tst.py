@@ -1,5 +1,4 @@
-from io import BytesIO, BufferedReader, UnsupportedOperation
-import io
+from io import BytesIO, BufferedReader
 import os
 import shutil
 import tempfile
@@ -11,7 +10,7 @@ from typing import Any, Dict, Union, Tuple, IO, cast
 from contextlib import closing
 
 from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
-from codalab.worker.file_util import OpenFile, tar_gzip_directory, GzipStream
+from codalab.worker.file_util import tar_gzip_directory, GzipStream
 from codalab.worker.bundle_state import State
 from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
@@ -20,17 +19,16 @@ from codalab.lib.print_util import FileTransferProgress
 from codalab.worker.un_gzip_stream import BytesBuffer
 
 import indexed_gzip
-# from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
-from ratarmountcore import SQLiteIndexedTar
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
+
 
 
 file_path = 'mkdocs.yml'
 
 class FileStream(BytesIO):
     NUM_READERS = 2
-    EXTRA_BUFFER_SIZE = 1024
     def __init__(self, fileobj):
-        self._bufs = [BytesBuffer(extra_buffer_size=self.EXTRA_BUFFER_SIZE) for _ in range(0, self.NUM_READERS)]
+        self._bufs = [BytesBuffer() for _ in range(0, self.NUM_READERS)]
         self._pos = [0 for _ in range(0, self.NUM_READERS)]
         self._fileobj = fileobj
         self._lock = Lock()  # lock to ensure one does not concurrently read self._fileobj / write to the buffers.
@@ -42,19 +40,12 @@ class FileStream(BytesIO):
             def read(s, num_bytes=None):
                 return self.read(s._index, num_bytes)
             
-            def seek(s, *args, **kwargs):
-                return self.seek(s._index, *args, **kwargs)
-
-            def tell(s):
-                return self.tell(s._index)
+            def peek(s, num_bytes):
+                return self.peek(s._index, num_bytes)
         
         self.readers = [FileStreamReader(i) for i in range(0, self.NUM_READERS)]
 
-
-    def read(self, index: int, num_bytes=None):
-        """Read the specified number of bytes from the associated file.
-        index: index that specifies which reader is reading.
-        """
+    def _fill_buf_bytes(self, index: int, num_bytes=None):
         with self._lock:
             while num_bytes is None or len(self._bufs[index]) < num_bytes:
                 s = self._fileobj.read(num_bytes)
@@ -62,18 +53,22 @@ class FileStream(BytesIO):
                     break
                 for i in range(0, self.NUM_READERS):
                     self._bufs[i].write(s)
+
+    def read(self, index: int, num_bytes=None):
+        """Read the specified number of bytes from the associated file.
+        index: index that specifies which reader is reading.
+        """
+        self._fill_buf_bytes(index, num_bytes)
         if num_bytes is None:
             num_bytes = len(self._bufs[index])
         s = self._bufs[index].read(num_bytes)
         self._pos[index] += len(s)
         return s
 
-    
-    def seek(self, index: int, *args, **kwargs):
-        return self._bufs[index].seek(*args, **kwargs)
-
-    def tell(self, index: int):
-        return self._bufs[index].tell()
+    def peek(self, index: int, num_bytes):
+        self._fill_buf_bytes(index, num_bytes)
+        s = self._bufs[index].peek(num_bytes)
+        return s
 
     def close(self):
         self.__input.close()
@@ -118,7 +113,7 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
                 writeIndex=True,
                 clearIndexCache=True,
                 indexFilePath=tmp_index_file.name,
-                isGnuIncremental=False,
+                printDebug=3,
             )
 
             bytes_uploaded = 0
@@ -144,8 +139,12 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
     for thread in threads:
         thread.join()
 
-    with OpenFile(bundle_path) as f:
-        print(f.read())
+    import gzip
+    with FileSystems.open(
+        parse_linked_bundle_url(bundle_path).bundle_path,
+        compression_type=CompressionTypes.UNCOMPRESSED,
+    ) as f:
+        print(gzip.decompress(f.read()))
 
 
 upload(file_path)
