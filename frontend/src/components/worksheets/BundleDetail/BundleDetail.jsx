@@ -29,12 +29,12 @@ const BundleDetail = ({
     showBorder,
 }) => {
     const [bundleInfo, setBundleInfo] = useState(null);
+    const [contentType, setContentType] = useState(null);
     const [fileContents, setFileContents] = useState(null);
     const [stdout, setStdout] = useState(null);
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
-    const [contentType, setContentType] = useState('');
     const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
     const [contentErrors, setContentErrors] = useState([]);
@@ -80,6 +80,7 @@ const BundleDetail = ({
                 .then((r) => r.json())
                 .catch((error) => {
                     setBundleInfo(null);
+                    setContentType(null);
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
@@ -119,6 +120,7 @@ const BundleDetail = ({
             setFetchingContent(true);
             return apiWrapper.get(url).catch((error) => {
                 // If contents aren't available yet, then also clear stdout and stderr.
+                setContentType(null);
                 setFileContents(null);
                 setStderr(null);
                 setStdout(null);
@@ -138,6 +140,7 @@ const BundleDetail = ({
             setPendingFileSummaryFetches((f) => f + 1);
             return fetchFileSummary(uuid, '/')
                 .then(function(blob) {
+                    setContentType(info.type);
                     setFileContents(blob);
                     setStderr(null);
                     setStdout(null);
@@ -171,6 +174,7 @@ const BundleDetail = ({
             });
             Promise.all(fetchRequests)
                 .then((r) => {
+                    setContentType(info.type);
                     setFileContents(stateUpdate['fileContents']);
                     if ('stdout' in stateUpdate) {
                         setStdout(stateUpdate['stdout']);
@@ -190,7 +194,6 @@ const BundleDetail = ({
         onSuccess: (response) => {
             updateBundleDetail(response);
             setContentErrors([]);
-            setContentType(response.data?.type);
         },
     });
 
