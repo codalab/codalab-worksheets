@@ -2,6 +2,7 @@ import logging
 import uuid
 import subprocess
 import getpass
+import os
 import re
 import sys
 import textwrap
@@ -32,6 +33,11 @@ class SlurmBatchWorkerManager(WorkerManager):
 
     @staticmethod
     def add_arguments_to_subparser(subparser):
+        try:
+            user_id = getpass.getuser()
+        except Exception:
+            # Sometimes getpass.getuser() doesn't work.
+            user_id = ""
         subparser.add_argument(
             '--job-name',
             type=str,
@@ -74,7 +80,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             help='Print out Slurm batch job definition without submitting to Slurm',
         )
         subparser.add_argument(
-            '--user', type=str, default=getpass.getuser(), help='User to run the Batch jobs as'
+            '--user', type=str, default=user_id, help='User to run the Batch jobs as'
         )
         subparser.add_argument(
             '--password-file',
@@ -102,6 +108,18 @@ class SlurmBatchWorkerManager(WorkerManager):
         self.num_failed = 0
         # A set of newly submitted job id to keep tracking worker status, as worker might not be created right away.
         self.submitted_jobs = self.load_worker_jobs()
+
+        # We're using a temporary CodaLabManager for the worker and worker managers by default,
+        # so we don't write out the state to state.json when users log in.
+        # If we always read from the password file, we can both leave state.json untouched,
+        # and users can always start the worker manager without logging in.
+        if args.password_file:
+            logger.info(
+                f"--password-file specified. Reading credentials from {args.password_file}..."
+            )
+            with open(args.password_file) as f:
+                os.environ["CODALAB_USERNAME"] = f.readline().strip()
+                os.environ["CODALAB_PASSWORD"] = f.readline().strip()
 
     def load_worker_jobs(self):
         """

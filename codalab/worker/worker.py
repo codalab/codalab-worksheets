@@ -17,12 +17,12 @@ import psutil
 
 import docker
 from codalab.lib.telemetry_util import capture_exception, using_sentry
-import codalab.worker.docker_utils as docker_utils
+from codalab.worker.runtime import Runtime
 import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
-from .docker_utils import DEFAULT_DOCKER_TIMEOUT
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME
 from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
@@ -73,7 +73,8 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
-        docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
+        bundle_runtime,  # type: Runtime
+        docker_runtime=DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
         pass_down_termination=False,  # type: bool
@@ -119,6 +120,7 @@ class Worker:
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
         self.preemptible = preemptible
+        self.bundle_runtime = bundle_runtime
 
         self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin = None
@@ -140,6 +142,7 @@ class Worker:
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
             shared_memory_size_gb=shared_memory_size_gb,
+            bundle_runtime=bundle_runtime,
         )
 
         # Lock ensures .checkin() is not run concurrently.
@@ -540,17 +543,13 @@ class Worker:
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [
-            run.container
+            run.container_id
             for run in self.runs.values()
             if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
             and run.container_id is not None
         ]
         for container_id in finished_container_ids:
-            try:
-                container = self.docker.containers.get(container_id)
-                container.remove(force=True)
-            except (docker.errors.NotFound, docker.errors.NullResource):
-                pass
+            self.bundle_runtime.remove(container_id)
 
         # 3. reset runs for the current worker
         self.runs = {
@@ -777,8 +776,8 @@ class Worker:
         def netcat_fn():
             try:
                 run_state = self.runs[uuid]
-                container_ip = docker_utils.get_container_ip(
-                    self.worker_docker_network.name, run_state.container
+                container_ip = self.bundle_runtime.get_container_ip(
+                    self.worker_docker_network.name, run_state.container_id
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((container_ip, port))

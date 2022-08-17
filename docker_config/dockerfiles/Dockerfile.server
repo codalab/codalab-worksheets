@@ -5,7 +5,6 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common && \
-  add-apt-repository ppa:fkrull/deadsnakes && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     build-essential \
@@ -16,22 +15,21 @@ RUN apt-get update && \
     libmysqlclient-dev \
     libssl-dev \
     mysql-client \
-    python3.6 \
-    python3.6-dev \
-    python3-pip \
-    python3-setuptools \
-    python-virtualenv \
-    python3-software-properties \
     zip \
     unzip \
     rsync && \
     rm -rf /var/lib/apt/lists/*;
 
-# Set Python3.6 as the default python3 version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
-
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
+
+# Miniconda 4.5.11 installs Python 3.7 by default.
+RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
+     chmod +x ~/miniconda.sh && \
+     ~/miniconda.sh -b -p /opt/conda && \
+     rm ~/miniconda.sh
+ENV PATH /opt/conda/bin:$PATH
+RUN conda --version
 
 RUN python3 -m pip install --no-cache-dir --upgrade pip==20.3.4
 RUN mkdir /opt/codalab-worksheets
@@ -48,6 +46,8 @@ RUN python3 -m pip install setuptools --upgrade
 RUN python3 -m pip install --no-cache-dir -r requirements-server.txt
 
 # Install code
+COPY setup.py setup.py
+RUN python3 -m pip install --no-cache-dir -e .
 COPY alembic alembic
 COPY alembic.ini alembic.ini
 COPY codalab codalab
@@ -56,12 +56,9 @@ COPY docs docs
 COPY mkdocs.yml mkdocs.yml
 COPY monitor.py monitor.py
 COPY scripts scripts
-COPY setup.py setup.py
 COPY test_runner.py test_runner.py
 COPY tests tests
 COPY views views
-
-RUN python3 -m pip install --no-cache-dir -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .
