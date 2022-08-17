@@ -463,6 +463,10 @@ const styles = (theme) => ({
     lowlight: {
         backgroundColor: `${theme.color.grey.light} !important`,
     },
+    insertPanel: {
+        paddingLeft: '32px !important', // align with bundle detail
+        paddingRight: '32px !important', // align with bundle detail
+    },
 });
 
 export default withStyles(styles)(BundleRow);

@@ -12,9 +12,16 @@ from http.client import HTTPResponse
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.common import StorageType, StorageFormat, precondition, UsageError, NotFoundError
+from codalab.common import (
+    StorageType,
+    StorageFormat,
+    StorageURLScheme,
+    precondition,
+    UsageError,
+    NotFoundError,
+)
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
-from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE
+from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_azure_bypass_conn_str
 from codalab.lib.server_util import (
     RequestSource,
     bottle_patch as patch,
@@ -186,6 +193,7 @@ def build_bundles_document(bundle_uuids):
                         bundle_class
                     ),
                     'metadata_type': worksheet_util.get_metadata_types(bundle_class),
+                    'metadata_descriptions': worksheet_util.get_metadata_descriptions(bundle_class),
                 },
             )
 
@@ -451,16 +459,83 @@ def _fetch_bundle_locations(bundle_uuid: str):
 )
 def _add_bundle_location(bundle_uuid: str):
     """
-    Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+    Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
     Query parameters:
-    - `bundle_uuid`: Bundle UUID corresponding to the new location
+    - `need_bypass`: (Optional) Bool. If true, if will return SAS token (for Azure) or signed url (for GCS) to bypass server upload.
+    - `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
     """
+    check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
+    need_bypass = query_get_bool('need_bypass', default=False)
+    is_dir = query_get_bool('is_dir', default=False)
+
+    bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
-    new_location["uuid"] = local.model.add_bundle_location(
-        new_location['bundle_uuid'], new_location['bundle_store_uuid']
+    logging.info(
+        f"Try to bypass server upload, need_bypass: {need_bypass}, is_dir: {is_dir}, new_location: {new_location}"
     )
-    return BundleLocationSchema(many=True).dump([new_location]).data
+    # Scenario 1: User does not specify destination store, but rest-server set default storage name.
+    # Should bypass server and upload to default Azure store.
+    if (
+        new_location.get('bundle_store_uuid', None) is None
+        and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+        and os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME') != ''
+    ):
+        default_store_name = os.environ.get('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+        default_bundle_store = local.model.get_bundle_store(
+            request.user.user_id, name=default_store_name
+        )
+        if default_bundle_store['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
+            local.model.add_bundle_location(
+                new_location['bundle_uuid'], default_bundle_store['uuid']
+            )
+            local.model.update_bundle(
+                bundle, {'storage_type': default_bundle_store['storage_type'], 'is_dir': is_dir},
+            )
+            bundle_url = local.bundle_store.get_bundle_location(
+                bundle_uuid, default_bundle_store['uuid']
+            )
+        else:  # default storage is disk, do not support bypass server
+            bundle_url = None
+
+    # Scenario 2: User does not specify destination store, and rest-server does not specify a default bundle store name.
+    # Should go throught rest server and upload to disk storage.
+    elif new_location.get('bundle_store_uuid', None) is None:
+        bundle_url = None
+
+    # Scenario 3: User specifies destination store. Should upload to the specified storage.
+    else:
+        local.model.add_bundle_location(
+            new_location['bundle_uuid'], new_location['bundle_store_uuid']
+        )
+        local.model.update_bundle(
+            bundle, {'is_dir': is_dir},
+        )
+        bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
+    data = BundleLocationSchema(many=True).dump([new_location]).data
+    logging.info(f"Bypass server upload, the URL is {bundle_url}")
+    if need_bypass:
+        if bundle_url is None:
+            # Not support bypass server upload: user specifies neeed_bypass, but the server does not set default storage as Azure or GCS
+            bundle_conn_str, index_conn_str = None, None
+        elif bundle_url.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+            # generate the SAS token and Azure connection string, and send it back to the client
+            bundle_sas_token = local.upload_manager.get_bundle_sas_token(bundle_url)
+            index_sas_token = local.upload_manager.get_index_sas_token(bundle_url)
+            base_conn_str = get_azure_bypass_conn_str()
+            if LOCAL_USING_AZURITE and get_request_source() == RequestSource.CLI:
+                # For test CLI locally. When developers want to test CLI using dockers running locally,
+                # they are accessing the azurite container from local network, which need to using localhost
+                # instead of the name of docker. When running tests using CI, we are accessing azurite
+                # from another docker, which need to use the docker container's name.
+                base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
+            bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
+            index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
+
+        data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
+        data['data'][0]['attributes']['index_conn_str'] = index_conn_str
+        data['data'][0]['attributes']['bundle_url'] = bundle_url
+    return data
 
 
 @get(
@@ -479,10 +554,50 @@ def _fetch_bundle_location(bundle_uuid: str, bundle_store_uuid: str):
     return BundleLocationListSchema(many=True).dump(bundle_location).data
 
 
+@post(
+    '/bundles/<bundle_uuid:re:%s>/state' % spec_util.UUID_STR, apply=AuthenticatedProtectedPlugin(),
+)
+def _update_bundle_state(bundle_uuid: str):
+    """
+    Updates a bundle state. Used to finalize a bundle's upload status
+    after it is uploaded by the client directly to the bundle store,
+    such as uploading to blob storage and bypassing the server.
+
+    Query parameters:
+    - `success`: The state of upload.
+    - `state_on_success`: (Optional) String. New bundle state if success
+    - `state_on_failure`: (Optional) String. Bundle UUID corresponding to the new location
+    - `error_msg`: (Optional) String. Error message if upload fails.
+    """
+    success = query_get_bool('success', default=False)
+    state_on_success = query_get_bool('state_on_success', default=State.READY)
+    state_on_failure = query_get_bool('state_on_failure', default=State.FAILED)
+    error_msg = query_get_type(str, 'error_msg', default=None)
+
+    bundle = local.model.get_bundle(bundle_uuid)
+    bundle_location = local.bundle_store.get_bundle_location(bundle.uuid)  # get blob storage url
+    logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
+
+    if success:
+        local.model.update_bundle(
+            bundle, {'state': state_on_success},
+        )
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+    else:  # If the upload failed, cleanup the uploaded file and update bundle state
+        local.model.update_bundle(
+            bundle, {'state': state_on_failure, 'metadata': {'failure_message': error_msg},},
+        )
+    bundles_dict = get_bundle_infos([bundle_uuid])
+    return BundleSchema(many=True).dump([bundles_dict]).data
+
+
 @get('/bundle_stores', apply=AuthenticatedProtectedPlugin())
 def _fetch_bundle_stores():
     """
     Fetch the bundle stores available to the user. No required arguments.
+
+    Query parameters:
+    - `name`: (Optional) name of bundle store. If specified, only query information about the bundle store with given name. If not, return information of all the bundle stores.
 
     Returns a list of bundle stores, each having the following parameters:
     - `uuid`: bundle store UUID
@@ -492,7 +607,14 @@ def _fetch_bundle_stores():
     - `storage_format`: the format in which storage is being stored (UNCOMPRESSED, COMPRESSED_V1, etc)
     - `url`: a self-referential URL that points to the bundle store.
     """
-    bundle_stores = local.model.get_bundle_stores(request.user.user_id)
+    bundle_store_name = query_get_type(str, 'name', None)
+    if bundle_store_name is not None:
+        # this function only fetch one record
+        bundle_store = local.model.get_bundle_store(request.user.user_id, name=bundle_store_name)
+        bundle_stores = [bundle_store]
+    else:
+        # this function fetches all the records
+        bundle_stores = local.model.get_bundle_stores(request.user.user_id)
     return BundleStoreSchema(many=True).dump(bundle_stores).data
 
 
@@ -833,11 +955,19 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     # We should redirect to the Blob Storage URL if the following conditions are met:
     should_redirect_url = (
         support_redirect == 1
-        and location_info["storage_type"] == StorageType.AZURE_BLOB_STORAGE.value  # On Blob Storage
+        and location_info["storage_type"]
+        in (StorageType.AZURE_BLOB_STORAGE.value, StorageType.GCS_STORAGE.value)
         and path == ''  # No subpath
         and request_accepts_gzip_encoding()  # Client accepts gzip encoding
         and not (byte_range or head_lines or tail_lines)  # We're requesting the entire file
     )
+
+    # We don't support bypassing server for single-file bundles located on GCS requested
+    if (
+        target_info['type'] == 'file'
+        and location_info["storage_type"] == StorageType.GCS_STORAGE.value
+    ):
+        should_redirect_url = False
 
     if target_info['type'] == 'directory':
         if byte_range:
@@ -910,7 +1040,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if should_redirect_url:
         # Redirect to SAS URL on Blob Storage.
         assert fileobj is None  # We should not be returning any other contents.
-        sas_url = local.download_manager.get_target_sas_url(
+        download_url = local.download_manager.get_target_bypass_url(
             target,
             # We pass these parameters to set the Content-Type, Content-Encoding, and
             # Content-Disposition headers that are set on the Blob Storage response.
@@ -924,8 +1054,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         # Azurite through http://localhost, but rather only through http://azurite.
         if LOCAL_USING_AZURITE:
             if get_request_source() == RequestSource.LOCAL_DOCKER:
-                sas_url = sas_url.replace("localhost", "azurite", 1)
-        return redirect(sas_url)
+                download_url = download_url.replace("localhost", "azurite", 1)
+        return redirect(
+            download_url
+        )  # the client receive http 303, and send the request to new url
     return fileobj
 
 

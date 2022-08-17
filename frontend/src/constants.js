@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '1.5.1';
+export const CODALAB_VERSION = '1.5.5';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -54,6 +54,9 @@ export const BUNDLE_STATES: String[] = [
     'worker_offline',
 ];
 
+// All possible final bundle states
+export const FINAL_BUNDLE_STATES = ['ready', 'failed', 'killed', 'worker_offline'];
+
 // Autofill types for schemas.
 export const DEFAULT_POST_PROCESSOR = {
     time: 'duration',
@@ -96,3 +99,10 @@ export const DEFAULT_SCHEMA_ROWS = [
         from_schema_name: '',
     },
 ];
+
+// Documentation URLs (object structure matches mkdocs.yml)
+export const DOCS = {
+    concepts: {
+        bundleLifecycle: 'https://codalab-worksheets.readthedocs.io/en/latest/Bundle-Lifecycle',
+    },
+};

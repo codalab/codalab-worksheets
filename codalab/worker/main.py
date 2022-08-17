@@ -15,11 +15,12 @@ import psutil
 import requests
 
 from codalab.common import SingularityError
+from codalab.common import BundleRuntime
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
-from . import docker_utils
 from .worker import Worker
+from codalab.worker.docker_utils import DockerRuntime, DockerException
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
@@ -123,10 +124,10 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--container-runtime',
-        choices=['docker', 'singularity'],
-        default='docker',
-        help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
+        '--bundle-runtime',
+        choices=[BundleRuntime.DOCKER.value, BundleRuntime.SINGULARITY.value,],
+        default=BundleRuntime.DOCKER.value,
+        help='The runtime through which the worker will run bundles. The options are docker (default) or singularity',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -277,7 +278,7 @@ def main():
             args.download_dependencies_max_retries,
         )
 
-    if args.container_runtime == "singularity":
+    if args.bundle_runtime == BundleRuntime.SINGULARITY.value:
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
             logger.info(
@@ -288,6 +289,7 @@ def main():
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
         # todo workers with singularity don't work because this is set to none -- handle this
+        bundle_runtime_class = None
         docker_runtime = None
     else:
         image_manager = DockerImageManager(
@@ -295,7 +297,8 @@ def main():
             args.max_image_cache_size,
             args.max_image_size,
         )
-        docker_runtime = docker_utils.get_available_runtime()
+        bundle_runtime_class = DockerRuntime()
+        docker_runtime = bundle_runtime_class.get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -332,6 +335,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
+        bundle_runtime=DockerRuntime(),
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -395,13 +399,13 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except docker_utils.DockerException:
+        all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except DockerException:
         all_gpus = {}
     # Docker socket can't be used
     except requests.exceptions.ConnectionError:
         try:
-            all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+            all_gpus = DockerRuntime().get_nvidia_devices(use_docker=False)
         except SingularityError:
             all_gpus = {}
 

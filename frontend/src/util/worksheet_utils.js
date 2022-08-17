@@ -66,26 +66,27 @@ export function renderDate(epochSeconds) {
     return dt.toDateString() + ' ' + padInt(hour, 2) + ':' + padInt(min, 2) + ':' + padInt(sec, 2);
 }
 
-export function renderSize(size) {
+export function renderSize(size, includeBytes = false) {
     // size: number of bytes
+    // includeBytes: whether or not to include 'bytes' string in the return value
     // Return a human-readable string.
     var units = ['', 'k', 'm', 'g', 't'];
     for (var i = 0; i < units.length; i++) {
-        var unit = units[i];
+        const unit = includeBytes && units[i] === '' ? ' bytes' : units[i];
         if (size < 100 && size !== Math.floor(size)) return Math.round(size * 10) / 10.0 + unit;
         if (size < 1024) return Math.round(size) + unit;
         size /= 1024.0;
     }
 }
 
-export function renderFormat(value, type) {
+export function renderFormat(value, type, includeBytes = false) {
     switch (type) {
         case 'list':
             return value.join(' ');
         case 'date':
             return renderDate(value);
         case 'size':
-            return renderSize(value);
+            return renderSize(value, includeBytes);
         case 'duration':
             return renderDuration(value);
         case 'bool':
@@ -122,10 +123,11 @@ export function serializeFormat(formatted, type) {
     }
 }
 
-export function renderPermissions(state) {
+export function renderPermissions(state, style = {}) {
     // Render permissions:
     // - state.permission_spec (what user has)
     // - state.group_permissions (what other people have)
+    // - style (optional container styles)
     if (!state.permission_spec) return;
 
     function permissionToClass(permission) {
@@ -147,7 +149,7 @@ export function renderPermissions(state) {
     }
 
     return (
-        <div>
+        <div style={style}>
             &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
@@ -325,4 +327,92 @@ export function getIds(item) {
         }
     }
     return [];
+}
+
+/**
+ * The way that the backend returns bundle metadata is not particularly
+ * conducive to rendering bundle information in the CodaLab UI.
+ *
+ * Often when we're rendering a bundle field, we want to have certain pieces
+ * of information about that field readily available.
+ *
+ * E.g. we might be interested in the field's name, value, description, type,
+ * whether or not its editable, etc.
+ *
+ * This helper takes in unformatted bundle data and returns an object in which
+ * each field name is a key, and each key's value has the following shape:
+ *
+ * <field_name>: {
+ *     name:        <field_name>,
+ *     value:       <field_value>,
+ *     description: <field_description>,
+ *     editable:    <field_is_editable>,
+ *     type:        <field_type>,
+ *     bundle_uuid: <bundle_uuid>,
+ * }
+ *
+ * @param {object} bundle
+ * @returns {object}
+ */
+export function formatBundle(bundle) {
+    if (!bundle) {
+        return {};
+    }
+
+    const { editableMetadataFields, metadata, metadataDescriptions, metadataType, owner } = bundle;
+
+    // copy nested bundle fields into the top-level of an object
+    const mergedBundle = {
+        ...bundle,
+        ...metadata,
+        ...owner,
+    };
+
+    // remove the fields that don't need to be in our formatted bundle
+    delete mergedBundle.editableMetadataFields;
+    delete mergedBundle.metadata;
+    delete mergedBundle.metadataDescriptions;
+    delete mergedBundle.metadataType;
+
+    // these fields will receive extra formatting below
+    const unformattedFields = [
+        'allow_failed_dependencies',
+        'created',
+        'data_size',
+        'on_preemptible_worker',
+        'time',
+        'time_running',
+        'time_preparing',
+        'time_cleaning_up',
+        'time_uploading_results',
+        'time_user',
+        'time_system',
+        'started',
+        'last_updated',
+        'cpu_usage',
+        'memory_usage',
+        'request_network',
+    ];
+
+    const result = {};
+    Object.keys(mergedBundle).forEach((field) => {
+        // build our formatted field object
+        result[field] = {};
+        result[field].name = field;
+        result[field].description = metadataDescriptions[field];
+        result[field].editable = bundle.permission > 1 && editableMetadataFields.includes(field);
+        result[field].bundle_uuid = mergedBundle.uuid;
+        result[field].type = metadataType[field];
+
+        // format the fields that need extra formatting
+        if (unformattedFields.includes(field)) {
+            const value = mergedBundle[field];
+            const type = result[field].type;
+            result[field].value = renderFormat(value, type, true);
+        } else {
+            result[field].value = mergedBundle[field];
+        }
+    });
+
+    return result;
 }

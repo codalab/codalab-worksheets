@@ -713,3 +713,25 @@ class JsonApiClient(RestClient):
             method='GET', path='/bundles/{}/locations/'.format(bundle_uuid),
         )
         return response['data']
+
+    @wrap_exception('Unable to create the location of bundles')
+    def add_bundle_location(self, bundle_uuid, bundle_store_uuid, params):
+        response = self._make_request(
+            method='POST',
+            path='/bundles/{}/locations/'.format(bundle_uuid),
+            data=self._pack_document(
+                [{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}],
+                'bundle_locations',
+            ),
+            query_params=self._pack_params(params),
+        )
+        return response['data']
+
+    @wrap_exception("Unable to finalize the state of blob storage bundles")
+    def update_bundle_state(self, bundle_uuid, params):
+        response = self._make_request(
+            method='POST',
+            path='/bundles/{}/state'.format(bundle_uuid),
+            query_params=self._pack_params(params),
+        )
+        return response['data']
