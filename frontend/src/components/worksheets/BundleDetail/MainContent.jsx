@@ -55,13 +55,25 @@ class MainContent extends React.Component<{
         return runStates.includes(bundleInfo.state);
     }
 
+    isLoading() {
+        const { bundleInfo, fetchingContent, contentType, stderr, stdout } = this.props;
+        const state = bundleInfo.state;
+        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
+        if (!inFinalState) {
+            return true;
+        }
+        if (state === 'killed') {
+            return false;
+        }
+        return !stderr && !stdout && !contentType && fetchingContent;
+    }
+
     render() {
         const {
             bundleInfo,
             classes,
             contentType,
             expanded,
-            fetchingContent,
             fileContents,
             stderr,
             stdout,
@@ -71,9 +83,7 @@ class MainContent extends React.Component<{
         const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
         const command = bundleInfo.command;
         const failureMessage = bundleInfo.metadata.failure_message;
-        const state = bundleInfo.state;
-        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
-        const isLoading = !inFinalState || fetchingContent;
+        const isLoading = this.isLoading();
 
         return (
             <div className={classes.outter}>
