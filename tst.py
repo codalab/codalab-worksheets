@@ -23,7 +23,8 @@ from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 
 
 
-file_path = 'mkdocs.yml'
+file_path = '../dag.pdf'
+bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/contents.gz'
 
 class FileStream(BytesIO):
     NUM_READERS = 2
@@ -73,7 +74,7 @@ class FileStream(BytesIO):
     def close(self):
         self.__input.close()
 
-def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/contents.gz'):
+def upload(file_path, bundle_path):
     source_fileobj = open(file_path, 'rb')
     output_fileobj = GzipStream(source_fileobj)
     CHUNK_SIZE = 4 * 1024
@@ -144,7 +145,8 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
         parse_linked_bundle_url(bundle_path).bundle_path,
         compression_type=CompressionTypes.UNCOMPRESSED,
     ) as f:
-        print(gzip.decompress(f.read()))
+        pass
+        # print(gzip.decompress(f.read()))
 
 
-upload(file_path)
+upload(file_path, bundle_path)
