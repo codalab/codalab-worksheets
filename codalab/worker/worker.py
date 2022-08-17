@@ -4,6 +4,7 @@ import os
 import shutil
 from subprocess import PIPE, Popen
 import threading
+from threading import Lock
 import time
 import traceback
 import socket
@@ -140,6 +141,9 @@ class Worker:
             shared_file_system=self.shared_file_system,
             shared_memory_size_gb=shared_memory_size_gb,
         )
+
+        # Lock ensures .checkin() is not run concurrently.
+        self._checkin_lock = Lock()
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
@@ -457,61 +461,62 @@ class Worker:
         This function must return fast to keep checkins frequent. Time consuming
         processes must be handled asynchronously.
         """
-        request = {
-            'tag': self.tag,
-            'group_name': self.group_name,
-            'cpus': len(self.cpuset),
-            'gpus': len(self.gpuset),
-            'memory_bytes': self.max_memory,
-            'free_disk_bytes': self.free_disk_bytes,
-            'dependencies': self.cached_dependencies,
-            'hostname': socket.gethostname(),
-            'runs': [run.as_dict for run in self.all_runs],
-            'shared_file_system': self.shared_file_system,
-            'tag_exclusive': self.tag_exclusive,
-            'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
-            'is_terminating': self.terminate or self.terminate_and_restage,
-            'preemptible': self.preemptible,
-        }
-        try:
-            response = self.bundle_service.checkin(self.id, request)
-            logger.info('Connected! Successful check in!')
-            self.last_checkin_successful = True
-        except BundleServiceException as ex:
-            logger.warning("Disconnected from server! Failed check in: %s", ex)
-            if not self.last_checkin_successful:
-                logger.info(
-                    "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
-                )
-                time.sleep(self.CHECKIN_COOLDOWN)
-            self.last_checkin_successful = False
-            response = None
-        # Stop processing any new runs received from server
-        if not response or self.terminate_and_restage or self.terminate:
-            return
-        action_type = response['type']
-        logger.debug('Received %s message: %s', action_type, response)
-        if action_type == 'run':
-            self.initialize_run(response['bundle'], response['resources'])
-        else:
-            uuid = response['uuid']
-            socket_id = response.get('socket_id', None)
-            if uuid not in self.runs:
-                if action_type in ['read', 'netcat']:
-                    self.read_run_missing(socket_id)
+        with self._checkin_lock:
+            request = {
+                'tag': self.tag,
+                'group_name': self.group_name,
+                'cpus': len(self.cpuset),
+                'gpus': len(self.gpuset),
+                'memory_bytes': self.max_memory,
+                'free_disk_bytes': self.free_disk_bytes,
+                'dependencies': self.cached_dependencies,
+                'hostname': socket.gethostname(),
+                'runs': [run.as_dict for run in self.all_runs],
+                'shared_file_system': self.shared_file_system,
+                'tag_exclusive': self.tag_exclusive,
+                'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
+                'is_terminating': self.terminate or self.terminate_and_restage,
+                'preemptible': self.preemptible,
+            }
+            try:
+                response = self.bundle_service.checkin(self.id, request)
+                logger.info('Connected! Successful check in!')
+                self.last_checkin_successful = True
+            except BundleServiceException as ex:
+                logger.warning("Disconnected from server! Failed check in: %s", ex)
+                if not self.last_checkin_successful:
+                    logger.info(
+                        "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
+                    )
+                    time.sleep(self.CHECKIN_COOLDOWN)
+                self.last_checkin_successful = False
+                response = None
+            # Stop processing any new runs received from server
+            if not response or self.terminate_and_restage or self.terminate:
                 return
-            if action_type == 'kill':
-                self.kill(uuid)
-            elif action_type == 'mark_finalized':
-                self.mark_finalized(uuid)
-            elif action_type == 'read':
-                self.read(socket_id, uuid, response['path'], response['read_args'])
-            elif action_type == 'netcat':
-                self.netcat(socket_id, uuid, response['port'], response['message'])
-            elif action_type == 'write':
-                self.write(uuid, response['subpath'], response['string'])
+            action_type = response['type']
+            logger.debug('Received %s message: %s', action_type, response)
+            if action_type == 'run':
+                self.initialize_run(response['bundle'], response['resources'])
             else:
-                logger.warning("Unrecognized action type from server: %s", action_type)
+                uuid = response['uuid']
+                socket_id = response.get('socket_id', None)
+                if uuid not in self.runs:
+                    if action_type in ['read', 'netcat']:
+                        self.read_run_missing(socket_id)
+                    return
+                if action_type == 'kill':
+                    self.kill(uuid)
+                elif action_type == 'mark_finalized':
+                    self.mark_finalized(uuid)
+                elif action_type == 'read':
+                    self.read(socket_id, uuid, response['path'], response['read_args'])
+                elif action_type == 'netcat':
+                    self.netcat(socket_id, uuid, response['port'], response['message'])
+                elif action_type == 'write':
+                    self.write(uuid, response['subpath'], response['string'])
+                else:
+                    logger.warning("Unrecognized action type from server: %s", action_type)
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
