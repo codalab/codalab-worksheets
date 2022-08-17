@@ -169,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v1
         with:
-          name: logs-test-${{ matrix.test }}
+          name: logs-test-${{ matrix.runtime }}-${{ matrix.test }}
           path: /tmp/logs
 
   test_backend_on_worker_restart:
