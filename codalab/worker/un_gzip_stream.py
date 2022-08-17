@@ -6,7 +6,7 @@ import time
 import zlib
 
 from collections import deque
-from io import BytesIO
+from io import BytesIO, SEEK_END, SEEK_SET, UnsupportedOperation
 from typing import Optional
 from zipfile import (  # type: ignore
     BadZipFile,
@@ -235,12 +235,23 @@ class BytesBuffer(BytesIO):
     """
     A class for a buffer of bytes. Unlike io.BytesIO(), this class
     keeps track of the buffer's size (in bytes).
+
+    If extra_buffer_size is passed in during initialization, this class
+    will hold on to extra_buffer_size bytes before the current position,
+    allowing for limited seeking backwards up to that point.
     """
 
-    def __init__(self):
-        self.__buf = deque()
+    def __init__(self, extra_buffer_size = 0, deque_maxlen = None):
+        self.__buf = deque(maxlen=deque_maxlen)
         self.__size = 0
         self.__pos = 0
+
+        # class BytesExtraBuffer(BytesBuffer):
+        #     def __len__(s):
+        #         print(s.__dict__)
+        #         return len(s.__buf)
+
+        self.__extra_buf = BytesBuffer(deque_maxlen = extra_buffer_size) if extra_buffer_size > 0 else None
 
     def __len__(self):
         return self.__size
@@ -261,15 +272,41 @@ class BytesBuffer(BytesIO):
             ret_list[-1], remainder = ret_list[-1][:size], ret_list[-1][size:]
             self.__buf.appendleft(remainder)
         ret = b''.join(ret_list)
+        if self.__extra_buf:
+            for i in ret:
+                # Write one character at a time, for simplicity.
+                self.__extra_buf.write(bytes([i]))
         self.__size -= len(ret)
         self.__pos += len(ret)
         return ret
 
-    def peek(self, size: int):
-        b = bytearray()
-        for i in range(0, min(size, len(self.__buf))):
-            b.extend(self.__buf[i])
-        return bytes(b)[:size]
+    def seek(self, offset: int, whence = SEEK_SET):
+        # Only support absolute file positioning (SEEK_SET).
+        if whence != SEEK_SET:
+            if whence == SEEK_END:
+                # Silently fail for now.
+                return
+            raise UnsupportedOperation
+        if offset < self.tell():
+            # Seek backwards.
+            if not self.__extra_buf:
+                raise UnsupportedOperation
+            bytes_to_seek_back = self.tell() - offset
+            if bytes_to_seek_back > len(self.__extra_buf.__buf):
+                raise UnsupportedOperation(f"Invalid seek offset {offset}. Can't seek back {bytes_to_seek_back}, buf len is only {len(self.__extra_buf.__buf)}.")
+            for _ in range(0, bytes_to_seek_back):
+                element = self.__extra_buf.__buf.pop()
+                self.__buf.appendleft(element)
+                self.__extra_buf.__size -= 1
+                self.__pos -= 1
+                self.__size += 1
+            assert self.__pos == offset, (self.__pos, offset)
+        else:
+            # Seek forward.
+            self.read(offset - self.tell())
+        
+    def seekable(self):
+        return True if self.__extra_buf else False
 
     def flush(self):
         pass
