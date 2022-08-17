@@ -245,12 +245,6 @@ class BytesBuffer(BytesIO):
         self.__buf = deque(maxlen=deque_maxlen)
         self.__size = 0
         self.__pos = 0
-
-        # class BytesExtraBuffer(BytesBuffer):
-        #     def __len__(s):
-        #         print(s.__dict__)
-        #         return len(s.__buf)
-
         self.__extra_buf = BytesBuffer(deque_maxlen = extra_buffer_size) if extra_buffer_size > 0 else None
 
     def __len__(self):

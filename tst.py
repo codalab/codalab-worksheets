@@ -20,7 +20,6 @@ from codalab.lib.print_util import FileTransferProgress
 from codalab.worker.un_gzip_stream import BytesBuffer
 
 import indexed_gzip
-# from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 from ratarmountcore import SQLiteIndexedTar
 
 
