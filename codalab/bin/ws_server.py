@@ -3,32 +3,31 @@ import argparse
 import asyncio
 import logging
 import re
+from typing import Any, Dict
 import websockets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-worker_to_ws = {}
+worker_to_ws: Dict[str, Any] = {}
 
 
 async def rest_server_handler(websocket):
     # Got a message from the rest server.
-    logger.warn(f"rest_server_handler")
-    print("RSH")
     worker_id = await websocket.recv()
-    logger.warn(f"Got a message from the rest server, to ping worker: {worker_id}.")
+    logger.debug(f"Got a message from the rest server, to ping worker: {worker_id}.")
 
     try:
         worker_ws = worker_to_ws[worker_id]
         await worker_ws.send(worker_id)
     except KeyError:
-        logger.warn(f"Websocket not found for worker: {worker_id}")
+        logger.error(f"Websocket not found for worker: {worker_id}")
 
 
 async def worker_handler(websocket, worker_id):
     # runs on worker connect
     worker_to_ws[worker_id] = websocket
-    logger.warn(f"Connected to worker {worker_id}!")
+    logger.debug(f"Connected to worker {worker_id}!")
 
     while True:
         try:
@@ -36,7 +35,7 @@ async def worker_handler(websocket, worker_id):
         except asyncio.futures.TimeoutError:
             pass
         except websockets.exceptions.ConnectionClosed:
-            logger.warn(f"Socket connection closed with worker {worker_id}.")
+            logger.error(f"Socket connection closed with worker {worker_id}.")
             break
 
 
@@ -57,12 +56,11 @@ async def ws_handler(websocket, *args):
 
 
 async def async_main():
-    print('test!')
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', help='Port to run the server on.', type=int, required=True)
     args = parser.parse_args()
-    print('main 4', args.port)
-    async with websockets.serve(ws_handler, "0.0.0.0", 2901):
+    logging.debug(f"Running ws-server on 0.0.0.0:{args.port}")
+    async with websockets.serve(ws_handler, "0.0.0.0", args.port):
         await asyncio.Future()  # run forever
 
 
