@@ -372,8 +372,8 @@ def get_bundle_state_details(bundle):
     """
     metadata = bundle.get('metadata', {})
     run_status = metadata.get('run_status')
-    state = bundle.get('state')
     type = bundle.get('bundle_type')
+    state = bundle.get('state')
     state_details_by_type = {
         'dataset': {
             'created': 'Bundle has been created but its contents have not been uploaded yet.',

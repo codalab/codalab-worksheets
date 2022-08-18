@@ -135,10 +135,9 @@ class DockerImageManager(ImageManager):
         logger.debug('Downloading Docker image %s', image_spec)
         try:
             for line in self._docker.api.pull(image_spec, stream=True, decode=True):
-                status = line['status']
-                if status == 'Downloading' or status == 'Extracting':
+                if line['status'] == 'Downloading' or line['status'] == 'Extracting':
                     progress = docker_utils.parse_image_progress(line)
-                    self._downloading[image_spec]['status'] = '%s %s' % (status, progress)
+                    self._downloading[image_spec]['status'] = '%s %s' % (line['status'], progress)
                 else:
                     self._downloading[image_spec]['status'] = ''
 
