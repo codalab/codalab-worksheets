@@ -921,6 +921,7 @@ class BundleModel(object):
             bundle_update = {
                 'state': State.PREPARING,
                 'metadata': {
+                    'run_status': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,

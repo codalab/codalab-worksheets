@@ -371,9 +371,9 @@ def get_bundle_state_details(bundle):
     See Bundle-Lifecycle.md for public bundle state documentation.
     """
     metadata = bundle.get('metadata', {})
-    run_status = metadata.get('run_status', '')
-    type = bundle.get('bundle_type')
+    run_status = metadata.get('run_status')
     state = bundle.get('state')
+    type = bundle.get('bundle_type')
     state_details_by_type = {
         'dataset': {
             'created': 'Bundle has been created but its contents have not been uploaded yet.',
@@ -398,8 +398,6 @@ def get_bundle_state_details(bundle):
             'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
         },
     }
-
-    # TODO: make sure preparing always has a status
 
     if state == 'preparing' or state == 'running':
         return run_status

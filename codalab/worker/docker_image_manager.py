@@ -131,39 +131,16 @@ class DockerImageManager(ImageManager):
             image_spec: docker image (just image, no prefix docker://)
 
         Returns: None
-
         """
-
-        # TODO: split to helper
-        # TODO: unit test
-        # TODO: code docs
-
-        def get_progress(image_info):
-            progress_detail = image_info.get('progressDetail', {})
-            total = progress_detail.get('total')
-            current = progress_detail.get('current')
-
-            if total and current:
-                percentage = current * 100 / total
-                progress = image_info.get('progress')
-
-                if progress:
-                    progress = progress.split(']')[
-                        -1
-                    ].strip()  # e.g. '[========>    ]  20.32MB/28.54MB' -> '20.32MB/28.54MB'
-                    return '%s (%d%% done)' % (progress, percentage)
-                return '(%d%% done)' % percentage
-            return ''
-
         logger.debug('Downloading Docker image %s', image_spec)
         try:
             for line in self._docker.api.pull(image_spec, stream=True, decode=True):
                 status = line['status']
                 if status == 'Downloading' or status == 'Extracting':
-                    progress = get_progress(line)
+                    progress = docker_utils.parse_image_progress(line)
                     self._downloading[image_spec]['status'] = '%s %s' % (status, progress)
                 else:
-                    self._downloading[image_spec]['status'] = status
+                    self._downloading[image_spec]['status'] = ''
 
             logger.debug('Download for Docker image %s complete', image_spec)
             self._downloading[image_spec]['success'] = True
