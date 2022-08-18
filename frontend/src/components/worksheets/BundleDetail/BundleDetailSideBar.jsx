@@ -117,7 +117,11 @@ class BundleDetailSideBar extends React.Component {
                         }
                     />
                     <BundleFieldRow label='Created' field={bundle.created} />
-                    <BundleFieldRow label='Size' field={bundle.data_size} />
+                    <BundleFieldRow
+                        label='Size'
+                        description='Size of this bundle in bytes (data_size).'
+                        value={bundle.data_size?.value || '--'}
+                    />
                     <BundleFieldRow label='Remote' field={bundle.remote} />
                     <BundleFieldRow
                         label='Store'
