@@ -227,7 +227,7 @@ class BlobStorageUploader(Uploader):
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
             bytes_uploaded = 0
-            CHUNK_SIZE = 4 * 1024
+            CHUNK_SIZE = 16 * 1024
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
@@ -251,7 +251,6 @@ class BlobStorageUploader(Uploader):
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
                 )
-
                 if bundle_conn_str is not None:
                     os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
                 with FileSystems.create(
