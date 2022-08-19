@@ -297,7 +297,7 @@ class RunStateMachine(StateTransitioner):
         image_state = self.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
-                'Pulling docker image %s %s' % (docker_image, image_state.message)
+                'Pulling docker image %s. %s' % (docker_image, image_state.message)
             )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:

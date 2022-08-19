@@ -15,8 +15,7 @@ services:
       # Mount the alembic directory so that we can create new database migrations with the alembic version files mounted.
       - ./../../alembic/:/opt/codalab-worksheets/alembic/
 
-      # Mount the tests directory so that we can modify / run backend unit tests without having to rebuild the Docker image.
+      # Mount these directories so that we can modify code without having to rebuild the Docker image.
       - ./../../tests/:/opt/codalab-worksheets/tests/
-
-      # Mount the scripts directory so that we can modify the competitiond.py script without needing to rebuild the Docker image.
       - ./../../scripts/:/opt/codalab-worksheets/scripts/
+      - ./../../codalab/:/opt/codalab-worksheets/codalab/

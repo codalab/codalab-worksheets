@@ -39,6 +39,36 @@ MEMORY_LIMIT_ERROR_REGEX = (
 logger = logging.getLogger(__name__)
 
 
+def parse_image_progress(image_info={}):
+    """
+    As a docker image is being pulled, we have access to a stream of image info.
+    This helper takes in image info and returns a consise progress string.
+
+    Example Input:
+    image_info = {
+        progressDetail: { current: 20320000, total: 28540000 }
+        progress: '[===============>     ]  20.32MB/28.54MB'
+    }
+
+    Example Return:
+    '20.32MB/28.54MB (71% done)'
+    """
+    progress_detail = image_info.get('progressDetail', {})
+    current = progress_detail.get('current')
+    total = progress_detail.get('total')
+
+    if total and current:
+        percentage = current * 100 / total
+        progress = image_info.get('progress')
+
+        if progress:
+            progress_parts = progress.split(']')
+            concise_progress = progress_parts[-1].strip()
+            return '%s (%d%% done)' % (concise_progress, percentage)
+        return '(%d%% done)' % percentage
+    return ''
+
+
 def wrap_exception(message):
     def decorator(f):
         def wrapper(*args, **kwargs):
