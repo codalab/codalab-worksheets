@@ -43,7 +43,7 @@ bundles. Each bundle transitions through various states during its lifecycle.
 | - | - |
 | **created** | Bundle has been created but its contents have not been populated yet. |
 | **staged** | Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run. |
-| **starting** | Bundle has been assigned to a worker and waiting for worker to start the bundle. |
+| **starting** | Bundle has been assigned to a worker. Waiting for worker to start the bundle. |
 | **preparing** | Waiting for worker to download bundle dependencies and Docker image to run the bundle. |
 | **running** | Bundle command is being executed in a Docker container or results are being uploaded. |
 | **finalizing** | Bundle command has finished executing, cleaning up on the worker. |

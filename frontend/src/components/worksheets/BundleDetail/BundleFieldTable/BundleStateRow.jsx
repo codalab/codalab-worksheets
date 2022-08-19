@@ -36,11 +36,14 @@ class BundleStateTable extends React.Component {
 
     getTime(state) {
         const bundle = this.props.bundle;
+        let time;
         if (state === 'preparing') {
-            return bundle.time_preparing?.value;
+            time = bundle.time_preparing?.value;
+        } else if (state === 'running') {
+            time = bundle.time_running?.value || bundle.time?.value;
         }
-        if (state === 'running') {
-            return bundle.time_running?.value || bundle.time?.value;
+        if (time && time !== '0s') {
+            return time;
         }
     }
 
