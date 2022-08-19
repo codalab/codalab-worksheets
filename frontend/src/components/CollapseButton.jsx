@@ -1,4 +1,5 @@
 import React from 'react';
+import { withStyles } from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
@@ -23,6 +24,7 @@ class CollapseButton extends React.Component {
 
     render() {
         const {
+            classes,
             containerClass,
             collapsed,
             collapseUp,
@@ -34,7 +36,13 @@ class CollapseButton extends React.Component {
 
         return (
             <div className={containerClass}>
-                <Button onClick={onClick} size='small' color='inherit'>
+                <Button
+                    classes={{ focusVisible: classes.focusVisible }}
+                    onClick={onClick}
+                    size='small'
+                    color='inherit'
+                    disableRipple
+                >
                     {currentLabel}
                     {collapsed ? (
                         collapseUp ? (
@@ -51,4 +59,10 @@ class CollapseButton extends React.Component {
     }
 }
 
-export default CollapseButton;
+const styles = () => ({
+    focusVisible: {
+        backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    },
+});
+
+export default withStyles(styles)(CollapseButton);

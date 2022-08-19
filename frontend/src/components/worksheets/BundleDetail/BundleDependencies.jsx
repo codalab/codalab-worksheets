@@ -1,12 +1,10 @@
 import React from 'react';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableRow from '@material-ui/core/TableRow';
+import { withStyles } from '@material-ui/core/styles';
 import { shorten_uuid } from '../../../util/worksheet_utils';
+import BundleStateIndicator from './BundleStateIndicator';
 
 /**
- * This component renders bundle dependencies in an MUI table.
+ * This component renders a list of bundle dependency links.
  */
 class BundleDependencies extends React.PureComponent {
     constructor(props) {
@@ -14,36 +12,60 @@ class BundleDependencies extends React.PureComponent {
     }
 
     render() {
-        const { bundle } = this.props;
+        const { bundle, classes } = this.props;
         const dependencies = bundle.dependencies.value;
 
         if (!dependencies.length) {
-            return <div>none</div>;
+            return <div>None</div>;
         }
 
-        const dependenciesTable = [];
-        dependencies.forEach((dep, i) => {
-            const depBundleUrl = '/bundles/' + dep.parent_uuid;
-            dependenciesTable.push(
-                <TableRow key={dep.parent_uuid + i}>
-                    <TableCell>
-                        {dep.child_path}
-                        <br /> &rarr; {dep.parent_name}(
-                        <a href={depBundleUrl} target='_blank'>
-                            {shorten_uuid(dep.parent_uuid)}
+        return dependencies.map((dep) => {
+            const name = dep.parent_name || dep.child_path;
+            const alias = name === dep.child_path ? null : dep.child_path;
+            const state = dep.parent_state;
+            const uuid = dep.parent_uuid;
+            const href = '/bundles/' + uuid;
+            return (
+                <div className={classes.depContainer} key={uuid}>
+                    <div className={classes.stateContainer}>
+                        <BundleStateIndicator state={state} />
+                    </div>
+                    <div className={classes.nameContainer}>
+                        {name} (
+                        <a className={classes.uuidLink} href={href} target='_blank'>
+                            {shorten_uuid(uuid)}
                         </a>
-                        ){dep.parent_path ? '/' + dep.parent_path : ''}
-                    </TableCell>
-                </TableRow>,
+                        ){alias && <div className={classes.alias}>as {alias}</div>}
+                    </div>
+                </div>
             );
         });
-
-        return (
-            <Table>
-                <TableBody>{dependenciesTable}</TableBody>
-            </Table>
-        );
     }
 }
 
-export default BundleDependencies;
+const styles = (theme) => ({
+    depContainer: {
+        display: 'flex',
+        marginBottom: 4,
+        fontSize: 14,
+    },
+    nameContainer: {
+        paddingLeft: 5,
+    },
+    uuidLink: {
+        color: theme.color.primary.dark,
+        '&:hover': {
+            color: theme.color.primary.base,
+        },
+    },
+    alias: {
+        paddingLeft: 12,
+        fontSize: 12,
+        color: theme.color.grey.darkest,
+    },
+    tooltip: {
+        fontSize: 14,
+    },
+});
+
+export default withStyles(styles)(BundleDependencies);

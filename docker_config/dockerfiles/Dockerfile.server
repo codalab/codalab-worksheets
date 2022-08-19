@@ -46,6 +46,8 @@ RUN python3 -m pip install setuptools --upgrade
 RUN python3 -m pip install --no-cache-dir -r requirements-server.txt
 
 # Install code
+COPY setup.py setup.py
+RUN python3 -m pip install --no-cache-dir -e .
 COPY alembic alembic
 COPY alembic.ini alembic.ini
 COPY codalab codalab
@@ -54,12 +56,9 @@ COPY docs docs
 COPY mkdocs.yml mkdocs.yml
 COPY monitor.py monitor.py
 COPY scripts scripts
-COPY setup.py setup.py
 COPY test_runner.py test_runner.py
 COPY tests tests
 COPY views views
-
-RUN python3 -m pip install --no-cache-dir -e .
 
 # Allow non-root to read everything
 RUN chmod -R og=u-w .

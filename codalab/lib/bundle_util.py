@@ -392,7 +392,7 @@ def get_bundle_state_details(bundle):
             'starting': 'Bundle has been assigned to a worker and waiting for worker to start the bundle.',
             'preparing': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
             'finalizing': 'Bundle command has finished executing, cleaning up on the worker.',
-            'ready': 'Bundle command is finished executing successfully, and results have been uploaded to the server.',
+            'ready': 'Bundle command has finished executing successfully, and results have been uploaded to the server.',
             'failed': 'Bundle has failed.',
             'killed': 'Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.',
             'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',

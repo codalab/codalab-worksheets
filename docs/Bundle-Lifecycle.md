@@ -47,7 +47,7 @@ bundles. Each bundle transitions through various states during its lifecycle.
 | **preparing** | Waiting for worker to download bundle dependencies and Docker image to run the bundle. |
 | **running** | Bundle command is being executed in a Docker container or results are being uploaded. |
 | **finalizing** | Bundle command has finished executing, cleaning up on the worker. |
-| **ready** | Bundle command is finished executing successfully, and results have been uploaded to the server. |
+| **ready** | Bundle command has finished executing successfully, and results have been uploaded to the server. |
 | **failed** | Bundle has failed. |
 | **killed** | Bundle was killed by the user. Bundle contents populated based on when the bundle was killed. |
 | **worker_offline** | The worker where the bundle is running on is offline, and the worker might or might not come back online. |
