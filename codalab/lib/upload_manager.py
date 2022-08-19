@@ -241,6 +241,7 @@ class BlobStorageUploader(Uploader):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
+            
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
