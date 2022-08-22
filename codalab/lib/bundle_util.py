@@ -375,7 +375,7 @@ def get_bundle_state_details(bundle):
     type = bundle.get('bundle_type')
     state = bundle.get('state')
     state_details_by_type = {
-        'dataset': {
+        'dataset': {  # uploaded
             'created': 'Bundle has been created but its contents have not been uploaded yet.',
             'uploading': 'Bundle contents are being uploaded.',
             'ready': 'Bundle has finished uploading successfully, and is ready to be used for further runs.',
@@ -398,7 +398,8 @@ def get_bundle_state_details(bundle):
             'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
         },
     }
+    state_details = state_details_by_type.get(type, {}).get(state, '')
 
     if state == 'preparing' or state == 'running':
         return run_status
-    return state_details_by_type[type][state]
+    return state_details
