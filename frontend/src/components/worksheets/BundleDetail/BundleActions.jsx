@@ -87,14 +87,15 @@ class BundleActions extends React.Component<{
 
     render() {
         const { bundleInfo, classes, editPermission } = this.props;
+        const state = bundleInfo.state;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
-        const isKillableBundle = bundleInfo.state === 'running' || bundleInfo.state === 'preparing';
+        const isKillableBundle = state === 'running' || state === 'preparing' || state === 'staged';
         const isDownloadableRunBundle =
-            bundleInfo.state !== 'preparing' &&
-            bundleInfo.state !== 'starting' &&
-            bundleInfo.state !== 'created' &&
-            bundleInfo.state !== 'staged';
+            state !== 'preparing' &&
+            state !== 'starting' &&
+            state !== 'created' &&
+            state !== 'staged';
 
         return (
             <div>
