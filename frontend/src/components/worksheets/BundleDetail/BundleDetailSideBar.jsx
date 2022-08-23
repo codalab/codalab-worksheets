@@ -53,6 +53,7 @@ class BundleDetailSideBar extends React.Component {
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
+        const remote = bundle.remote?.value;
         const time = bundle.time?.value;
         const exclusions = bundle.exclude_patterns;
         const state = bundle.state.value;
@@ -122,7 +123,13 @@ class BundleDetailSideBar extends React.Component {
                         description='Size of this bundle in bytes (data_size).'
                         value={bundle.data_size?.value || '--'}
                     />
-                    <BundleFieldRow label='Remote' field={bundle.remote} />
+                    <BundleFieldRow
+                        label='Remote'
+                        field={bundle.remote}
+                        value={remote && `${shorten_uuid(remote)}...`}
+                        copyValue={remote}
+                        allowCopy
+                    />
                     <BundleFieldRow
                         label='Store'
                         field={bundle.store}
