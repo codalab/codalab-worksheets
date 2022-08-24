@@ -60,7 +60,6 @@ class BundleFieldRow extends React.Component {
         const label = this.props.label || field.name;
         const description = this.props.description || field.description;
         const value = this.props.value || field.value;
-        const copyValue = this.props.copyValue || value;
 
         if (hideRow) {
             return null;
@@ -98,7 +97,7 @@ class BundleFieldRow extends React.Component {
                     ) : (
                         <div className={classes.dataContainer}>
                             <Typography noWrap={noWrap}>{value}</Typography>
-                            {allowCopy && <Copy message={`${label} Copied!`} text={copyValue} />}
+                            {allowCopy && <Copy message={`${label} Copied!`} text={value} />}
                         </div>
                     )}
                 </td>
