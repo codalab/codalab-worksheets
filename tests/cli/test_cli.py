@@ -1308,6 +1308,15 @@ def test_rm(ctx):
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
 
 
+@TestModule.register('ancestors')
+def test_ancestor(ctx):
+    uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
+    uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
+    uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2]) # uuid1 and uuid2 are parents of uuid3
+    check_contains(uuid1[:8], _run_command([cl, 'ancestors', uuid3]))
+    check_contains(uuid2[:8], _run_command([cl, 'ancestors', uuid3]))
+
+
 @TestModule.register('make')
 def test_make(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
