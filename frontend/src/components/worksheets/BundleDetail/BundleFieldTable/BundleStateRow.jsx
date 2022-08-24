@@ -1,6 +1,6 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
+import { FINAL_BUNDLE_STATES } from '../../../../constants';
 import BundleStateBox from '../BundleStateBox';
 import BundleFieldRow from './BundleFieldRow';
 
@@ -14,12 +14,8 @@ import BundleFieldRow from './BundleFieldRow';
 class BundleStateTable extends React.Component {
     constructor(props) {
         super(props);
-
-        const finalStates = ['ready', 'failed', 'killed', 'worker_offline'];
         const states = this.getStates();
-
         this.state = {
-            finalStates,
             states,
         };
     }
@@ -40,20 +36,23 @@ class BundleStateTable extends React.Component {
 
     getTime(state) {
         const bundle = this.props.bundle;
+        let time;
         if (state === 'preparing') {
-            return bundle.time_preparing?.value;
+            time = bundle.time_preparing?.value;
+        } else if (state === 'running') {
+            time = bundle.time_running?.value || bundle.time?.value;
         }
-        if (state === 'running') {
-            return bundle.time_running?.value || bundle.time?.value;
+        if (time && time !== '0s') {
+            return time;
         }
     }
 
     render() {
         const { bundle, classes } = this.props;
-        const { states, finalStates } = this.state;
+        const { states } = this.state;
         const stateDetails = bundle.state_details?.value;
         const currentState = bundle.state.value;
-        const inFinalState = finalStates.includes(currentState);
+        const inFinalState = FINAL_BUNDLE_STATES.includes(currentState);
 
         if (inFinalState) {
             return (
@@ -70,31 +69,37 @@ class BundleStateTable extends React.Component {
                 label='State'
                 description="The bundle lifecycle diagram to the right indicates this bundle's current state."
                 value={
-                    <div className={classes.stateGraphic}>
-                        {states.map((state) => {
-                            const isCurrent = currentState === state;
-                            const isLast = finalStates.includes(state);
-                            const time = this.getTime(state);
-                            return (
-                                <>
-                                    <div className={classes.stateBoxContainer}>
-                                        <BundleStateBox
-                                            state={state}
-                                            title={isCurrent && stateDetails}
-                                            isActive={isCurrent}
-                                        />
-                                        {time && (
-                                            <span className={classes.timeContainer}>{time}</span>
-                                        )}
-                                    </div>
-                                    {!isLast && (
-                                        <div className={classes.arrowContainer}>
-                                            <ArrowDownwardIcon fontSize='small' />
+                    <div className={classes.stateInfoContainer}>
+                        <div className={classes.stateGraphic}>
+                            {states.map((state) => {
+                                const isLast = FINAL_BUNDLE_STATES.includes(state);
+                                const isCurrent = currentState === state;
+                                const margin = isCurrent ? '5px 0' : '0';
+                                const timeMargin = isCurrent ? '9px 0 0' : '4px 0 0';
+                                const time = this.getTime(state);
+                                return (
+                                    <>
+                                        <div className={classes.stateBoxContainer}>
+                                            <BundleStateBox
+                                                state={state}
+                                                isActive={isCurrent}
+                                                style={{ margin }}
+                                            />
+                                            {time && (
+                                                <span
+                                                    className={classes.timeContainer}
+                                                    style={{ margin: timeMargin }}
+                                                >
+                                                    {time}
+                                                </span>
+                                            )}
                                         </div>
-                                    )}
-                                </>
-                            );
-                        })}
+                                        {!isLast && <div className={classes.arrowContainer}>↓</div>}
+                                    </>
+                                );
+                            })}
+                        </div>
+                        <div className={classes.stateDetails}>{stateDetails}</div>
                     </div>
                 }
             />
@@ -103,20 +108,30 @@ class BundleStateTable extends React.Component {
 }
 
 const styles = (theme) => ({
+    stateInfoContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+    },
     stateGraphic: {
         textAlign: 'center',
-        marginBottom: 16,
+        marginBottom: 8,
+    },
+    stateDetails: {
+        minHeight: 50,
+        fontSize: 11,
+        color: theme.color.grey.darker,
     },
     timeContainer: {
         position: 'absolute',
-        marginTop: 5,
         paddingLeft: 5,
-        fontSize: '11px',
-        color: theme.color.grey.dark,
+        fontSize: 11,
+        color: theme.color.grey.darker,
     },
     arrowContainer: {
         display: 'flex',
         justifyContent: 'center',
+        lineHeight: '14px',
     },
 });
 

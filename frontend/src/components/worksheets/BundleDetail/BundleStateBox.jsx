@@ -29,23 +29,28 @@ class BundleStateBox extends React.Component {
         return classes.activeState;
     }
 
-    render() {
-        const { classes, title, state } = this.props;
+    renderStateBox() {
+        const { classes, state, style } = this.props;
         const activeClass = this.getActiveClass(state);
-
         return (
-            <Tooltip
-                classes={{ tooltip: classes.tooltip }}
-                disableHoverListener={!title}
-                title={title}
-            >
-                <div className={`${classes.baseState} ${activeClass}`}>
-                    <Typography inline color='inherit'>
-                        {state}
-                    </Typography>
-                </div>
-            </Tooltip>
+            <div className={`${classes.baseState} ${activeClass}`} style={style}>
+                <Typography inline color='inherit'>
+                    {state}
+                </Typography>
+            </div>
         );
+    }
+
+    render() {
+        const { classes, title } = this.props;
+        if (title) {
+            return (
+                <Tooltip classes={{ tooltip: classes.tooltip }} title={title}>
+                    {this.renderStateBox()}
+                </Tooltip>
+            );
+        }
+        return this.renderStateBox();
     }
 }
 

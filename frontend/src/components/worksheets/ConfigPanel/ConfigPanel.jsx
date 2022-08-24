@@ -72,10 +72,10 @@ const styles = (theme) => ({
     container: {
         flexGrow: 1,
         flexWrap: 'nowrap',
-        height: '100%',
         maxWidth: '100%',
     },
     content: {
+        justifyContent: 'flex-start',
         backgroundColor: 'white',
         padding: theme.spacing.larger,
         maxHeight: '100%',
@@ -93,10 +93,10 @@ const styles = (theme) => ({
     },
     buttons: {
         '& button': {
-            marginLeft: theme.spacing.larger,
+            marginLeft: 14,
         },
         paddingBottom: theme.spacing.large,
-        paddingTop: theme.spacing.larger,
+        paddingTop: 24,
         maxWidth: '90%',
     },
     border: {

@@ -6,7 +6,7 @@ import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
 
-import ConfigurationPanel from '../ConfigPanel';
+import ConfigPanel from '../ConfigPanel';
 import ErrorMessage from '../ErrorMessage';
 import MainContent from './MainContent';
 import BundleDetailSideBar from './BundleDetailSideBar';
@@ -16,6 +16,7 @@ const BundleDetail = ({
     uuid,
     // Callback on metadata change.
     bundleMetadataChanged,
+    contentExpanded,
     onOpen,
     onUpdate,
     rerunItem,
@@ -28,12 +29,12 @@ const BundleDetail = ({
     showBorder,
 }) => {
     const [bundleInfo, setBundleInfo] = useState(null);
+    const [contentType, setContentType] = useState(null);
     const [fileContents, setFileContents] = useState(null);
     const [stdout, setStdout] = useState(null);
     const [stderr, setStderr] = useState(null);
     const [prevUuid, setPrevUuid] = useState(uuid);
     const [open, setOpen] = useState(true);
-    const [contentType, setContentType] = useState('');
     const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
     const [contentErrors, setContentErrors] = useState([]);
@@ -79,6 +80,7 @@ const BundleDetail = ({
                 .then((r) => r.json())
                 .catch((error) => {
                     setBundleInfo(null);
+                    setContentType(null);
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
@@ -118,6 +120,7 @@ const BundleDetail = ({
             setFetchingContent(true);
             return apiWrapper.get(url).catch((error) => {
                 // If contents aren't available yet, then also clear stdout and stderr.
+                setContentType(null);
                 setFileContents(null);
                 setStderr(null);
                 setStdout(null);
@@ -137,12 +140,14 @@ const BundleDetail = ({
             setPendingFileSummaryFetches((f) => f + 1);
             return fetchFileSummary(uuid, '/')
                 .then(function(blob) {
+                    setContentType(info.type);
                     setFileContents(blob);
                     setStderr(null);
                     setStdout(null);
                 })
                 .finally(() => {
                     setPendingFileSummaryFetches((f) => f - 1);
+                    setFetchingContent(false);
                 });
         } else if (info.type === 'directory') {
             // Get stdout/stderr (important to set things to null).
@@ -167,15 +172,20 @@ const BundleDetail = ({
                     stateUpdate[name] = null;
                 }
             });
-            Promise.all(fetchRequests).then((r) => {
-                setFileContents(stateUpdate['fileContents']);
-                if ('stdout' in stateUpdate) {
-                    setStdout(stateUpdate['stdout']);
-                }
-                if ('stderr' in stateUpdate) {
-                    setStderr(stateUpdate['stderr']);
-                }
-            });
+            Promise.all(fetchRequests)
+                .then((r) => {
+                    setContentType(info.type);
+                    setFileContents(stateUpdate['fileContents']);
+                    if ('stdout' in stateUpdate) {
+                        setStdout(stateUpdate['stdout']);
+                    }
+                    if ('stderr' in stateUpdate) {
+                        setStderr(stateUpdate['stderr']);
+                    }
+                })
+                .finally(() => {
+                    setFetchingContent(false);
+                });
         }
     };
     useSWR(urlContents, fetcherContents, {
@@ -184,8 +194,6 @@ const BundleDetail = ({
         onSuccess: (response) => {
             updateBundleDetail(response);
             setContentErrors([]);
-            setContentType(response.data?.type);
-            setFetchingContent(false);
         },
     });
 
@@ -210,7 +218,7 @@ const BundleDetail = ({
     }
 
     return (
-        <ConfigurationPanel
+        <ConfigPanel
             //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
             ref={(node) => scrollToNewlyOpenedDetail(node)}
             buttons={
@@ -242,8 +250,9 @@ const BundleDetail = ({
                 fileContents={fileContents}
                 fetchingContent={fetchingContent}
                 contentType={contentType}
+                expanded={contentExpanded}
             />
-        </ConfigurationPanel>
+        </ConfigPanel>
     );
 };
 

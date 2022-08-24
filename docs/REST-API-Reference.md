@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.5.5_
+_version 1.5.7_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -196,6 +196,7 @@ Name | Type
 `parent_uuid` | String
 `parent_path` | String
 `parent_name` | Method
+`parent_state` | Method
 
 ## bundle_locations
 

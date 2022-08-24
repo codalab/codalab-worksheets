@@ -1,5 +1,5 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '1.5.5';
+export const CODALAB_VERSION = '1.5.7';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
@@ -53,6 +53,9 @@ export const BUNDLE_STATES: String[] = [
     'killed',
     'worker_offline',
 ];
+
+// All possible final bundle states
+export const FINAL_BUNDLE_STATES = ['ready', 'failed', 'killed', 'worker_offline'];
 
 // Autofill types for schemas.
 export const DEFAULT_POST_PROCESSOR = {
