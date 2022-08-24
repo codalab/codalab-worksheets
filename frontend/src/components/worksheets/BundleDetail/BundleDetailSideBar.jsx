@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
-import { formatBundle, shorten_uuid } from '../../../util/worksheet_utils';
+import { formatBundle } from '../../../util/worksheet_utils';
 import { FINAL_BUNDLE_STATES } from '../../../constants';
 import CollapseButton from '../../CollapseButton';
 import NewWindowLink from '../../NewWindowLink';
@@ -78,9 +78,9 @@ class BundleDetailSideBar extends React.Component {
                     <BundleFieldRow
                         label='UUID'
                         description="Click the copy icon to copy the bundle's full UUID."
-                        value={`${shorten_uuid(uuid)}...`}
-                        copyValue={uuid}
+                        field={bundle.uuid}
                         allowCopy
+                        noWrap
                     />
                     <BundleFieldRow
                         label='Name'
@@ -123,13 +123,7 @@ class BundleDetailSideBar extends React.Component {
                         description='Size of this bundle in bytes (data_size).'
                         value={bundle.data_size?.value || '--'}
                     />
-                    <BundleFieldRow
-                        label='Remote'
-                        field={bundle.remote}
-                        value={remote && `${shorten_uuid(remote)}...`}
-                        copyValue={remote}
-                        allowCopy
-                    />
+                    <BundleFieldRow label='Remote' field={bundle.remote} allowCopy noWrap />
                     <BundleFieldRow
                         label='Store'
                         field={bundle.store}
@@ -287,7 +281,7 @@ const styles = () => ({
     },
     pageLink: {
         position: 'absolute',
-        right: 0,
+        right: -1,
     },
     collapseBtn: {
         marginTop: 5,
