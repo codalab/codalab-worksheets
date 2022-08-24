@@ -12,14 +12,10 @@ def new_init(self, client=None):
                 "max_single_get_size": 4*1024*1024, # split to 4MB chunks
             }
         )
-        print("Account Name:", self.client.account_name)
     else:
         self.client = client
-    print("Account Name:", self.client.account_name)
-    print("Account Url:", self.client.url)
     if not AZURE_DEPS_INSTALLED:
         raise RuntimeError('Azure dependencies are not installed. Unable to run.')
 
 # Monkey patch the init function
-print("here")
 apache_beam.io.azure.blobstorageio.BlobStorageIO.__init__ = new_init
