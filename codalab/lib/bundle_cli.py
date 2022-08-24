@@ -4412,7 +4412,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'ancestors',
-        help='Print the ancestors of a bundle',
+        help='Print the ancestors of bundles',
         arguments=(
             Commands.Argument(
                 'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
