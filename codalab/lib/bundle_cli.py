@@ -4437,7 +4437,7 @@ class BundleCLI(object):
             pass
         info = client.fetch('bundles', uuid)
         name = info.get("metadata", {}).get("name", {})
-        print(' ' * space, "--", name, uuid[:8])
+        print(' ' * space, "--", name, uuid[:8], file=self.stdout)
         parents = info.get("dependencies", {})
         space += 1
         for parent in parents:
