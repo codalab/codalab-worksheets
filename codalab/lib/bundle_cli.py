@@ -124,6 +124,7 @@ BUNDLE_COMMANDS = (
     'mount',
     'netcat',
     'store',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -4408,3 +4409,36 @@ class BundleCLI(object):
                 'Sanity check! Point your CLI at an instance on localhost before executing admin commands: %s'
                 % args.command
             )
+
+    @Commands.command(
+        'ancestors',
+        help='Print the ancestors of a bundle akankshita',
+        arguments=(
+                Commands.Argument(
+                    'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+                ),
+                Commands.Argument(
+                    '-w',
+                    '--worksheet-spec',
+                    help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                    completer=WorksheetsCompleter,
+                ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        for uuid in bundle_uuids:
+            self.dfs(client, uuid)
+
+    def dfs(self, client, uuid, space=0):
+        if uuid == '':
+            pass
+        info = client.fetch('bundles', uuid)
+        name = info.get("metadata", {}).get("name", {})
+        print(' ' * space, "--", name, uuid[:8])
+        parents = info.get("dependencies", {})
+        space += 1
+        for parent in parents:
+            self.dfs(client, parent.get('parent_uuid', ''), space)
