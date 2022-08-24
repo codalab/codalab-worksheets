@@ -4432,13 +4432,13 @@ class BundleCLI(object):
         for uuid in bundle_uuids:
             self.dfs(client, uuid)
 
-    def dfs(self, client, uuid, space=0):
+    def dfs(self, client, uuid, space=0, cache = {}):
         if uuid == '':
             pass
-        info = client.fetch('bundles', uuid)
+        info = cache[uuid] if uuid in cache else client.fetch('bundles', uuid)
         name = info.get("metadata", {}).get("name", {})
         print(' ' * space, "--", name, uuid[:8], file=self.stdout)
         parents = info.get("dependencies", {})
         space += 1
         for parent in parents:
-            self.dfs(client, parent.get('parent_uuid', ''), space)
+            self.dfs(client, parent.get('parent_uuid', ''), space, cache)
