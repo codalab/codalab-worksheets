@@ -1,346 +1,289 @@
-// @flow
 import * as React from 'react';
-import Typography from '@material-ui/core/Typography';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableRow from '@material-ui/core/TableRow';
-import Grid from '@material-ui/core/Grid';
-import { withStyles } from '@material-ui/core/styles';
-import { renderDuration } from '../../../util/worksheet_utils';
-import { Icon } from '@material-ui/core';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
-import BundleStateTooltip from '../../BundleStateTooltip';
-import { BundleEditableField } from '../../EditableField';
-import PermissionDialog from '../PermissionDialog';
-import { renderFormat, shorten_uuid } from '../../../util/worksheet_utils';
-import { ConfigLabel } from '../ConfigPanel';
-import { renderPermissions } from '../../../util/worksheet_utils';
-import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
-
-class Dependency extends React.PureComponent<{
-    bundleInfo: {},
-    classes: {},
-}> {
-    render() {
-        const { bundleInfo } = this.props;
-        let dependencies_table = [];
-        if (!bundleInfo.dependencies || bundleInfo.dependencies.length === 0) return <div />;
-
-        bundleInfo.dependencies.forEach((dep, i) => {
-            let dep_bundle_url = '/bundles/' + dep.parent_uuid;
-            dependencies_table.push(
-                <TableRow key={dep.parent_uuid + i}>
-                    <TableCell>
-                        {dep.child_path}
-                        <br /> &rarr; {dep.parent_name}(
-                        <a href={dep_bundle_url} target='_blank'>
-                            {shorten_uuid(dep.parent_uuid)}
-                        </a>
-                        ){dep.parent_path ? '/' + dep.parent_path : ''}
-                    </TableCell>
-                </TableRow>,
-            );
-        });
-
-        return (
-            <Table>
-                <TableBody>{dependencies_table}</TableBody>
-            </Table>
-        );
-    }
-}
+import { withStyles } from '@material-ui/core';
+import { formatBundle } from '../../../util/worksheet_utils';
+import { FINAL_BUNDLE_STATES } from '../../../constants';
+import CollapseButton from '../../CollapseButton';
+import NewWindowLink from '../../NewWindowLink';
+import { BundleFieldTable, BundleFieldRow, BundleStateRow } from './BundleFieldTable/';
+import BundleDependencies from './BundleDependencies';
+import BundleHostWorksheets from './BundleHostWorksheets';
+import BundlePermissions from './BundlePermissions';
 
 /**
- * Content to display in sidebar of a Bundle Detail expansion panel.
+ * This component renders bundle metadata in a sidebar.
+ * Top-level fields like state, uuid and name are rendered for all bundle types.
+ *
+ * It includes a dynamic bundle state component that disappears once
+ * the bundle is ready.
  */
-class BundleDetailSideBar extends React.Component<{
-    classes: {},
-    bundleInfo: {},
-    onUpdate: () => any,
-}> {
-    state = {
-        showPermisson: false,
-    };
+class BundleDetailSideBar extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            expandPermissons: false,
+            showMoreDetail: this.props.expanded,
+        };
+    }
+
+    toggleExpandPermissions() {
+        this.setState({ expandPermissons: !this.state.expandPermissons });
+    }
+
+    toggleShowMoreDetail() {
+        this.setState({ showMoreDetail: !this.state.showMoreDetail });
+    }
+
+    checkSources(bundle) {
+        if (bundle.bundle_type.value !== 'dataset') {
+            return false;
+        }
+        const sourceFields = ['license', 'source_url', 'link_url', 'link_format'];
+        for (let i in sourceFields) {
+            const field = sourceFields[i];
+            if (bundle[field]?.editable || bundle[field]?.value) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     render() {
-        const { bundleInfo, classes, onUpdate } = this.props;
-        const { metadata, editableMetadataFields = [], metadataType } = bundleInfo;
-        const hasEditPermission = bundleInfo.permission > 1;
-        const isRunBundle = bundleInfo.bundle_type === 'run';
-        const stateSpecClass =
-            bundleInfo.state === 'failed'
-                ? 'failedState'
-                : bundleInfo.state === 'ready'
-                ? 'readyState'
-                : 'otherState';
-        const bundleRunTime = bundleInfo.metadata.time
-            ? renderDuration(bundleInfo.metadata.time)
-            : '-- --';
-        const bundleStateLabel = (
-            <span>
-                State
-                <BundleStateTooltip
-                    bundleState={bundleInfo.state}
-                    bundleType={bundleInfo.bundle_type}
-                    style={{ verticalAlign: 'top' }}
-                />
-            </span>
-        );
+        const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const { expandPermissons, showMoreDetail } = this.state;
+        const bundle = formatBundle(bundleInfo);
+        const bundleType = bundle.bundle_type.value;
+        const uuid = bundle.uuid.value;
+        const time = bundle.time?.value;
+        const exclusions = bundle.exclude_patterns;
+        const state = bundle.state.value;
+        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
+
+        const showPageLink = !hidePageLink;
+        const showOwner = !bundle.is_anonymous.value;
+        const showTime = inFinalState && (time || bundle.request_time?.editable);
+        const showDependencies = !!bundle.dependencies?.value?.length;
+        const showResources = bundleType === 'run';
+        const showSources = this.checkSources(bundle);
+        const showExclusions = exclusions?.value.length || exclusions?.editable;
+        const showHostWorksheets = !!bundle.host_worksheets?.value.length;
 
         return (
-            <div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <ConfigLabel label='Name' />
-                <div className={classes.wrappableText}>
-                    <BundleEditableField
-                        dataType={metadataType.name}
-                        fieldName='name'
-                        uuid={bundleInfo.uuid}
-                        value={metadata.name}
-                        canEdit={hasEditPermission && editableMetadataFields.includes('name')}
+            <div className={classes.sidebar}>
+                {showPageLink && (
+                    <NewWindowLink className={classes.pageLink} href={`/bundles/${uuid}`} />
+                )}
+                <BundleFieldTable>
+                    <BundleStateRow bundle={bundle} />
+                    <BundleFieldRow
+                        label='UUID'
+                        description="Click the copy icon to copy the bundle's full UUID."
+                        field={bundle.uuid}
+                        allowCopy
+                        noWrap
+                    />
+                    <BundleFieldRow
+                        label='Name'
+                        field={bundle.name}
                         onChange={(name) => onUpdate({ name })}
                     />
-                </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <ConfigLabel label='Description' />
-                <div className={classes.wrappableText}>
-                    <BundleEditableField
-                        dataType={metadataType.description}
-                        fieldName='description'
-                        uuid={bundleInfo.uuid}
-                        value={metadata.description}
-                        canEdit={
-                            hasEditPermission && editableMetadataFields.includes('description')
-                        }
+                    <BundleFieldRow
+                        label='Description'
+                        field={bundle.description}
                         onChange={(description) => onUpdate({ description })}
                     />
-                </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <ConfigLabel label='Tags' />
-                <div className={classes.wrappableText}>
-                    <BundleEditableField
-                        dataType={metadataType.tags}
-                        fieldName='tags'
-                        uuid={bundleInfo.uuid}
-                        value={metadata.tags}
-                        canEdit={hasEditPermission && editableMetadataFields.includes('tags')}
+                    <BundleFieldRow
+                        label='Tags'
+                        field={bundle.tags}
                         onChange={(tags) => onUpdate({ tags })}
                     />
-                </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <div>
-                    <ConfigLabel label={bundleStateLabel} inline={true} />
-                    <span className={`${classes.stateBox} ${classes[stateSpecClass]}`}>
-                        <Typography inline color='inherit'>
-                            {bundleInfo.state}
-                        </Typography>
-                    </span>
-                    <div className={classes.dataTextBlock}>{bundleInfo.state_details}</div>
-                    {metadata.failure_message && (
-                        <div className={classes.failureText}>
-                            <span style={{ fontWeight: 500 }}>Error: </span>
-                            {metadata.failure_message}
-                        </div>
+                    {showOwner && (
+                        <BundleFieldRow
+                            label='Owner'
+                            description='The user who owns this bundle.'
+                            field={bundle.user_name}
+                        />
                     )}
-                </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                {isRunBundle ? (
-                    <div>
-                        <ConfigLabel label='Run time: ' inline={true} />
-                        <div className={classes.dataText}>{bundleRunTime}</div>
-                    </div>
-                ) : null}
-                {/** ----------------------------------------------------------------------------------------------- */}
-                {isRunBundle && (
-                    <Grid item xs={12}>
-                        <CopyToClipboard text={bundleInfo.command}>
-                            <div style={{ display: 'inline' }}>
-                                <ConfigLabel label='Command' inline={true} />
-                                <span
-                                    className={`${classes.stateBox} ${classes.copy}`}
-                                    style={{ display: 'inline' }}
-                                >
-                                    <Typography color='inherit' inline>
-                                        copy
-                                    </Typography>
-                                </span>
-                            </div>
-                        </CopyToClipboard>
-                        <div style={{ flexWrap: 'wrap', flexShrink: 1 }}>
-                            <pre style={{ whiteSpace: 'pre-wrap' }}>{bundleInfo.command}</pre>
-                        </div>
-                    </Grid>
-                )}
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <div>
-                    <ConfigLabel label='Owner:' inline={true} />
-                    <div className={classes.dataText}>{bundleInfo.owner.user_name}</div>
-                </div>
-                <div>
-                    <ConfigLabel label='Created:' inline={true} />
-                    <div className={classes.dataText}>
-                        {renderFormat(metadata.created, metadataType.created)}
-                    </div>
-                </div>
-                {metadata.data_size ? (
-                    <div>
-                        <ConfigLabel label='Size:' inline={true} />
-                        <div className={classes.dataText}>
-                            {renderFormat(metadata.data_size, metadataType.data_size)}
-                        </div>
-                    </div>
-                ) : null}
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <ConfigLabel label='Dependencies:' />
-                {isRunBundle && <Dependency bundleInfo={bundleInfo} /> ? (
-                    <Dependency bundleInfo={bundleInfo} />
-                ) : (
-                    <div>None</div>
-                )}
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <ConfigLabel label='Attached to these Worksheets:' />
-                {bundleInfo.host_worksheets.length > 0 ? (
-                    bundleInfo.host_worksheets.map((worksheet) => (
-                        <div key={worksheet.uuid}>
-                            <a
-                                href={`/worksheets/${worksheet.uuid}`}
-                                className={classes.uuidLink}
-                                target='_blank'
-                            >
-                                {worksheet.name}
-                            </a>
-                        </div>
-                    ))
-                ) : (
-                    <div>None</div>
-                )}
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <div>
-                    <ConfigLabel label='Permissions:' inline={true} />
-                    <div
-                        onClick={() => {
-                            this.setState({ showPermisson: !this.state.showPermisson });
-                        }}
-                        className={classes.permissions}
-                    >
-                        <Grid container>
-                            <Grid inline style={{ paddingTop: 2 }}>
-                                {renderPermissions(bundleInfo)}
-                            </Grid>
-                            <Grid inline>
-                                <Icon fontSize={'small'}>
-                                    <KeyboardArrowDownIcon />
-                                </Icon>
-                            </Grid>
-                        </Grid>
-                    </div>
-                    {this.state.showPermisson ? (
-                        <div>
-                            <PermissionDialog
-                                uuid={bundleInfo.uuid}
-                                permission_spec={bundleInfo.permission_spec}
-                                group_permissions={bundleInfo.group_permissions}
-                                onChange={this.props.onMetaDataChange}
-                                perm
+                    <BundleFieldRow
+                        label='Permissions'
+                        description='Click the right arrow to expand permissions settings.'
+                        field={bundle.permission}
+                        value={
+                            <BundlePermissions
+                                bundleInfo={bundleInfo}
+                                onClick={() => this.toggleExpandPermissions()}
+                                onChange={onMetaDataChange || function() {}}
+                                showDialog={expandPermissons}
                             />
-                        </div>
-                    ) : null}
-                </div>
-                {/** ----------------------------------------------------------------------------------------------- */}
-                <div>
-                    <a
-                        href={`/bundles/${bundleInfo.uuid}`}
-                        className={classes.uuidLink}
-                        target='_blank'
-                    >
-                        More details
-                    </a>
-                </div>
+                        }
+                    />
+                    <BundleFieldRow label='Created' field={bundle.created} />
+                    <BundleFieldRow
+                        label='Size'
+                        description='Size of this bundle in bytes (data_size).'
+                        value={bundle.data_size?.value || '--'}
+                    />
+                    <BundleFieldRow label='Remote' field={bundle.remote} allowCopy noWrap />
+                    <BundleFieldRow
+                        label='Store'
+                        field={bundle.store}
+                        onChange={(store) => onUpdate({ store })}
+                    />
+                </BundleFieldTable>
+                {showTime && (
+                    <BundleFieldTable title='Time'>
+                        <BundleFieldRow label='Time' field={bundle.time} />
+                        <BundleFieldRow label='Time Preparing' field={bundle.time_preparing} />
+                        <BundleFieldRow label='Time Running' field={bundle.time_running} />
+                        <BundleFieldRow
+                            label='Time Uploading'
+                            field={bundle.time_uploading_results}
+                        />
+                        <BundleFieldRow label='Time Cleaning Up' field={bundle.time_cleaning_up} />
+                        <BundleFieldRow
+                            label='Time Allowed'
+                            field={bundle.request_time}
+                            onChange={(request_time) => onUpdate({ request_time })}
+                        />
+                    </BundleFieldTable>
+                )}
+                {showDependencies && (
+                    <BundleFieldTable title='Dependencies'>
+                        <BundleDependencies bundle={bundle} />
+                    </BundleFieldTable>
+                )}
+                {showMoreDetail && (
+                    <>
+                        {showResources && (
+                            <BundleFieldTable title='Resources'>
+                                <BundleFieldRow
+                                    label='Disk'
+                                    field={bundle.request_disk}
+                                    onChange={(request_disk) => onUpdate({ request_disk })}
+                                />
+                                <BundleFieldRow
+                                    label='Memory'
+                                    field={bundle.request_memory}
+                                    onChange={(request_memory) => onUpdate({ request_memory })}
+                                />
+                                <BundleFieldRow
+                                    label='CPUs'
+                                    field={bundle.request_cpus}
+                                    onChange={(request_cpus) => onUpdate({ request_cpus })}
+                                />
+                                <BundleFieldRow
+                                    label='GPUs'
+                                    field={bundle.request_gpus}
+                                    onChange={(request_gpus) => onUpdate({ request_gpus })}
+                                />
+                                <BundleFieldRow
+                                    label='Docker Image Requested'
+                                    field={bundle.request_docker_image}
+                                    onChange={(request_docker_image) =>
+                                        onUpdate({ request_docker_image })
+                                    }
+                                />
+                                <BundleFieldRow
+                                    label='Docker Image Used'
+                                    field={bundle.docker_image}
+                                    allowCopy
+                                    noWrap
+                                />
+                                <BundleFieldRow
+                                    label='Preemptible'
+                                    field={bundle.on_preemptible_worker}
+                                />
+                                <BundleFieldRow
+                                    label='Queue'
+                                    field={bundle.request_queue}
+                                    onChange={(request_queue) => onUpdate({ request_queue })}
+                                />
+                                <BundleFieldRow
+                                    label='Priority'
+                                    field={bundle.request_priority}
+                                    onChange={(request_priority) => onUpdate({ request_priority })}
+                                />
+                                <BundleFieldRow
+                                    label='Network'
+                                    field={bundle.request_network}
+                                    onChange={(request_network) => onUpdate({ request_network })}
+                                />
+                                <BundleFieldRow
+                                    label='Failed Dependencies'
+                                    field={bundle.allow_failed_dependencies}
+                                    onChange={(allow_failed_dependencies) =>
+                                        onUpdate({ allow_failed_dependencies })
+                                    }
+                                />
+                            </BundleFieldTable>
+                        )}
+                        {showSources && (
+                            <BundleFieldTable title='Sources'>
+                                <BundleFieldRow
+                                    label='License'
+                                    field={bundle.license}
+                                    onChange={(license) => onUpdate({ license })}
+                                />
+                                <BundleFieldRow
+                                    label='Source URL'
+                                    field={bundle.source_url}
+                                    onChange={(source_url) => onUpdate({ source_url })}
+                                />
+                                <BundleFieldRow
+                                    label='Link URL'
+                                    field={bundle.link_url}
+                                    onChange={(link_url) => onUpdate({ link_url })}
+                                />
+                                <BundleFieldRow
+                                    label='Link Format'
+                                    field={bundle.link_format}
+                                    onChange={(link_format) => onUpdate({ link_format })}
+                                />
+                            </BundleFieldTable>
+                        )}
+                        {showExclusions && (
+                            <BundleFieldTable title='Exclusions'>
+                                <BundleFieldRow
+                                    label='Exclude Patterns'
+                                    field={bundle.exclude_patterns}
+                                    onChange={(exclude_patterns) => onUpdate({ exclude_patterns })}
+                                />
+                            </BundleFieldTable>
+                        )}
+                        {showHostWorksheets && (
+                            <BundleFieldTable title='Worksheets'>
+                                <BundleFieldRow
+                                    label='Host Worksheets'
+                                    description='Worksheets associated with this bundle.'
+                                    field={bundle.host_worksheets}
+                                    value={<BundleHostWorksheets bundle={bundle} />}
+                                />
+                            </BundleFieldTable>
+                        )}
+                    </>
+                )}
+                <CollapseButton
+                    containerClass={classes.collapseBtn}
+                    label='More Detail'
+                    collapsedLabel='Less Detail'
+                    onClick={() => this.toggleShowMoreDetail()}
+                    collapsed={showMoreDetail}
+                    collapseUp
+                />
             </div>
         );
     }
 }
 
-const styles = (theme) => ({
-    section: {
-        marginTop: 8,
+const styles = () => ({
+    sidebar: {
+        position: 'relative',
     },
-    row: {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
+    pageLink: {
+        position: 'absolute',
+        right: -1,
     },
-    uuidLink: {
-        color: theme.color.primary.dark,
-        '&:hover': {
-            color: theme.color.primary.base,
-        },
-    },
-    spacer: {
-        marginTop: theme.spacing.larger,
-    },
-    stateBox: {
-        color: 'white',
-        width: `50px`,
-        textAlign: 'center',
-        paddingLeft: 3,
-        paddingRight: 3,
-        paddingTop: 1,
-        paddingBottom: 1,
-        marginLeft: 3,
-        marginRight: 3,
-        border: '0px',
-        verticalAlign: 'middle',
-        borderRadius: '5px!important',
-    },
-    copy: {
-        backgroundColor: 'black',
-        cursor: 'copy',
-    },
-    readyState: {
-        backgroundColor: theme.color.green.base,
-    },
-    failedState: {
-        backgroundColor: theme.color.red.base,
-    },
-    otherState: {
-        backgroundColor: theme.color.yellow.base,
-    },
-    command: {
-        backgroundColor: '#333',
-        color: 'white',
-        fontFamily: 'monospace',
-        padding: theme.spacing.large,
-        borderRadius: theme.spacing.unit,
-        wordWrap: 'break-all',
-        flexWrap: 'wrap',
-    },
-    permissions: {
-        cursor: 'pointer',
-        '&:hover': {
-            backgroundColor: theme.color.primary,
-        },
-    },
-    dataText: {
-        display: 'inline',
-        fontSize: 14,
-        verticalAlign: 'middle',
-        paddingLeft: 2,
-    },
-    dataTextBlock: {
-        display: 'block',
-        marginBottom: 3,
-        fontSize: 14,
-    },
-    wrappableText: {
-        flexWrap: 'wrap',
-        flexShrink: 1,
-    },
-    failureText: {
-        fontSize: 14,
-        margin: '4px 0',
-        color: 'red',
+    collapseBtn: {
+        marginTop: 5,
     },
 });
 

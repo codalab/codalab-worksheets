@@ -134,7 +134,7 @@ def logs(s):
 
 
 num_errors: Dict[str, int] = defaultdict(int)
-last_sent: Dict[str, float] = defaultdict(int)
+last_sent: Dict[str, float] = defaultdict(float)
 
 
 def error_logs(error_type, s):
