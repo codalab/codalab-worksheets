@@ -53,7 +53,6 @@ class BundleDetailSideBar extends React.Component {
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
-        const remote = bundle.remote?.value;
         const time = bundle.time?.value;
         const exclusions = bundle.exclude_patterns;
         const state = bundle.state.value;
