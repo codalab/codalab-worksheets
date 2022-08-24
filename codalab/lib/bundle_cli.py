@@ -4412,17 +4412,17 @@ class BundleCLI(object):
 
     @Commands.command(
         'ancestors',
-        help='Print the ancestors of a bundle akankshita',
+        help='Print the ancestors of a bundle',
         arguments=(
-                Commands.Argument(
-                    'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
-                ),
-                Commands.Argument(
-                    '-w',
-                    '--worksheet-spec',
-                    help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
-                    completer=WorksheetsCompleter,
-                ),
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
         ),
     )
     def do_ancestors_command(self, args):
