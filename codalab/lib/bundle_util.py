@@ -398,6 +398,9 @@ def get_bundle_state_details(bundle):
             'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
         },
     }
+
+    # We can remove the defensive checks below once program bundles are converted to dataset bundles.
+    # Related Issue: https://github.com/codalab/codalab-worksheets/issues/4235
     state_details = state_details_by_type.get(type, {}).get(state, '')
 
     if state == 'preparing' or state == 'running':
