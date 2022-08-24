@@ -39,3 +39,19 @@ LOCAL_USING_AZURITE = "http://azurite" in AZURE_BLOB_CONNECTION_STRING
 
 # HTTP endpoint used to directly access Blob Storage. Used to generate SAS URLs.
 AZURE_BLOB_HTTP_ENDPOINT = f"http://localhost:10000/{AZURE_BLOB_ACCOUNT_NAME}" if LOCAL_USING_AZURITE else f"https://{AZURE_BLOB_ACCOUNT_NAME}.blob.core.windows.net"
+
+
+def get_azure_bypass_conn_str():
+    """
+    Get current Azure connection string from environment variables.
+    Used for bypass server upload to blob storage.
+    Returns the Azure connection string without Account key.
+    """
+    conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+    all_fields = conn_str.split(";")
+    allow_fields = ["DefaultEndpointsProtocol", "AccountName", "BlobEndpoint", "EndpointSuffix"]
+    fields = []
+    for field in all_fields:
+        if field.split('=')[0] in allow_fields:
+            fields.append(field)
+    return ';'.join(fields)

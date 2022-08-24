@@ -15,7 +15,7 @@ class DerivedBundle(NamedBundle):
     # Don't format specs
     # fmt: off
     METADATA_SPECS.append(
-        MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies.', default=False,)
+        MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).', default=False,)
     )
     # fmt: on
 

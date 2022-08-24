@@ -98,6 +98,9 @@ def get_bundle_infos(
         # Set permission
         bundle['permission'] = perms[uuid]
 
+        # Set state details
+        bundle['state_details'] = bundle_util.get_bundle_state_details(bundle)
+
     if get_children:
         parent2children = model.get_children_uuids(readable)
 

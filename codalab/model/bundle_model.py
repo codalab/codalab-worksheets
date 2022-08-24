@@ -921,6 +921,7 @@ class BundleModel(object):
             bundle_update = {
                 'state': State.PREPARING,
                 'metadata': {
+                    'run_status': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,
@@ -2985,6 +2986,8 @@ class BundleModel(object):
                     )
                 )
             ).fetchone()
+            if row is None:
+                raise UsageError(f"Can not find the BundleStore with name {name}.")
             return {
                 'uuid': row.uuid,
                 'owner_id': row.owner_id,

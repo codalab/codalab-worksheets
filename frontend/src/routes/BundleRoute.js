@@ -1,30 +1,44 @@
 import * as React from 'react';
-import Bundle from '../components/Bundle/Bundle';
+import { withStyles } from '@material-ui/core';
+import BundleDetail from '../components/worksheets/BundleDetail';
 
 /**
- * This route page displays a bundle's metadata and contents.
+ * This page-level component renders info about a single bundle.
  */
-class BundleRoute extends React.Component<> {
-    /** Prop default values. */
-    static defaultProps = {
-        // key: value,
-    };
-
-    /** Constructor. */
+class BundleRoute extends React.Component {
     constructor(props) {
         super(props);
-        const { uuid } = this.props.match.params;
-        this.state = {
-            bundleInfo: null,
-            uuid,
-        };
     }
 
-    /** Renderer. */
     render() {
         const { uuid } = this.props.match.params;
-        return <Bundle uuid={uuid} isStandalonePage={true} />;
+        const { classes } = this.props;
+        return (
+            <div className={classes.bundleContainer}>
+                <BundleDetail
+                    uuid={uuid}
+                    onUpdate={() => {}}
+                    contentExpanded
+                    sidebarExpanded
+                    hideBundlePageLink
+                    showBorder
+                />
+            </div>
+        );
     }
 }
 
-export default BundleRoute;
+const headerHeight = '58px';
+const footerHeight = '25px';
+
+const styles = () => ({
+    bundleContainer: {
+        // We create our own content viewport to eliminate native auto-scrolling.
+        // Context: https://github.com/codalab/codalab-worksheets/issues/4204
+        height: `calc(100vh - ${headerHeight} - ${footerHeight})`,
+        overflowY: 'scroll',
+        overflowX: 'hidden',
+    },
+});
+
+export default withStyles(styles)(BundleRoute);

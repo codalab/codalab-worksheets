@@ -165,6 +165,9 @@ def mimic_bundles(
             new_info.pop('uuid', None)
             new_info.pop('id', None)
 
+            # Remove state_details, as this field is not stored in the db.
+            new_info.pop('state_details')
+
             # Only change the name if the output name is supplied.
             new_metadata = new_info['metadata']
             if new_output_name:
@@ -354,3 +357,48 @@ def check_bundle_freezable(bundle):
             'Cannot freeze bundle %s(%s), bundle is not in a final state.'
             % (bundle.uuid, bundle.metadata.to_dict()["name"])
         )
+
+
+def get_bundle_state_details(bundle):
+    """
+    This helper returns information about the given bundle's status based on
+    the bundle's current `state` and `run_status`.
+
+    If the bundle is currently running, its `run_status` will be returned.
+    Otherwise, a description of the `state` is returned.
+
+    See bundle_state.py for details on the State class.
+    See Bundle-Lifecycle.md for public bundle state documentation.
+    """
+    metadata = bundle.get('metadata', {})
+    run_status = metadata.get('run_status')
+    type = bundle.get('bundle_type')
+    state = bundle.get('state')
+    state_details_by_type = {
+        'dataset': {
+            'created': 'Bundle has been created but its contents have not been uploaded yet.',
+            'uploading': 'Bundle contents are being uploaded.',
+            'ready': 'Bundle has finished uploading successfully, and is ready to be used for further runs.',
+            'failed': 'Bundle uploading failed.',
+        },
+        'make': {
+            'created': 'Bundle has been created but its contents have not yet been populated.',
+            'making': 'Bundle contents are being populated by copying its dependencies.',
+            'ready': 'Bundle contents have been successfully populated and is ready for further runs.',
+            'failed': 'Populating bundle contents failed.',
+        },
+        'run': {
+            'created': 'Bundle has been created but its contents have not been populated yet.',
+            'staged': 'Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.',
+            'starting': 'Bundle has been assigned to a worker. Waiting for worker to start the bundle.',
+            'finalizing': 'Bundle command has finished executing, cleaning up on the worker.',
+            'ready': 'Bundle command has finished executing successfully, and results have been uploaded to the server.',
+            'failed': 'Bundle has failed.',
+            'killed': 'Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.',
+            'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
+        },
+    }
+
+    if state == 'preparing' or state == 'running':
+        return run_status
+    return state_details_by_type[type][state]
