@@ -611,7 +611,7 @@ def test_gen_rest_docs(ctx):
     _run_command(
         [
             'python3',
-            os.path.join(base_path, '..', '..', 'scripts', 'gen-rest-docs.py'),
+            os.path.join(base_path, '../../../../..', '..', 'scripts', 'gen-rest-docs.py'),
             '--docs',
             '/tmp',
         ]
@@ -624,7 +624,7 @@ def test_gen_cli_docs(ctx):
     _run_command(
         [
             'python3',
-            os.path.join(base_path, '..', '..', 'scripts', 'gen-cli-docs.py'),
+            os.path.join(base_path, '../../../../..', '..', 'scripts', 'gen-cli-docs.py'),
             '--docs',
             '/tmp',
         ]
@@ -1312,7 +1312,9 @@ def test_rm(ctx):
 def test_ancestor(ctx):
     uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
-    uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2]) # uuid1 and uuid2 are parents of uuid3
+    uuid3 = _run_command(
+        [cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2]
+    )  # uuid1 and uuid2 are parents of uuid3
     check_contains(uuid1[:8], _run_command([cl, 'ancestors', uuid3]))
     check_contains(uuid2[:8], _run_command([cl, 'ancestors', uuid3]))
 

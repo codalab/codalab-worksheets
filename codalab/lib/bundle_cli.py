@@ -4432,7 +4432,7 @@ class BundleCLI(object):
         for uuid in bundle_uuids:
             self.dfs(client, uuid)
 
-    def dfs(self, client, uuid, space=0, cache = {}):
+    def dfs(self, client, uuid, space=0, cache={}):
         if uuid == '':
             pass
         info = cache[uuid] if uuid in cache else client.fetch('bundles', uuid)
