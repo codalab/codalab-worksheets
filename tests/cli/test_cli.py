@@ -611,7 +611,7 @@ def test_gen_rest_docs(ctx):
     _run_command(
         [
             'python3',
-            os.path.join(base_path, '../../../../..', '..', 'scripts', 'gen-rest-docs.py'),
+            os.path.join(base_path, '..', '..', 'scripts', 'gen-rest-docs.py'),
             '--docs',
             '/tmp',
         ]
@@ -624,7 +624,7 @@ def test_gen_cli_docs(ctx):
     _run_command(
         [
             'python3',
-            os.path.join(base_path, '../../../../..', '..', 'scripts', 'gen-cli-docs.py'),
+            os.path.join(base_path, '..', '..', 'scripts', 'gen-cli-docs.py'),
             '--docs',
             '/tmp',
         ]
