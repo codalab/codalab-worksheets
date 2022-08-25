@@ -4434,7 +4434,7 @@ class BundleCLI(object):
 
     def dfs(self, client, uuid, space=0, cache={}):
         if uuid == '':
-            pass
+            return
         info = cache[uuid] if uuid in cache else client.fetch('bundles', uuid)
         name = info.get("metadata", {}).get("name", {})
         print(' ' * space, "--", name, uuid[:8], file=self.stdout)
