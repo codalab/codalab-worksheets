@@ -27,8 +27,29 @@ class BundleFieldRow extends React.Component {
         super(props);
     }
 
+    /**
+     * Returns true if this field should be hidden.
+     * We should only show fields that either have values or are editable.
+     *
+     * @returns {bool}
+     */
+    checkHideRow() {
+        const field = this.props.field || {};
+        const value = this.props.value || field?.value;
+        if (!field.editable) {
+            if (!value) {
+                return true;
+            }
+            if (field.type === 'list' && (!value.length || !value[0])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     render() {
         const { allowCopy, classes, onChange, noWrap } = this.props;
+        const hideRow = this.checkHideRow();
         const field = this.props.field || {};
         const name = field.name;
         const dataType = field.type;
@@ -39,15 +60,9 @@ class BundleFieldRow extends React.Component {
         const label = this.props.label || field.name;
         const description = this.props.description || field.description;
         const value = this.props.value || field.value;
-        const copyValue = this.props.copyValue || value;
 
-        if (!canEdit) {
-            if (dataType === 'list' && (!value.length || !value[0])) {
-                return null;
-            }
-            if (dataType === 'str' && !value) {
-                return null;
-            }
+        if (hideRow) {
+            return null;
         }
 
         return (
@@ -57,10 +72,7 @@ class BundleFieldRow extends React.Component {
                         {label}
                     </Typography>
                     {description && (
-                        <Tooltip
-                            title={description}
-                            classes={{ tooltip: classes.tooltipContainer }}
-                        >
+                        <Tooltip title={description} classes={{ tooltip: classes.tooltip }}>
                             <span className={classes.tooltipIcon}>
                                 <HelpOutlineOutlinedIcon
                                     fontSize='inherit'
@@ -85,7 +97,7 @@ class BundleFieldRow extends React.Component {
                     ) : (
                         <div className={classes.dataContainer}>
                             <Typography noWrap={noWrap}>{value}</Typography>
-                            {allowCopy && <Copy message={`${label} Copied!`} text={copyValue} />}
+                            {allowCopy && <Copy message={`${label} Copied!`} text={value} />}
                         </div>
                     )}
                 </td>
@@ -95,9 +107,8 @@ class BundleFieldRow extends React.Component {
 }
 
 const styles = (theme) => ({
-    tooltipContainer: {
+    tooltip: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
         display: 'inline-block',

@@ -366,15 +366,16 @@ def get_bundle_state_details(bundle):
 
     If the bundle is currently running, its `run_status` will be returned.
     Otherwise, a description of the `state` is returned.
+
+    See bundle_state.py for details on the State class.
+    See Bundle-Lifecycle.md for public bundle state documentation.
     """
+    metadata = bundle.get('metadata', {})
+    run_status = metadata.get('run_status')
     type = bundle.get('bundle_type')
     state = bundle.get('state')
-    metadata = bundle.get('metadata', {})
-
-    # see bundle_state.py for details on the State class
-    # see Bundle-Lifecycle.md for public bundle state documentation
     state_details_by_type = {
-        'dataset': {
+        'dataset': {  # uploaded
             'created': 'Bundle has been created but its contents have not been uploaded yet.',
             'uploading': 'Bundle contents are being uploaded.',
             'ready': 'Bundle has finished uploading successfully, and is ready to be used for further runs.',
@@ -389,17 +390,19 @@ def get_bundle_state_details(bundle):
         'run': {
             'created': 'Bundle has been created but its contents have not been populated yet.',
             'staged': 'Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.',
-            'starting': 'Bundle has been assigned to a worker and waiting for worker to start the bundle.',
-            'preparing': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
+            'starting': 'Bundle has been assigned to a worker. Waiting for worker to start the bundle.',
             'finalizing': 'Bundle command has finished executing, cleaning up on the worker.',
-            'ready': 'Bundle command is finished executing successfully, and results have been uploaded to the server.',
+            'ready': 'Bundle command has finished executing successfully, and results have been uploaded to the server.',
             'failed': 'Bundle has failed.',
             'killed': 'Bundle was killed by the user. Bundle contents populated based on when the bundle was killed.',
             'worker_offline': 'The worker where the bundle is running on is offline, and the worker might or might not come back online.',
         },
     }
 
-    # if the bundle is `running`, return the `run_status`
-    if state == 'running':
-        return metadata.get('run_status', '')
-    return state_details_by_type[type][state]
+    # We can remove the defensive checks below once program bundles are converted to dataset bundles.
+    # Related Issue: https://github.com/codalab/codalab-worksheets/issues/4235
+    state_details = state_details_by_type.get(type, {}).get(state, '')
+
+    if state == 'preparing' or state == 'running':
+        return run_status
+    return state_details

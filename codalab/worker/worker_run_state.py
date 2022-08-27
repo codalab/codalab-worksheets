@@ -189,7 +189,7 @@ class RunStateMachine(StateTransitioner):
         self.docker_runtime = docker_runtime
         self.bundle_runtime = bundle_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
-        self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
+        self.uploading = ThreadDict(fields={'run_status': 'Upload started.', 'success': False})
         # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
         self.disk_utilization = ThreadDict(
             fields={'disk_utilization': 0, 'running': True, 'lock': None}
@@ -297,7 +297,7 @@ class RunStateMachine(StateTransitioner):
         image_state = self.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
-                'Pulling docker image %s %s' % (docker_image, image_state.message)
+                'Pulling docker image %s. %s' % (docker_image, image_state.message)
             )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
@@ -582,7 +582,7 @@ class RunStateMachine(StateTransitioner):
             )
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
             self.disk_utilization.remove(run_state.bundle.uuid)
-            return run_state._replace(stage=RunStage.CLEANING_UP, run_status='Uploading results')
+            return run_state._replace(stage=RunStage.CLEANING_UP, run_status='Uploading results.')
         else:
             return run_state
 
@@ -655,7 +655,7 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.UPLOADING_RESULTS,
             )
             return run_state._replace(
-                stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
+                stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results.', container=None
             )
         else:
             # No need to upload results since results are directly written to bundle store
@@ -695,7 +695,7 @@ class RunStateMachine(StateTransitioner):
                 logger.debug('Uploading results for run with UUID %s', run_state.bundle.uuid)
 
                 def progress_callback(bytes_uploaded):
-                    run_status = 'Uploading results: %s uploaded (archived size)' % size_str(
+                    run_status = 'Uploading results: %s uploaded (archived size).' % size_str(
                         bytes_uploaded, include_bytes=True,
                     )
                     self.uploading[run_state.bundle.uuid]['run_status'] = run_status
@@ -764,7 +764,7 @@ class RunStateMachine(StateTransitioner):
                 previous_stage=run_state.stage,
                 next_stage=RunStage.FINALIZING,
             )
-        return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
+        return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle.")
 
     def _transition_from_FINALIZING(self, run_state):
         """

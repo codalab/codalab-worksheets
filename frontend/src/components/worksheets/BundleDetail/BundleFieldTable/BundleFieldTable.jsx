@@ -12,11 +12,11 @@ class BundleFieldTable extends React.Component {
     }
 
     render() {
-        const { children, classes, title } = this.props;
+        const { children, classes, style, title } = this.props;
         return (
             <>
                 {title && (
-                    <Typography classes={{ root: classes.title }} variant='subtitle1'>
+                    <Typography style={style} classes={{ root: classes.title }} variant='subtitle1'>
                         {title}
                     </Typography>
                 )}

@@ -13,8 +13,9 @@ class ConfigLabel extends React.Component<{
 }> {
     render() {
         const { classes, label, tooltip, inline, optional } = this.props;
+        const marginBottom = this.props.hasMargin ? 4 : 0;
         const contents = (
-            <span className={classes.label}>
+            <span className={classes.label} style={{ marginBottom }}>
                 <Typography variant='subtitle2' inline>
                     {label}
                 </Typography>
@@ -54,7 +55,6 @@ const styles = (theme) => ({
     },
     tooltipBox: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
         color: theme.color.grey.dark,

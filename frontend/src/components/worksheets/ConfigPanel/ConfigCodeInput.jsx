@@ -39,7 +39,7 @@ class ConfigCodeInput extends React.Component<{
                 autoFocus={autoFocus}
                 onFocus={this.moveFocusToEnd}
                 onKeyDown={onKeyDown}
-                margin='dense'
+                margin='none'
                 variant='filled'
                 fullWidth
                 InputProps={{
