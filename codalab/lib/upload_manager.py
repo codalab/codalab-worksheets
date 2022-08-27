@@ -15,7 +15,6 @@ from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
 from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
 from codalab.lib.print_util import FileTransferProgress
-import codalab.lib.beam.blobStorageIO
 
 
 Source = Union[str, Tuple[str, IO[bytes]]]

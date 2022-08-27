@@ -3,8 +3,10 @@ from azure.storage.blob import BlobServiceClient
 
 # Monkey-patch BlobStorageUploader
 from .blobstorageuploader import BlobStorageUploader
+from .blobStorageIO import new_init
 import apache_beam.io.azure.blobstorageio
 apache_beam.io.azure.blobstorageio.BlobStorageUploader = BlobStorageUploader
+apache_beam.io.azure.blobstorageio.BlobStorageIO.__init__ = new_init
 
 # Test connection string for Azurite (local development)
 TEST_CONN_STR = (
