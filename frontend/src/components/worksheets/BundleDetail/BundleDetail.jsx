@@ -52,13 +52,11 @@ const BundleDetail = ({
     // If info is not available yet, fetch
     // If bundle is in a state that is possible to transition to a different state, fetch data
     // we have ignored ready|failed|killed states here
-    const refreshInterval =
-        !bundleInfo ||
-        bundleInfo.state.match(
-            'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
-        )
-            ? 4000
-            : 0;
+    const refreshInterval = bundleInfo?.state?.match(
+        'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
+    )
+        ? 4000
+        : 0;
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -214,7 +212,7 @@ const BundleDetail = ({
     }
 
     if (bundleInfo.bundle_type === 'private') {
-        return <div>Detail not available for this bundle</div>;
+        return <ErrorMessage message='Error: Bundle Access Denied' />;
     }
 
     return (
