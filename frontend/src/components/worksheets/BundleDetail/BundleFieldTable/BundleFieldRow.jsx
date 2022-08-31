@@ -125,6 +125,7 @@ const styles = (theme) => ({
     dataContainer: {
         display: 'flex',
         verticalAlign: 'center',
+        justifyContent: 'space-between',
     },
     td: {
         width: '50%',
