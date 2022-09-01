@@ -246,7 +246,6 @@ const BundleDetail = ({
                 stdout={stdout}
                 stderr={stderr}
                 fileContents={fileContents}
-                fetchingContent={fetchingContent}
                 contentType={contentType}
                 expanded={contentExpanded}
             />
