@@ -120,7 +120,8 @@ class BundleManager(object):
         self._fail_unresponsive_bundles()
 
     def _set_staged_status(self, bundle, staged_status):
-        self._model.update_bundle(bundle, {'metadata': {'staged_status': staged_status}})
+        if bundle.BUNDLE_TYPE == 'run':
+            self._model.update_bundle(bundle, {'metadata': {'staged_status': staged_status}})
 
     def _stage_bundles(self):
         """
@@ -188,14 +189,10 @@ class BundleManager(object):
             )
         for bundle in bundles_to_stage:
             logger.info('Staging %s', bundle.uuid)
-            self._model.update_bundle(
+            self._model.update_bundle(bundle, {'state': State.STAGED})
+            self._set_staged_status(
                 bundle,
-                {
-                    'state': State.STAGED,
-                    'metadata': {
-                        'staged_status': "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
-                    },
-                },
+                "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.",
             )
 
     def _make_bundles(self) -> List[threading.Thread]:
@@ -204,13 +201,7 @@ class BundleManager(object):
         for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
             if not self._is_making_bundle(bundle.uuid):
                 logger.info('Re-staging make bundle %s', bundle.uuid)
-                self._model.update_bundle(
-                    bundle,
-                    {
-                        'state': State.STAGED,
-                        'metadata': {'staged_status': 'Stuck bundle has been re-staged.'},
-                    },
-                )
+                self._model.update_bundle(bundle, {'state': State.STAGED})
 
         threads = []
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
