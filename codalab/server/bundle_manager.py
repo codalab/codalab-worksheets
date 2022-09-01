@@ -662,7 +662,7 @@ class BundleManager(object):
         if not workers_list:
             request_snapshot = self._create_bundle_resource_snapshot(bundle_resources)
             workers_snapshot = self._create_workers_resource_snapshot(available_workers)
-            staged_status = f'No workers with the desired (cpus, gpus, memory, disk) exist. You requested {request_snapshot} but only the following are available: {workers_snapshot}.'
+            staged_status = f'No workers with the desired (CPUs, GPUs, memory, disk space) exist. You requested {request_snapshot} but only the following are available: {workers_snapshot}.'
             self._set_staged_status(bundle, staged_status)
             return []
 
