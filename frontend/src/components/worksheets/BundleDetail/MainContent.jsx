@@ -2,7 +2,6 @@
 import * as React from 'react';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import { FINAL_BUNDLE_STATES } from '../../../constants';
 import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import CollapseButton from '../../CollapseButton';
 import CodeSnippet from '../../CodeSnippet';
@@ -55,19 +54,6 @@ class MainContent extends React.Component<{
         return runStates.includes(bundleInfo.state);
     }
 
-    isLoading() {
-        const { bundleInfo, fetchingContent, contentType, stderr, stdout } = this.props;
-        const state = bundleInfo.state;
-        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
-        if (!inFinalState) {
-            return true;
-        }
-        if (state === 'killed') {
-            return false;
-        }
-        return !stderr && !stdout && !contentType && fetchingContent;
-    }
-
     render() {
         const {
             bundleInfo,
@@ -78,12 +64,12 @@ class MainContent extends React.Component<{
             stderr,
             stdout,
         } = this.props;
-        const uuid = bundleInfo.uuid;
+        const { command, metadata, state, uuid } = bundleInfo || {};
         const stdoutUrl = '/rest/bundles/' + uuid + '/contents/blob/stdout';
         const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
-        const command = bundleInfo.command;
-        const failureMessage = bundleInfo.metadata.failure_message;
-        const isLoading = this.isLoading();
+        const failureMessage = metadata.failure_message;
+        const inErrorState = ['killed', 'failed'].includes(state);
+        const isLoading = !contentType && !inErrorState;
 
         return (
             <div className={classes.outter}>
