@@ -167,11 +167,11 @@ class BundleManager(object):
                 ]
                 failure_message = ''
                 if failed_uuids:
-                    failure_message += ' Parent bundles failed: %s' % ', '.join(failed_uuids)
+                    failure_message += 'Parent bundles failed: %s ' % ', '.join(failed_uuids)
                 if killed_uuids:
-                    failure_message += ' Parent bundles were killed: %s' % ', '.join(killed_uuids)
+                    failure_message += 'Parent bundles were killed: %s ' % ', '.join(killed_uuids)
                 if failure_message:
-                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles)'
+                    failure_message += '(Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles) '
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
@@ -368,9 +368,9 @@ class BundleManager(object):
         for bundle in active_bundles:
             failure_message = None
             if not workers.is_running(bundle.uuid):
-                failure_message = 'No worker claims bundle'
+                failure_message = 'No worker claims bundle.'
             if now - bundle.metadata.last_updated > self._worker_timeout_seconds:
-                failure_message = 'Worker offline'
+                failure_message = 'Worker offline.'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.transition_bundle_worker_offline(bundle)
