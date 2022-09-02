@@ -2047,7 +2047,6 @@ const styles = (theme) => ({
         marginTop: NAVBAR_HEIGHT,
     },
     worksheetOuter: {
-        minHeight: 600, // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,
