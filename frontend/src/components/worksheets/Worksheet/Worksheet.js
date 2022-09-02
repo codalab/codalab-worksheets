@@ -2045,8 +2045,10 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
+        height: 'calc(100% - 20px)',
     },
     worksheetOuter: {
+        minHeight: '100%', // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,
