@@ -219,7 +219,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
     def test_filter_and_sort_workers_tag_exclusive_priority(self):
         # All other things being equal, tag_exclusive workers
         # should appear in the top from the returned sorted workers list.
-        self.bundle.metadata.request_queue = "tag=worker_X"
+        self.bundle_resources.queue = "tag=worker_X"
         sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.workers_list, self.bundle, self.bundle_resources
         )
