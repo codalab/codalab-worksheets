@@ -582,10 +582,10 @@ class BundleManager(object):
     def _get_dominating_workers(self, run_resources, workers_list, strict=False):
         """
         Accepts a RunResources instance and a list of worker dicts.
-        Accepts a strict bool that determines if domaination should be strict.
+        Accepts a strict bool that determines if domination should be strict.
 
         Returns a list of worker dicts comprised of workers that can meet the
-        resource requirements outlined in run_resources.
+        resource requirements specified in run_resources.
         """
         dominating_workers = []
         for worker in workers_list:
