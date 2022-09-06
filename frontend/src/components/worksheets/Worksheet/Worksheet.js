@@ -1988,6 +1988,11 @@ class Worksheet extends React.Component {
                                     >
                                         <ExpandMoreIcon size='medium' />
                                     </Button>
+                                    {(this.state.updating || !info) && (
+                                        <div className={classes.loaderContainer}>
+                                            <Loading />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -2031,8 +2036,6 @@ class Worksheet extends React.Component {
                         {this.state.messagePopover.messageContent}
                     </div>
                 </Popover>
-                {this.state.updating && <Loading />}
-                {!info && <Loading />}
             </React.Fragment>
         );
     }
@@ -2042,9 +2045,10 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
+        height: 'calc(100% - 20px)',
     },
     worksheetOuter: {
-        minHeight: 600, // Worksheet height
+        minHeight: '100%', // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,
@@ -2083,6 +2087,9 @@ const styles = (theme) => ({
     },
     buttonIcon: {
         marginRight: theme.spacing.large,
+    },
+    loaderContainer: {
+        marginTop: 35,
     },
 });
 

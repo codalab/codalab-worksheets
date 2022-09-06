@@ -1,23 +1,22 @@
 // @flow
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import * as $ from 'jquery';
-// import Drawer from '@material-ui/core/Drawer';
 import { JsonApiDataStore } from 'jsonapi-datastore';
-
-import ConfigurationPanel from '../ConfigPanel';
-import MainContent from './MainContent';
-import BundleDetailSideBar from './BundleDetailSideBar';
-import BundleActions from './BundleActions';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
 import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
+
+import ConfigPanel from '../ConfigPanel';
+import ErrorMessage from '../ErrorMessage';
+import MainContent from './MainContent';
+import BundleDetailSideBar from './BundleDetailSideBar';
+import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
     // Callback on metadata change.
     bundleMetadataChanged,
-    onClose,
+    contentExpanded,
     onOpen,
     onUpdate,
     rerunItem,
@@ -25,9 +24,12 @@ const BundleDetail = ({
     showDetail,
     handleDetailClick,
     editPermission,
+    sidebarExpanded,
+    hideBundlePageLink,
+    showBorder,
 }) => {
-    const [errorMessages, setErrorMessages] = useState([]);
     const [bundleInfo, setBundleInfo] = useState(null);
+    const [contentType, setContentType] = useState(null);
     const [fileContents, setFileContents] = useState(null);
     const [stdout, setStdout] = useState(null);
     const [stderr, setStderr] = useState(null);
@@ -35,25 +37,26 @@ const BundleDetail = ({
     const [open, setOpen] = useState(true);
     const [fetchingContent, setFetchingContent] = useState(false);
     const [fetchingMetadata, setFetchingMetadata] = useState(false);
+    const [contentErrors, setContentErrors] = useState([]);
+    const [metadataErrors, setMetadataErrors] = useState([]);
     const [pendingFileSummaryFetches, setPendingFileSummaryFetches] = useState(0);
 
     useEffect(() => {
         if (uuid !== prevUuid) {
             setPrevUuid(uuid);
-            setErrorMessages([]);
+            setContentErrors([]);
+            setMetadataErrors([]);
         }
     }, [uuid]);
 
     // If info is not available yet, fetch
     // If bundle is in a state that is possible to transition to a different state, fetch data
     // we have ignored ready|failed|killed states here
-    const refreshInterval =
-        !bundleInfo ||
-        bundleInfo.state.match(
-            'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
-        )
-            ? 4000
-            : 0;
+    const refreshInterval = bundleInfo?.state?.match(
+        'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
+    )
+        ? 4000
+        : 0;
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -75,10 +78,11 @@ const BundleDetail = ({
                 .then((r) => r.json())
                 .catch((error) => {
                     setBundleInfo(null);
+                    setContentType(null);
                     setFileContents(null);
                     setStderr(null);
                     setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
+                    setMetadataErrors((metadataErrors) => metadataErrors.concat([error]));
                 })
                 .finally(() => {
                     setFetchingMetadata(false);
@@ -102,26 +106,25 @@ const BundleDetail = ({
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
+            bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
             bundleInfo.metadataType = response.data.meta.metadata_type;
             setBundleInfo(bundleInfo);
+            setMetadataErrors([]);
         },
     });
 
     const fetcherContents = (url) => {
         if (!fetchingContent) {
             setFetchingContent(true);
-            return apiWrapper
-                .get(url)
-                .catch((error) => {
-                    // If contents aren't available yet, then also clear stdout and stderr.
-                    setFileContents(null);
-                    setStderr(null);
-                    setStdout(null);
-                    setErrorMessages((errorMessages) => errorMessages.concat([error]));
-                })
-                .finally(() => {
-                    setFetchingContent(false);
-                });
+            return apiWrapper.get(url).catch((error) => {
+                // If contents aren't available yet, then also clear stdout and stderr.
+                setContentType(null);
+                setFileContents(null);
+                setStderr(null);
+                setStdout(null);
+                setContentErrors((contentErrors) => contentErrors.concat([error]));
+                setFetchingContent(false);
+            });
         }
     };
 
@@ -135,12 +138,14 @@ const BundleDetail = ({
             setPendingFileSummaryFetches((f) => f + 1);
             return fetchFileSummary(uuid, '/')
                 .then(function(blob) {
+                    setContentType(info.type);
                     setFileContents(blob);
                     setStderr(null);
                     setStdout(null);
                 })
                 .finally(() => {
                     setPendingFileSummaryFetches((f) => f - 1);
+                    setFetchingContent(false);
                 });
         } else if (info.type === 'directory') {
             // Get stdout/stderr (important to set things to null).
@@ -165,15 +170,20 @@ const BundleDetail = ({
                     stateUpdate[name] = null;
                 }
             });
-            Promise.all(fetchRequests).then((r) => {
-                setFileContents(stateUpdate['fileContents']);
-                if ('stdout' in stateUpdate) {
-                    setStdout(stateUpdate['stdout']);
-                }
-                if ('stderr' in stateUpdate) {
-                    setStderr(stateUpdate['stderr']);
-                }
-            });
+            Promise.all(fetchRequests)
+                .then((r) => {
+                    setContentType(info.type);
+                    setFileContents(stateUpdate['fileContents']);
+                    if ('stdout' in stateUpdate) {
+                        setStdout(stateUpdate['stdout']);
+                    }
+                    if ('stderr' in stateUpdate) {
+                        setStderr(stateUpdate['stderr']);
+                    }
+                })
+                .finally(() => {
+                    setFetchingContent(false);
+                });
         }
     };
     useSWR(urlContents, fetcherContents, {
@@ -181,6 +191,7 @@ const BundleDetail = ({
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
             updateBundleDetail(response);
+            setContentErrors([]);
         },
     });
 
@@ -194,14 +205,18 @@ const BundleDetail = ({
     };
 
     if (!bundleInfo) {
+        if (metadataErrors.length) {
+            return <ErrorMessage message='Error: Bundle Unavailable' />;
+        }
         return <div></div>;
     }
+
     if (bundleInfo.bundle_type === 'private') {
-        return <div>Detail not available for this bundle</div>;
+        return <ErrorMessage message='Error: Bundle Access Denied' />;
     }
 
     return (
-        <ConfigurationPanel
+        <ConfigPanel
             //  The ref is created only once, and that this is the only way to properly create the ref before componentDidMount().
             ref={(node) => scrollToNewlyOpenedDetail(node)}
             buttons={
@@ -220,16 +235,21 @@ const BundleDetail = ({
                     bundleInfo={bundleInfo}
                     onUpdate={onUpdate}
                     onMetaDataChange={mutateMetadata}
+                    expanded={sidebarExpanded}
+                    hidePageLink={hideBundlePageLink}
                 />
             }
+            showBorder={showBorder}
         >
             <MainContent
                 bundleInfo={bundleInfo}
                 stdout={stdout}
                 stderr={stderr}
                 fileContents={fileContents}
+                contentType={contentType}
+                expanded={contentExpanded}
             />
-        </ConfigurationPanel>
+        </ConfigPanel>
     );
 };
 

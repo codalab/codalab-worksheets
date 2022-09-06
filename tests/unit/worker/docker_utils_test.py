@@ -1,10 +1,44 @@
 from docker.errors import APIError
 import unittest
 
-from codalab.worker.docker_utils import DockerUserErrorException, DockerException, wrap_exception
+from codalab.worker.docker_utils import (
+    DockerUserErrorException,
+    DockerException,
+    wrap_exception,
+    parse_image_progress,
+)
 
 
-class DockerUtilsTest(unittest.TestCase):
+class ParseImageProgressTest(unittest.TestCase):
+    def test_parse_image_progress_expected(self):
+        image_info = {
+            'progressDetail': {'current': 20320000, 'total': 28540000},
+            'progress': '[===============>     ]  20.32MB/28.54MB',
+        }
+        progress = parse_image_progress(image_info)
+        self.assertEqual(progress, '20.32MB/28.54MB (71% done)')
+
+    def test_parse_image_progress_missing_detail(self):
+        progress = parse_image_progress({})
+        self.assertEqual(progress, '')
+
+    def test_parse_image_progress_missing_progress(self):
+        image_info = {
+            'progressDetail': {'current': 20320000, 'total': 28540000},
+        }
+        progress = parse_image_progress(image_info)
+        self.assertEqual(progress, '(71% done)')
+
+    def test_parse_image_progress_partial_progress(self):
+        image_info = {
+            'progressDetail': {'current': 20320000, 'total': 28540000},
+            'progress': '  20.32MB/28.54MB',
+        }
+        progress = parse_image_progress(image_info)
+        self.assertEqual(progress, '20.32MB/28.54MB (71% done)')
+
+
+class WrapExceptionTest(unittest.TestCase):
     def test_wrap_exception(self):
         error = (
             'Cannot start Docker container: Unable to start Docker container: 500 Server '

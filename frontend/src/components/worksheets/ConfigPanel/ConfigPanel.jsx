@@ -1,7 +1,5 @@
 // @flow
 import * as React from 'react';
-import classNames from 'classnames';
-
 import { withStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
 
@@ -24,9 +22,10 @@ class ConfigPanel extends React.Component<{
      * Renderer.
      */
     render() {
-        const { classes, children, sidebar, buttons } = this.props;
+        const { classes, children, sidebar, buttons, showBorder } = this.props;
+        const borderClass = showBorder ? classes.border : '';
         return (
-            <Grid container direction='row' className={classes.container}>
+            <Grid container direction='row' className={`${classes.container} ${borderClass}`}>
                 {/* Column 1: Main content area ================================================ */}
                 <Grid
                     item
@@ -72,10 +71,11 @@ class ConfigPanel extends React.Component<{
 const styles = (theme) => ({
     container: {
         flexGrow: 1,
-        height: '100%',
+        flexWrap: 'nowrap',
         maxWidth: '100%',
     },
     content: {
+        justifyContent: 'flex-start',
         backgroundColor: 'white',
         padding: theme.spacing.larger,
         maxHeight: '100%',
@@ -88,16 +88,19 @@ const styles = (theme) => ({
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
-        maxWidth: '50%',
+        minWidth: '400px',
         flexGrow: 1,
     },
     buttons: {
         '& button': {
-            marginLeft: theme.spacing.larger,
+            marginLeft: 14,
         },
         paddingBottom: theme.spacing.large,
-        paddingTop: theme.spacing.larger,
+        paddingTop: 24,
         maxWidth: '90%',
+    },
+    border: {
+        border: `2px solid ${theme.color.grey.light}`,
     },
 });
 
