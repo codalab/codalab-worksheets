@@ -1,5 +1,6 @@
 from collections import namedtuple
 from typing import Any, Dict, List, Optional
+from codalab.lib.formatting import size_str
 
 
 class State(object):
@@ -137,6 +138,8 @@ class RunResources(object):
         memory,  # type: int
         disk,  # type: int
         network,  # type: bool
+        queue,  # type: str
+        runs_left,  # type: int
     ):
         self.cpus = cpus
         self.gpus = gpus
@@ -145,6 +148,8 @@ class RunResources(object):
         self.memory = memory
         self.disk = disk
         self.network = network
+        self.queue = queue
+        self.runs_left = runs_left
 
     @property
     def as_dict(self):
@@ -160,7 +165,72 @@ class RunResources(object):
             memory=int(dct["memory"]),
             disk=int(dct["disk"]),
             network=bool(dct["network"]),
+            queue=dct["queue"],
+            runs_left=dct["runs_left"],
         )
+
+    def dominates(self, run_resources, strict=False):
+        """
+        Accepts a RunResources instance and a strict bool.
+        Returns True if self's resources dominate resources in run_resources.
+
+        If strict = True, returns False if self's resources and resources in
+        run_resources are equivalent.
+        """
+        if self.runs_left == 0:
+            return False
+
+        if strict:
+            if self.cpus <= run_resources.cpus:
+                return False
+            if self.gpus <= run_resources.gpus:
+                return False
+            if self.memory <= run_resources.memory:
+                return False
+            if self.disk <= run_resources.disk:
+                return False
+            return True
+
+        if self.cpus < run_resources.cpus:
+            return False
+        if self.gpus < run_resources.gpus:
+            return False
+        if self.memory < run_resources.memory:
+            return False
+        if self.disk < run_resources.disk:
+            return False
+        return True
+
+    def get_comparison(self, run_resources):
+        """
+        Accepts a RunResources instance.
+
+        Compares resources in self with resources in run_resources and returns
+        a comparison between the two.
+
+        Example Output: '2 CPUs (3 requested), 2g memory (4g requested)'
+        """
+        comparisons = []
+        if run_resources.queue and (run_resources.queue != self.queue):
+            queue = self.queue or 'No'
+            comparisons.append(f'{queue} queue ({run_resources.queue} requested)')
+
+        if self.cpus < run_resources.cpus:
+            comparisons.append(f'{self.cpus} CPUs ({run_resources.cpus} requested)')
+
+        if self.gpus < run_resources.gpus:
+            comparisons.append(f'{self.gpus} GPUs ({run_resources.gpus} requested)')
+
+        if self.memory < run_resources.memory:
+            memory = size_str(self.memory)
+            requested_memory = size_str(run_resources.memory)
+            comparisons.append(f'{memory} memory ({requested_memory} requested)')
+
+        if self.disk < run_resources.disk:
+            disk = size_str(self.disk)
+            requested_disk = size_str(run_resources.disk)
+            comparisons.append(f'{disk} disk ({requested_disk} requested)')
+        return ', '.join(comparisons)
 
 
 class BundleCheckinState(object):

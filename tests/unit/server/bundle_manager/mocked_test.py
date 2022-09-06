@@ -26,7 +26,15 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.bundle = Mock(spec=RunBundle, metadata=Mock(spec=MetadataSpec))
         self.bundle.metadata.request_queue = None
         self.bundle_resources = RunResources(
-            cpus=0, gpus=0, docker_image='', time=100, memory=1000, disk=1000, network=False
+            cpus=0,
+            gpus=0,
+            docker_image='',
+            time=100,
+            memory=1000,
+            disk=1000,
+            network=False,
+            queue=None,
+            runs_left=None,
         )
         self.bundle.dependencies = []
         dep = namedtuple('dep', ['parent_uuid', 'parent_path'])

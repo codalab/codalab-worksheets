@@ -26,7 +26,15 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
         self.bundle = Mock(spec=RunBundle, metadata=Mock(spec=MetadataSpec))
         self.bundle.metadata.request_queue = None
         self.bundle_resources = RunResources(
-            cpus=0, gpus=0, docker_image='', time=100, memory=1000, disk=1000, network=False
+            cpus=0,
+            gpus=0,
+            docker_image='',
+            time=100,
+            memory=1000,
+            disk=1000,
+            network=False,
+            queue=None,
+            runs_left=None,
         )
         self.bundle.dependencies = []
         dep = namedtuple('dep', ['parent_uuid', 'parent_path'])
@@ -257,24 +265,3 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
             self.bundle.metadata.request_queue, self.workers_list
         )
         self.assertEqual(len(matched_workers), 0)
-
-    def test_create_bundle_resource_snapshot(self):
-        self.bundle_resources.cpus = 3
-        self.bundle_resources.gpus = 4
-        self.bundle_resources.memory = 2082197504
-        self.bundle_resources.disk = 310985338880
-        resource_snapshot = BundleManager._create_bundle_resource_snapshot(self.bundle_resources)
-        self.assertEqual(resource_snapshot, '(3, 4, 1.9g, 289g)')
-
-    def test_create_workers_resource_snapshot(self):
-        workers_list = self.get_sample_workers_list()
-        workers_snapshot = BundleManager._create_workers_resource_snapshot(workers_list)
-        self.assertEqual(
-            workers_snapshot,
-            '(4, 2, 3.9k, 3.9k), (4, 1, 3.9k, 3.9k), (4, 0, 3.9k, 3.9k), (6, 0, 3.9k, 3.9k), (6, 0, 3.9k, 3.9k), (6, 0, 2.0k, 2.0k), (6, 0, 2.0k, 2.0k), (6, 1, 2.0k, 2.0k)',
-        )
-
-    def test_create_workers_resource_snapshot_one_worker(self):
-        workers_list = self.get_sample_workers_list()
-        workers_snapshot = BundleManager._create_workers_resource_snapshot([workers_list[0]])
-        self.assertEqual(workers_snapshot, '(4, 2, 3.9k, 3.9k)')
