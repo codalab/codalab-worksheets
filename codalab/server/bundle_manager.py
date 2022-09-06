@@ -612,7 +612,7 @@ class BundleManager(object):
                 recommendations.append(comparison)
 
         if len(recommendations) != 0:
-            return f"Available resources: {'. '.join(recommendations)}"
+            return f"Available resources: {' or '.join(recommendations)}"
         return ''
 
     def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):

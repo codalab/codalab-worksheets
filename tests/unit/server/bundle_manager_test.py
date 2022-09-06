@@ -219,7 +219,7 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
     def test_filter_and_sort_workers_tag_exclusive_priority(self):
         # All other things being equal, tag_exclusive workers
         # should appear in the top from the returned sorted workers list.
-        self.bundle.metadata.request_queue = "tag=worker_X"
+        self.bundle_resources.queue = "tag=worker_X"
         sorted_workers_list = self.bundle_manager._filter_and_sort_workers(
             self.workers_list, self.bundle, self.bundle_resources
         )
@@ -265,3 +265,126 @@ class BundleManagerMockedManagerTest(unittest.TestCase):
             self.bundle.metadata.request_queue, self.workers_list
         )
         self.assertEqual(len(matched_workers), 0)
+
+    def test_worker_to_run_resources(self):
+        worker = self.workers_list[0]
+        worker_resources = BundleManager._worker_to_run_resources(worker)
+
+        self.assertEqual(worker['tag'], worker_resources.queue)
+        self.assertEqual(worker['cpus'], worker_resources.cpus)
+        self.assertEqual(worker['gpus'], worker_resources.gpus)
+        self.assertEqual(worker['memory_bytes'], worker_resources.memory)
+        self.assertEqual(worker['free_disk_bytes'], worker_resources.disk)
+        self.assertEqual(worker['exit_after_num_runs'], worker_resources.runs_left)
+
+    def test_get_dominating_workers(self):
+        bundle_resources = RunResources(
+            queue='',
+            cpus=1,
+            gpus=0,
+            memory=1,
+            disk=1,
+            docker_image='',
+            runs_left=None,
+            time=None,
+            network=None,
+        )
+        dominating_workers = self.bundle_manager._get_dominating_workers(
+            bundle_resources, self.workers_list
+        )
+        self.assertEqual(len(dominating_workers), 7)
+
+    def test_get_dominating_workers_strict(self):
+        worker = self.workers_list[0]
+        worker_resources = BundleManager._worker_to_run_resources(worker)
+        workers_list = [worker]
+        dominating_workers = self.bundle_manager._get_dominating_workers(
+            worker_resources, workers_list, True
+        )
+        self.assertEqual(len(dominating_workers), 0)
+
+    def test_get_dominating_workers_none_exist(self):
+        bundle_resources = RunResources(
+            queue='',
+            cpus=10000000,  # no workers dominate this
+            gpus=0,
+            memory=1,
+            disk=1,
+            docker_image='',
+            runs_left=None,
+            time=None,
+            network=None,
+        )
+        dominating_workers = self.bundle_manager._get_dominating_workers(
+            bundle_resources, self.workers_list
+        )
+        self.assertEqual(len(dominating_workers), 0)
+
+    def test_get_resource_recommendations_multiple_workers(self):
+        bundle_resources = RunResources(
+            queue='test-queue',
+            cpus=2,
+            gpus=3,
+            memory=800000,
+            disk=900000,
+            docker_image='',
+            runs_left=None,
+            time=None,
+            network=None,
+        )
+        workers_list = [
+            self.workers_list[0],
+            self.workers_list[1],
+            self.workers_list[2],
+        ]
+        recommendations = self.bundle_manager._get_resource_recommendations(
+            bundle_resources, workers_list
+        )
+        expected = (
+            'Available resources: No queue (test-queue requested), 2 GPUs (3 '
+            'requested), 3.9k memory (781k requested), 3.9k disk (878k requested) '
+            'or No queue (test-queue requested), 1 GPUs (3 requested), 3.9k memory '
+            '(781k requested), 3.9k disk (878k requested) or No queue (test-queue '
+            'requested), 0 GPUs (3 requested), 3.9k memory (781k requested), 3.9k '
+            'disk (878k requested)'
+        )
+        self.assertEqual(recommendations, expected)
+
+    def test_get_resource_recommendations_single_worker(self):
+        bundle_resources = RunResources(
+            queue='test-queue',
+            cpus=2,
+            gpus=3,
+            memory=800000,
+            disk=900000,
+            docker_image='',
+            runs_left=None,
+            time=None,
+            network=None,
+        )
+        workers_list = [self.workers_list[0]]
+        recommendations = self.bundle_manager._get_resource_recommendations(
+            bundle_resources, workers_list
+        )
+        self.assertEqual(
+            recommendations,
+            'Available resources: No queue (test-queue requested), 2 GPUs (3 requested), 3.9k memory (781k requested), 3.9k disk (878k requested)',
+        )
+
+    def test_get_resource_recommendations_no_workers(self):
+        bundle_resources = RunResources(
+            queue='test-queue',
+            cpus=2,
+            gpus=3,
+            memory=800000,
+            disk=900000,
+            docker_image='',
+            runs_left=None,
+            time=None,
+            network=None,
+        )
+        workers_list = []
+        recommendations = self.bundle_manager._get_resource_recommendations(
+            bundle_resources, workers_list
+        )
+        self.assertEqual(recommendations, '')
