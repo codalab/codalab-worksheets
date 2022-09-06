@@ -7,8 +7,7 @@ from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
 from ratarmountcore import SQLiteIndexedTar
 from contextlib import closing
-import urllib.parse
-import http.client
+from codalab.worker.upload_util import upload_with_chunked_encoding
 
 from codalab.common import (
     StorageURLScheme,
@@ -547,44 +546,44 @@ class ClientUploadManager(object):
             suffix=".sqlite"
         ) as tmp_index_file:
             SQLiteIndexedTar(
-                fileObject=ttf,  # TODO: This need to load the file into memory
-                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                fileObject=ttf,
+                tarFileName="contents",
                 writeIndex=True,
                 clearIndexCache=True,
                 indexFilePath=tmp_index_file.name,
             )
-            self._upload_with_chunked_encoding(
+            upload_with_chunked_encoding(
                 method='PUT',
-                url=index_conn_str,
+                base_url=index_conn_str,
                 header={'Content-type': 'application/octet-stream'},
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
             )
 
-    def _upload_with_chunked_encoding(self, method, url, header, fileobj, progress_callback=None):
-        CHUNK_SIZE = 10
-        TIMEOUT = 60
-        bytes_uploaded = 0
-        parsed_index_url = urllib.parse.urlparse(url)
-        conn = http.client.HTTPSConnection(parsed_index_url.netloc, timeout=TIMEOUT)
-        with closing(conn):
-            conn.putrequest(method=method, url=url)
-            headers = {
-                'Transfer-Encoding': 'chunked',
-            }
-            headers.update(header)
+    # def _upload_with_chunked_encoding(self, method, url, header, fileobj, progress_callback=None):
+    #     CHUNK_SIZE = 10
+    #     TIMEOUT = 60
+    #     bytes_uploaded = 0
+    #     parsed_index_url = urllib.parse.urlparse(url)
+    #     conn = http.client.HTTPSConnection(parsed_index_url.netloc, timeout=TIMEOUT)
+    #     with closing(conn):
+    #         conn.putrequest(method=method, url=url)
+    #         headers = {
+    #             'Transfer-Encoding': 'chunked',
+    #         }
+    #         headers.update(header)
 
-            for header_name, header_value in headers.items():
-                conn.putheader(header_name, header_value)
-            conn.endheaders()
-            while True:
-                to_send = fileobj.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
-                bytes_uploaded += len(to_send)
-                if progress_callback is not None:
-                    should_resume = progress_callback(bytes_uploaded)
-                    if not should_resume:
-                        raise Exception('Upload aborted by client')
-            conn.send(b'0\r\n\r\n')
+    #         for header_name, header_value in headers.items():
+    #             conn.putheader(header_name, header_value)
+    #         conn.endheaders()
+    #         while True:
+    #             to_send = fileobj.read(CHUNK_SIZE)
+    #             if not to_send:
+    #                 break
+    #             conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
+    #             bytes_uploaded += len(to_send)
+    #             if progress_callback is not None:
+    #                 should_resume = progress_callback(bytes_uploaded)
+    #                 if not should_resume:
+    #                     raise Exception('Upload aborted by client')
+    #         conn.send(b'0\r\n\r\n')

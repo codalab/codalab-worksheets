@@ -171,7 +171,7 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     return urllib.request.urlopen(request, timeout=timeout)
 
 
-@retry(requests.exceptions.HTTPError, tries=3, delay=10, backoff=2)
+@retry(requests.exceptions.HTTPError, tries=10, delay=10, max_delay=60, backoff=2)
 def httpopen_with_retry(url: str, timeout: int = URLOPEN_TIMEOUT_SECONDS):
     return httpio.open(url)
 
