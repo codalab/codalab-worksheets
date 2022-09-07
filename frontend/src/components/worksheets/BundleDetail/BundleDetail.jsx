@@ -27,6 +27,7 @@ const BundleDetail = ({
     sidebarExpanded,
     hideBundlePageLink,
     showBorder,
+    rowStateInfo,
 }) => {
     const [bundleInfo, setBundleInfo] = useState(null);
     const [contentType, setContentType] = useState(null);
@@ -233,6 +234,7 @@ const BundleDetail = ({
             sidebar={
                 <BundleDetailSideBar
                     bundleInfo={bundleInfo}
+                    rowStateInfo={rowStateInfo}
                     onUpdate={onUpdate}
                     onMetaDataChange={mutateMetadata}
                     expanded={sidebarExpanded}

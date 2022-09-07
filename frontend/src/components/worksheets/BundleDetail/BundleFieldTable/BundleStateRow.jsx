@@ -1,6 +1,7 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import { FINAL_BUNDLE_STATES } from '../../../../constants';
+import { FINAL_BUNDLE_STATES, OFFLINE_STATE } from '../../../../constants';
+import { renderFormat } from '../../../../util/worksheet_utils';
 import BundleStateBox from '../BundleStateBox';
 import BundleFieldRow from './BundleFieldRow';
 
@@ -21,7 +22,7 @@ class BundleStateTable extends React.Component {
     }
 
     getStates() {
-        const bundleType = this.props.bundle.bundle_type.value;
+        const bundleType = this.props.stateInfo.bundle_type;
         if (bundleType === 'run') {
             return ['created', 'staged', 'starting', 'preparing', 'running', 'finalizing', 'ready'];
         }
@@ -35,26 +36,32 @@ class BundleStateTable extends React.Component {
     }
 
     getTime(state) {
-        const bundle = this.props.bundle;
-        let time;
-        if (state === 'preparing') {
-            time = bundle.time_preparing?.value;
-        } else if (state === 'running') {
-            time = bundle.time_running?.value || bundle.time?.value;
+        const stateInfo = this.props.stateInfo;
+        const timePreparing = stateInfo.time_preparing;
+        const timeRunning = stateInfo.time_running;
+        const time = stateInfo.time;
+        if (state === 'preparing' && timePreparing) {
+            return renderFormat(timePreparing, 'duration');
         }
-        if (time && time !== '0s') {
-            return time;
+        if (state === 'running') {
+            if (timeRunning) {
+                return renderFormat(timeRunning, 'duration');
+            }
+            if (time) {
+                return renderFormat(time, 'duration');
+            }
         }
     }
 
     render() {
-        const { bundle, classes } = this.props;
+        const { classes, stateInfo } = this.props;
         const { states } = this.state;
-        const stateDetails = bundle.state_details?.value;
-        const currentState = bundle.state.value;
+        const stateDetails = stateInfo.state_details; // dictated by bundle row
+        const currentState = stateInfo.state; // dictated by bundle row
         const inFinalState = FINAL_BUNDLE_STATES.includes(currentState);
+        const inOfflineState = currentState === OFFLINE_STATE;
 
-        if (inFinalState) {
+        if (inFinalState || inOfflineState) {
             return (
                 <BundleFieldRow
                     label='State'

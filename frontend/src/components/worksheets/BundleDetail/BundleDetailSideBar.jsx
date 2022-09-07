@@ -48,7 +48,14 @@ class BundleDetailSideBar extends React.Component {
     }
 
     render() {
-        const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const {
+            bundleInfo,
+            classes,
+            hidePageLink,
+            onUpdate,
+            onMetaDataChange,
+            rowStateInfo,
+        } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
@@ -73,7 +80,7 @@ class BundleDetailSideBar extends React.Component {
                     <NewWindowLink className={classes.pageLink} href={`/bundles/${uuid}`} />
                 )}
                 <BundleFieldTable>
-                    <BundleStateRow bundle={bundle} />
+                    <BundleStateRow stateInfo={rowStateInfo} />
                     <BundleFieldRow
                         label='UUID'
                         description="Click the copy icon to copy the bundle's full UUID."

@@ -55,7 +55,9 @@ export const BUNDLE_STATES: String[] = [
 ];
 
 // All possible final bundle states
-export const FINAL_BUNDLE_STATES = ['ready', 'failed', 'killed', 'worker_offline'];
+export const FINAL_BUNDLE_STATES = ['ready', 'failed', 'killed'];
+
+export const OFFLINE_STATE = 'worker_offline';
 
 // Autofill types for schemas.
 export const DEFAULT_POST_PROCESSOR = {

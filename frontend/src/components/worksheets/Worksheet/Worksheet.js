@@ -20,6 +20,7 @@ import {
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
     AUTO_HIDDEN_DURATION,
+    FINAL_BUNDLE_STATES,
 } from '../../../constants';
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
@@ -1224,13 +1225,12 @@ class Worksheet extends React.Component {
                 if (items[i].bundles_spec) {
                     for (var j = 0; j < items[i].bundles_spec.bundle_infos.length; j++) {
                         var bundle_info = items[i].bundles_spec.bundle_infos[j];
-                        if (bundle_info.bundle_type === 'run') {
-                            if (bundle_info.state !== 'ready' && bundle_info.state !== 'failed') {
-                                updatingBundleUuids[bundle_info.uuid] = true;
-                            } else {
-                                if (bundle_info.uuid in updatingBundleUuids)
-                                    delete updatingBundleUuids[bundle_info.uuid];
-                            }
+                        const inFinalState = FINAL_BUNDLE_STATES.includes(bundle_info.state);
+                        if (!inFinalState) {
+                            updatingBundleUuids[bundle_info.uuid] = true;
+                        } else {
+                            if (bundle_info.uuid in updatingBundleUuids)
+                                delete updatingBundleUuids[bundle_info.uuid];
                         }
                     }
                 }

@@ -118,6 +118,14 @@ class BundleRow extends Component {
             ws,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
+        const rowStateInfo = {
+            state: rowItems.state,
+            state_details: bundleInfo.state_details,
+            bundle_type: bundleInfo.bundle_type,
+            time_preparing: bundleInfo.metadata.time_preparing,
+            time_running: bundleInfo.metadata.time_running,
+            time: bundleInfo.metadata.time,
+        };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
@@ -322,6 +330,7 @@ class BundleRow extends Component {
                                 handleDetailClick={this.handleDetailClick}
                                 editPermission={editPermission}
                                 onOpen={() => {}}
+                                rowStateInfo={rowStateInfo}
                             />
                         </TableCell>
                     </TableRow>
