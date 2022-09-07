@@ -719,7 +719,7 @@ def test_upload1(ctx):
         )
         upload_suffix.append(['--store', bundle_store_name])
 
-    if os.environ.get("CODALAB_GOOGLE_APPLICATION_CREDENTIALS") != "":
+    if os.environ.get("CODALAB_GOOGLE_APPLICATION_CREDENTIALS") != None:
         bundle_store_name = "gcs-" + random_name()
         _run_command(
             [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
