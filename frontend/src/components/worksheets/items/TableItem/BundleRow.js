@@ -17,6 +17,7 @@ import BundleDetail from '../../BundleDetail';
 import TextEditorItem from '../TextEditorItem';
 import SchemaItem from '../SchemaItem';
 import { DEFAULT_SCHEMA_ROWS } from '../../../../constants';
+import { getStateInfo } from '../../../../util/worksheet_utils';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -117,15 +118,8 @@ class BundleRow extends Component {
             focusIndex,
             ws,
         } = this.props;
+        const stateInfo = getStateInfo(bundleInfo);
         const rowItems = { ...item, ...bundleInfoUpdates };
-        const rowStateInfo = {
-            state: rowItems.state,
-            state_details: bundleInfo.state_details,
-            bundle_type: bundleInfo.bundle_type,
-            time_preparing: bundleInfo.metadata.time_preparing,
-            time_running: bundleInfo.metadata.time_running,
-            time: bundleInfo.metadata.time,
-        };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
@@ -314,6 +308,7 @@ class BundleRow extends Component {
                         >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
+                                stateInfo={stateInfo}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
                                 onUpdate={this.receiveBundleInfoUpdates}
                                 onClose={() => {
@@ -330,7 +325,6 @@ class BundleRow extends Component {
                                 handleDetailClick={this.handleDetailClick}
                                 editPermission={editPermission}
                                 onOpen={() => {}}
-                                rowStateInfo={rowStateInfo}
                             />
                         </TableCell>
                     </TableRow>

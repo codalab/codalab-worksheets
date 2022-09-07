@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
-import { formatBundle } from '../../../util/worksheet_utils';
+import { formatBundle, getStateInfo } from '../../../util/worksheet_utils';
 import { FINAL_BUNDLE_STATES } from '../../../constants';
 import CollapseButton from '../../CollapseButton';
 import NewWindowLink from '../../NewWindowLink';
@@ -48,23 +48,17 @@ class BundleDetailSideBar extends React.Component {
     }
 
     render() {
-        const {
-            bundleInfo,
-            classes,
-            hidePageLink,
-            onUpdate,
-            onMetaDataChange,
-            rowStateInfo,
-        } = this.props;
-        const { expandPermissons, showMoreDetail } = this.state;
+        const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const stateInfo = this.props.stateInfo || getStateInfo(bundleInfo); // allow parents to pass in state info for synchronization
+        const inFinalState = FINAL_BUNDLE_STATES.includes(stateInfo.state);
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
         const time = bundle.time?.value;
         const exclusions = bundle.exclude_patterns;
-        const state = bundle.state.value;
-        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
 
+        const expandPermissons = this.state.expandPermissons;
+        const showMoreDetail = this.state.showMoreDetail;
         const showPageLink = !hidePageLink;
         const showOwner = !bundle.is_anonymous.value;
         const showTime = inFinalState && (time || bundle.request_time?.editable);
@@ -80,7 +74,7 @@ class BundleDetailSideBar extends React.Component {
                     <NewWindowLink className={classes.pageLink} href={`/bundles/${uuid}`} />
                 )}
                 <BundleFieldTable>
-                    <BundleStateRow stateInfo={rowStateInfo} />
+                    <BundleStateRow stateInfo={stateInfo} />
                     <BundleFieldRow
                         label='UUID'
                         description="Click the copy icon to copy the bundle's full UUID."

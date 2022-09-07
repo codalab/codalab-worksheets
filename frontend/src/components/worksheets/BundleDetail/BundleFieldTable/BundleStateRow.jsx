@@ -1,7 +1,12 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import { FINAL_BUNDLE_STATES, OFFLINE_STATE } from '../../../../constants';
-import { renderFormat } from '../../../../util/worksheet_utils';
+import {
+    FINAL_BUNDLE_STATES,
+    RUN_BUNDLE_STATES,
+    UPLOADED_BUNDLE_STATES,
+    MAKE_BUNDLE_STATES,
+    OFFLINE_STATE,
+} from '../../../../constants';
 import BundleStateBox from '../BundleStateBox';
 import BundleFieldRow from './BundleFieldRow';
 
@@ -15,40 +20,41 @@ import BundleFieldRow from './BundleFieldRow';
 class BundleStateTable extends React.Component {
     constructor(props) {
         super(props);
-        const states = this.getStates();
-        this.state = {
-            states,
-        };
+        const bundleType = this.props.stateInfo.bundleType;
+        const states = this.getStates(bundleType);
+        this.state = { states };
     }
 
-    getStates() {
-        const bundleType = this.props.stateInfo.bundle_type;
+    getStates(bundleType) {
         if (bundleType === 'run') {
-            return ['created', 'staged', 'starting', 'preparing', 'running', 'finalizing', 'ready'];
+            return RUN_BUNDLE_STATES;
         }
         if (bundleType === 'dataset') {
-            return ['created', 'uploading', 'ready'];
+            return UPLOADED_BUNDLE_STATES;
         }
         if (bundleType === 'make') {
-            return ['created', 'making', 'ready'];
+            return MAKE_BUNDLE_STATES;
         }
         return [];
     }
 
+    showTime(time) {
+        return time && time !== '<none>' && time !== '0s';
+    }
+
     getTime(state) {
-        const stateInfo = this.props.stateInfo;
-        const timePreparing = stateInfo.time_preparing;
-        const timeRunning = stateInfo.time_running;
-        const time = stateInfo.time;
-        if (state === 'preparing' && timePreparing) {
-            return renderFormat(timePreparing, 'duration');
+        const { showTime } = this;
+        const { stateInfo } = this.props;
+        const { timePreparing, timeRunning, time } = stateInfo;
+        if (state === 'preparing' && showTime(timePreparing)) {
+            return timePreparing;
         }
         if (state === 'running') {
-            if (timeRunning) {
-                return renderFormat(timeRunning, 'duration');
+            if (showTime(timeRunning)) {
+                return timeRunning;
             }
-            if (time) {
-                return renderFormat(time, 'duration');
+            if (showTime(time)) {
+                return time;
             }
         }
     }
@@ -56,8 +62,8 @@ class BundleStateTable extends React.Component {
     render() {
         const { classes, stateInfo } = this.props;
         const { states } = this.state;
-        const stateDetails = stateInfo.state_details; // dictated by bundle row
-        const currentState = stateInfo.state; // dictated by bundle row
+        const stateDetails = stateInfo.stateDetails;
+        const currentState = stateInfo.state;
         const inFinalState = FINAL_BUNDLE_STATES.includes(currentState);
         const inOfflineState = currentState === OFFLINE_STATE;
 

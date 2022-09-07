@@ -57,6 +57,20 @@ export const BUNDLE_STATES: String[] = [
 // All possible final bundle states
 export const FINAL_BUNDLE_STATES = ['ready', 'failed', 'killed'];
 
+export const RUN_BUNDLE_STATES = [
+    'created',
+    'staged',
+    'starting',
+    'preparing',
+    'running',
+    'finalizing',
+    'ready',
+];
+
+export const UPLOADED_BUNDLE_STATES = ['created', 'uploading', 'ready'];
+
+export const MAKE_BUNDLE_STATES = ['created', 'making', 'ready'];
+
 export const OFFLINE_STATE = 'worker_offline';
 
 // Autofill types for schemas.
