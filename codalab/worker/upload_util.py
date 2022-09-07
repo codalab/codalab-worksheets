@@ -37,7 +37,8 @@ def upload_with_chunked_encoding(
     TIMEOUT = 60
     # Start the request.
     parsed_base_url = urllib.parse.urlparse(base_url)
-    if query_params != dict():
+
+    if len(query_params) != 0:
         path = url + '?' + urllib.parse.urlencode(query_params)
     else:
         path = url
@@ -45,14 +46,13 @@ def upload_with_chunked_encoding(
         conn = http.client.HTTPConnection(parsed_base_url.netloc, timeout=TIMEOUT)
     else:
         conn = http.client.HTTPSConnection(parsed_base_url.netloc, timeout=TIMEOUT)
+
     with closing(conn):
-        conn.putrequest(method, parsed_base_url.path + path)
+        conn.putrequest(method, base_url + path)  # use full url here
 
         # Set headers.
         base_headers = {
-            # 'Authorization': 'Bearer ' + self._get_access_token(),
             'Transfer-Encoding': 'chunked',
-            # 'X-Requested-With': 'XMLHttpRequest',
         }
         base_headers.update(headers)
         for header_name, header_value in base_headers.items():

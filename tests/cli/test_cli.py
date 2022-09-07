@@ -703,7 +703,7 @@ def test_upload1(ctx):
     upload_suffix = [[]]
     # If the test workflow start azurite docker
     if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
-        bundle_store_name = random_name()
+        bundle_store_name = "azure-" + random_name()
         _run_command(
             [
                 cl,
@@ -716,6 +716,13 @@ def test_upload1(ctx):
                 '--url',
                 'azfs://devstoreaccount1/bundles',
             ]
+        )
+        upload_suffix.append(['--store', bundle_store_name])
+
+    if os.environ.get("CODALAB_GOOGLE_APPLICATION_CREDENTIALS") != "":
+        bundle_store_name = "gcs-" + random_name()
+        _run_command(
+            [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
         )
         upload_suffix.append(['--store', bundle_store_name])
 

@@ -132,7 +132,6 @@ class RestClient(object):
         }
         headers.update(self._extra_headers)
 
-        print("In RestClient Uploading")
         upload_with_chunked_encoding(
             method=method,
             base_url=self._base_url,

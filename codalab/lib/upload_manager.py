@@ -534,11 +534,12 @@ class ClientUploadManager(object):
             output_fileobj = GzipStream(fileobj)
 
         # Write archive file.
-        self._upload_with_chunked_encoding(
+        upload_with_chunked_encoding(
             method='PUT',
-            url=bundle_conn_str,
-            header={'Content-type': 'application/octet-stream'},
+            base_url=bundle_conn_str,
+            headers={'Content-type': 'application/octet-stream'},
             fileobj=output_fileobj,
+            query_params={},
             progress_callback=progress_callback,
         )
         # upload the index file
@@ -555,7 +556,8 @@ class ClientUploadManager(object):
             upload_with_chunked_encoding(
                 method='PUT',
                 base_url=index_conn_str,
-                header={'Content-type': 'application/octet-stream'},
+                headers={'Content-type': 'application/octet-stream'},
+                query_params={},
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
             )
