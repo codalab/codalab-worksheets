@@ -118,7 +118,7 @@ class BundleRow extends Component {
             focusIndex,
             ws,
         } = this.props;
-        const stateInfo = getStateInfo(bundleInfo);
+        const stateInfoFromWorksheet = getStateInfo(bundleInfo);
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
@@ -308,7 +308,7 @@ class BundleRow extends Component {
                         >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
-                                stateInfo={stateInfo}
+                                stateInfoFromWorksheet={stateInfoFromWorksheet}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
                                 onUpdate={this.receiveBundleInfoUpdates}
                                 onClose={() => {

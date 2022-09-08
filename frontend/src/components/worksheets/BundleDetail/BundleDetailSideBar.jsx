@@ -49,7 +49,7 @@ class BundleDetailSideBar extends React.Component {
 
     render() {
         const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
-        const stateInfo = this.props.stateInfo || getStateInfo(bundleInfo); // allow parents to pass in state info for synchronization
+        const stateInfo = this.props.stateInfoFromWorksheet || getStateInfo(bundleInfo);
         const inFinalState = FINAL_BUNDLE_STATES.includes(stateInfo.state);
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
