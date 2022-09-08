@@ -175,8 +175,8 @@ class RunResources(object):
 
     def has_tag_match(self, run_resources):
         """
-        :self: RunResources
-        :run_resources: RunResources
+        :param self: RunResources
+        :param run_resources: RunResources
 
         Returns True if self and run_resources have matching tags.
         """
@@ -186,9 +186,9 @@ class RunResources(object):
 
     def dominates(self, run_resources, strict=False):
         """
-        :self: RunResources
-        :run_resources: RunResources
-        :strict: bool
+        :param self: RunResources
+        :param run_resources: RunResources
+        :param strict: bool
 
         Returns True if self's resources dominate resources in run_resources.
         If strict = True, returns False if self and run_resources are equivalent.
@@ -229,8 +229,8 @@ class RunResources(object):
 
     def get_comparison(self, run_resources):
         """
-        :self: RunResources
-        :run_resources: RunResources
+        :param self: RunResources
+        :param run_resources: RunResources
 
         Compares resources in self with resources in run_resources and returns
         a resource comparison between the two.

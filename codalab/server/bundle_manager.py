@@ -564,7 +564,7 @@ class BundleManager(object):
     @staticmethod
     def _worker_to_run_resources(worker):
         """
-        :worker: a worker dict
+        :param worker: dict
 
         Converts a worker dict into a RunResources instance.
         """
@@ -583,10 +583,10 @@ class BundleManager(object):
 
     def _get_dominating_workers(self, run_resources, workers_list, strict=False):
         """
-        :self: BundleManager
-        :run_resources: RunResources
-        :workers_list: list of worker dicts
-        :strict: bool that determines if domination should be strict
+        :param self: BundleManager
+        :param run_resources: RunResources
+        :param workers_list: list of worker dicts
+        :param strict: bool that determines if domination should be strict
 
         Returns a list of worker dicts comprised of workers that can meet the
         resource requirements specified in run_resources.
@@ -600,9 +600,9 @@ class BundleManager(object):
 
     def _get_resource_recommendations(self, run_resources, workers_list):
         """
-        :self: BundleManager
-        :run_resources: RunResources
-        :workers_list: list of worker dicts
+        :param self: BundleManager
+        :param run_resources: RunResources
+        :param workers_list: list of worker dicts
 
         Returns a string containing bundle resource recommendations based on
         the workers in workers_list.
@@ -623,10 +623,10 @@ class BundleManager(object):
 
     def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
         """
-        :self: BundleManager
-        :workers_list: list of worker dicts
-        :bundle: dict
-        :bundle_resources: RunResources
+        :param self: BundleManager
+        :param workers_list: list of worker dicts
+        :param bundle: dict
+        :param bundle_resources: RunResources
 
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
