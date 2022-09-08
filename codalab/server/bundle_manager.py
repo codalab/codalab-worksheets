@@ -3,7 +3,6 @@ import datetime
 import logging
 import os
 import random
-import re
 import shutil
 import sys
 import tempfile
@@ -565,10 +564,13 @@ class BundleManager(object):
     @staticmethod
     def _worker_to_run_resources(worker):
         """
+        :worker: a worker dict
+
         Converts a worker dict into a RunResources instance.
         """
         return RunResources(
-            queue=worker['tag'],
+            tag=worker['tag'],
+            tag_exclusive=worker['tag_exclusive'],
             cpus=worker['cpus'],
             gpus=worker['gpus'],
             memory=worker['memory_bytes'],
@@ -581,8 +583,10 @@ class BundleManager(object):
 
     def _get_dominating_workers(self, run_resources, workers_list, strict=False):
         """
-        Accepts a RunResources instance and a list of worker dicts.
-        Accepts a strict bool that determines if domination should be strict.
+        :self: BundleManager
+        :run_resources: RunResources
+        :workers_list: list of worker dicts
+        :strict: bool that determines if domination should be strict
 
         Returns a list of worker dicts comprised of workers that can meet the
         resource requirements specified in run_resources.
@@ -596,7 +600,9 @@ class BundleManager(object):
 
     def _get_resource_recommendations(self, run_resources, workers_list):
         """
-        Accepts a RunResources instance and a list of worker dicts.
+        :self: BundleManager
+        :run_resources: RunResources
+        :workers_list: list of worker dicts
 
         Returns a string containing bundle resource recommendations based on
         the workers in workers_list.
@@ -612,27 +618,21 @@ class BundleManager(object):
                 recommendations.append(comparison)
 
         if len(recommendations) != 0:
-            return f"Available resources: {' or '.join(recommendations)}"
+            return f"Available resources: {', '.join(recommendations)}"
         return ''
 
     def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
         """
+        :self: BundleManager
+        :workers_list: list of worker dicts
+        :bundle: dict
+        :bundle_resources: RunResources
+
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
-        # Filter out workers that aren't tagged appropriately.
-        tag_matched_workers = []
-        if bundle_resources.queue:
-            tag_matched_workers = self._get_matched_workers(bundle_resources.queue, workers_list)
-        else:
-            tag_matched_workers = [
-                worker
-                for worker in workers_list
-                if not worker['tag_exclusive'] or not worker['tag']
-            ]
-
         # Get a list of workers that can meet the bundle's resource requirements.
-        dominating_workers = self._get_dominating_workers(bundle_resources, tag_matched_workers)
+        dominating_workers = self._get_dominating_workers(bundle_resources, workers_list)
 
         # If no workers can meet the bundle's resource reqs, add resource recommendations to staged_status.
         if not dominating_workers:
@@ -834,7 +834,8 @@ class BundleManager(object):
             # _compute_request_disk contains database queries that may reduce efficiency
             disk=self._compute_request_disk(bundle, user_info),
             network=bundle.metadata.request_network,
-            queue=bundle.metadata.request_queue,
+            tag=bundle.metadata.request_queue,
+            tag_exclusive=False,
             runs_left=None,
         )
 
@@ -929,19 +930,6 @@ class BundleManager(object):
                     pretty_print(global_min - value),
                 )
         return None
-
-    @staticmethod
-    def _get_matched_workers(request_queue, workers):
-        """
-        Get all of the workers that match with the name of the requested worker
-        :param request_queue: a tag with the format "tag=worker_X" or "worker_X" that can be used to match workers
-        :param workers: a list of workers
-        :return: a list of matched workers
-        """
-        tag_match = re.match('(?:tag=)?(.+)', request_queue)
-        if tag_match is not None:
-            return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
-        return []
 
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """

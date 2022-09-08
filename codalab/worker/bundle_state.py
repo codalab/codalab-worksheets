@@ -1,3 +1,4 @@
+import re
 from collections import namedtuple
 from typing import Any, Dict, List, Optional
 from codalab.lib.formatting import size_str
@@ -138,7 +139,8 @@ class RunResources(object):
         memory,  # type: int
         disk,  # type: int
         network,  # type: bool
-        queue,  # type: str
+        tag,  # type: str
+        tag_exclusive,  # type: bool
         runs_left,  # type: int
     ):
         self.cpus = cpus
@@ -148,7 +150,8 @@ class RunResources(object):
         self.memory = memory
         self.disk = disk
         self.network = network
-        self.queue = queue
+        self.tag = tag
+        self.tag_exclusive = tag_exclusive
         self.runs_left = runs_left
 
     @property
@@ -165,21 +168,44 @@ class RunResources(object):
             memory=int(dct["memory"]),
             disk=int(dct["disk"]),
             network=bool(dct["network"]),
-            queue=dct["queue"],
+            tag=dct["tag"],
+            tag_exclusive=bool(dct["tag_exclusive"]),
             runs_left=dct["runs_left"],
         )
 
+    def has_tag_match(self, run_resources):
+        """
+        :self: RunResources
+        :run_resources: RunResources
+
+        Returns True if self and run_resources have matching tags.
+        """
+        tag_match = re.match('(?:tag=)?(.+)', run_resources.tag)
+        if tag_match is not None:
+            return self.tag == tag_match.group(1)
+
     def dominates(self, run_resources, strict=False):
         """
-        Accepts a RunResources instance and a strict bool.
-        Returns True if self's resources dominate resources in run_resources.
+        :self: RunResources
+        :run_resources: RunResources
+        :strict: bool
 
-        If strict = True, returns False if self's resources and resources in
-        run_resources are equivalent.
+        Returns True if self's resources dominate resources in run_resources.
+        If strict = True, returns False if self and run_resources are equivalent.
         """
+        # Check tags.
+        if run_resources.tag:
+            if not self.has_tag_match(run_resources):
+                return False
+        else:
+            if self.tag_exclusive and self.tag:
+                return False
+
+        # Check the number of runs left.
         if self.runs_left == 0:
             return False
 
+        # Check all other resources.
         if strict:
             if self.cpus <= run_resources.cpus:
                 return False
@@ -190,30 +216,31 @@ class RunResources(object):
             if self.disk <= run_resources.disk:
                 return False
             return True
-
-        if self.cpus < run_resources.cpus:
-            return False
-        if self.gpus < run_resources.gpus:
-            return False
-        if self.memory < run_resources.memory:
-            return False
-        if self.disk < run_resources.disk:
-            return False
-        return True
+        else:
+            if self.cpus < run_resources.cpus:
+                return False
+            if self.gpus < run_resources.gpus:
+                return False
+            if self.memory < run_resources.memory:
+                return False
+            if self.disk < run_resources.disk:
+                return False
+            return True
 
     def get_comparison(self, run_resources):
         """
-        Accepts a RunResources instance.
+        :self: RunResources
+        :run_resources: RunResources
 
         Compares resources in self with resources in run_resources and returns
-        a comparison between the two.
+        a resource comparison between the two.
 
         Example Output: '2 CPUs (3 requested), 2g memory (4g requested)'
         """
         comparisons = []
-        if run_resources.queue and (run_resources.queue != self.queue):
-            queue = self.queue or 'No'
-            comparisons.append(f'{queue} queue ({run_resources.queue} requested)')
+        if run_resources.tag and (run_resources.tag != self.tag):
+            queue = self.tag or 'No'
+            comparisons.append(f'{queue} queue ({run_resources.tag} requested)')
 
         if self.cpus < run_resources.cpus:
             comparisons.append(f'{self.cpus} CPUs ({run_resources.cpus} requested)')
@@ -230,7 +257,7 @@ class RunResources(object):
             disk = size_str(self.disk)
             requested_disk = size_str(run_resources.disk)
             comparisons.append(f'{disk} disk ({requested_disk} requested)')
-        return ', '.join(comparisons)
+        return f"[{', '.join(comparisons)}]"
 
 
 class BundleCheckinState(object):
