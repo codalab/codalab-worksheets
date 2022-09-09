@@ -14,7 +14,7 @@ import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
-    // Callback on metadata change.
+    bundleInfoFromRow,
     bundleMetadataChanged,
     contentExpanded,
     onOpen,
@@ -203,6 +203,25 @@ const BundleDetail = ({
             setOpen(false);
         }
     };
+
+    /**
+     * This helper syncs the state info that is used to render the bundle row
+     * with the state info that is passed down into the bundle detail sidebar.
+     *
+     * This enables the bundle row and the bundle detail sidebar to show the
+     * exact same state information.
+     */
+    const syncBundleStateInfo = () => {
+        bundleInfo.state = bundleInfoFromRow.state;
+        bundleInfo.state_details = bundleInfoFromRow.state_details;
+        bundleInfo.metadata.time_preparing = bundleInfoFromRow.metadata.time_preparing;
+        bundleInfo.metadata.time_running = bundleInfoFromRow.metadata.time_running;
+        bundleInfo.metadata.time = bundleInfoFromRow.metadata.time;
+    };
+
+    if (bundleInfoFromRow && bundleInfo) {
+        syncBundleStateInfo();
+    }
 
     if (!bundleInfo) {
         if (metadataErrors.length) {
