@@ -416,28 +416,3 @@ export function formatBundle(bundle) {
 
     return result;
 }
-
-/**
- * Takes in bundle information and returns an object containing all bundle
- * information related to the bundle's state.
- *
- * @param {object} bundleInfo
- * @returns {object} stateInfo
- */
-export function getStateInfo(bundleInfo = {}) {
-    const state = bundleInfo.state;
-    const stateDetails = bundleInfo.state_details;
-    const bundleType = bundleInfo.bundle_type;
-    const metadata = bundleInfo.metadata;
-    const timePreparing = renderFormat(metadata.time_preparing, 'duration');
-    const timeRunning = renderFormat(metadata.time_running, 'duration');
-    const time = renderFormat(metadata.time, 'duration');
-    return {
-        state,
-        stateDetails,
-        bundleType,
-        timePreparing,
-        timeRunning,
-        time,
-    };
-}

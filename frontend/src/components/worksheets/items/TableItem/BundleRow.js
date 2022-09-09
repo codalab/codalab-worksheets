@@ -17,7 +17,6 @@ import BundleDetail from '../../BundleDetail';
 import TextEditorItem from '../TextEditorItem';
 import SchemaItem from '../SchemaItem';
 import { DEFAULT_SCHEMA_ROWS } from '../../../../constants';
-import { getStateInfo } from '../../../../util/worksheet_utils';
 
 // The approach taken in this design is to hack the HTML `Table` element by using one `TableBody` for each `BundleRow`.
 // We need the various columns to be aligned for all `BundleRow` within a `Table`, therefore using `div` is not an
@@ -118,7 +117,6 @@ class BundleRow extends Component {
             focusIndex,
             ws,
         } = this.props;
-        const stateInfoFromWorksheet = getStateInfo(bundleInfo);
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
@@ -308,7 +306,7 @@ class BundleRow extends Component {
                         >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
-                                stateInfoFromWorksheet={stateInfoFromWorksheet}
+                                bundleInfoFromRow={bundleInfo}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
                                 onUpdate={this.receiveBundleInfoUpdates}
                                 onClose={() => {

@@ -20,7 +20,7 @@ import BundleFieldRow from './BundleFieldRow';
 class BundleStateTable extends React.Component {
     constructor(props) {
         super(props);
-        const bundleType = this.props.stateInfo.bundleType;
+        const bundleType = this.props.bundle.bundle_type.value;
         const states = this.getStates(bundleType);
         this.state = { states };
     }
@@ -44,8 +44,11 @@ class BundleStateTable extends React.Component {
 
     getTime(state) {
         const { showTime } = this;
-        const { stateInfo } = this.props;
-        const { timePreparing, timeRunning, time } = stateInfo;
+        const { bundle } = this.props;
+        const timePreparing = bundle.time_preparing?.value;
+        const timeRunning = bundle.time_running?.value;
+        const time = bundle.time?.value;
+
         if (state === 'preparing' && showTime(timePreparing)) {
             return timePreparing;
         }
@@ -60,10 +63,10 @@ class BundleStateTable extends React.Component {
     }
 
     render() {
-        const { classes, stateInfo } = this.props;
+        const { bundle, classes } = this.props;
         const { states } = this.state;
-        const stateDetails = stateInfo.stateDetails;
-        const currentState = stateInfo.state;
+        const stateDetails = bundle.state_details?.value;
+        const currentState = bundle.state.value;
         const inFinalState = FINAL_BUNDLE_STATES.includes(currentState);
         const inOfflineState = currentState === OFFLINE_STATE;
 
