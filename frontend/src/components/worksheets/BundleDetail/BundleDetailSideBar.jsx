@@ -49,6 +49,7 @@ class BundleDetailSideBar extends React.Component {
 
     render() {
         const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
@@ -57,8 +58,6 @@ class BundleDetailSideBar extends React.Component {
         const state = bundle.state.value;
         const inFinalState = FINAL_BUNDLE_STATES.includes(state);
 
-        const expandPermissons = this.state.expandPermissons;
-        const showMoreDetail = this.state.showMoreDetail;
         const showPageLink = !hidePageLink;
         const showOwner = !bundle.is_anonymous.value;
         const showTime = inFinalState && (time || bundle.request_time?.editable);
