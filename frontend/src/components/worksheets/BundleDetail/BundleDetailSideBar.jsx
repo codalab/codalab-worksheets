@@ -48,7 +48,7 @@ class BundleDetailSideBar extends React.Component {
     }
 
     render() {
-        const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const { bundleInfo, classes, hidePageLink, onUpdate, onMetadataChange } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
@@ -111,7 +111,7 @@ class BundleDetailSideBar extends React.Component {
                             <BundlePermissions
                                 bundleInfo={bundleInfo}
                                 onClick={() => this.toggleExpandPermissions()}
-                                onChange={onMetaDataChange || function() {}}
+                                onChange={onMetadataChange}
                                 showDialog={expandPermissons}
                             />
                         }
