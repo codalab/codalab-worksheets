@@ -14,8 +14,8 @@ export function renderDuration(s) {
         return Math.round(duration) === 0 ? '' : Math.round(duration) + unit;
     }
 
-    if (s == null) {
-        return '<none>';
+    if (!s) {
+        return '';
     }
 
     var m = Math.floor(s / 60);

@@ -38,27 +38,17 @@ class BundleStateTable extends React.Component {
         return [];
     }
 
-    showTime(time) {
-        return time && time !== '<none>' && time !== '0s';
-    }
-
     getTime(state) {
-        const { showTime } = this;
         const { bundle } = this.props;
         const timePreparing = bundle.time_preparing?.value;
         const timeRunning = bundle.time_running?.value;
         const time = bundle.time?.value;
 
-        if (state === 'preparing' && showTime(timePreparing)) {
+        if (state === 'preparing') {
             return timePreparing;
         }
         if (state === 'running') {
-            if (showTime(timeRunning)) {
-                return timeRunning;
-            }
-            if (showTime(time)) {
-                return time;
-            }
+            return timeRunning || time;
         }
     }
 
