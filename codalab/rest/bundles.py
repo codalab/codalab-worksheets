@@ -186,11 +186,12 @@ def build_bundles_document(bundle_uuids):
     if query_get_bool('include_display_metadata', default=False):
         for bundle, data in zip(bundles, document['data']):
             bundle_class = get_bundle_subclass(bundle['bundle_type'])
+            bundle_state = bundle['state']
             json_api_meta(
                 data,
                 {
                     'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
-                        bundle_class
+                        bundle_class, bundle_state
                     ),
                     'metadata_type': worksheet_util.get_metadata_types(bundle_class),
                     'metadata_descriptions': worksheet_util.get_metadata_descriptions(bundle_class),

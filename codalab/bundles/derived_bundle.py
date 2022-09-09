@@ -14,9 +14,13 @@ class DerivedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)  # type: List
     # Don't format specs
     # fmt: off
-    METADATA_SPECS.append(
-        MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).', default=False,)
-    )
+    METADATA_SPECS.append(MetadataSpec(
+        'allow_failed_dependencies',
+        bool,
+        'Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).',
+        default=False,
+        lock_after_start=True
+    ))
     # fmt: on
 
     @classmethod
