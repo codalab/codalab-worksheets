@@ -99,10 +99,10 @@ const BundleDetail = ({
             include: 'owner,group_permissions,host_worksheets',
         }).toString();
 
-    const { dataMetadata, errorMetadata, mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
+    const { mutate: mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
-        onSuccess: (response, key, config) => {
+        onSuccess: (response) => {
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
@@ -234,7 +234,7 @@ const BundleDetail = ({
                 <BundleDetailSideBar
                     bundleInfo={bundleInfo}
                     onUpdate={onUpdate}
-                    onMetaDataChange={mutateMetadata}
+                    onMetadataChange={mutateMetadata}
                     expanded={sidebarExpanded}
                     hidePageLink={hideBundlePageLink}
                 />
