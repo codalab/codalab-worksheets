@@ -27,43 +27,21 @@ class BundleFieldRow extends React.Component {
         super(props);
     }
 
-    /**
-     * Returns true if this field should be hidden.
-     * We should only show fields that either have values or are editable.
-     *
-     * @returns {bool}
-     */
-    checkHideRow() {
-        const field = this.props.field || {};
-        const value = this.props.value || field?.value;
-        if (!field.editable) {
-            if (!value) {
-                return true;
-            }
-            if (field.type === 'list' && (!value.length || !value[0])) {
-                return true;
-            }
+    getValue(field) {
+        const value = this.props.value || field.value;
+        if (field.type === 'list') {
+            return value.length ? value : '<none>';
         }
-        return false;
+        return value || value === false ? value : '<none>';
     }
 
     render() {
-        const { allowCopy, classes, onChange, noWrap } = this.props;
-        const hideRow = this.checkHideRow();
+        const { classes, label, onChange, noWrap } = this.props;
         const field = this.props.field || {};
-        const name = field.name;
-        const dataType = field.type;
-        const canEdit = field.editable;
-        const uuid = field.bundle_uuid;
-
-        // allow props to override field values
-        const label = this.props.label || field.name;
         const description = this.props.description || field.description;
-        const value = this.props.value || field.value;
-
-        if (hideRow) {
-            return null;
-        }
+        const value = this.getValue(field);
+        const valueClass = value === '<none>' && classes.noValue;
+        const allowCopy = this.props.allowCopy && value !== '<none>';
 
         return (
             <tr>
@@ -83,20 +61,22 @@ class BundleFieldRow extends React.Component {
                     )}
                 </td>
                 <td className={classes.td}>
-                    {canEdit ? (
+                    {field.editable ? (
                         <div className={classes.wrappableText}>
                             <BundleEditableField
-                                dataType={dataType}
-                                fieldName={name}
-                                uuid={uuid}
-                                value={value}
+                                dataType={field.type}
+                                fieldName={field.name}
+                                uuid={field.bundle_uuid}
+                                value={field.value}
                                 onChange={onChange}
                                 canEdit
                             />
                         </div>
                     ) : (
                         <div className={classes.dataContainer}>
-                            <Typography noWrap={noWrap}>{value}</Typography>
+                            <Typography noWrap={noWrap} classes={{ root: valueClass }}>
+                                {value}
+                            </Typography>
                             {allowCopy && <Copy message={`${label} Copied!`} text={value} />}
                         </div>
                     )}
@@ -133,6 +113,9 @@ const styles = (theme) => ({
         overflowWrap: 'anywhere',
         paddingBottom: 5,
         fontSize: 14,
+    },
+    noValue: {
+        color: theme.color.grey.dark,
     },
 });
 
