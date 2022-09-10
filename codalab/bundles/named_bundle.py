@@ -14,20 +14,50 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 class NamedBundle(Bundle):
     NAME_LENGTH = 32
-
-    # Don't format specs
-    # fmt: off
     METADATA_SPECS = [
-        MetadataSpec('name', str, 'Short name (not necessarily unique), which must start with a letter or underscore '
-                                  'and can only contain letters, digits, underscores, periods, and dashes (name).', short_key='n'),
-        MetadataSpec('description', str, 'Full description of the bundle (description).', short_key='d'),
-        MetadataSpec('tags', list, 'Space-separated list of tags used for search, e.g. machine-learning (tags).', metavar='TAG',),
-        MetadataSpec('created', int, 'Time when this bundle was created (created).', generated=True, formatting='date'),
-        MetadataSpec('data_size', int, 'Size of this bundle in bytes (data_size).', generated=True, formatting='size'),
-        MetadataSpec('failure_message', str, 'Error message if this run bundle failed (failure_message).', generated=True,),
-        MetadataSpec('error_traceback', str, 'Error traceback if this run bundle failed (error_traceback).', generated=True, hidden=True),
+        MetadataSpec(
+            'name',
+            str,
+            'Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes (name).',
+            short_key='n',
+        ),
+        MetadataSpec(
+            'description', str, 'Full description of the bundle (description).', short_key='d'
+        ),
+        MetadataSpec(
+            'tags',
+            list,
+            'Space-separated list of tags used for search, e.g. machine-learning (tags).',
+            metavar='TAG',
+        ),
+        MetadataSpec(
+            'created',
+            int,
+            'Time when this bundle was created (created).',
+            generated=True,
+            formatting='date',
+        ),
+        MetadataSpec(
+            'data_size',
+            int,
+            'Size of this bundle in bytes (data_size).',
+            generated=True,
+            formatting='size',
+        ),
+        MetadataSpec(
+            'failure_message',
+            str,
+            'Error message if this run bundle failed (failure_message).',
+            generated=True,
+        ),
+        MetadataSpec(
+            'error_traceback',
+            str,
+            'Error traceback if this run bundle failed (error_traceback).',
+            generated=True,
+            hidden=True,
+        ),
     ]  # type: List
-    # fmt: on
 
     @classmethod
     def construct(cls, row):
