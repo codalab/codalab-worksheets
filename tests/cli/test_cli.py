@@ -1300,6 +1300,16 @@ def test_binary(ctx):
     _run_command([cl, 'info', '--verbose', uuid])
 
 
+@TestModule.register('ancestors')
+def test_ancestors(ctx):
+    uuid_a = _run_command([cl, 'upload', test_path('a.txt')])
+    uuid_b = _run_command([cl, 'upload', test_path('b.txt')])
+    uuid_cl_run = _run_command([cl, 'run', f':{uuid_a}', f':{uuid_b}', 'echo hello'])
+
+    expected = f"-run-echo({uuid_cl_run})\n" f"  -{'a.txt'}({uuid_a})\n" f"  -{'b.txt'}({uuid_b})"
+    check_equals(expected, _run_command([cl, 'ancestors', uuid_cl_run]))
+
+
 @TestModule.register('rm')
 def test_rm(ctx):
     uuid = _run_command([cl, 'upload', test_path('a.txt')])

@@ -110,6 +110,7 @@ BUNDLE_COMMANDS = (
     'run',
     'edit',
     'detach',
+    'ancestors',
     'rm',
     'search',
     'ls',
@@ -2117,6 +2118,43 @@ class BundleCLI(object):
         else:
             for uuid in deleted_uuids:
                 print(uuid, file=self.stdout)
+
+    @Commands.command(
+        'ancestors',
+        aliases=('a',),
+        help='Print bundle ancestors. Multiple bundles can be provided and will have ancestors printed separately.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        # Process the input bundle uuid(s)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+
+        # Depth First Search through the Bundle dependency graph.
+        def dfs_helper(bundle_uuid, dfs_depth):
+            source_info = client.fetch('bundles', bundle_uuid)
+            print(
+                "{}-{}({})".format('  ' * dfs_depth, source_info['metadata']['name'], bundle_uuid),
+                file=self.stdout,
+            )
+            for dependency_bundle_info in source_info['dependencies']:
+                dfs_helper(dependency_bundle_info['parent_uuid'], dfs_depth + 1)
+
+        # We do a separate DFS for each provided bundle_uuid.
+        for bundle_uuid in bundle_uuids:
+            dfs_helper(bundle_uuid, 0)
+            print("", file=self.stdout)
 
     @Commands.command(
         'search',

@@ -100,6 +100,12 @@ Usage: `cl <command> <arguments>`
       -n, --index           Specifies which occurrence (1, 2, ...) of the bundle to detach, counting from the end.
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
+### ancestors (a)
+    Print bundle ancestors. Multiple bundles can be provided and will have ancestors printed separately.
+    Arguments:
+      bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
+      -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+
 ### rm
     Remove a bundle (permanent!).
     Arguments:
