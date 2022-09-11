@@ -37,7 +37,7 @@ def size_str(size, include_bytes=False):
     include_bytes: whether or not to include 'bytes' string in the return value
     Return a human-readable string.
     """
-    if size is None:
+    if size is None or size == 0:
         return None
 
     for unit in ('', 'k', 'm', 'g', 't'):
