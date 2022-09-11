@@ -43,6 +43,7 @@ class NamedBundle(Bundle):
             'Size of this bundle in bytes (data_size).',
             generated=True,
             formatting='size',
+            default=0,
         ),
         MetadataSpec(
             'failure_message',

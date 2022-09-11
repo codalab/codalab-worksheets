@@ -25,7 +25,12 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     '''
     # Fill in default values for all unsupplied metadata keys.
     new_initial_metadata = {}
-    for spec in bundle_subclass.get_user_defined_metadata():
+    for spec in bundle_subclass.METADATA_SPECS:
+
+        # Ignore generated specs that don't have a default value set.
+        if spec.generated and spec.default is None:
+            continue
+
         new_initial_metadata[spec.key] = initial_metadata.get(spec.key)
         if new_initial_metadata[spec.key] is None:
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)

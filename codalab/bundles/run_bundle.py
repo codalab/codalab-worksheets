@@ -257,6 +257,7 @@ class RunBundle(DerivedBundle):
             'Amount of system time in the CLEANING_UP stage (time_cleaning_up).',
             generated=True,
             formatting='duration',
+            default=0.0,
         )
     )
     METADATA_SPECS.append(
@@ -266,6 +267,7 @@ class RunBundle(DerivedBundle):
             'Amount of system time in the UPLOADING_RESULTS stage (time_uploading_results).',
             generated=True,
             formatting='duration',
+            default=0.0,
         )
     )
     METADATA_SPECS.append(
@@ -275,6 +277,7 @@ class RunBundle(DerivedBundle):
             'Which docker image was used to run the process (docker_image).',
             generated=True,
             hide_when_anonymous=True,
+            default='',
         )
     )
     METADATA_SPECS.append(
@@ -296,6 +299,7 @@ class RunBundle(DerivedBundle):
             'Where this job is/was run (remote) [internal].',
             generated=True,
             hide_when_anonymous=True,
+            default='',
         )
     )
     METADATA_SPECS.append(
