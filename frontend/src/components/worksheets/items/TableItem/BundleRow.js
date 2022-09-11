@@ -103,12 +103,24 @@ class BundleRow extends Component {
         });
     };
 
+    getRowItems() {
+        const { item } = this.props;
+        const { bundleInfoUpdates } = this.state;
+        const rowItems = {
+            ...item,
+            ...bundleInfoUpdates,
+        };
+        if (rowItems.data_size === '0') {
+            rowItems.data_size = ''; // showing '0' to the user isn't useful
+        }
+        return rowItems;
+    }
+
     render() {
-        const { showDetail, showNewRun, bundleInfoUpdates, runProp } = this.state;
+        const { showDetail, showNewRun, runProp } = this.state;
         const {
             classes,
             bundleInfo,
-            item,
             reloadWorksheet,
             checkStatus,
             showNewRerun,
@@ -117,7 +129,7 @@ class BundleRow extends Component {
             focusIndex,
             ws,
         } = this.props;
-        const rowItems = { ...item, ...bundleInfoUpdates };
+        const rowItems = this.getRowItems();
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
