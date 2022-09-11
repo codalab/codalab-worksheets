@@ -552,7 +552,7 @@ def apply_func(func, arg):
             elif f == 'duration':
                 arg = formatting.duration_str(float(arg)) if arg is not None else None
             elif f == 'size':
-                arg = formatting.size_str(float(arg)) if arg is not None else None
+                arg = formatting.size_str(float(arg), True) if arg is not None else None
             elif f.startswith('%'):
                 arg = (f % float(arg)) if arg is not None else None
             elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
