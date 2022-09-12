@@ -70,7 +70,7 @@ export function renderSize(size, includeBytes = false) {
     // size: number of bytes
     // includeBytes: whether or not to include 'bytes' string in the return value
     // Return a human-readable string.
-    if (size === 0) {
+    if (!size) {
         return '';
     }
     var units = ['', 'k', 'm', 'g', 't'];
