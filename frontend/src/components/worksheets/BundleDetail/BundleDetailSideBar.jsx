@@ -100,12 +100,16 @@ class BundleDetailSideBar extends React.Component {
                     />
                     <BundleFieldRow label='Created' field={bundle.created} />
                     <BundleFieldRow label='Size' field={bundle.data_size} />
-                    <BundleFieldRow label='Remote' field={bundle.remote} allowCopy noWrap />
-                    <BundleFieldRow
-                        label='Store'
-                        field={bundle.store}
-                        onChange={(store) => onUpdate({ store })}
-                    />
+                    {showRunFields && (
+                        <BundleFieldRow label='Remote' field={bundle.remote} allowCopy noWrap />
+                    )}
+                    {(showRunFields || showDatasetFields) && (
+                        <BundleFieldRow
+                            label='Store'
+                            field={bundle.store}
+                            onChange={(store) => onUpdate({ store })}
+                        />
+                    )}
                 </BundleFieldTable>
                 {showTime && (
                     <BundleFieldTable title='Time'>
