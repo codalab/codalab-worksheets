@@ -384,6 +384,19 @@ class ClientUploadManager(object):
         self._client = json_api_client
         self.stdout = stdout
         self.stderr = stderr
+        self.upload_func = {
+            StorageURLScheme.GCS_STORAGE.value: self.upload_GCS_blob_storage,
+            StorageURLScheme.AZURE_BLOB_STORAGE.value: self.upload_Azure_blob_storage,
+        }
+    
+    def get_upload_func(self, bundle_url: str):
+        """
+        Return different upload fuction for different storage type
+        """
+        for k, v in self.upload_func.items():
+            if(bundle_url.startswith(k)):
+                return v
+        return self.upload_Azure_blob_storage
 
     def upload_to_bundle_store(
         self,
@@ -439,9 +452,7 @@ class ClientUploadManager(object):
             bundle_read_str = data.get('bundle_read_url', bundle_url)
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
-                upload_func = self.upload_Azure_blob_storage
-                if bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
-                    upload_func = self.upload_GCS_blob_storage
+                upload_func = self.get_upload_func(bundle_url)
                 with closing(packed_source['fileobj']), progress:
                     upload_func(
                         fileobj=packed_source['fileobj'],
