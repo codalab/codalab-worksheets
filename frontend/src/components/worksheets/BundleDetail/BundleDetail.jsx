@@ -14,7 +14,7 @@ import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
-    // Callback on metadata change.
+    bundleInfoFromRow,
     bundleMetadataChanged,
     contentExpanded,
     onOpen,
@@ -99,10 +99,10 @@ const BundleDetail = ({
             include: 'owner,group_permissions,host_worksheets',
         }).toString();
 
-    const { dataMetadata, errorMetadata, mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
+    const { mutate: mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
-        onSuccess: (response, key, config) => {
+        onSuccess: (response) => {
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
@@ -204,6 +204,25 @@ const BundleDetail = ({
         }
     };
 
+    /**
+     * This helper syncs the state info that is used to render the bundle row
+     * with the state info that is passed down into the bundle detail sidebar.
+     *
+     * This enables the bundle row and the bundle detail sidebar to show the
+     * exact same state information.
+     */
+    const syncBundleStateInfo = () => {
+        bundleInfo.state = bundleInfoFromRow.state;
+        bundleInfo.state_details = bundleInfoFromRow.state_details;
+        bundleInfo.metadata.time_preparing = bundleInfoFromRow.metadata.time_preparing;
+        bundleInfo.metadata.time_running = bundleInfoFromRow.metadata.time_running;
+        bundleInfo.metadata.time = bundleInfoFromRow.metadata.time;
+    };
+
+    if (bundleInfoFromRow && bundleInfo) {
+        syncBundleStateInfo();
+    }
+
     if (!bundleInfo) {
         if (metadataErrors.length) {
             return <ErrorMessage message='Error: Bundle Unavailable' />;
@@ -234,7 +253,7 @@ const BundleDetail = ({
                 <BundleDetailSideBar
                     bundleInfo={bundleInfo}
                     onUpdate={onUpdate}
-                    onMetaDataChange={mutateMetadata}
+                    onMetadataChange={mutateMetadata}
                     expanded={sidebarExpanded}
                     hidePageLink={hideBundlePageLink}
                 />
