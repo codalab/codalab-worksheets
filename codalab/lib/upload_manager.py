@@ -388,13 +388,13 @@ class ClientUploadManager(object):
             StorageURLScheme.GCS_STORAGE.value: self.upload_GCS_blob_storage,
             StorageURLScheme.AZURE_BLOB_STORAGE.value: self.upload_Azure_blob_storage,
         }
-    
+
     def get_upload_func(self, bundle_url: str):
         """
         Return different upload fuction for different storage type
         """
         for k, v in self.upload_func.items():
-            if(bundle_url.startswith(k)):
+            if bundle_url.startswith(k):
                 return v
         return self.upload_Azure_blob_storage
 
