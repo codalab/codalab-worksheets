@@ -30,7 +30,6 @@ class RunBundle(DerivedBundle):
             'Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use (request_docker_image).',
             completer=DockerImagesCompleter,
             hide_when_anonymous=True,
-            default=None,
             lock_after_start=True,
         )
     )
@@ -40,7 +39,6 @@ class RunBundle(DerivedBundle):
             str,
             'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left.',
             formatting='duration',
-            default=None,
             lock_after_start=True,
         )
     )
@@ -60,7 +58,6 @@ class RunBundle(DerivedBundle):
             str,
             'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_disk). Defaults to user disk quota left.',
             formatting='size',
-            default=None,
             lock_after_start=True,
         )
     )
@@ -88,7 +85,6 @@ class RunBundle(DerivedBundle):
             str,
             'Submit run to this job queue (request_queue).',
             hide_when_anonymous=True,
-            default=None,
             lock_after_start=True,
         )
     )
@@ -97,7 +93,6 @@ class RunBundle(DerivedBundle):
             'request_priority',
             int,
             'Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority.',
-            default=None,
             lock_after_start=True,
         )
     )
@@ -142,7 +137,6 @@ class RunBundle(DerivedBundle):
             'store',
             str,
             'The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen.',
-            default=None,
             hidden=True,
             optional=True,
             lock_after_start=True,

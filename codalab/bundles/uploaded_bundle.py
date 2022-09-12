@@ -42,7 +42,6 @@ class UploadedBundle(NamedBundle):
             str,
             'The name of the bundle store where the bundle should be uploaded to (store). '
             'If unspecified, an optimal available bundle store will be chosen.',
-            default=None,
             hidden=True,
             optional=True,
         )
