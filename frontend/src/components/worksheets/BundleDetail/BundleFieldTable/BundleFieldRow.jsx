@@ -40,8 +40,9 @@ class BundleFieldRow extends React.Component {
         const field = this.props.field || {};
         const description = this.props.description || field.description;
         const value = this.getValue(field);
-        const valueClass = value === '<none>' && classes.noValue;
-        const allowCopy = this.props.allowCopy && value !== '<none>';
+        const hasValue = value !== '<none>';
+        const valueClass = hasValue ? '' : classes.noValue;
+        const allowCopy = this.props.allowCopy && hasValue;
 
         return (
             <tr>
