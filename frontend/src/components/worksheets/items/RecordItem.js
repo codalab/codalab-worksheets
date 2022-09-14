@@ -112,6 +112,7 @@ class RecordItem extends React.Component {
                 {this.state.showNewRun === 1 && (
                     <NewRun
                         ws={ws}
+                        onError={this.props.onError}
                         onSubmit={() => {
                             this.setState({ showNewRun: 0, showDetail: false });
                             onHideNewRerun();

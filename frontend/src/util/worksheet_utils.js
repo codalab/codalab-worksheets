@@ -419,3 +419,14 @@ export function formatBundle(bundle) {
 
     return result;
 }
+
+/**
+ * Parses error data and returns an error message.
+ *
+ * @param {object} error
+ * @returns {string} error message
+ */
+export function parseError(error) {
+    const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
+    return htmlDoc.getElementsByTagName('pre')[0].innerHTML;
+}
