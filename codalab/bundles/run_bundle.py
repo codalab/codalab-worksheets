@@ -29,6 +29,7 @@ class RunBundle(DerivedBundle):
             completer=DockerImagesCompleter,
             hide_when_anonymous=True,
             default=None,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -38,6 +39,7 @@ class RunBundle(DerivedBundle):
             'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left.',
             formatting='duration',
             default=None,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -47,6 +49,7 @@ class RunBundle(DerivedBundle):
             'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_memory).',
             formatting='size',
             default='2g',
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -56,16 +59,25 @@ class RunBundle(DerivedBundle):
             'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_disk). Defaults to user disk quota left.',
             formatting='size',
             default=None,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
         MetadataSpec(
-            'request_cpus', int, 'Number of CPUs allowed for this run (request_cpus).', default=1,
+            'request_cpus',
+            int,
+            'Number of CPUs allowed for this run (request_cpus).',
+            default=1,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
         MetadataSpec(
-            'request_gpus', int, 'Number of GPUs allowed for this run (request_gpus).', default=0,
+            'request_gpus',
+            int,
+            'Number of GPUs allowed for this run (request_gpus).',
+            default=0,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -75,6 +87,7 @@ class RunBundle(DerivedBundle):
             'Submit run to this job queue (request_queue).',
             hide_when_anonymous=True,
             default=None,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -83,6 +96,7 @@ class RunBundle(DerivedBundle):
             int,
             'Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority.',
             default=None,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -91,6 +105,7 @@ class RunBundle(DerivedBundle):
             bool,
             'Whether to allow network access (request_network).',
             default=True,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -117,6 +132,7 @@ class RunBundle(DerivedBundle):
             list,
             'Exclude these file patterns from being saved into the bundle contents (exclude_patterns).',
             default=[],
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(
@@ -127,6 +143,7 @@ class RunBundle(DerivedBundle):
             default=None,
             hidden=True,
             optional=True,
+            lock_after_start=True,
         )
     )
     METADATA_SPECS.append(

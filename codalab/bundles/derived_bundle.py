@@ -18,6 +18,7 @@ class DerivedBundle(NamedBundle):
             bool,
             'Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).',
             default=False,
+            lock_after_start=True,
         )
     )
 
