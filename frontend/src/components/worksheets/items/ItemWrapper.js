@@ -45,6 +45,7 @@ class ItemWrapper extends React.Component {
                         <NewRun
                             after_sort_key={after_sort_key}
                             ws={this.props.ws}
+                            onError={this.props.onError}
                             onSubmit={() => this.props.onHideNewRun()}
                             reloadWorksheet={reloadWorksheet}
                         />

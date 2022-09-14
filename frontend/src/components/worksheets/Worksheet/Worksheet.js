@@ -1882,6 +1882,7 @@ class Worksheet extends React.Component {
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
                 showNewSchema={this.state.showNewSchema}
+                onError={this.onError}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
