@@ -29,10 +29,10 @@ class BundleFieldRow extends React.Component {
 
     getValue(field) {
         const value = this.props.value || field.value;
-        if (field.type === 'list') {
-            return value.length && value[0] ? value : '<none>';
+        if (value || value === false) {
+            return value;
         }
-        return value || value === false ? value : '<none>';
+        return '<none>';
     }
 
     render() {

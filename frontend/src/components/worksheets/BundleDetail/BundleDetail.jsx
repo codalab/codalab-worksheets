@@ -107,7 +107,7 @@ const BundleDetail = ({
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
             bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
-            bundleInfo.metadataType = response.data.meta.metadata_type;
+            bundleInfo.metadataTypes = response.data.meta.metadata_type;
             setBundleInfo(bundleInfo);
             setMetadataErrors([]);
         },
