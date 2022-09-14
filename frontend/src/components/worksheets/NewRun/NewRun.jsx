@@ -319,8 +319,8 @@ class NewRun extends React.Component<
                     this.props.reloadWorksheet(undefined, undefined, { moveIndex });
                     this.props.onSubmit();
                 })
-                .catch((error) => {
-                    this.props.onError(error);
+                .catch((errorMessage) => {
+                    this.props.onError(errorMessage);
                 });
         }
     }

@@ -56,7 +56,7 @@ def check_uuid(uuid_str):
 def check_name(name):
     if not NAME_REGEX.match(name):
         raise UsageError(
-            "'%s' is not a valid name. Name must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes."
+            "Invalid name '%s'. Name must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes."
             % (name)
         )
 

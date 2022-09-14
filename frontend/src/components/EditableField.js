@@ -62,15 +62,11 @@ class EditableFieldBase extends React.Component<{
                 }
                 this.setState({ errorMessage: '' });
             })
-            .catch((error) => {
+            .catch((errorMessage) => {
                 if (this.props.onError) {
-                    this.props.onError('Invalid value entered: ' + error);
-                    this.setState({
-                        value: this.props.value, // restore the original value
-                    });
+                    this.props.onError(errorMessage);
+                    this.setState({ value: this.props.value }); // restore the original value
                 } else {
-                    const fieldName = this.props.fieldName;
-                    const errorMessage = `Invalid ${fieldName}. Hover over the ${fieldName} tooltip for help.`;
                     this.setState({ errorMessage });
                 }
             });
