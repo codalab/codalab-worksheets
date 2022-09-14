@@ -79,6 +79,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             ),
         );
     }
+
     worksheet_items.push(
         <ItemWrapper
             prevItem={prevItem}
@@ -88,14 +89,23 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             worksheetUUID={props.worksheetUUID}
             reloadWorksheet={props.reloadWorksheet}
             showNewRun={
-                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewRun
+                !props.showNewButtonsAfterEachBundleRow &&
+                props.focusIndex === props.newRunIndex &&
+                props.showNewRun
             }
             showNewText={
-                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewText
+                !props.showNewButtonsAfterEachBundleRow &&
+                props.focusIndex === props.newTextIndex &&
+                props.showNewText
             }
             showNewSchema={
-                !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewSchema
+                !props.showNewButtonsAfterEachBundleRow &&
+                props.focusIndex === props.newSchemaIndex &&
+                props.showNewSchema
             }
+            newRunIndex={props.newRunIndex}
+            newTextIndex={props.newTextIndex}
+            newSchemaIndex={props.newSchemaIndex}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
             onHideNewSchema={props.onHideNewSchema}
@@ -235,6 +245,9 @@ class WorksheetItemList extends React.Component {
                         showNewText: this.props.showNewText,
                         showNewRerun: this.props.showNewRerun,
                         showNewSchema: this.props.showNewSchema,
+                        newRunIndex: this.props.newRunIndex,
+                        newTextIndex: this.props.newTextIndex,
+                        newSchemaIndex: this.props.newSchemaIndex,
                         onHideNewRun: this.props.onHideNewRun,
                         onHideNewText: this.props.onHideNewText,
                         onHideNewRerun: this.props.onHideNewRerun,
@@ -262,10 +275,11 @@ class WorksheetItemList extends React.Component {
                     );
                 }.bind(this),
             );
+
             items_display = (
                 <>
-                    {/*Show new runs/text at the top of worksheet when no blocks are focused*/}
-                    {this.props.showNewText && !focusedItem && (
+                    {/* Show new runs/text at the top of worksheet when no blocks are focused */}
+                    {this.props.showNewText && this.props.newTextIndex === -1 && (
                         <TextEditorItem
                             mode='create'
                             after_sort_key={-1}
@@ -276,7 +290,7 @@ class WorksheetItemList extends React.Component {
                             }}
                         />
                     )}
-                    {this.props.showNewRun && !focusedItem && (
+                    {this.props.showNewRun && this.props.newRunIndex === -1 && (
                         <div className={this.props.classes.insertBox}>
                             <NewRun
                                 after_sort_key={-1}
@@ -288,7 +302,7 @@ class WorksheetItemList extends React.Component {
                             />
                         </div>
                     )}
-                    {this.props.showNewSchema && !focusedItem && (
+                    {this.props.showNewSchema && this.props.newSchemaIndex === -1 && (
                         <SchemaItem
                             after_sort_key={-1}
                             ws={this.props.ws}
