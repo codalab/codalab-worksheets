@@ -6,11 +6,20 @@ from typing import List
 
 from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.worker.bundle_state import State
+from codalab.objects.metadata_spec import MetadataSpec
 
 
 class MakeBundle(DerivedBundle):
     BUNDLE_TYPE = 'make'
     METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)  # type: List
+    METADATA_SPECS.append(
+        MetadataSpec(
+            'staged_status',
+            str,
+            'Information about the status of the staged bundle (staged_status).',
+            generated=True,
+        )
+    )
 
     @classmethod
     def construct(

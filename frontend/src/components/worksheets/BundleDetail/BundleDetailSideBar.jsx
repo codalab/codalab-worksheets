@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
-import { formatBundle, shorten_uuid } from '../../../util/worksheet_utils';
+import { formatBundle } from '../../../util/worksheet_utils';
 import { FINAL_BUNDLE_STATES } from '../../../constants';
 import CollapseButton from '../../CollapseButton';
 import NewWindowLink from '../../NewWindowLink';
@@ -48,7 +48,7 @@ class BundleDetailSideBar extends React.Component {
     }
 
     render() {
-        const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const { bundleInfo, classes, hidePageLink, onUpdate, onMetadataChange } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
@@ -77,9 +77,9 @@ class BundleDetailSideBar extends React.Component {
                     <BundleFieldRow
                         label='UUID'
                         description="Click the copy icon to copy the bundle's full UUID."
-                        value={`${shorten_uuid(uuid)}...`}
-                        copyValue={uuid}
+                        field={bundle.uuid}
                         allowCopy
+                        noWrap
                     />
                     <BundleFieldRow
                         label='Name'
@@ -111,7 +111,7 @@ class BundleDetailSideBar extends React.Component {
                             <BundlePermissions
                                 bundleInfo={bundleInfo}
                                 onClick={() => this.toggleExpandPermissions()}
-                                onChange={onMetaDataChange || function() {}}
+                                onChange={onMetadataChange}
                                 showDialog={expandPermissons}
                             />
                         }
@@ -122,7 +122,7 @@ class BundleDetailSideBar extends React.Component {
                         description='Size of this bundle in bytes (data_size).'
                         value={bundle.data_size?.value || '--'}
                     />
-                    <BundleFieldRow label='Remote' field={bundle.remote} />
+                    <BundleFieldRow label='Remote' field={bundle.remote} allowCopy noWrap />
                     <BundleFieldRow
                         label='Store'
                         field={bundle.store}
@@ -280,7 +280,7 @@ const styles = () => ({
     },
     pageLink: {
         position: 'absolute',
-        right: 0,
+        right: -1,
     },
     collapseBtn: {
         marginTop: 5,

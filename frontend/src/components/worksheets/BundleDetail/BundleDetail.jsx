@@ -14,7 +14,7 @@ import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
-    // Callback on metadata change.
+    bundleInfoFromRow,
     bundleMetadataChanged,
     contentExpanded,
     onOpen,
@@ -52,13 +52,11 @@ const BundleDetail = ({
     // If info is not available yet, fetch
     // If bundle is in a state that is possible to transition to a different state, fetch data
     // we have ignored ready|failed|killed states here
-    const refreshInterval =
-        !bundleInfo ||
-        bundleInfo.state.match(
-            'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
-        )
-            ? 4000
-            : 0;
+    const refreshInterval = bundleInfo?.state?.match(
+        'uploading|created|staged|making|starting|preparing|running|finalizing|worker_offline',
+    )
+        ? 4000
+        : 0;
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -101,10 +99,10 @@ const BundleDetail = ({
             include: 'owner,group_permissions,host_worksheets',
         }).toString();
 
-    const { dataMetadata, errorMetadata, mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
+    const { mutate: mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
-        onSuccess: (response, key, config) => {
+        onSuccess: (response) => {
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
@@ -206,6 +204,25 @@ const BundleDetail = ({
         }
     };
 
+    /**
+     * This helper syncs the state info that is used to render the bundle row
+     * with the state info that is passed down into the bundle detail sidebar.
+     *
+     * This enables the bundle row and the bundle detail sidebar to show the
+     * exact same state information.
+     */
+    const syncBundleStateInfo = () => {
+        bundleInfo.state = bundleInfoFromRow.state;
+        bundleInfo.state_details = bundleInfoFromRow.state_details;
+        bundleInfo.metadata.time_preparing = bundleInfoFromRow.metadata.time_preparing;
+        bundleInfo.metadata.time_running = bundleInfoFromRow.metadata.time_running;
+        bundleInfo.metadata.time = bundleInfoFromRow.metadata.time;
+    };
+
+    if (bundleInfoFromRow && bundleInfo) {
+        syncBundleStateInfo();
+    }
+
     if (!bundleInfo) {
         if (metadataErrors.length) {
             return <ErrorMessage message='Error: Bundle Unavailable' />;
@@ -214,7 +231,7 @@ const BundleDetail = ({
     }
 
     if (bundleInfo.bundle_type === 'private') {
-        return <div>Detail not available for this bundle</div>;
+        return <ErrorMessage message='Error: Bundle Access Denied' />;
     }
 
     return (
@@ -236,7 +253,7 @@ const BundleDetail = ({
                 <BundleDetailSideBar
                     bundleInfo={bundleInfo}
                     onUpdate={onUpdate}
-                    onMetaDataChange={mutateMetadata}
+                    onMetadataChange={mutateMetadata}
                     expanded={sidebarExpanded}
                     hidePageLink={hideBundlePageLink}
                 />
@@ -248,7 +265,6 @@ const BundleDetail = ({
                 stdout={stdout}
                 stderr={stderr}
                 fileContents={fileContents}
-                fetchingContent={fetchingContent}
                 contentType={contentType}
                 expanded={contentExpanded}
             />

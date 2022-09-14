@@ -306,6 +306,7 @@ class BundleRow extends Component {
                         >
                             <BundleDetail
                                 uuid={bundleInfo.uuid}
+                                bundleInfoFromRow={bundleInfo}
                                 bundleMetadataChanged={this.props.reloadWorksheet}
                                 onUpdate={this.receiveBundleInfoUpdates}
                                 onClose={() => {

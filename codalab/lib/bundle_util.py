@@ -372,10 +372,11 @@ def get_bundle_state_details(bundle):
     """
     metadata = bundle.get('metadata', {})
     run_status = metadata.get('run_status')
+    staged_status = metadata.get('staged_status')
     type = bundle.get('bundle_type')
     state = bundle.get('state')
     state_details_by_type = {
-        'dataset': {
+        'dataset': {  # uploaded
             'created': 'Bundle has been created but its contents have not been uploaded yet.',
             'uploading': 'Bundle contents are being uploaded.',
             'ready': 'Bundle has finished uploading successfully, and is ready to be used for further runs.',
@@ -389,7 +390,6 @@ def get_bundle_state_details(bundle):
         },
         'run': {
             'created': 'Bundle has been created but its contents have not been populated yet.',
-            'staged': 'Bundle’s dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run.',
             'starting': 'Bundle has been assigned to a worker. Waiting for worker to start the bundle.',
             'finalizing': 'Bundle command has finished executing, cleaning up on the worker.',
             'ready': 'Bundle command has finished executing successfully, and results have been uploaded to the server.',
@@ -399,6 +399,13 @@ def get_bundle_state_details(bundle):
         },
     }
 
+    if state == 'staged':
+        return staged_status
+
     if state == 'preparing' or state == 'running':
         return run_status
-    return state_details_by_type[type][state]
+
+    # We can remove the defensive checks below once program bundles are converted to dataset bundles.
+    # Related Issue: https://github.com/codalab/codalab-worksheets/issues/4235
+    state_details = state_details_by_type.get(type, {}).get(state, '')
+    return state_details
