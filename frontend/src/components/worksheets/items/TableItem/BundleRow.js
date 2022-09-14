@@ -116,7 +116,6 @@ class BundleRow extends Component {
             editPermission,
             focusIndex,
             ws,
-            onError,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
@@ -338,7 +337,7 @@ class BundleRow extends Component {
                             <div className={classes.insertBox}>
                                 <NewRun
                                     ws={ws}
-                                    onError={onError}
+                                    onError={this.props.onError}
                                     onSubmit={() => {
                                         this.setState({ showNewRun: 0, showDetail: false });
                                         onHideNewRerun();
@@ -358,7 +357,7 @@ class BundleRow extends Component {
                                 <NewRun
                                     after_sort_key={this.props.after_sort_key}
                                     ws={this.props.ws}
-                                    onError={onError}
+                                    onError={this.props.onError}
                                     onSubmit={() => this.props.onHideNewRun()}
                                     reloadWorksheet={reloadWorksheet}
                                 />
