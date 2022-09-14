@@ -96,6 +96,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             showNewSchema={
                 !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewSchema
             }
+            onError={props.onError}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
             onHideNewSchema={props.onHideNewSchema}
@@ -282,6 +283,7 @@ class WorksheetItemList extends React.Component {
                                 after_sort_key={-1}
                                 ws={this.props.ws}
                                 onSubmit={() => this.props.onHideNewRun()}
+                                onError={this.props.onError}
                                 reloadWorksheet={() =>
                                     this.props.reloadWorksheet(undefined, (0, 0))
                                 }

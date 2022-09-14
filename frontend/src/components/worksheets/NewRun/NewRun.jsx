@@ -313,11 +313,15 @@ class NewRun extends React.Component<
     runCommand() {
         const cmd = this.getCommand();
         if (cmd) {
-            executeCommand(cmd, this.props.ws.info.uuid).then(() => {
-                const moveIndex = true;
-                const param = { moveIndex };
-                this.props.reloadWorksheet(undefined, undefined, param);
-            });
+            executeCommand(cmd, this.props.ws.info.uuid)
+                .then(() => {
+                    const moveIndex = true;
+                    this.props.reloadWorksheet(undefined, undefined, { moveIndex });
+                    this.props.onSubmit();
+                })
+                .catch((error) => {
+                    this.props.onError(error);
+                });
         }
     }
 
@@ -360,10 +364,7 @@ class NewRun extends React.Component<
                         <Button
                             variant='contained'
                             color='primary'
-                            onClick={() => {
-                                this.runCommand();
-                                this.props.onSubmit();
-                            }}
+                            onClick={() => this.runCommand()}
                         >
                             Confirm
                         </Button>

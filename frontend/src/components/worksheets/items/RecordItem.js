@@ -48,6 +48,7 @@ class RecordItem extends React.Component {
             focusIndex,
             focused,
             ws,
+            onError,
         } = this.props;
         if (focused) {
             // Use e.preventDefault to avoid openning selected link
@@ -112,6 +113,7 @@ class RecordItem extends React.Component {
                 {this.state.showNewRun === 1 && (
                     <NewRun
                         ws={ws}
+                        onError={onError}
                         onSubmit={() => {
                             this.setState({ showNewRun: 0, showDetail: false });
                             onHideNewRerun();
