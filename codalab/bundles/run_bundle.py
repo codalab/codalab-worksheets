@@ -199,7 +199,6 @@ class RunBundle(DerivedBundle):
             formatting='size',
         )
     )
-
     METADATA_SPECS.append(
         MetadataSpec(
             'started',

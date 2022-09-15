@@ -80,6 +80,7 @@ export function renderSize(size) {
 
 /**
  * Converts a list to a single string containing its values.
+ * Note: some fields like 'tags' return [''].
  *
  * @param {array} list
  * @returns {string} joined list values
