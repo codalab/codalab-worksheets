@@ -30,11 +30,13 @@ import copy
 import os
 import re
 import sys
+from typing import Type
 
-
+from codalab.worker.bundle_state import State
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
+from codalab.objects.bundle import Bundle
 from codalab.rest.worksheet_block_schemas import (
     FetchStatusSchema,
     BlockModes,
@@ -213,18 +215,23 @@ def get_formatted_metadata(cls, metadata, raw=False, show_hidden=False):
     return result
 
 
-def get_editable_metadata_fields(cls):
+def get_editable_metadata_fields(cls: Type[Bundle], state: str) -> list:
     """
-    Input:
-        cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
-        metadata: bundle metadata
+    :param cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
+    :param state: bundle state
+
     Return a list of metadata fields that are editable by the owner.
+    Fields with lock_after_start=True are not editable after 'starting' state.
     """
     result = []
     for spec in cls.METADATA_SPECS:
         key = spec.key
         if not spec.generated:
-            result.append(key)
+            if spec.lock_after_start:
+                if state in [State.CREATED, State.STAGED]:
+                    result.append(key)
+            else:
+                result.append(key)
     return result
 
 
@@ -547,7 +554,7 @@ def apply_func(func, arg):
             elif f == 'duration':
                 arg = formatting.duration_str(float(arg)) if arg is not None else None
             elif f == 'size':
-                arg = formatting.size_str(float(arg)) if arg is not None else None
+                arg = formatting.size_str(float(arg), True) if arg is not None else None
             elif f.startswith('%'):
                 arg = (f % float(arg)) if arg is not None else None
             elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
