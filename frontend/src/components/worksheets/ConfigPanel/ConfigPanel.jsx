@@ -73,6 +73,9 @@ const styles = (theme) => ({
         flexGrow: 1,
         flexWrap: 'nowrap',
         maxWidth: '100%',
+        [theme.breakpoints.down('sm')]: {
+            flexDirection: 'column',
+        },
     },
     content: {
         justifyContent: 'flex-start',
@@ -82,6 +85,11 @@ const styles = (theme) => ({
         overflow: 'auto',
         flexGrow: 1,
         maxWidth: '90%',
+        [theme.breakpoints.down('sm')]: {
+            order: 2,
+            maxWidth: 'none',
+            width: '100%',
+        },
     },
     sidebar: {
         backgroundColor: theme.color.grey.lighter,
@@ -90,6 +98,11 @@ const styles = (theme) => ({
         overflow: 'auto',
         minWidth: '400px',
         flexGrow: 1,
+        [theme.breakpoints.down('sm')]: {
+            order: 1,
+            minWidth: 'none',
+            width: '100%',
+        },
     },
     buttons: {
         '& button': {

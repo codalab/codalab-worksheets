@@ -22,7 +22,7 @@ class CodeSnippet extends React.Component {
         return (
             <Grid item xs={12}>
                 <div className={classes.snippet} style={{ maxHeight, marginBottom }}>
-                    <div>{code}</div>
+                    <div className={classes.codeContainer}>{code}</div>
                     {copyMessage && <Copy message={copyMessage} text={code} />}
                     {href && <NewWindowLink href={href} />}
                 </div>
@@ -36,11 +36,16 @@ const styles = (theme) => ({
         display: 'flex',
         justifyContent: 'space-between',
         fontFamily: 'monospace',
+        fontSize: 14,
         padding: 10,
         flexShrink: 1,
         overflow: 'auto',
+        overflowWrap: 'anywhere',
         whiteSpace: 'pre-wrap',
         backgroundColor: theme.color.grey.lightest,
+    },
+    codeContainer: {
+        paddingRight: 10,
     },
 });
 
