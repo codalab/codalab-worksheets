@@ -69,7 +69,13 @@ class BundleFieldRow extends React.Component {
                             <Typography noWrap={noWrap} classes={{ root: valueClass }}>
                                 {value}
                             </Typography>
-                            {allowCopy && <Copy message={`${label} Copied!`} text={value} />}
+                            {allowCopy && (
+                                <Copy
+                                    style={{ marginLeft: 10 }}
+                                    message={`${label} Copied!`}
+                                    text={value}
+                                />
+                            )}
                         </div>
                     )}
                 </td>
