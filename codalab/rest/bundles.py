@@ -190,7 +190,7 @@ def build_bundles_document(bundle_uuids):
                 data,
                 {
                     'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
-                        bundle_class
+                        bundle_class, bundle['state']
                     ),
                     'metadata_type': worksheet_util.get_metadata_types(bundle_class),
                     'metadata_descriptions': worksheet_util.get_metadata_descriptions(bundle_class),

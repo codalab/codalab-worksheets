@@ -1,7 +1,7 @@
 // @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import { renderFormat, serializeFormat } from '../util/worksheet_utils';
+import { serializeFormat } from '../util/worksheet_utils';
 import { updateEditableField } from '../util/apiWrapper';
 
 const KEYCODE_ESC = 27;
@@ -31,6 +31,7 @@ class EditableFieldBase extends React.Component<{
             value: this.props.value,
             initValue: this.props.value,
             isValid: true,
+            errorMessage: '',
         };
     }
 
@@ -59,13 +60,15 @@ class EditableFieldBase extends React.Component<{
                 if (onChange) {
                     onChange(this.state.value);
                 }
+                this.setState({ errorMessage: '' });
             })
-            .catch((error) => {
-                if (this.props.onError) this.props.onError('Invalid value entered: ' + error);
-                // Restore the original value
-                this.setState({
-                    value: this.props.value,
-                });
+            .catch((errorMessage) => {
+                if (this.props.onError) {
+                    this.props.onError(errorMessage);
+                    this.setState({ value: this.props.value }); // restore the original value
+                } else {
+                    this.setState({ errorMessage });
+                }
             });
     };
 
@@ -76,8 +79,16 @@ class EditableFieldBase extends React.Component<{
     };
 
     handleAsciiChange = (event) => {
-        // only ascii
-        this.setState({ value: event.target.value, isValid: isAscii(event.target.value) });
+        const value = event.target.value;
+        const isValid = isAscii(value);
+        const asciiErrorMessage = isValid ? '' : 'Only ASCII characters allowed.';
+        const errorMessage = this.state.errorMessage || asciiErrorMessage;
+
+        this.setState({
+            value,
+            isValid,
+            errorMessage,
+        });
     };
 
     handleFreeChange = (event) => {
@@ -90,23 +101,30 @@ class EditableFieldBase extends React.Component<{
             nextProps.value !== this.props.value ||
             nextState.value !== this.state.value ||
             nextProps.canEdit !== this.props.canEdit ||
-            this.state.editing !== nextState.editing
+            this.state.editing !== nextState.editing ||
+            this.state.errorMessage !== nextState.errorMessage
         );
     }
 
     render() {
+        const { classes } = this.props;
+        const { errorMessage } = this.state;
+
         if (!this.props.canEdit) {
             return <span style={{ color: '#225ea8' }}>{this.state.value || '<none>'}</span>;
         }
         if (!this.state.editing) {
             return (
-                <span
-                    className='editable-field'
-                    onClick={this.onClick}
-                    style={{ color: '#225ea8' }}
-                >
-                    {this.state.value || '<none>'}
-                </span>
+                <>
+                    <span
+                        className='editable-field'
+                        onClick={this.onClick}
+                        style={{ color: '#225ea8' }}
+                    >
+                        {this.state.value || '<none>'}
+                    </span>
+                    {errorMessage && <div className={classes.errorContainer}>{errorMessage}</div>}
+                </>
             );
         } else {
             return (
@@ -131,9 +149,7 @@ class EditableFieldBase extends React.Component<{
                             color: '#225ea8',
                         }}
                     />
-                    {!this.state.isValid && (
-                        <div style={{ color: '#a94442' }}>Only ASCII characters allowed.</div>
-                    )}
+                    {errorMessage && <div className={classes.errorContainer}>{errorMessage}</div>}
                 </form>
             );
         }
@@ -141,17 +157,10 @@ class EditableFieldBase extends React.Component<{
 }
 
 const efStyles = (theme) => ({
-    editableLinkContainer: {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    editableLink: {
-        textDecoration: 'none',
-        color: theme.color.primary.dark,
-        '&:hover': {
-            color: theme.color.primary.base,
-        },
+    errorContainer: {
+        fontSize: 12,
+        lineHeight: '16px',
+        color: theme.color.red.base,
     },
 });
 
@@ -223,7 +232,7 @@ export class BundleEditableField extends React.Component<{
         return (
             <EditableField
                 {...this.props}
-                value={renderFormat(this.props.value, this.props.dataType)}
+                value={this.props.value}
                 url='/rest/bundles'
                 method='PATCH'
                 buildPayload={(value) => this.buildPayload(value)}

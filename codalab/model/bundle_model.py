@@ -893,6 +893,9 @@ class BundleModel(object):
                 for spec in RunBundle.METADATA_SPECS
                 if spec.generated and spec.key not in ['actions', 'created']
             }
+            metadata_update[
+                'staged_status'
+            ] = "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
             connection.execute(

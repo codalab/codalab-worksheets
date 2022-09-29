@@ -255,6 +255,7 @@ class TableItem extends React.Component<{
                         this.props.showNewSchema &&
                         rowFocused
                     }
+                    onError={this.props.onError}
                     onHideNewRun={this.props.onHideNewRun}
                     onHideNewText={this.props.onHideNewText}
                     onHideNewSchema={this.props.onHideNewSchema}
