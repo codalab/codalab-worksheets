@@ -572,31 +572,3 @@ class ClientUploadManager(object):
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
             )
-
-    # def _upload_with_chunked_encoding(self, method, url, header, fileobj, progress_callback=None):
-    #     CHUNK_SIZE = 10
-    #     TIMEOUT = 60
-    #     bytes_uploaded = 0
-    #     parsed_index_url = urllib.parse.urlparse(url)
-    #     conn = http.client.HTTPSConnection(parsed_index_url.netloc, timeout=TIMEOUT)
-    #     with closing(conn):
-    #         conn.putrequest(method=method, url=url)
-    #         headers = {
-    #             'Transfer-Encoding': 'chunked',
-    #         }
-    #         headers.update(header)
-
-    #         for header_name, header_value in headers.items():
-    #             conn.putheader(header_name, header_value)
-    #         conn.endheaders()
-    #         while True:
-    #             to_send = fileobj.read(CHUNK_SIZE)
-    #             if not to_send:
-    #                 break
-    #             conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
-    #             bytes_uploaded += len(to_send)
-    #             if progress_callback is not None:
-    #                 should_resume = progress_callback(bytes_uploaded)
-    #                 if not should_resume:
-    #                     raise Exception('Upload aborted by client')
-    #         conn.send(b'0\r\n\r\n')
