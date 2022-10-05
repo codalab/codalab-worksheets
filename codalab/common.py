@@ -10,8 +10,10 @@ import re
 import http.client
 import urllib.request
 import urllib.error
+import requests.exceptions
 
 from dataclasses import dataclass
+import httpio  # type: ignore
 from retry import retry
 from enum import Enum
 
@@ -169,6 +171,11 @@ def urlopen_with_retry(request: urllib.request.Request, timeout: int = URLOPEN_T
     return urllib.request.urlopen(request, timeout=timeout)
 
 
+@retry(requests.exceptions.HTTPError, tries=10, delay=10, max_delay=60, backoff=2)
+def httpopen_with_retry(url: str, timeout: int = URLOPEN_TIMEOUT_SECONDS):
+    return httpio.open(url)
+
+
 class StorageType(Enum):
     """Possible storage types for bundles.
     When updating this enum, sync it with with the enum in the storage_type column
@@ -300,6 +307,10 @@ class LinkedBundlePath:
         return signed_url
 
     def bundle_path_bypass_url(self, **kwargs):
+        """
+        Generate bypass server upload/download URL for bundle contents file.
+        Generate SAS url for Azure blob storage, and generate signed url for GCS.
+        """
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return self._get_azure_sas_url(self.bundle_path, **kwargs)
         elif self.storage_type == StorageType.GCS_STORAGE.value:
@@ -308,6 +319,10 @@ class LinkedBundlePath:
             raise UsageError(f"Does not support current storage type: {self.storage_type}")
 
     def index_path_bypass_url(self, **kwargs):
+        """
+        Generate bypass server upload/download URL for the index file.
+        Generate SAS url for Azure blob storage, and generate signed url for GCS.
+        """
         if self.storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             return self._get_azure_sas_url(self.index_path, **kwargs)
         elif self.storage_type == StorageType.GCS_STORAGE.value:
