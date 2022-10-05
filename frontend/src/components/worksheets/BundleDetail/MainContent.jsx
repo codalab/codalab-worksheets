@@ -76,7 +76,7 @@ class MainContent extends React.Component<{
                 <Grid container>
                     {/** Failure components ================================================================= */}
                     {failureMessage && (
-                        <Grid classes={{ container: classes.failureContainer }} container>
+                        <Grid container>
                             <CollapseButton
                                 label='Failure Message'
                                 collapsed={this.state.showFailureMessage}
@@ -179,12 +179,9 @@ class MainContent extends React.Component<{
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     outter: {
         flex: 1,
-    },
-    failureContainer: {
-        color: theme.color.red.base,
     },
 });
 
