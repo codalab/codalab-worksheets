@@ -38,7 +38,7 @@ class Copy extends React.Component {
     );
 
     render() {
-        const { classes, message, text, style } = this.props;
+        const { classes, fill, message, text, style } = this.props;
         if (!message || !text) {
             return null;
         }
@@ -51,7 +51,7 @@ class Copy extends React.Component {
                         style={style}
                         onClick={this.handleOpenSnackbar}
                     >
-                        <CopyIcon />
+                        <CopyIcon fill={fill} />
                     </div>
                 </CopyToClipboard>
                 <Snackbar

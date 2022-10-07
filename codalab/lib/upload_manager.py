@@ -7,8 +7,16 @@ from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
 from ratarmountcore import SQLiteIndexedTar
 from contextlib import closing
+from codalab.worker.upload_util import upload_with_chunked_encoding
 
-from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
+from codalab.common import (
+    StorageURLScheme,
+    UsageError,
+    StorageType,
+    urlopen_with_retry,
+    parse_linked_bundle_url,
+    httpopen_with_retry,
+)
 from codalab.worker.file_util import tar_gzip_directory, GzipStream
 from codalab.worker.bundle_state import State
 from codalab.lib import file_util, path_util, zip_util
@@ -376,6 +384,19 @@ class ClientUploadManager(object):
         self._client = json_api_client
         self.stdout = stdout
         self.stderr = stderr
+        self.upload_func = {
+            StorageURLScheme.GCS_STORAGE.value: self.upload_GCS_blob_storage,
+            StorageURLScheme.AZURE_BLOB_STORAGE.value: self.upload_Azure_blob_storage,
+        }
+
+    def get_upload_func(self, bundle_url: str):
+        """
+        Return different upload fuction for different storage type
+        """
+        for k, v in self.upload_func.items():
+            if bundle_url.startswith(k):
+                return v
+        return self.upload_Azure_blob_storage
 
     def upload_to_bundle_store(
         self,
@@ -431,8 +452,9 @@ class ClientUploadManager(object):
             bundle_read_str = data.get('bundle_read_url', bundle_url)
             try:
                 progress = FileTransferProgress('Sent ', f=self.stderr)
+                upload_func = self.get_upload_func(bundle_url)
                 with closing(packed_source['fileobj']), progress:
-                    self.upload_Azure_blob_storage(
+                    upload_func(
                         fileobj=packed_source['fileobj'],
                         bundle_url=bundle_url,
                         bundle_conn_str=bundle_conn_str,
@@ -503,3 +525,50 @@ class ClientUploadManager(object):
             index_conn_str,
             progress_callback,
         )
+
+    def upload_GCS_blob_storage(
+        self,
+        fileobj,
+        bundle_url,
+        bundle_conn_str,
+        bundle_read_str,
+        index_conn_str,
+        source_ext,
+        should_unpack,
+        progress_callback=None,
+    ):
+        from codalab.lib import zip_util
+
+        if should_unpack:
+            output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
+        else:
+            output_fileobj = GzipStream(fileobj)
+
+        # Write archive file.
+        upload_with_chunked_encoding(
+            method='PUT',
+            base_url=bundle_conn_str,
+            headers={'Content-type': 'application/octet-stream'},
+            fileobj=output_fileobj,
+            query_params={},
+            progress_callback=progress_callback,
+        )
+        # upload the index file
+        with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
+            suffix=".sqlite"
+        ) as tmp_index_file:
+            SQLiteIndexedTar(
+                fileObject=ttf,
+                tarFileName="contents",
+                writeIndex=True,
+                clearIndexCache=True,
+                indexFilePath=tmp_index_file.name,
+            )
+            upload_with_chunked_encoding(
+                method='PUT',
+                base_url=index_conn_str,
+                headers={'Content-type': 'application/octet-stream'},
+                query_params={},
+                fileobj=open(tmp_index_file.name, "rb"),
+                progress_callback=None,
+            )
