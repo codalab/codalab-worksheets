@@ -470,7 +470,7 @@ class BundleModel(object):
                 format_func = value
             # Bundle fields
             elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
-                clause = make_condition(key, getattr(cl_bundle.c, key), value)
+                where_clause = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
                 if cl_group_bundle_permission not in join_tables:
                     join_tables.append(cl_group_bundle_permission)
@@ -647,6 +647,7 @@ class BundleModel(object):
         if count:
             query = alias(query).count()
 
+        logging.info(str(query))
         result = self._execute_query(query)
         if count or sum_key[0] is not None:  # Just returning a single number
             result = worksheet_util.apply_func(format_func, result[0])
