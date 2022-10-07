@@ -13,7 +13,6 @@ import json
 from dateutil import parser
 from uuid import uuid4
 
-import sqlalchemy
 from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
 from sqlalchemy.orm import aliased
@@ -380,7 +379,6 @@ class BundleModel(object):
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
         """
-        clauses = []
         offset = 0
         limit = SEARCH_RESULTS_LIMIT
         format_func = None
@@ -481,15 +479,15 @@ class BundleModel(object):
                 add_join(cl_user_group, cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid)
 
                 where_clause = and_(
-                        cl_user_group.c.user_id == user_id,
-                        cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
+                    cl_user_group.c.user_id == user_id,
+                    cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
                 )
             elif key == 'group':  # shared with group with read permission
                 add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
                 group_uuid = get_group_info(value, False)['uuid']
                 where_clause = and_(
-                            cl_group_bundle_permission.c.group_uuid == group_uuid,
-                            cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
+                    cl_group_bundle_permission.c.group_uuid == group_uuid,
+                    cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
                 )
             # Special fields
             elif key == 'dependency':
@@ -553,8 +551,8 @@ class BundleModel(object):
                 where_clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
                 where_clause.append(and_(
                                     aliased_bundle_metadata.c.metadata_key == 'name',
-                                    aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),
-                ))
+                                    aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),)
+                                    )
                 where_clause = or_(*where_clause)
             elif key == '':  # Match any field
                 aliased_bundle_metadata = aliased(cl_bundle_metadata)
@@ -564,7 +562,7 @@ class BundleModel(object):
                 where_clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
                 where_clause.append(cl_bundle.c.command.like('%' + value + '%'))
                 where_clause.append(
-                                aliased_bundle_metadata.c.metadata_value.like('%' + value + '%')
+                    aliased_bundle_metadata.c.metadata_value.like('%' + value + '%')
                 )
                 where_clause = or_(*where_clause)
             # Otherwise, assume metadata.
@@ -580,7 +578,7 @@ class BundleModel(object):
                     add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
 
                     where_clause = and_(
-                        aliased_bundle_metadata.c.metadata_key == key, 
+                        aliased_bundle_metadata.c.metadata_key == key,
                         condition
                     )
 
@@ -594,24 +592,23 @@ class BundleModel(object):
             add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
-                        or_(  # Join constraint (group)
-                            cl_group_bundle_permission.c.group_uuid
-                            == self.public_group_uuid,  # Public group
-                            cl_group_bundle_permission.c.group_uuid.in_(
-                                alias(
-                                    select([cl_user_group.c.group_uuid]).where(
-                                        cl_user_group.c.user_id == user_id
-                                    )
-                                )
-                            ),  # Private group
-                        ),
-                        cl_group_bundle_permission.c.permission
-                        >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
+                or_(  # Join constraint (group)
+                    cl_group_bundle_permission.c.group_uuid
+                    == self.public_group_uuid,  # Public group
+                    cl_group_bundle_permission.c.group_uuid.in_(
+                        alias(
+                            select([cl_user_group.c.group_uuid]).where(
+                                cl_user_group.c.user_id == user_id
+                            )
+                        )
+                    ),  # Private group
+                ),
+                cl_group_bundle_permission.c.permission
+                >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
             )
-   
+
             where_clause = and_(where_clause, or_(access_via_owner, access_via_group))
 
-        
         table = cl_bundle
         for join_table, join_condition in zip(join_tables, join_conditions):
             table = table.join(join_table, join_condition)
