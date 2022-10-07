@@ -16,6 +16,7 @@ from uuid import uuid4
 import sqlalchemy
 from sqlalchemy import and_, or_, not_, select, union, desc, func
 from sqlalchemy.sql.expression import literal, true
+from sqlalchemy.orm import aliased
 
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.run_bundle import RunBundle
@@ -379,6 +380,7 @@ class BundleModel(object):
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
         """
+        """
         clauses = []
         offset = 0
         limit = SEARCH_RESULTS_LIMIT
@@ -420,6 +422,298 @@ class BundleModel(object):
                     return field.like(value)
                 return field == value
             return None
+
+        shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
+
+        for keyword in keywords:
+            keyword = keyword.replace('.*', '%')
+            # Sugar
+            if keyword == '.mine':
+                keyword = 'owner_id=' + (user_id or '')
+            elif keyword == '.shared':
+                keyword = '.shared=True'
+            elif keyword == '.last':
+                keyword = 'id=.sort-'
+            elif keyword == '.count':
+                count = True
+                limit = None
+                continue
+            elif keyword == '.floating':
+                # Get bundles that have host worksheets, and then take the complement.
+                with_hosts = alias(
+                    select([cl_bundle.c.uuid]).where(
+                        cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid
+                    )
+                )
+                clause = not_(cl_bundle.c.uuid.in_(with_hosts))
+                clauses.append(clause)
+                continue
+
+            m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
+            if m:
+                key, value = m.group(1), m.group(2)
+                key = shortcuts.get(key, key)
+                if ',' in value:  # value is value1,value2
+                    value = value.split(',')
+            else:
+                key, value = 'uuid_name', keyword
+
+            clause = None
+            # Special functions
+            if key == '.offset':
+                offset = int(value)
+            elif key == '.limit':
+                limit = int(value)
+            elif key == '.format':
+                format_func = value
+            # Bundle fields
+            elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
+                clause = make_condition(key, getattr(cl_bundle.c, key), value)
+            elif key == '.shared':  # shared with any group I am in with read permission
+                clause = cl_bundle.c.uuid.in_(
+                    select([cl_group_bundle_permission.c.object_uuid]).where(
+                        and_(
+                            cl_group_bundle_permission.c.group_uuid.in_(
+                                alias(
+                                    select([cl_user_group.c.group_uuid]).where(
+                                        cl_user_group.c.user_id == user_id
+                                    )
+                                )
+                            ),
+                            cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
+                        )
+                    )
+                )
+            elif key == 'group':  # shared with group with read permission
+                group_uuid = get_group_info(value, False)['uuid']
+                clause = cl_bundle.c.uuid.in_(
+                    select([cl_group_bundle_permission.c.object_uuid]).where(
+                        and_(
+                            cl_group_bundle_permission.c.group_uuid == group_uuid,
+                            cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
+                        )
+                    )
+                )
+            # Special fields
+            elif key == 'dependency':
+                # Match uuid of dependency
+                condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
+                if condition is None:  # top-level
+                    clause = cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
+                else:  # embedded
+                    clause = cl_bundle.c.uuid.in_(
+                        alias(select([cl_bundle_dependency.c.child_uuid]).where(condition))
+                    )
+            elif key.startswith('dependency/'):
+                _, name = key.split('/', 1)
+                condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
+                if condition is None:  # top-level
+                    clause = and_(
+                        cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
+                        cl_bundle_dependency.c.child_path
+                        == name,  # Match the 'type' of dependent (child_path)
+                    )
+                else:  # embedded
+                    clause = cl_bundle.c.uuid.in_(
+                        alias(
+                            select([cl_bundle_dependency.c.child_uuid]).where(
+                                and_(
+                                    cl_bundle_dependency.c.child_path
+                                    == name,  # Match the 'type' of dependent (child_path)
+                                    condition,
+                                )
+                            )
+                        )
+                    )
+            elif key == 'host_worksheet':
+                condition = make_condition(key, cl_worksheet_item.c.worksheet_uuid, value)
+                if condition is None:  # top-level
+                    clause = cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid  # Join constraint
+                else:
+                    clause = cl_bundle.c.uuid.in_(
+                        alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
+                    )
+            elif key in ('.before', '.after'):
+                try:
+                    target_datetime = parser.isoparse(value)
+                except ValueError:
+                    raise UsageError(
+                        "Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD."
+                    )
+
+                subclause = None
+                if key == '.before':
+                    subclause = cl_bundle_metadata.c.metadata_value <= int(
+                        target_datetime.timestamp()
+                    )
+                if key == '.after':
+                    subclause = cl_bundle_metadata.c.metadata_value >= int(
+                        target_datetime.timestamp()
+                    )
+
+                clause = cl_bundle.c.uuid.in_(
+                    alias(
+                        select([cl_bundle_metadata.c.bundle_uuid]).where(
+                            and_(cl_bundle_metadata.c.metadata_key == 'created', subclause)
+                        )
+                    )
+                )
+            elif key == 'uuid_name':  # Search uuid and name by default
+                clause = []
+                clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
+                clause.append(
+                    cl_bundle.c.uuid.in_(
+                        alias(
+                            select([cl_bundle_metadata.c.bundle_uuid]).where(
+                                and_(
+                                    cl_bundle_metadata.c.metadata_key == 'name',
+                                    cl_bundle_metadata.c.metadata_value.like('%' + value + '%'),
+                                )
+                            )
+                        )
+                    )
+                )
+                clause = or_(*clause)
+            elif key == '':  # Match any field
+                clause = []
+                clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
+                clause.append(cl_bundle.c.command.like('%' + value + '%'))
+                clause.append(
+                    cl_bundle.c.uuid.in_(
+                        alias(
+                            select([cl_bundle_metadata.c.bundle_uuid]).where(
+                                cl_bundle_metadata.c.metadata_value.like('%' + value + '%')
+                            )
+                        )
+                    )
+                )
+                clause = or_(*clause)
+            # Otherwise, assume metadata.
+            else:
+                condition = make_condition(key, cl_bundle_metadata.c.metadata_value, value)
+                if condition is None:  # top-level
+                    clause = and_(
+                        cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid,
+                        cl_bundle_metadata.c.metadata_key == key,
+                    )
+                else:  # embedded
+                    clause = cl_bundle.c.uuid.in_(
+                        select([cl_bundle_metadata.c.bundle_uuid]).where(
+                            and_(cl_bundle_metadata.c.metadata_key == key, condition)
+                        )
+                    )
+
+            if clause is not None:
+                clauses.append(clause)
+
+        clause = and_(*clauses)
+
+        if user_id != self.root_user_id:
+            # Restrict to the bundles that we have access to.
+            access_via_owner = cl_bundle.c.owner_id == user_id
+            access_via_group = cl_bundle.c.uuid.in_(
+                select([cl_group_bundle_permission.c.object_uuid]).where(
+                    and_(
+                        or_(  # Join constraint (group)
+                            cl_group_bundle_permission.c.group_uuid
+                            == self.public_group_uuid,  # Public group
+                            cl_group_bundle_permission.c.group_uuid.in_(
+                                alias(
+                                    select([cl_user_group.c.group_uuid]).where(
+                                        cl_user_group.c.user_id == user_id
+                                    )
+                                )
+                            ),  # Private group
+                        ),
+                        cl_group_bundle_permission.c.permission
+                        >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
+                    )
+                )
+            )
+            clause = and_(clause, or_(access_via_owner, access_via_group))
+
+        # Aggregate (sum)
+        if sum_key[0] is not None:
+            # Construct a table with only the uuid and the num (and make sure it's distinct!)
+            query = alias(
+                select([cl_bundle.c.uuid, sum_key[0].label('num')]).distinct().where(clause)
+            )
+            # Sum the numbers
+            query = select([func.sum(query.c.num)])
+        else:
+            query = (
+                select([cl_bundle.c.uuid] + aux_fields)
+                .distinct()
+                .where(clause)
+                .offset(offset)
+                .limit(limit)
+            )
+
+        # Sort
+        if sort_key[0] is not None:
+            query = query.order_by(sort_key[0])
+
+        # Count
+        if count:
+            query = alias(query).count()
+
+        logging.info(str(query))
+        result = self._execute_query(query)
+        if count or sum_key[0] is not None:  # Just returning a single number
+            result = worksheet_util.apply_func(format_func, result[0])
+            return {'result': result, 'is_aggregate': True}
+        return {'result': result, 'is_aggregate': False}
+        """
+        clauses = []
+        offset = 0
+        limit = SEARCH_RESULTS_LIMIT
+        format_func = None
+        count = False
+        sort_key = [None]
+        sum_key = [None]
+        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
+
+        # Number nested subqueries
+        subquery_index = [0]
+
+        def alias(clause):
+            subquery_index[0] += 1
+            return clause.alias('q' + str(subquery_index[0]))
+
+        def is_numeric(key):
+            return key != 'name'
+
+        def make_condition(key, field, value):
+            # Special
+            if value == '.sort':
+                aux_fields.append(field)
+                if is_numeric(key):
+                    field = field * 1
+                sort_key[0] = field
+            elif value == '.sort-':
+                aux_fields.append(field)
+                if is_numeric(key):
+                    field = field * 1
+                sort_key[0] = desc(field)
+            elif value == '.sum':
+                sum_key[0] = field * 1
+            else:
+                # Ordinary value
+                if isinstance(value, list):
+                    return field.in_(value)
+                if '%' in value:
+                    return field.like(value)
+                return field == value
+            return None
+
+        def add_join(join_table, join_condition):
+            """
+            if join_table not in join_tables:
+                join_tables.append(join_table)
+                join_conditions.append(join_condition)
+            """
+            join_tables.append(join_table)
+            join_conditions.append(join_condition)
 
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
 
@@ -472,21 +766,15 @@ class BundleModel(object):
             elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
                 where_clause = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
-                if cl_group_bundle_permission not in join_tables:
-                    join_tables.append(cl_group_bundle_permission)
-                    join_conditions.append(cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
-                if cl_user_group not in join_tables:
-                    join_tables.append(cl_user_group)
-                    join_conditions.append(cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid)
+                add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
+                add_join(cl_user_group, cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid)
 
                 where_clause = and_(
                         cl_user_group.c.user_id == user_id,
                         cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
                 )
             elif key == 'group':  # shared with group with read permission
-                if cl_group_bundle_permission not in join_tables:
-                    join_tables.append(cl_group_bundle_permission)
-                    join_conditions.append(cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
+                add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
                 group_uuid = get_group_info(value, False)['uuid']
                 where_clause = and_(
                             cl_group_bundle_permission.c.group_uuid == group_uuid,
@@ -499,9 +787,7 @@ class BundleModel(object):
                 if condition is None:  # top-level
                     where_clause = cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
                 else:  # embedded
-                    if cl_bundle_dependency not in join_tables:
-                        join_tables.append(cl_bundle_dependency)
-                        join_conditions.append(cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid)
+                    add_join(cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid)
                     where_clause = condition
             elif key.startswith('dependency/'):
                 _, name = key.split('/', 1)
@@ -513,9 +799,7 @@ class BundleModel(object):
                         == name,  # Match the 'type' of dependent (child_path)
                     )
                 else:  # embedded
-                    if cl_bundle_dependency not in join_tables:
-                        join_tables.append(cl_bundle_dependency)
-                        join_conditions.append(cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid)
+                    add_join(cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid)
                     where_clause = and_(
                         cl_bundle_dependency.c.child_path
                         == name,  # Match the 'type' of dependent (child_path)
@@ -526,9 +810,7 @@ class BundleModel(object):
                 if condition is None:  # top-level
                     clause = cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid  # Join constraint
                 else:
-                    if cl_worksheet_item not in join_tables:
-                        join_tables.append(cl_worksheet_item)
-                        join_conditions.append(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
+                    add_join(cl_worksheet_item, cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
                     where_clause = condition
             elif key in ('.before', '.after'):
                 try:
@@ -539,59 +821,55 @@ class BundleModel(object):
                     )
 
                 subclause = None
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
                 if key == '.before':
-                    subclause = cl_bundle_metadata.c.metadata_value <= int(
+                    subclause = aliased_bundle_metadata.c.metadata_value <= int(
                         target_datetime.timestamp()
                     )
                 if key == '.after':
-                    subclause = cl_bundle_metadata.c.metadata_value >= int(
+                    subclause = aliased_bundle_metadata.c.metadata_value >= int(
                         target_datetime.timestamp()
                     )
-                if cl_bundle_metadata not in join_tables:
-                    join_tables.append(cl_bundle_metadata)
-                    join_conditions.append(cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)
+                add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
                 where_clause = and_(
-                    cl_bundle_metadata.c.metadata_key == 'created', subclause
+                    aliased_bundle_metadata.c.metadata_key == 'created', subclause
                 )
             elif key == 'uuid_name':  # Search uuid and name by default
-                if cl_bundle_metadata not in join_tables:
-                    join_tables.append(cl_bundle_metadata)
-                    join_conditions.append(cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
+                add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
 
                 where_clause = []
                 where_clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
                 where_clause.append(and_(
-                                    cl_bundle_metadata.c.metadata_key == 'name',
-                                    cl_bundle_metadata.c.metadata_value.like('%' + value + '%'),
+                                    aliased_bundle_metadata.c.metadata_key == 'name',
+                                    aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),
                 ))
                 where_clause = or_(*where_clause)
             elif key == '':  # Match any field
-                if cl_bundle_metadata not in join_tables:
-                    join_tables.append(cl_bundle_metadata)
-                    join_conditions.append(cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
+                add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
 
                 where_clause = []
                 where_clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
                 where_clause.append(cl_bundle.c.command.like('%' + value + '%'))
                 where_clause.append(
-                                cl_bundle_metadata.c.metadata_value.like('%' + value + '%')
+                                aliased_bundle_metadata.c.metadata_value.like('%' + value + '%')
                 )
                 where_clause = or_(*where_clause)
             # Otherwise, assume metadata.
             else:
-                condition = make_condition(key, cl_bundle_metadata.c.metadata_value, value)
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
+                condition = make_condition(key, aliased_bundle_metadata.c.metadata_value, value)
                 if condition is None:  # top-level
                     where_clause = and_(
-                        cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid,
-                        cl_bundle_metadata.c.metadata_key == key,
+                        cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
+                        aliased_bundle_metadata.c.metadata_key == key,
                     )
                 else:  # embedded
-                    if cl_bundle_metadata not in join_tables:
-                        join_tables.append(cl_bundle_metadata)
-                        join_conditions.append(cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)
+                    add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
 
                     where_clause = and_(
-                        cl_bundle_metadata.c.metadata_key == key, 
+                        aliased_bundle_metadata.c.metadata_key == key, 
                         condition
                     )
 
@@ -602,9 +880,7 @@ class BundleModel(object):
 
         if user_id != self.root_user_id:
             # Restrict to the bundles that we have access to.
-            if cl_group_bundle_permission not in join_tables:
-                join_tables.append(cl_group_bundle_permission)
-                join_conditions.append(cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
+            add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                         or_(  # Join constraint (group)
@@ -653,6 +929,57 @@ class BundleModel(object):
             result = worksheet_util.apply_func(format_func, result[0])
             return {'result': result, 'is_aggregate': True}
         return {'result': result, 'is_aggregate': False}
+
+    def get_bundle_uuids(self, conditions, max_results):
+        """
+        Returns a list of bundle_uuids that have match the conditions.
+        Possible conditions on bundles: uuid, name, worksheet_uuid
+        """
+        if 'uuid' in conditions:
+            # Match the uuid only
+            clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
+            query = select([cl_bundle.c.uuid]).where(clause)
+        elif 'name' in conditions:
+            # Select name
+            if conditions['name']:
+                clause = and_(
+                    cl_bundle_metadata.c.metadata_key == 'name',
+                    self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name']),
+                )
+            else:
+                clause = true()
+
+            if conditions['worksheet_uuid']:
+                # Select things on the given worksheet
+                # WARNING: Will also include invalid bundle ids that are listed on the worksheet
+                clause = and_(
+                    clause,
+                    self.make_clause(
+                        cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']
+                    ),
+                )
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid.isnot(None))
+                join = cl_worksheet_item.outerjoin(
+                    cl_bundle_metadata,
+                    cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid,
+                )
+                query = (
+                    select([cl_worksheet_item.c.bundle_uuid, cl_worksheet_item.c.id])
+                    .select_from(join)
+                    .distinct()
+                    .where(clause)
+                )
+                query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
+            else:
+                if not conditions['name']:
+                    raise UsageError('Nothing is specified')
+                # Select from all bundles
+                clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+                query = select([cl_bundle.c.uuid]).where(clause)
+                query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+
+        return self._execute_query(query)
+
 
     def get_bundle_uuids(self, conditions, max_results):
         """
