@@ -980,57 +980,6 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
-
-    def get_bundle_uuids(self, conditions, max_results):
-        """
-        Returns a list of bundle_uuids that have match the conditions.
-        Possible conditions on bundles: uuid, name, worksheet_uuid
-        """
-        if 'uuid' in conditions:
-            # Match the uuid only
-            clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
-            query = select([cl_bundle.c.uuid]).where(clause)
-        elif 'name' in conditions:
-            # Select name
-            if conditions['name']:
-                clause = and_(
-                    cl_bundle_metadata.c.metadata_key == 'name',
-                    self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name']),
-                )
-            else:
-                clause = true()
-
-            if conditions['worksheet_uuid']:
-                # Select things on the given worksheet
-                # WARNING: Will also include invalid bundle ids that are listed on the worksheet
-                clause = and_(
-                    clause,
-                    self.make_clause(
-                        cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']
-                    ),
-                )
-                clause = and_(clause, cl_worksheet_item.c.bundle_uuid.isnot(None))
-                join = cl_worksheet_item.outerjoin(
-                    cl_bundle_metadata,
-                    cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid,
-                )
-                query = (
-                    select([cl_worksheet_item.c.bundle_uuid, cl_worksheet_item.c.id])
-                    .select_from(join)
-                    .distinct()
-                    .where(clause)
-                )
-                query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
-            else:
-                if not conditions['name']:
-                    raise UsageError('Nothing is specified')
-                # Select from all bundles
-                clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
-                query = select([cl_bundle.c.uuid]).where(clause)
-                query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
-
-        return self._execute_query(query)
-
     def get_memoized_bundles(self, user_id, command, dependencies):
         """
         Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
