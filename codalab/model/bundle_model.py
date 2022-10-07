@@ -475,15 +475,24 @@ class BundleModel(object):
             elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
                 where_clause = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
-                add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
-                add_join(cl_user_group, cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid)
+                add_join(
+                    cl_group_bundle_permission,
+                    cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                )
+                add_join(
+                    cl_user_group,
+                    cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid,
+                )
 
                 where_clause = and_(
                     cl_user_group.c.user_id == user_id,
-                    cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
+                    cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
                 )
             elif key == 'group':  # shared with group with read permission
-                add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
+                add_join(
+                    cl_group_bundle_permission,
+                    cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                )
                 group_uuid = get_group_info(value, False)['uuid']
                 where_clause = and_(
                     cl_group_bundle_permission.c.group_uuid == group_uuid,
@@ -496,7 +505,9 @@ class BundleModel(object):
                 if condition is None:  # top-level
                     where_clause = cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
                 else:  # embedded
-                    add_join(cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid)
+                    add_join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
+                    )
                     where_clause = condition
             elif key.startswith('dependency/'):
                 _, name = key.split('/', 1)
@@ -508,7 +519,9 @@ class BundleModel(object):
                         == name,  # Match the 'type' of dependent (child_path)
                     )
                 else:  # embedded
-                    add_join(cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid)
+                    add_join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
+                    )
                     where_clause = and_(
                         cl_bundle_dependency.c.child_path
                         == name,  # Match the 'type' of dependent (child_path)
@@ -539,24 +552,33 @@ class BundleModel(object):
                     subclause = aliased_bundle_metadata.c.metadata_value >= int(
                         target_datetime.timestamp()
                     )
-                add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
-                where_clause = and_(
-                    aliased_bundle_metadata.c.metadata_key == 'created', subclause
+                add_join(
+                    aliased_bundle_metadata,
+                    cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
                 )
+                where_clause = and_(aliased_bundle_metadata.c.metadata_key == 'created', subclause)
             elif key == 'uuid_name':  # Search uuid and name by default
                 aliased_bundle_metadata = aliased(cl_bundle_metadata)
-                add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
+                add_join(
+                    aliased_bundle_metadata,
+                    cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
+                )
 
                 where_clause = []
                 where_clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
-                where_clause.append(and_(
-                                    aliased_bundle_metadata.c.metadata_key == 'name',
-                                    aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),)
-                                    )
+                where_clause.append(
+                    and_(
+                        aliased_bundle_metadata.c.metadata_key == 'name',
+                        aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),
+                    )
+                )
                 where_clause = or_(*where_clause)
             elif key == '':  # Match any field
                 aliased_bundle_metadata = aliased(cl_bundle_metadata)
-                add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
+                add_join(
+                    aliased_bundle_metadata,
+                    cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
+                )
 
                 where_clause = []
                 where_clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
@@ -575,12 +597,12 @@ class BundleModel(object):
                         aliased_bundle_metadata.c.metadata_key == key,
                     )
                 else:  # embedded
-                    add_join(aliased_bundle_metadata, cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid)
-
-                    where_clause = and_(
-                        aliased_bundle_metadata.c.metadata_key == key,
-                        condition
+                    add_join(
+                        aliased_bundle_metadata,
+                        cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
                     )
+
+                    where_clause = and_(aliased_bundle_metadata.c.metadata_key == key, condition)
 
             if where_clause is not None:
                 where_clauses.append(where_clause)
@@ -589,7 +611,10 @@ class BundleModel(object):
 
         if user_id != self.root_user_id:
             # Restrict to the bundles that we have access to.
-            add_join(cl_group_bundle_permission, cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid)
+            add_join(
+                cl_group_bundle_permission,
+                cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+            )
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                 or_(  # Join constraint (group)
@@ -616,7 +641,10 @@ class BundleModel(object):
         if sum_key[0] is not None:
             # Construct a table with only the uuid and the num (and make sure it's distinct!)
             query = alias(
-                select([cl_bundle.c.uuid, sum_key[0].label('num')]).select_from(table).distinct().where(where_clause)
+                select([cl_bundle.c.uuid, sum_key[0].label('num')])
+                .select_from(table)
+                .distinct()
+                .where(where_clause)
             )
             # Sum the numbers
             query = select([func.sum(query.c.num)])
