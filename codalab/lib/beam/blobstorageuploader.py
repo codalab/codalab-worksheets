@@ -21,6 +21,7 @@ class BlobStorageUploader(Uploader):
   # Set MIN_WRITE_SIZE to 20 MiB to prevent first put blob request timeout when uploading 
   MIN_WRITE_SIZE = 20 * 1024 * 1024
   # Maximum block size is 4000 MiB (https://docs.microsoft.com/en-us/rest/api/storageservices/put-block#remarks).
+  # Set MAX_WRITE_SIZE to 50 MiB to prevent first put blob request timeout when uploading (https://github.com/Azure/azure-sdk-for-python/issues/12166)
   MAX_WRITE_SIZE = 50 * 1024 * 1024
 
   def __init__(self, client, path, mime_type='application/octet-stream'):
