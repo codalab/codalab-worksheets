@@ -1,9 +1,0 @@
-{
-  "compose-versions": {
-    "2.6.1": {
-      "active-percentage": 1,
-      "include-pro-users": true,
-      "default": 0.00
-    }
-  }
-}
