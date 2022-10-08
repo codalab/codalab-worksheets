@@ -10,9 +10,9 @@ import time
 import logging
 import json
 
+from dataclasses import dataclass
 from dateutil import parser
 from uuid import uuid4
-
 from sqlalchemy import and_, or_, not_, select, union, desc, func, Table
 from sqlalchemy.sql.expression import literal, true
 from sqlalchemy.sql.elements import BinaryExpression
@@ -380,19 +380,15 @@ class BundleModel(object):
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
         """
-        offset: int = 0
-        limit: Optional[int] = SEARCH_RESULTS_LIMIT
-        format_func: Optional[Callable[str, str]] = None
-        count: bool = False
-        sort_key: List[Optional[str]] = [None]
-        sum_key: List[Optional[BinaryExpression]] = [None]
-        aux_fields: List[str] = []  # Fields (e.g., sorting) that we need to include in the query
-
-        inner_joins: List[Tuple[Table, BinaryExpression]] = list()
-        where_clause_conjuncts: List[BinaryExpression] = list()
-
-        # Number nested subqueries
-        subquery_index = [0]
+        @dataclass
+        class JoinTable:
+            """
+            Class that stores data for joins used in final SQL query.
+            By default, becomes an inner join. Becomes left outer join if left_outer_join is True.
+            """
+            table: Table
+            condition: BinaryExpression
+            left_outer_join: bool = False
 
         def alias(clause):
             subquery_index[0] += 1
@@ -402,6 +398,10 @@ class BundleModel(object):
             return key != 'name'
 
         def make_condition(key, field, value):
+            """
+            If value is a special value (e.g. for sorting), modify aux_fields.
+            Otherwise, return a BinaryExpression checking some form of equality between field and value
+            """
             # Special
             if value == '.sort':
                 aux_fields.append(field)
@@ -424,10 +424,29 @@ class BundleModel(object):
                 return field == value
             return None
 
-        def add_join(join_table, join_condition):
-            inner_joins.append((join_table, join_condition))
+        def add_join(table: Table, condition: BinaryExpression, left_outer_join: bool = False):
+            """
+            Add table and join condition for the final SQL query.
+            """
+            joins.append(JoinTable(table, condition, left_outer_join))
 
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
+    
+        offset: int = 0
+        limit: Optional[int] = SEARCH_RESULTS_LIMIT
+        format_func: Optional[Callable[str, str]] = None
+        count: bool = False
+        sort_key: List[Optional[str]] = [None]
+        sum_key: List[Optional[BinaryExpression]] = [None]
+        aux_fields: List[str] = []  # Fields (e.g., sorting) that we need to include in the query
+
+        joins: List[JoinTable] = list()
+        where_clause_conjuncts: List[BinaryExpression] = list()
+
+        # Number nested subqueries
+        subquery_index = [0]
+
+        
 
         for keyword in keywords:
             conjunct = None  # Conjunct to add to final where_clause.
@@ -445,14 +464,12 @@ class BundleModel(object):
                 limit = None
                 continue
             elif keyword == '.floating':
-                # Get bundles that have host worksheets, and then take the complement.
-                with_hosts = alias(
-                    select([cl_bundle.c.uuid]).where(
-                        cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid
-                    )
+                add_join(
+                    cl_worksheet_item,
+                    cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid,
+                    left_outer_join = True
                 )
-                conjunct = not_(cl_bundle.c.uuid.in_(with_hosts))
-                where_clause_conjuncts.append(clause)
+                where_clause_conjuncts.append(cl_worksheet_item.c.id == None)
                 continue
 
             m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
@@ -612,19 +629,13 @@ class BundleModel(object):
                 cl_group_bundle_permission,
                 cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
             )
-            # add_join(cl_user_group, None) #COME BACK TO THIS!!!!
+            add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join = True) #COME BACK TO THIS!!!!
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                 or_(  # Join constraint (group)
                     cl_group_bundle_permission.c.group_uuid
                     == self.public_group_uuid,  # Public group
-                    cl_group_bundle_permission.c.group_uuid.in_(
-                        alias(
-                            select([cl_user_group.c.group_uuid]).where(
-                                cl_user_group.c.user_id == user_id
-                            )
-                        )
-                    ),  # Private group
+                    cl_user_group.c.user_id == user_id
                 ),
                 cl_group_bundle_permission.c.permission
                 >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
@@ -633,8 +644,8 @@ class BundleModel(object):
             where_clause = and_(where_clause, or_(access_via_owner, access_via_group))
 
         table = cl_bundle
-        for inner_join in inner_joins:
-            table = table.join(*inner_join)
+        for join_table in joins:
+            table = table.join(join_table.table, join_table.condition, isouter=join_table.left_outer_join)
         # Aggregate (sum)
         if sum_key[0] is not None:
             # Construct a table with only the uuid and the num (and make sure it's distinct!)
@@ -657,7 +668,9 @@ class BundleModel(object):
         if count:
             query = alias(query).count()
 
+        logging.info(str(query))
         result = self._execute_query(query)
+        logging.info(result)
         if count or sum_key[0] is not None:  # Just returning a single number
             result = worksheet_util.apply_func(format_func, result[0])
             return {'result': result, 'is_aggregate': True}
