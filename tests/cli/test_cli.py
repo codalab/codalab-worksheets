@@ -1618,7 +1618,7 @@ def test_search(ctx):
     uuid3 = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'detach', uuid3], 0)
     check_equals(uuid3, _run_command([cl, 'search', '.floating', '-u']))
-    _run_command([cl, 'rm', uuid3]) # need to remove since not on main worksheet
+    _run_command([cl, 'rm', uuid3])  # need to remove since not on main worksheet
     # Check search when groups empty
     check_equals('', _run_command([cl, 'search', '.shared']))
     # Check search with non-root user.

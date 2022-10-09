@@ -13,9 +13,8 @@ import json
 from dataclasses import dataclass
 from dateutil import parser
 from uuid import uuid4
-from sqlalchemy import and_, or_, not_, select, union, desc, func, Table
+from sqlalchemy import and_, or_, select, union, desc, func, Table
 from sqlalchemy.sql.expression import literal, true
-from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.orm import aliased
 
 from codalab.bundles import get_bundle_subclass
@@ -63,7 +62,7 @@ from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 from codalab.worker.worker_run_state import RunStage
-from typing import List
+from typing import Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -380,14 +379,17 @@ class BundleModel(object):
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
         """
+        subquery_index = [0]
+
         @dataclass
         class JoinTable:
             """
             Class that stores data for joins used in final SQL query.
             By default, becomes an inner join. Becomes left outer join if left_outer_join is True.
             """
+
             table: Table
-            condition: BinaryExpression
+            condition: Any
             left_outer_join: bool = False
 
         def alias(clause):
@@ -400,7 +402,7 @@ class BundleModel(object):
         def make_condition(key, field, value):
             """
             If value is a special value (e.g. for sorting), modify aux_fields.
-            Otherwise, return a BinaryExpression checking some form of equality between field and value
+            Otherwise, return an SQL expression checking some form of equality between field and value
             """
             # Special
             if value == '.sort':
@@ -424,29 +426,26 @@ class BundleModel(object):
                 return field == value
             return None
 
-        def add_join(table: Table, condition: BinaryExpression, left_outer_join: bool = False):
+        def add_join(table: Table, condition: Any, left_outer_join: bool = False):
             """
             Add table and join condition for the final SQL query.
             """
+            # logging.info(str(table))
+            # logging.info(str(condition))
             joins.append(JoinTable(table, condition, left_outer_join))
 
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
-    
-        offset: int = 0
-        limit: Optional[int] = SEARCH_RESULTS_LIMIT
-        format_func: Optional[Callable[str, str]] = None
-        count: bool = False
-        sort_key: List[Optional[str]] = [None]
-        sum_key: List[Optional[BinaryExpression]] = [None]
-        aux_fields: List[str] = []  # Fields (e.g., sorting) that we need to include in the query
 
-        joins: List[JoinTable] = list()
-        where_clause_conjuncts: List[BinaryExpression] = list()
+        offset = 0
+        limit = SEARCH_RESULTS_LIMIT
+        format_func = None
+        count = False
+        sort_key = [None]
+        sum_key = [None]
+        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
 
-        # Number nested subqueries
-        subquery_index = [0]
-
-        
+        joins = list()
+        where_clause_conjuncts = list()
 
         for keyword in keywords:
             conjunct = None  # Conjunct to add to final where_clause.
@@ -467,9 +466,9 @@ class BundleModel(object):
                 add_join(
                     cl_worksheet_item,
                     cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid,
-                    left_outer_join = True
+                    left_outer_join=True,
                 )
-                where_clause_conjuncts.append(cl_worksheet_item.c.id == None)
+                where_clause_conjuncts.append(cl_worksheet_item.c.id == None)  # noqa: E711
                 continue
 
             m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
@@ -548,7 +547,9 @@ class BundleModel(object):
             elif key == 'host_worksheet':
                 condition = make_condition(key, cl_worksheet_item.c.worksheet_uuid, value)
                 if condition is None:  # top-level
-                    clause = cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid  # Join constraint
+                    conjunct = (
+                        cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid
+                    )  # Join constraint
                 else:
                     add_join(cl_worksheet_item, cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
                     conjunct = condition
@@ -629,13 +630,13 @@ class BundleModel(object):
                 cl_group_bundle_permission,
                 cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
             )
-            add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join = True) #COME BACK TO THIS!!!!
+            add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join=True)
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                 or_(  # Join constraint (group)
                     cl_group_bundle_permission.c.group_uuid
                     == self.public_group_uuid,  # Public group
-                    cl_user_group.c.user_id == user_id
+                    cl_user_group.c.user_id == user_id,
                 ),
                 cl_group_bundle_permission.c.permission
                 >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
@@ -645,7 +646,9 @@ class BundleModel(object):
 
         table = cl_bundle
         for join_table in joins:
-            table = table.join(join_table.table, join_table.condition, isouter=join_table.left_outer_join)
+            table = table.join(
+                join_table.table, join_table.condition, isouter=join_table.left_outer_join
+            )
         # Aggregate (sum)
         if sum_key[0] is not None:
             # Construct a table with only the uuid and the num (and make sure it's distinct!)
