@@ -442,8 +442,8 @@ class BundleModel(object):
         sum_key = [None]
         aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
 
-        joins = list()
-        where_clause_conjuncts = list()
+        joins: List[JoinTable] = list()
+        where_clause_conjuncts: List[Any] = list()  # list of sqlalchemy expressions
 
         for keyword in keywords:
             conjunct = None  # Conjunct to add to final where_clause.
