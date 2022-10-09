@@ -43,7 +43,7 @@ supportedCompressions = {
         ['gz', 'gzip'],
         ['taz', 'tgz'],
         'indexed_gzip',
-        lambda x: x.peek(2) == b'\x1F\x8B',
+        lambda x: x.peek(2) == b'\x1F\x8B',  # change read() to peek()
         lambda x: indexed_gzip.IndexedGzipFile(fileobj=x),
     )
 }
@@ -1246,7 +1246,6 @@ class SQLiteIndexedTar(MountSource):
 
         oldOffset = fileobj.tell()
         for compressionId, compression in supportedCompressions.items():
-            print(compressionId)
             # The header check is a necessary condition not a sufficient condition.
             # Especially for gzip, which only has 2 magic bytes, false positives might happen.
             # Therefore, only use the magic bytes based check if the module could not be found
@@ -1288,9 +1287,9 @@ class SQLiteIndexedTar(MountSource):
             with tarfile.open(fileobj=fileobj, mode='r|', encoding=encoding):
                 isTar = True
         except (tarfile.ReadError, tarfile.CompressionError) as e:
-            # if printDebug >= 3:
-            print(e)
-            print("[Info] File object", fileobj, "is not a TAR.")
+            if printDebug >= 3:
+                print(e)
+                print("[Info] File object", fileobj, "is not a TAR.")
 
         # fileobj.seek(oldOffset)
         return isTar
@@ -1324,7 +1323,8 @@ class SQLiteIndexedTar(MountSource):
             tar_file = indexed_bzip2.open(fileobj, parallelization=parallelization)
         else:
             tar_file = cinfo.open(fileobj)
-
+        # Jiani: _detectTar will be called here
+        print("_detectTar2: ", )
         return tar_file, fileobj, compression, SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
 
     @staticmethod

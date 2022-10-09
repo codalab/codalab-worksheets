@@ -15,6 +15,7 @@ from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
 from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
 from codalab.lib.print_util import FileTransferProgress
+from codalab.lib.beam import MultiReaderFileStream
 
 Source = Union[str, Tuple[str, IO[bytes]]]
 
@@ -206,6 +207,58 @@ class BlobStorageUploader(Uploader):
                 ".tar.gz", tar_gzip_directory(tmpdir), bundle_path, unpack_archive=True
             )
 
+    def write_file_content(
+        self,
+        file_reader,
+        bundle_path,
+        progress_callback,
+    ):
+        bytes_uploaded = 0
+        CHUNK_SIZE = 16 * 1024
+        with FileSystems.create(
+            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as out:
+            while True:
+                to_send = file_reader.read(CHUNK_SIZE)
+                if not to_send:
+                    break
+                out.write(to_send)
+                bytes_uploaded += len(to_send)
+                if progress_callback is not None:
+                    should_resume = progress_callback(bytes_uploaded)
+                    if not should_resume:
+                        raise Exception('Upload aborted by client')
+
+    def create_index(
+        self,
+        index_reader,
+        bundle_path,
+        bundle_conn_str,
+        index_conn_str,
+    ):  
+        CHUNK_SIZE = 16 * 1024
+        with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+            SQLiteIndexedTar(
+                fileObject=index_reader,
+                tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                writeIndex=True,
+                clearIndexCache=True,
+                indexFilePath=tmp_index_file.name,
+            )
+            
+            if bundle_conn_str is not None:
+                # change connection string to upload index file. Connection String contains signature for bypass server upload.
+                os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
+            with FileSystems.create(
+                parse_linked_bundle_url(bundle_path).index_path,
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
+                while True:
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    out_index_file.write(to_send)
+
     def write_fileobj(
         self,
         source_ext: str,
@@ -221,53 +274,20 @@ class BlobStorageUploader(Uploader):
         else:
             output_fileobj = GzipStream(source_fileobj)
 
+        # create two asynchronous reader
+        file_stream = MultiReaderFileStream(output_fileobj)
+        file_reader = file_stream.readers[0]
+        index_reader = file_stream.readers[1]
+
         # Write archive file.
         if bundle_conn_str is not None:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
-            bytes_uploaded = 0
-            CHUNK_SIZE = 16 * 1024
-            with FileSystems.create(
-                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            ) as out:
-                while True:
-                    to_send = output_fileobj.read(CHUNK_SIZE)
-                    if not to_send:
-                        break
-                    out.write(to_send)
-                    bytes_uploaded += len(to_send)
-                    if progress_callback is not None:
-                        should_resume = progress_callback(bytes_uploaded)
-                        if not should_resume:
-                            raise Exception('Upload aborted by client')
-
-            with FileSystems.open(
-                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-                SQLiteIndexedTar(
-                    fileObject=ttf,
-                    tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-                    writeIndex=True,
-                    clearIndexCache=True,
-                    indexFilePath=tmp_index_file.name,
-                )
-                if bundle_conn_str is not None:
-                    os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
-                with FileSystems.create(
-                    parse_linked_bundle_url(bundle_path).index_path,
-                    compression_type=CompressionTypes.UNCOMPRESSED,
-                ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-                    while True:
-                        to_send = tif.read(CHUNK_SIZE)
-                        if not to_send:
-                            break
-                        out_index_file.write(to_send)
-                        bytes_uploaded += len(to_send)
-                        if progress_callback is not None:
-                            should_resume = progress_callback(bytes_uploaded)
-                            if not should_resume:
-                                raise Exception('Upload aborted by client')
+            # Wrtie file and create index in sequential because we need to modify AZURE_STORAGE_CONNECTION_STRING
+            self.write_file_content(file_reader, bundle_path, progress_callback)
+            self.create_index(index_reader, bundle_path, bundle_conn_str, index_conn_str)
+            
         except Exception as err:
             raise err
         finally:  # restore the origin connection string
