@@ -1622,21 +1622,23 @@ def test_search(ctx):
     # Check search when groups empty
     check_equals('', _run_command([cl, 'search', '.shared']))
     # Check search with non-root user.
-    root_user_id, root_user_name = current_user()
-    user_name = 'non_root_user_' + random_name()
-    create_user(ctx, user_name, disk_quota='2000')
-    switch_user(user_name)
-    check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
-    check_equals(uuid1, _run_command([cl, 'search', uuid1, '-u']))
-    check_equals(
-        uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2]
-    )
-    check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
-    check_equals('', _run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
-    check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u']))
-    check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '%', '-u']))
-    check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, 'name=' + name, '-u']))
-    switch_user(root_user_name)
+    if not is.getenv('CODALAB_PROTECTED_MODE'):
+        # This test does not work when protected_mode is True.
+        _, current_user_name = current_user()
+        user_name = 'non_root_user_' + random_name()
+        create_user(ctx, user_name, disk_quota='2000')
+        switch_user(user_name)
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', uuid1, '-u']))
+        check_equals(
+            uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2]
+        )
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+        check_equals('', _run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '%', '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, 'name=' + name, '-u']))
+        switch_user(current_user_name)
     # Check search by group
     group_bname = random_name()
     group_buuid = _run_command([cl, 'run', 'echo hello', '-n', group_bname])

@@ -430,8 +430,6 @@ class BundleModel(object):
             """
             Add table and join condition for the final SQL query.
             """
-            # logging.info(str(table))
-            # logging.info(str(condition))
             joins.append(JoinTable(table, condition, left_outer_join))
 
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
@@ -671,9 +669,7 @@ class BundleModel(object):
         if count:
             query = alias(query).count()
 
-        logging.info(str(query))
         result = self._execute_query(query)
-        logging.info(result)
         if count or sum_key[0] is not None:  # Just returning a single number
             result = worksheet_util.apply_func(format_func, result[0])
             return {'result': result, 'is_aggregate': True}
