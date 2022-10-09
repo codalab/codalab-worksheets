@@ -1622,7 +1622,7 @@ def test_search(ctx):
     # Check search when groups empty
     check_equals('', _run_command([cl, 'search', '.shared']))
     # Check search with non-root user.
-    if not is.getenv('CODALAB_PROTECTED_MODE'):
+    if not os.getenv('CODALAB_PROTECTED_MODE'):
         # This test does not work when protected_mode is True.
         _, current_user_name = current_user()
         user_name = 'non_root_user_' + random_name()
