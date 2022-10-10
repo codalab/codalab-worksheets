@@ -12,14 +12,15 @@ class NewWindowLink extends React.Component {
     }
 
     render() {
-        const { classes, className, href } = this.props;
+        const { classes, href, style } = this.props;
 
         if (!href) {
             return null;
         }
         return (
             <a
-                className={`${classes.link} ${className}`}
+                className={classes.link}
+                style={style}
                 href={href}
                 target='_blank'
                 rel='noopener noreferrer'

@@ -52,7 +52,10 @@ class BundleDetailSideBar extends React.Component {
         return (
             <div className={classes.sidebar}>
                 {showPageLink && (
-                    <NewWindowLink className={classes.pageLink} href={`/bundles/${uuid}`} />
+                    <NewWindowLink
+                        style={{ position: 'absolute', right: -1 }}
+                        href={`/bundles/${uuid}`}
+                    />
                 )}
                 <BundleFieldTable>
                     <BundleStateRow bundle={bundle} />
@@ -265,10 +268,6 @@ class BundleDetailSideBar extends React.Component {
 const styles = () => ({
     sidebar: {
         position: 'relative',
-    },
-    pageLink: {
-        position: 'absolute',
-        right: -1,
     },
     collapseBtn: {
         marginTop: 5,
