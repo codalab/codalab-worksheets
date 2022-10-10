@@ -2458,6 +2458,7 @@ class BundleModel(object):
                         "date_joined": now,
                         "has_access": has_access,
                         "is_verified": is_verified,
+                        "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
                         "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],

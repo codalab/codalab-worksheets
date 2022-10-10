@@ -350,6 +350,7 @@ user = Table(
     Column('date_joined', DateTime, nullable=False),
     Column('has_access', Boolean, default=False, nullable=True),
     Column('is_verified', Boolean, nullable=False, default=False),
+    Column('is_superuser', Boolean, nullable=False, default=False),
     Column('password', String(128), nullable=False),
     # Additional information
     Column('affiliation', String(255, convert_unicode=True), nullable=True),
