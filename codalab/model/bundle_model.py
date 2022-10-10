@@ -80,6 +80,19 @@ def str_key_dict(row):
     return dict((str(k), v) for k, v in row.items())
 
 
+@dataclass
+class Join:
+    """
+    Class that stores data for joins used in final SQL query in search_bundles.
+    By default, becomes an inner join. Becomes left outer join if left_outer_join is True.
+
+    """
+
+    table: Table
+    condition: Any
+    left_outer_join: bool = False
+
+
 class BundleModel(object):
     def __init__(self, engine, default_user_info, root_user_id, system_user_id):
         """
@@ -378,19 +391,16 @@ class BundleModel(object):
         - .sum: add up the numbers
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
+
+        Iterates over keywords. For each keyword (except a few special keywords like .count, .offset, .limit, and .format), creates a new boolean condition
+        that must be satisfied by any bundles returned in the resulting query. These are stored in the where_clause_conjuncts list.
+        The final SQL query ANDs these boolean conditions together in the WHERE clause (since every condition specified by the keywords must be satisfied by
+        bundles returned in the result).
+        To express boolean conditions which reference data in tables aside from cl_bundle without subqueries, we use joins. We maintain a list of Joins
+        to join on (in the joins array) and add to this using the add_join function.
+        In the final query, we join cl_bundle with all the Joins in the joins array and then select rows from this table which satisfy the final WHERE clause.
         """
         subquery_index = [0]
-
-        @dataclass
-        class JoinTable:
-            """
-            Class that stores data for joins used in final SQL query.
-            By default, becomes an inner join. Becomes left outer join if left_outer_join is True.
-            """
-
-            table: Table
-            condition: Any
-            left_outer_join: bool = False
 
         def alias(clause):
             subquery_index[0] += 1
@@ -430,7 +440,7 @@ class BundleModel(object):
             """
             Add table and join condition for the final SQL query.
             """
-            joins.append(JoinTable(table, condition, left_outer_join))
+            joins.append(Join(table, condition, left_outer_join))
 
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
 
@@ -442,7 +452,7 @@ class BundleModel(object):
         sum_key = [None]
         aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
 
-        joins: List[JoinTable] = list()
+        joins: List[Join] = list()
         where_clause_conjuncts: List[Any] = list()  # list of sqlalchemy expressions
 
         for keyword in keywords:
@@ -642,6 +652,7 @@ class BundleModel(object):
 
             where_clause = and_(where_clause, or_(access_via_owner, access_via_group))
 
+        # Join the cl_bundle table with other tables in joins.
         table = cl_bundle
         for join_table in joins:
             table = table.join(
