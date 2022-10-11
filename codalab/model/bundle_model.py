@@ -977,6 +977,10 @@ class BundleModel(object):
             'memory_usage': memory_usage,
         }
 
+        # Increment user time as we go to ensure user doesn't go over time quota.
+        time_increment = worker_run.container_time_total - bundle.metadata.time
+        self.increment_user_time_used(bundler.owner_id, time_increment)
+
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
 
@@ -1050,6 +1054,10 @@ class BundleModel(object):
         failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
+
+        time_increment = worker_run.container_time_total - bundle.metadata.time
+        self.increment_user_time_used(bundler.owner_id, time_increment)
+        
         # Build metadata
         metadata = {}
         if failure_message is not None:
@@ -1076,10 +1084,6 @@ class BundleModel(object):
             state = State.KILLED
 
         worker = self.get_bundle_worker(bundle.uuid)
-
-        # Increment the amount of time used for the user whose bundles run on CodaLab's public instances
-        if worker['user_id'] == self.root_user_id:
-            self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
             # TODO(Ashwin): fix for --link.
@@ -1123,7 +1127,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
 
-    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id, socket_id):
         """
         Updates the database tables with the most recent bundle information from worker
         """
@@ -1133,6 +1137,13 @@ class BundleModel(object):
                 cl_bundle.select().where(cl_bundle.c.id == bundle.id)
             ).fetchone()
             if not row:
+                return False
+
+            # Check user has not overused quota. Kill job if so.
+            if self.get_user_time_quota_left(bundle.owner_id) <= 0:
+                # Tell worker to kill this job.
+                # It'll transition to finalizing on the next checkin.
+                
                 return False
 
             # Get staged bundle from worker checkin and move it to staged state

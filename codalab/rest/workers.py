@@ -47,6 +47,16 @@ def checkin(worker_id):
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
+            if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
+                # Then, user has gone over their time quota and we kill the job.
+                if local.worker_model.send_json_message(
+                    socket_id, {'type': 'kill', 'uuid': bundle.uuid}, 2
+                ):
+                    logger.info(
+                        'Acknowledged kill of run bundle {} on worker {}'.format(
+                            bundle.uuid, worker_id
+                        )
+                    )
         except Exception:
             pass
 
