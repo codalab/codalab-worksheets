@@ -298,7 +298,7 @@ class LinkedBundlePath:
         blob = bucket.blob(blob_name)
         signed_url = blob.generate_signed_url(
             version="v4",
-            expiration=datetime.timedelta(hours=1),
+            expiration=datetime.timedelta(hours=10),
             method=kwargs.get("method", "GET"),  # HTTP method. eg, GET, PUT
             content_type=kwargs.get("request_content_type", None),
             response_disposition=kwargs.get("content_disposition", None),
