@@ -750,7 +750,10 @@ class SQLiteIndexedTar(MountSource):
             # If the file object is actually an IndexedBzip2File or such, we can't directly use the file size
             # from os.stat and instead have to gather it from seek. Unfortunately, indexed_gzip does not support
             # io.SEEK_END even though it could as it has the index ...
-            while fileObject.read(1024 * 1024):
+            
+            # TODO: (Jiani) read until the end of a file, try to get he file size
+            # Can we just comment it out and set fileSize = 0?
+            while fileObject.read(1024 * 1024): # fileObject: Indexed_gzip
                 self._updateProgressBar(progressBar, fileObject)
             fileSize = fileObject.tell()
 
@@ -1323,8 +1326,7 @@ class SQLiteIndexedTar(MountSource):
             tar_file = indexed_bzip2.open(fileobj, parallelization=parallelization)
         else:
             tar_file = cinfo.open(fileobj)
-        # Jiani: _detectTar will be called here
-        print("_detectTar2: ", )
+
         return tar_file, fileobj, compression, SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
 
     @staticmethod

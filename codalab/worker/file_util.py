@@ -314,8 +314,11 @@ class GzipStream(BytesIO):
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
 
     def _fill_buf_bytes(self, num_bytes=None):
+        # print("Call _fill_buf_bytes in GZipStream, num_bytes: ", num_bytes)
         while num_bytes is None or len(self.__buffer) < num_bytes:
+            # print("Before: ", len(self.__buffer))
             s = self.__input.read(num_bytes)
+            # print("Middle: s size is ", len(s))
             if not s:
                 self.__gzip.close()
                 break
