@@ -87,65 +87,45 @@ class BundleActions extends React.Component<{
 
     render() {
         const { bundleInfo, classes, editPermission } = this.props;
+        const state = bundleInfo.state;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
-        const isKillableBundle = bundleInfo.state === 'running' || bundleInfo.state === 'preparing';
+        const isKillableBundle = state === 'running' || state === 'preparing' || state === 'staged';
         const isDownloadableRunBundle =
-            bundleInfo.state !== 'preparing' &&
-            bundleInfo.state !== 'starting' &&
-            bundleInfo.state !== 'created' &&
-            bundleInfo.state !== 'staged';
+            state !== 'preparing' &&
+            state !== 'starting' &&
+            state !== 'created' &&
+            state !== 'staged';
 
-        return isRunBundle ? (
-            <div className={classes.actionsContainer}>
-                {isDownloadableRunBundle && (
-                    <Button
-                        classes={{ root: classes.actionButton }}
-                        variant='outlined'
-                        color='primary'
-                        onClick={() => {
-                            window.open(bundleDownloadUrl, '_blank');
-                        }}
-                    >
-                        <span className='glyphicon glyphicon-download-alt' />
-                    </Button>
-                )}
-                {editPermission && (
+        return (
+            <div>
+                {isRunBundle && editPermission && (
                     <>
+                        <Snackbar
+                            classes={{ root: classes.snackbar }}
+                            open={this.state.killSnackbarIsOpen}
+                            onClose={this.handleCloseKillSnackbar}
+                            message='Executing kill command...'
+                            action={this.killSnackbarAction}
+                        />
                         <Button
-                            classes={{ root: classes.actionButton }}
-                            variant='outlined'
+                            classes={{ root: classes.killButton }}
+                            variant='text'
                             color='primary'
-                            onClick={this.rerun}
+                            disabled={!isKillableBundle}
+                            onClick={this.kill}
                         >
-                            Edit & Rerun
+                            Kill
                         </Button>
-                        {isKillableBundle && (
-                            <>
-                                <Button
-                                    classes={{ root: classes.actionButton }}
-                                    variant='contained'
-                                    color='primary'
-                                    onClick={this.kill}
-                                >
-                                    Kill
-                                </Button>
-                                <Snackbar
-                                    classes={{ root: classes.snackbar }}
-                                    open={this.state.killSnackbarIsOpen}
-                                    onClose={this.handleCloseKillSnackbar}
-                                    message='Executing kill command...'
-                                    action={this.killSnackbarAction}
-                                />
-                            </>
-                        )}
+                        <Button variant='contained' color='primary' onClick={this.rerun}>
+                            Rerun
+                        </Button>
                     </>
                 )}
-            </div>
-        ) : (
-            <div className={classes.actionsContainer}>
                 <Button
-                    classes={{ root: classes.actionButton }}
+                    classes={{ root: classes.downloadButton }}
+                    style={!isRunBundle || !editPermission ? { marginLeft: 0 } : {}}
+                    disabled={isRunBundle ? !isDownloadableRunBundle : false}
                     variant='outlined'
                     color='primary'
                     onClick={() => {
@@ -160,15 +140,12 @@ class BundleActions extends React.Component<{
 }
 
 const styles = () => ({
-    actionsContainer: {
-        padding: '0 10px',
+    killButton: {
+        minWidth: 50,
     },
-    actionButton: {
+    downloadButton: {
         minWidth: 'auto',
-        padding: '8px 10px',
-        marginLeft: '0 !important', // override default
-        marginRight: 12,
-        lineHeight: '14px',
+        padding: '10px 11px',
     },
     snackbar: {
         marginBottom: 40,

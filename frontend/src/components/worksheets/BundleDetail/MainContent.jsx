@@ -5,6 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import CollapseButton from '../../CollapseButton';
 import CodeSnippet from '../../CodeSnippet';
+import Loading from '../../Loading';
 
 class MainContent extends React.Component<{
     bundleInfo: {},
@@ -13,13 +14,16 @@ class MainContent extends React.Component<{
     fileContents: string | null,
     classes: {},
 }> {
-    state = {
-        showCommand: true,
-        showFailureMessage: true,
-        showStdOut: true,
-        showStdError: true,
-        showFileBrowser: true,
-    };
+    constructor(props) {
+        super(props);
+        this.state = {
+            showCommand: true,
+            showFailureMessage: true,
+            showStdOut: true,
+            showStdError: true,
+            showFileBrowser: true,
+        };
+    }
 
     toggleCommand() {
         this.setState({ showCommand: !this.state.showCommand });
@@ -41,32 +45,46 @@ class MainContent extends React.Component<{
         this.setState({ showStdError: !this.state.showStdError });
     }
 
+    isRunning() {
+        const bundleInfo = this.props.bundleInfo;
+        if (bundleInfo.bundle_type !== 'run') {
+            return false;
+        }
+        const runStates = ['running', 'preparing', 'starting', 'staged'];
+        return runStates.includes(bundleInfo.state);
+    }
+
     render() {
-        const { classes, bundleInfo, stdout, stderr, fileContents } = this.props;
-        const uuid = bundleInfo.uuid;
+        const {
+            bundleInfo,
+            classes,
+            contentType,
+            expanded,
+            fileContents,
+            stderr,
+            stdout,
+        } = this.props;
+        const { command, metadata, state, uuid } = bundleInfo || {};
         const stdoutUrl = '/rest/bundles/' + uuid + '/contents/blob/stdout';
         const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
-        const command = bundleInfo.command;
-        const failureMessage = bundleInfo.metadata.failure_message;
-        const isRunningBundle =
-            bundleInfo.bundle_type === 'run' &&
-            (bundleInfo.state === 'running' ||
-                bundleInfo.state === 'preparing' ||
-                bundleInfo.state === 'starting' ||
-                bundleInfo.state === 'staged');
+        const failureMessage = metadata.failure_message;
+        const inErrorState = ['killed', 'failed'].includes(state);
+        const isLoading = !contentType && !inErrorState;
 
         return (
             <div className={classes.outter}>
                 <Grid container>
                     {/** Failure components ================================================================= */}
                     {failureMessage && (
-                        <Grid classes={{ container: classes.failureContainer }} container>
+                        <Grid container>
                             <CollapseButton
                                 label='Failure Message'
                                 collapsed={this.state.showFailureMessage}
                                 onClick={() => this.toggleShowFailureMessage()}
                             />
-                            {this.state.showFailureMessage && <CodeSnippet code={failureMessage} />}
+                            {this.state.showFailureMessage && (
+                                <CodeSnippet code={failureMessage} expanded={expanded} />
+                            )}
                         </Grid>
                     )}
                     {/** Command components ================================================================= */}
@@ -78,84 +96,92 @@ class MainContent extends React.Component<{
                                 onClick={() => this.toggleCommand()}
                             />
                             {this.state.showCommand && (
-                                <CodeSnippet code={command} copyMessage='Command Copied!' />
+                                <CodeSnippet
+                                    code={command}
+                                    expanded={expanded}
+                                    copyMessage='Command Copied!'
+                                    noMargin={!isLoading && !stdout && !stderr && !contentType}
+                                />
                             )}
                         </Grid>
                     )}
-                    {/** Stdout/stderr components ================================================================= */}
-                    <Grid container>
-                        {stdout && (
+                    {isLoading ? (
+                        <Loading />
+                    ) : (
+                        <>
+                            {/** Stdout/stderr components ================================================================= */}
                             <Grid container>
-                                <CollapseButton
-                                    label='Stdout'
-                                    collapsed={this.state.showStdOut}
-                                    onClick={() => this.toggleStdOut()}
-                                />
-                                {this.state.showStdOut && (
-                                    <CodeSnippet code={stdout} href={stdoutUrl} />
+                                {stdout && (
+                                    <Grid container>
+                                        <CollapseButton
+                                            label='Stdout'
+                                            collapsed={this.state.showStdOut}
+                                            onClick={() => this.toggleStdOut()}
+                                        />
+                                        {this.state.showStdOut && (
+                                            <CodeSnippet
+                                                code={stdout}
+                                                href={stdoutUrl}
+                                                expanded={expanded}
+                                            />
+                                        )}
+                                    </Grid>
+                                )}
+                                {stderr && (
+                                    <Grid container>
+                                        <CollapseButton
+                                            label='Stderr'
+                                            collapsed={this.state.showStdError}
+                                            onClick={() => this.toggleStdError()}
+                                        />
+                                        {this.state.showStdError && (
+                                            <CodeSnippet
+                                                code={stderr}
+                                                href={stderrUrl}
+                                                expanded={expanded}
+                                            />
+                                        )}
+                                    </Grid>
                                 )}
                             </Grid>
-                        )}
-                        {stderr && (
-                            <Grid container>
-                                <CollapseButton
-                                    label='Stderr'
-                                    collapsed={this.state.showStdError}
-                                    onClick={() => this.toggleStdError()}
-                                />
-                                {this.state.showStdError && (
-                                    <CodeSnippet code={stderr} href={stderrUrl} />
-                                )}
-                            </Grid>
-                        )}
-                    </Grid>
-                    {/** Bundle contents browser ================================================================== */}
-                    <CollapseButton
-                        label={fileContents ? 'Contents' : 'Files'}
-                        collapsed={this.state.showFileBrowser}
-                        onClick={() => this.toggleFileViewer()}
-                    />
-                    {this.state.showFileBrowser ? (
-                        <Grid item xs={12}>
-                            {fileContents ? (
-                                <div className={`${classes.snippet} ${classes.greyBorder}`}>
-                                    {fileContents}
-                                </div>
-                            ) : (
-                                <div className={classes.snippet}>
-                                    <FileBrowserLite
-                                        uuid={bundleInfo.uuid}
-                                        isRunningBundle={isRunningBundle}
-                                        showBreadcrumbs
+                            {/** Bundle contents browser ================================================================== */}
+                            {contentType && (
+                                <>
+                                    <CollapseButton
+                                        label={fileContents ? 'Contents' : 'Files'}
+                                        collapsed={this.state.showFileBrowser}
+                                        onClick={() => this.toggleFileViewer()}
                                     />
-                                </div>
+                                    {this.state.showFileBrowser && (
+                                        <Grid item xs={12}>
+                                            {fileContents ? (
+                                                <CodeSnippet
+                                                    code={fileContents}
+                                                    expanded={expanded}
+                                                    noMargin
+                                                />
+                                            ) : (
+                                                <FileBrowserLite
+                                                    uuid={bundleInfo.uuid}
+                                                    isRunningBundle={this.isRunning()}
+                                                    showBreadcrumbs
+                                                />
+                                            )}
+                                        </Grid>
+                                    )}
+                                </>
                             )}
-                        </Grid>
-                    ) : null}
+                        </>
+                    )}
                 </Grid>
             </div>
         );
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     outter: {
         flex: 1,
-    },
-    snippet: {
-        fontFamily: 'monospace',
-        maxHeight: 300,
-        padding: 10,
-        flexWrap: 'wrap',
-        flexShrink: 1,
-        overflow: 'auto',
-        whiteSpace: 'pre-wrap',
-    },
-    failureContainer: {
-        color: theme.color.red.base,
-    },
-    greyBorder: {
-        border: `1px solid ${theme.color.grey.light}`,
     },
 });
 

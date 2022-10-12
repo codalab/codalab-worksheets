@@ -14,8 +14,8 @@ export function renderDuration(s) {
         return Math.round(duration) === 0 ? '' : Math.round(duration) + unit;
     }
 
-    if (s == null) {
-        return '<none>';
+    if (!s) {
+        return '';
     }
 
     var m = Math.floor(s / 60);
@@ -71,17 +71,34 @@ export function renderSize(size) {
     // Return a human-readable string.
     var units = ['', 'k', 'm', 'g', 't'];
     for (var i = 0; i < units.length; i++) {
-        var unit = units[i];
+        const unit = units[i] === '' ? ' bytes' : units[i];
         if (size < 100 && size !== Math.floor(size)) return Math.round(size * 10) / 10.0 + unit;
         if (size < 1024) return Math.round(size) + unit;
         size /= 1024.0;
     }
 }
 
+/**
+ * Converts a list to a single string containing its values.
+ * Note: some fields like 'tags' return [''].
+ *
+ * @param {array} list
+ * @returns {string} joined list values
+ */
+export function renderList(list) {
+    if (!list?.length || !list[0]) {
+        return '';
+    }
+    return list.join(' ');
+}
+
 export function renderFormat(value, type) {
+    if (value === null || value === undefined) {
+        return '';
+    }
     switch (type) {
         case 'list':
-            return value.join(' ');
+            return renderList(value);
         case 'date':
             return renderDate(value);
         case 'size':
@@ -122,10 +139,11 @@ export function serializeFormat(formatted, type) {
     }
 }
 
-export function renderPermissions(state) {
+export function renderPermissions(state, style = {}) {
     // Render permissions:
     // - state.permission_spec (what user has)
     // - state.group_permissions (what other people have)
+    // - style (optional container styles)
     if (!state.permission_spec) return;
 
     function permissionToClass(permission) {
@@ -147,7 +165,7 @@ export function renderPermissions(state) {
     }
 
     return (
-        <div>
+        <div style={style}>
             &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
@@ -328,6 +346,25 @@ export function getIds(item) {
 }
 
 /**
+ * Initializes missing metadata fields with a null value.
+ *
+ * This allows the frontend to reference info about a field (e.g. the field's
+ * description) even if the given bundle doesn't have a value for that field.
+ *
+ * @param {object} bundleInfo
+ * @returns {object} metadata
+ */
+export function fillMissingMetadata(bundleInfo = {}) {
+    const { metadata, metadataDescriptions } = bundleInfo;
+    Object.keys(metadataDescriptions).forEach((key) => {
+        if (!metadata.hasOwnProperty(key)) {
+            metadata[key] = null;
+        }
+    });
+    return metadata;
+}
+
+/**
  * The way that the backend returns bundle metadata is not particularly
  * conducive to rendering bundle information in the CodaLab UI.
  *
@@ -349,67 +386,45 @@ export function getIds(item) {
  *     bundle_uuid: <bundle_uuid>,
  * }
  *
- * @param {object} bundle
- * @returns {object}
+ * @param {object} bundleInfo
+ * @returns {object} formattedBundle
  */
-export function formatBundle(bundle) {
-    if (!bundle) {
-        return {};
-    }
+export function formatBundle(bundleInfo = {}) {
+    const hasPermission = bundleInfo.permission > 1;
+    const metadata = fillMissingMetadata(bundleInfo);
+    const metadataDescriptions = bundleInfo.metadataDescriptions;
+    const metadataTypes = bundleInfo.metadataTypes;
+    const editableMetadataFields = bundleInfo.editableMetadataFields;
+    const owner = bundleInfo.owner;
+    const mergedBundle = { ...bundleInfo, ...metadata, ...owner };
+    const formattedBundle = {};
 
-    const { editableMetadataFields, metadata, metadataDescriptions, metadataType, owner } = bundle;
-
-    // copy nested bundle fields into the top-level of an object
-    const mergedBundle = {
-        ...bundle,
-        ...metadata,
-        ...owner,
-    };
-
-    // remove the fields that don't need to be in our formatted bundle
-    delete mergedBundle.editableMetadataFields;
+    // delete redundant fields
     delete mergedBundle.metadata;
+    delete mergedBundle.editableMetadataFields;
     delete mergedBundle.metadataDescriptions;
-    delete mergedBundle.metadataType;
+    delete mergedBundle.metadataTypes;
 
-    // these fields will receive extra formatting below
-    const unformattedFields = [
-        'created',
-        'data_size',
-        'on_preemptible_worker',
-        'time',
-        'time_running',
-        'time_preparing',
-        'time_cleaning_up',
-        'time_uploading_results',
-        'time_user',
-        'time_system',
-        'started',
-        'last_updated',
-        'cpu_usage',
-        'memory_usage',
-        'request_network',
-    ];
-
-    const result = {};
-    Object.keys(mergedBundle).forEach((field) => {
-        // build our formatted field object
-        result[field] = {};
-        result[field].name = field;
-        result[field].description = metadataDescriptions[field];
-        result[field].editable = bundle.permission > 1 && editableMetadataFields.includes(field);
-        result[field].bundle_uuid = mergedBundle.uuid;
-        result[field].type = metadataType[field];
-
-        // format the fields that need extra formatting
-        if (unformattedFields.includes(field)) {
-            const value = mergedBundle[field];
-            const type = result[field].type;
-            result[field].value = renderFormat(value, type);
-        } else {
-            result[field].value = mergedBundle[field];
-        }
+    Object.keys(mergedBundle).forEach((key) => {
+        formattedBundle[key] = {};
+        formattedBundle[key].name = key;
+        formattedBundle[key].description = metadataDescriptions[key];
+        formattedBundle[key].editable = hasPermission && editableMetadataFields.includes(key);
+        formattedBundle[key].bundle_uuid = bundleInfo.uuid;
+        formattedBundle[key].type = metadataTypes[key];
+        formattedBundle[key].value = renderFormat(mergedBundle[key], metadataTypes[key]);
     });
 
-    return result;
+    return formattedBundle;
+}
+
+/**
+ * Parses error data and returns an error message.
+ *
+ * @param {object} error
+ * @returns {string} error message
+ */
+export function parseError(error) {
+    const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
+    return htmlDoc.getElementsByTagName('pre')[0].innerHTML;
 }

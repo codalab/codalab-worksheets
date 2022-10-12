@@ -22,10 +22,10 @@ Object {
               class="header-row"
             >
               <div
-                class="MuiGrid-container-11 MuiGrid-direction-xs-column-14"
+                class="MuiGrid-container-12 MuiGrid-direction-xs-column-15"
               >
                 <div
-                  class="MuiGrid-container-11 MuiGrid-item-12 MuiGrid-align-items-xs-flex-start-20 MuiGrid-justify-xs-space-between-30 MuiGrid-grid-xs-12-51"
+                  class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-start-21 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
                 >
                   <h5
                     class="worksheet-title"
@@ -37,9 +37,10 @@ Object {
                     >
                       &lt;none&gt;
                     </span>
+                    
                   </h5>
                   <div
-                    class="MuiGrid-item-12"
+                    class="MuiGrid-item-13"
                     style="padding-top: 10px;"
                   >
                     <span
@@ -48,6 +49,7 @@ Object {
                     >
                       codalab-
                     </span>
+                    
                      by 
                     codalab
                     <div
@@ -86,15 +88,16 @@ Object {
                       >
                         &lt;none&gt;
                       </span>
+                      
                     </div>
                   </div>
                 </div>
                 <div
-                  class="MuiGrid-container-11 MuiGrid-item-12 MuiGrid-align-items-xs-flex-end-21 MuiGrid-justify-xs-space-between-30 MuiGrid-grid-xs-12-51"
+                  class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-end-22 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
                   style="line-height: 2.5;"
                 >
                   <div
-                    class="MuiGrid-item-12"
+                    class="MuiGrid-item-13"
                   >
                     <div>
                        
@@ -128,7 +131,7 @@ Object {
                           Text
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                       <span>
@@ -165,7 +168,7 @@ Object {
                             Upload
                           </span>
                           <span
-                            class="MuiTouchRipple-root-237"
+                            class="MuiTouchRipple-root-248"
                           />
                         </button>
                       </span>
@@ -196,7 +199,7 @@ Object {
                           Run
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                       <button
@@ -228,7 +231,7 @@ Object {
                           Paste bundles
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                       <button
@@ -260,7 +263,7 @@ Object {
                           Schema
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                       <button
@@ -295,13 +298,13 @@ Object {
                           Image
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                     </div>
                   </div>
                   <div
-                    class="MuiGrid-item-12"
+                    class="MuiGrid-item-13"
                   >
                     <div
                       style="display: inline-block;"
@@ -335,7 +338,7 @@ Object {
                           Edit Source
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                       <button
@@ -367,7 +370,7 @@ Object {
                           SHOW TERMINAL
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                       <button
@@ -397,7 +400,7 @@ Object {
                           </svg>
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                     </div>
@@ -432,7 +435,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </a>
                     <a
@@ -463,7 +466,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </a>
                   </div>
@@ -623,17 +626,17 @@ Object {
                     id="worksheet_items"
                   >
                     <div
-                      class="ItemWrapper-container-245"
+                      class="ItemWrapper-container-256"
                       id="codalab-worksheet-item-0"
                     >
                       <div
-                        class="ItemWrapper-main-247"
+                        class="ItemWrapper-main-258"
                       >
                         <div
-                          class="ws-item MarkdownItem-textContainer-249"
+                          class="ws-item MarkdownItem-textContainer-260"
                         >
                           <div
-                            class="type-markup  MarkdownItem-textRender-252"
+                            class="type-markup  MarkdownItem-textRender-263"
                           >
                             <p>
                               123
@@ -643,10 +646,10 @@ Object {
 
                           </div>
                           <div
-                            class="MarkdownItem-buttonsPanel-250"
+                            class="MarkdownItem-buttonsPanel-261"
                           >
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
                               tabindex="0"
                               title="Edit"
                               type="button"
@@ -671,12 +674,12 @@ Object {
                                 </svg>
                               </span>
                               <span
-                                class="MuiTouchRipple-root-237"
+                                class="MuiTouchRipple-root-248"
                               />
                             </button>
                               
                             <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
                               tabindex="0"
                               title="Delete"
                               type="button"
@@ -701,7 +704,7 @@ Object {
                                 </svg>
                               </span>
                               <span
-                                class="MuiTouchRipple-root-237"
+                                class="MuiTouchRipple-root-248"
                               />
                             </button>
                           </div>
@@ -757,7 +760,7 @@ Object {
                   </svg>
                 </span>
                 <span
-                  class="MuiTouchRipple-root-237"
+                  class="MuiTouchRipple-root-248"
                 />
               </button>
             </div>
@@ -784,21 +787,21 @@ Object {
     >
       <div
         aria-hidden="true"
-        class="MuiBackdrop-root-188 MuiBackdrop-invisible-189"
+        class="MuiBackdrop-root-199 MuiBackdrop-invisible-200"
         style="opacity: 0;"
       />
       <div
-        class="MuiPaper-root-190 MuiMenu-paper-153 MuiPaper-elevation0-192 MuiPaper-rounded-191 MuiPopover-paper-154"
+        class="MuiPaper-root-201 MuiMenu-paper-153 MuiPaper-elevation0-203 MuiPaper-rounded-202 MuiPopover-paper-154"
         role="document"
         style="opacity: 0; transform: scale(0.75, 0.5625);"
         tabindex="-1"
       >
         <ul
-          class="MuiList-root-217 MuiList-padding-218"
+          class="MuiList-root-228 MuiList-padding-229"
           role="menu"
         >
           <li
-            class="MuiButtonBase-root-141 MuiListItem-root-225 MuiListItem-default-228 MuiListItem-gutters-233 MuiListItem-button-234 MuiMenuItem-root-222 WithStyles-MenuItem--root-221 MuiMenuItem-gutters-223"
+            class="MuiButtonBase-root-141 MuiListItem-root-236 MuiListItem-default-239 MuiListItem-gutters-244 MuiListItem-button-245 MuiMenuItem-root-233 WithStyles-MenuItem--root-232 MuiMenuItem-gutters-234"
             role="menuitem"
             tabindex="0"
           >
@@ -809,11 +812,11 @@ Object {
               File(s) Upload
             </label>
             <span
-              class="MuiTouchRipple-root-237"
+              class="MuiTouchRipple-root-248"
             />
           </li>
           <li
-            class="MuiButtonBase-root-141 MuiListItem-root-225 MuiListItem-default-228 MuiListItem-gutters-233 MuiListItem-button-234 MuiMenuItem-root-222 WithStyles-MenuItem--root-221 MuiMenuItem-gutters-223"
+            class="MuiButtonBase-root-141 MuiListItem-root-236 MuiListItem-default-239 MuiListItem-gutters-244 MuiListItem-button-245 MuiMenuItem-root-233 WithStyles-MenuItem--root-232 MuiMenuItem-gutters-234"
             role="menuitem"
             tabindex="-1"
           >
@@ -824,7 +827,7 @@ Object {
               Folder Upload
             </label>
             <span
-              class="MuiTouchRipple-root-237"
+              class="MuiTouchRipple-root-248"
             />
           </li>
         </ul>
@@ -847,10 +850,10 @@ Object {
             class="header-row"
           >
             <div
-              class="MuiGrid-container-11 MuiGrid-direction-xs-column-14"
+              class="MuiGrid-container-12 MuiGrid-direction-xs-column-15"
             >
               <div
-                class="MuiGrid-container-11 MuiGrid-item-12 MuiGrid-align-items-xs-flex-start-20 MuiGrid-justify-xs-space-between-30 MuiGrid-grid-xs-12-51"
+                class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-start-21 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
               >
                 <h5
                   class="worksheet-title"
@@ -862,9 +865,10 @@ Object {
                   >
                     &lt;none&gt;
                   </span>
+                  
                 </h5>
                 <div
-                  class="MuiGrid-item-12"
+                  class="MuiGrid-item-13"
                   style="padding-top: 10px;"
                 >
                   <span
@@ -873,6 +877,7 @@ Object {
                   >
                     codalab-
                   </span>
+                  
                    by 
                   codalab
                   <div
@@ -911,15 +916,16 @@ Object {
                     >
                       &lt;none&gt;
                     </span>
+                    
                   </div>
                 </div>
               </div>
               <div
-                class="MuiGrid-container-11 MuiGrid-item-12 MuiGrid-align-items-xs-flex-end-21 MuiGrid-justify-xs-space-between-30 MuiGrid-grid-xs-12-51"
+                class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-end-22 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
                 style="line-height: 2.5;"
               >
                 <div
-                  class="MuiGrid-item-12"
+                  class="MuiGrid-item-13"
                 >
                   <div>
                      
@@ -953,7 +959,7 @@ Object {
                         Text
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                     <span>
@@ -990,7 +996,7 @@ Object {
                           Upload
                         </span>
                         <span
-                          class="MuiTouchRipple-root-237"
+                          class="MuiTouchRipple-root-248"
                         />
                       </button>
                     </span>
@@ -1021,7 +1027,7 @@ Object {
                         Run
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                     <button
@@ -1053,7 +1059,7 @@ Object {
                         Paste bundles
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                     <button
@@ -1085,7 +1091,7 @@ Object {
                         Schema
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                     <button
@@ -1120,13 +1126,13 @@ Object {
                         Image
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                   </div>
                 </div>
                 <div
-                  class="MuiGrid-item-12"
+                  class="MuiGrid-item-13"
                 >
                   <div
                     style="display: inline-block;"
@@ -1160,7 +1166,7 @@ Object {
                         Edit Source
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                     <button
@@ -1192,7 +1198,7 @@ Object {
                         SHOW TERMINAL
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                     <button
@@ -1222,7 +1228,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-237"
+                        class="MuiTouchRipple-root-248"
                       />
                     </button>
                   </div>
@@ -1257,7 +1263,7 @@ Object {
                       </svg>
                     </span>
                     <span
-                      class="MuiTouchRipple-root-237"
+                      class="MuiTouchRipple-root-248"
                     />
                   </a>
                   <a
@@ -1288,7 +1294,7 @@ Object {
                       </svg>
                     </span>
                     <span
-                      class="MuiTouchRipple-root-237"
+                      class="MuiTouchRipple-root-248"
                     />
                   </a>
                 </div>
@@ -1448,17 +1454,17 @@ Object {
                   id="worksheet_items"
                 >
                   <div
-                    class="ItemWrapper-container-245"
+                    class="ItemWrapper-container-256"
                     id="codalab-worksheet-item-0"
                   >
                     <div
-                      class="ItemWrapper-main-247"
+                      class="ItemWrapper-main-258"
                     >
                       <div
-                        class="ws-item MarkdownItem-textContainer-249"
+                        class="ws-item MarkdownItem-textContainer-260"
                       >
                         <div
-                          class="type-markup  MarkdownItem-textRender-252"
+                          class="type-markup  MarkdownItem-textRender-263"
                         >
                           <p>
                             123
@@ -1468,10 +1474,10 @@ Object {
 
                         </div>
                         <div
-                          class="MarkdownItem-buttonsPanel-250"
+                          class="MarkdownItem-buttonsPanel-261"
                         >
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
                             tabindex="0"
                             title="Edit"
                             type="button"
@@ -1496,12 +1502,12 @@ Object {
                               </svg>
                             </span>
                             <span
-                              class="MuiTouchRipple-root-237"
+                              class="MuiTouchRipple-root-248"
                             />
                           </button>
                             
                           <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-251"
+                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
                             tabindex="0"
                             title="Delete"
                             type="button"
@@ -1526,7 +1532,7 @@ Object {
                               </svg>
                             </span>
                             <span
-                              class="MuiTouchRipple-root-237"
+                              class="MuiTouchRipple-root-248"
                             />
                           </button>
                         </div>
@@ -1582,7 +1588,7 @@ Object {
                 </svg>
               </span>
               <span
-                class="MuiTouchRipple-root-237"
+                class="MuiTouchRipple-root-248"
               />
             </button>
           </div>
@@ -1663,14 +1669,14 @@ Object {
   >
     <div>
       <div
-        class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
-        style="margin-top: 100px;"
+        class="MuiGrid-container-276 MuiGrid-direction-xs-column-279 MuiGrid-align-items-xs-center-284 MuiGrid-justify-xs-center-293"
+        style="margin: 100px 0px 80px;"
       >
         <div
           class="alert alert-danger alert-dismissable"
         >
           <div
-            class="MuiGrid-item-265"
+            class="MuiGrid-item-277"
             style="font-size: 16px; margin-left: 10px;"
           >
             Not found: '/worksheets/sample_uuid'
@@ -1681,14 +1687,14 @@ Object {
   </body>,
   "container": <div>
     <div
-      class="MuiGrid-container-264 MuiGrid-direction-xs-column-267 MuiGrid-align-items-xs-center-272 MuiGrid-justify-xs-center-281"
-      style="margin-top: 100px;"
+      class="MuiGrid-container-276 MuiGrid-direction-xs-column-279 MuiGrid-align-items-xs-center-284 MuiGrid-justify-xs-center-293"
+      style="margin: 100px 0px 80px;"
     >
       <div
         class="alert alert-danger alert-dismissable"
       >
         <div
-          class="MuiGrid-item-265"
+          class="MuiGrid-item-277"
           style="font-size: 16px; margin-left: 10px;"
         >
           Not found: '/worksheets/sample_uuid'

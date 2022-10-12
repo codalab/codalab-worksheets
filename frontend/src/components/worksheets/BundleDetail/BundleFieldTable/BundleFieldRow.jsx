@@ -28,27 +28,12 @@ class BundleFieldRow extends React.Component {
     }
 
     render() {
-        const { allowCopy, classes, onChange, noWrap } = this.props;
+        const { classes, label, onChange, noWrap } = this.props;
         const field = this.props.field || {};
-        const name = field.name;
-        const dataType = field.type;
-        const canEdit = field.editable;
-        const uuid = field.bundle_uuid;
-
-        // allow props to override field values
-        const label = this.props.label || field.name;
         const description = this.props.description || field.description;
-        const value = this.props.value || field.value;
-        const copyValue = this.props.copyValue || value;
-
-        if (!canEdit) {
-            if (dataType === 'list' && (!value.length || !value[0])) {
-                return null;
-            }
-            if (dataType === 'str' && !value) {
-                return null;
-            }
-        }
+        const value = this.props.value || field.value || '<none>';
+        const valueClass = value === '<none>' ? classes.noValue : '';
+        const allowCopy = this.props.allowCopy && value !== '<none>';
 
         return (
             <tr>
@@ -57,10 +42,7 @@ class BundleFieldRow extends React.Component {
                         {label}
                     </Typography>
                     {description && (
-                        <Tooltip
-                            title={description}
-                            classes={{ tooltip: classes.tooltipContainer }}
-                        >
+                        <Tooltip title={description} classes={{ tooltip: classes.tooltip }}>
                             <span className={classes.tooltipIcon}>
                                 <HelpOutlineOutlinedIcon
                                     fontSize='inherit'
@@ -71,21 +53,29 @@ class BundleFieldRow extends React.Component {
                     )}
                 </td>
                 <td className={classes.td}>
-                    {canEdit ? (
+                    {field.editable ? (
                         <div className={classes.wrappableText}>
                             <BundleEditableField
-                                dataType={dataType}
-                                fieldName={name}
-                                uuid={uuid}
-                                value={value}
+                                dataType={field.type}
+                                fieldName={field.name}
+                                uuid={field.bundle_uuid}
+                                value={field.value}
                                 onChange={onChange}
                                 canEdit
                             />
                         </div>
                     ) : (
                         <div className={classes.dataContainer}>
-                            <Typography noWrap={noWrap}>{value}</Typography>
-                            {allowCopy && <Copy message={`${label} Copied!`} text={copyValue} />}
+                            <Typography noWrap={noWrap} classes={{ root: valueClass }}>
+                                {value}
+                            </Typography>
+                            {allowCopy && (
+                                <Copy
+                                    style={{ marginLeft: 10 }}
+                                    message={`${label} Copied!`}
+                                    text={value}
+                                />
+                            )}
                         </div>
                     )}
                 </td>
@@ -95,9 +85,8 @@ class BundleFieldRow extends React.Component {
 }
 
 const styles = (theme) => ({
-    tooltipContainer: {
+    tooltip: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
         display: 'inline-block',
@@ -114,6 +103,7 @@ const styles = (theme) => ({
     dataContainer: {
         display: 'flex',
         verticalAlign: 'center',
+        justifyContent: 'space-between',
     },
     td: {
         width: '50%',
@@ -121,6 +111,9 @@ const styles = (theme) => ({
         overflowWrap: 'anywhere',
         paddingBottom: 5,
         fontSize: 14,
+    },
+    noValue: {
+        color: theme.color.grey.dark,
     },
 });
 

@@ -24,14 +24,14 @@ Usage: `cl <command> <arguments>`
       -i, --ignore               Name of file containing patterns matching files and directories to exclude from upload. This option is currently only supported with the GNU tar library.
       -l, --link                 Makes the path the source of truth of the bundle, meaning that the server will retrieve the bundle directly from the specified path rather than storing its contentsin its own bundle store.
       -a, --use-azure-blob-beta  Use Azure Blob Storage to store files (beta feature).
-      -n, --name                 Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes.
-      -d, --description          Full description of the bundle.
-      --tags                     Space-separated list of tags used for search (e.g., machine-learning).
-      --license                  The license under which this program/dataset is released.
-      --source-url               URL corresponding to the original source of this bundle.
-      --link-url                 Link URL of bundle.
-      --link-format              Link format of bundle. Can be equal to"raw" or "zip" (only "raw" is supported as of now).
-      --store                    The name of the bundle store where the bundle should be uploaded to. If unspecified, an optimal available bundle store will be chosen.
+      -n, --name                 Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes (name).
+      -d, --description          Full description of the bundle (description).
+      --tags                     Space-separated list of tags used for search, e.g. machine-learning (tags).
+      --license                  The license under which this program/dataset is released (license).
+      --source-url               URL corresponding to the original source of this bundle (source_url).
+      --link-url                 Link URL of bundle (link_url).
+      --link-format              Link format of bundle (link_format). Can be equal to "raw" or "zip" (only "raw" is supported as of now).
+      --store                    The name of the bundle store where the bundle should be uploaded to (store). If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                 Show an editor to allow editing of the bundle metadata.
 
 ### make
@@ -41,10 +41,10 @@ Usage: `cl <command> <arguments>`
     Arguments:
       target_spec                  [<key>:][[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)[/<subpath within bundle>]
       -w, --worksheet-spec         Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
-      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes.
-      -d, --description            Full description of the bundle.
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes (name).
+      -d, --description            Full description of the bundle (description).
+      --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags).
+      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
 
 ### run
@@ -56,21 +56,21 @@ Usage: `cl <command> <arguments>`
       -a, --after_sort_key         Insert after this sort_key
       -m, --memoize                If a bundle with the same command and dependencies already exists, return it instead of creating a new one.
       -i, --interactive            Beta feature - Start an interactive session to construct your run command.
-      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes.
-      -d, --description            Full description of the bundle.
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning).
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies.
-      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.
-      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.
-      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.
-      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.
-      --request-cpus               Number of CPUs allowed for this run.
-      --request-gpus               Number of GPUs allowed for this run.
-      --request-queue              Submit run to this job queue.
-      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority.
-      --request-network            Whether to allow network access.
-      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents.
-      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen.
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes (name).
+      -d, --description            Full description of the bundle (description).
+      --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags).
+      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).
+      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use (request_docker_image).
+      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left.
+      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_memory).
+      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_disk). Defaults to user disk quota left.
+      --request-cpus               Number of CPUs allowed for this run (request_cpus).
+      --request-gpus               Number of GPUs allowed for this run (request_gpus).
+      --request-queue              Submit run to this job queue (request_queue).
+      --request-priority           Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority.
+      --request-network            Whether to allow network access (request_network).
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents (exclude_patterns).
+      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
       -W, --wait                   Wait until run finishes.
       -t, --tail                   Wait until run finishes, displaying stdout/stderr.
@@ -197,21 +197,21 @@ Usage: `cl <command> <arguments>`
     Any provided metadata arguments will override the original metadata in mimicked bundles.
     Arguments:
       bundles                      Bundles: old_input_1 ... old_input_n old_output new_input_1 ... new_input_n ([[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)).
-      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes. (for makes and runs)
-      -d, --description            Full description of the bundle. (for makes and runs)
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
-      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
-      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
-      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
-      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
-      --request-cpus               Number of CPUs allowed for this run. (for runs)
-      --request-gpus               Number of GPUs allowed for this run. (for runs)
-      --request-queue              Submit run to this job queue. (for runs)
-      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
-      --request-network            Whether to allow network access. (for runs)
-      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
-      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen. (for runs)
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes (name). (for makes and runs)
+      -d, --description            Full description of the bundle (description). (for makes and runs)
+      --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags). (for makes and runs)
+      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies). (for makes and runs)
+      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use (request_docker_image). (for runs)
+      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left. (for runs)
+      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_memory). (for runs)
+      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_disk). Defaults to user disk quota left. (for runs)
+      --request-cpus               Number of CPUs allowed for this run (request_cpus). (for runs)
+      --request-gpus               Number of GPUs allowed for this run (request_gpus). (for runs)
+      --request-queue              Submit run to this job queue (request_queue). (for runs)
+      --request-priority           Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority. (for runs)
+      --request-network            Whether to allow network access (request_network). (for runs)
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents (exclude_patterns). (for runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -227,21 +227,21 @@ Usage: `cl <command> <arguments>`
     Arguments:
       macro_name                   Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).
       bundles                      Bundles: new_input_1 ... new_input_n named_input_name:named_input_bundle other_named_input_name:other_named_input_bundle ([[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>))
-      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes. (for makes and runs)
-      -d, --description            Full description of the bundle. (for makes and runs)
-      --tags                       Space-separated list of tags used for search (e.g., machine-learning). (for makes and runs)
-      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies. (for makes and runs)
-      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use. (for runs)
-      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left. (for runs)
-      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. (for runs)
-      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left. (for runs)
-      --request-cpus               Number of CPUs allowed for this run. (for runs)
-      --request-gpus               Number of GPUs allowed for this run. (for runs)
-      --request-queue              Submit run to this job queue. (for runs)
-      --request-priority           Job priority (higher is more important). Negative priority bundles are queued behind bundles with no specified priority. (for runs)
-      --request-network            Whether to allow network access. (for runs)
-      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents. (for runs)
-      --store                      The name of the bundle store where bundle results should be initially uploaded. If unspecified, an optimal available bundle store will be chosen. (for runs)
+      -n, --name                   Short name (not necessarily unique), which must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes (name). (for makes and runs)
+      -d, --description            Full description of the bundle (description). (for makes and runs)
+      --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags). (for makes and runs)
+      --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies). (for makes and runs)
+      --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use (request_docker_image). (for runs)
+      --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left. (for runs)
+      --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_memory). (for runs)
+      --request-disk               Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_disk). Defaults to user disk quota left. (for runs)
+      --request-cpus               Number of CPUs allowed for this run (request_cpus). (for runs)
+      --request-gpus               Number of GPUs allowed for this run (request_gpus). (for runs)
+      --request-queue              Submit run to this job queue (request_queue). (for runs)
+      --request-priority           Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority. (for runs)
+      --request-network            Whether to allow network access (request_network). (for runs)
+      --exclude-patterns           Exclude these file patterns from being saved into the bundle contents (exclude_patterns). (for runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)

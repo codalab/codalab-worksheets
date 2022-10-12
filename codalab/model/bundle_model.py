@@ -893,6 +893,9 @@ class BundleModel(object):
                 for spec in RunBundle.METADATA_SPECS
                 if spec.generated and spec.key not in ['actions', 'created']
             }
+            metadata_update[
+                'staged_status'
+            ] = "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
             connection.execute(
@@ -921,6 +924,7 @@ class BundleModel(object):
             bundle_update = {
                 'state': State.PREPARING,
                 'metadata': {
+                    'run_status': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
                     'started': start_time,
                     'last_updated': start_time,
                     'remote': remote,
@@ -2439,7 +2443,6 @@ class BundleModel(object):
                         "date_joined": now,
                         "has_access": has_access,
                         "is_verified": is_verified,
-                        "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
                         "time_quota": self.default_user_info['time_quota'],
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],

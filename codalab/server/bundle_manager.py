@@ -3,7 +3,6 @@ import datetime
 import logging
 import os
 import random
-import re
 import shutil
 import sys
 import tempfile
@@ -73,8 +72,6 @@ class BundleManager(object):
 
         self._make_uuids_lock = threading.Lock()
         self._make_uuids = set()
-        # Set of bundle UUIDs with an unknown requested worker
-        self._bundles_without_matched_workers = set()
 
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
@@ -118,6 +115,9 @@ class BundleManager(object):
         self._make_bundles()
         self._schedule_run_bundles()
         self._fail_unresponsive_bundles()
+
+    def _set_staged_status(self, bundle, staged_status):
+        self._model.update_bundle(bundle, {'metadata': {'staged_status': staged_status}})
 
     def _stage_bundles(self):
         """
@@ -167,11 +167,11 @@ class BundleManager(object):
                 ]
                 failure_message = ''
                 if failed_uuids:
-                    failure_message += ' Parent bundles failed: %s' % ', '.join(failed_uuids)
+                    failure_message += 'Parent bundles failed: %s ' % ', '.join(failed_uuids)
                 if killed_uuids:
-                    failure_message += ' Parent bundles were killed: %s' % ', '.join(killed_uuids)
+                    failure_message += 'Parent bundles were killed: %s ' % ', '.join(killed_uuids)
                 if failure_message:
-                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles)'
+                    failure_message += '(Please use the --allow-failed-dependencies flag to depend on results of failed or killed bundles) '
                     bundles_to_fail.append((bundle, failure_message))
                     continue
 
@@ -185,7 +185,15 @@ class BundleManager(object):
             )
         for bundle in bundles_to_stage:
             logger.info('Staging %s', bundle.uuid)
-            self._model.update_bundle(bundle, {'state': State.STAGED})
+            self._model.update_bundle(
+                bundle,
+                {
+                    'state': State.STAGED,
+                    'metadata': {
+                        'staged_status': "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
+                    },
+                },
+            )
 
     def _make_bundles(self) -> List[threading.Thread]:
         # Re-stage any stuck bundles. This would happen if the bundle manager
@@ -368,9 +376,9 @@ class BundleManager(object):
         for bundle in active_bundles:
             failure_message = None
             if not workers.is_running(bundle.uuid):
-                failure_message = 'No worker claims bundle'
+                failure_message = 'No worker claims bundle.'
             if now - bundle.metadata.last_updated > self._worker_timeout_seconds:
-                failure_message = 'Worker offline'
+                failure_message = 'Worker offline.'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.transition_bundle_worker_offline(bundle)
@@ -553,47 +561,87 @@ class BundleManager(object):
                 worker['memory_bytes'] -= bundle_resources.memory
         return workers_list
 
+    @staticmethod
+    def _worker_to_run_resources(worker):
+        """
+        :param worker: dict
+
+        Converts a worker dict into a RunResources instance.
+        """
+        return RunResources(
+            tag=worker['tag'],
+            tag_exclusive=worker['tag_exclusive'],
+            cpus=worker['cpus'],
+            gpus=worker['gpus'],
+            memory=worker['memory_bytes'],
+            disk=worker['free_disk_bytes'],
+            runs_left=worker['exit_after_num_runs'],
+            docker_image=None,
+            time=None,
+            network=None,
+        )
+
+    def _get_dominating_workers(self, run_resources, workers_list, strict=False):
+        """
+        :param self: BundleManager
+        :param run_resources: RunResources
+        :param workers_list: list of worker dicts
+        :param strict: bool that determines if domination should be strict
+
+        Returns a list of worker dicts comprised of workers that can meet the
+        resource requirements specified in run_resources.
+        """
+        dominating_workers = []
+        for worker in workers_list:
+            worker_resources = self._worker_to_run_resources(worker)
+            if worker_resources.dominates(run_resources, strict):
+                dominating_workers.append(worker)
+        return dominating_workers
+
+    def _get_resource_recommendations(self, run_resources, workers_list):
+        """
+        :param self: BundleManager
+        :param run_resources: RunResources
+        :param workers_list: list of worker dicts
+
+        Returns a string containing bundle resource recommendations based on
+        the workers in workers_list.
+        """
+        recommendations = []
+        for worker in workers_list:
+            worker_resources = self._worker_to_run_resources(worker)
+            dominating_workers = self._get_dominating_workers(worker_resources, workers_list, True)
+
+            # Only recommend this worker if no other worker strictly dominates it.
+            if not dominating_workers:
+                comparison = worker_resources.get_comparison(run_resources)
+                recommendations.append(comparison)
+
+        if len(recommendations) != 0:
+            return f"Available resources: {', '.join(recommendations)}"
+        return ''
+
     def _filter_and_sort_workers(self, workers_list, bundle, bundle_resources):
         """
+        :param self: BundleManager
+        :param workers_list: list of worker dicts
+        :param bundle: dict
+        :param bundle_resources: RunResources
+
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
-        # Filter by tag.
-        if bundle.metadata.request_queue:
-            workers_list = self._get_matched_workers(bundle.metadata.request_queue, workers_list)
-        else:
-            # The bundle is untagged, so we want to keep workers that are not
-            # tag-exclusive or don't have a tag defined.
-            # (removing workers that are tag_exclusive and have tags defined).
-            workers_list = [
-                worker
-                for worker in workers_list
-                if not worker['tag_exclusive'] or not worker['tag']
-            ]
+        # Get a list of workers that can meet the bundle's resource requirements.
+        dominating_workers = self._get_dominating_workers(bundle_resources, workers_list)
 
-        # Filter by CPUs.
-        workers_list = [
-            worker for worker in workers_list if worker['cpus'] >= bundle_resources.cpus
-        ]
-
-        # Filter by GPUs.
-        if bundle_resources.gpus:
-            workers_list = [
-                worker for worker in workers_list if worker['gpus'] >= bundle_resources.gpus
-            ]
-
-        # Filter by memory.
-        workers_list = [
-            worker for worker in workers_list if worker['memory_bytes'] >= bundle_resources.memory
-        ]
-
-        # Filter by the number of jobs allowed to run on this worker.
-        workers_list = [worker for worker in workers_list if worker['exit_after_num_runs'] > 0]
-
-        # Filter by worker's available disk space.
-        workers_list = [
-            worker for worker in workers_list if worker['free_disk_bytes'] >= bundle_resources.disk
-        ]
+        # If no workers can meet the bundle's resource reqs, add resource recommendations to staged_status.
+        if not dominating_workers:
+            recommendations = self._get_resource_recommendations(bundle_resources, workers_list)
+            staged_status = (
+                f"No worker can meet your bundle's resource requirements. {recommendations}"
+            )
+            self._set_staged_status(bundle, staged_status)
+            return []
 
         # Sort workers list according to these keys in the following succession:
         #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs
@@ -633,9 +681,9 @@ class BundleManager(object):
                 random.random(),
             )
 
-        workers_list.sort(key=get_sort_key)
+        dominating_workers.sort(key=get_sort_key)
 
-        return workers_list
+        return dominating_workers
 
     def _try_start_bundle(self, workers, worker, bundle, bundle_resources):
         """
@@ -786,6 +834,9 @@ class BundleManager(object):
             # _compute_request_disk contains database queries that may reduce efficiency
             disk=self._compute_request_disk(bundle, user_info),
             network=bundle.metadata.request_network,
+            tag=bundle.metadata.request_queue,
+            tag_exclusive=False,
+            runs_left=None,
         )
 
     def _fail_unresponsive_bundles(self):
@@ -880,19 +931,6 @@ class BundleManager(object):
                 )
         return None
 
-    @staticmethod
-    def _get_matched_workers(request_queue, workers):
-        """
-        Get all of the workers that match with the name of the requested worker
-        :param request_queue: a tag with the format "tag=worker_X" or "worker_X" that can be used to match workers
-        :param workers: a list of workers
-        :return: a list of matched workers
-        """
-        tag_match = re.match('(?:tag=)?(.+)', request_queue)
-        if tag_match is not None:
-            return [worker for worker in workers if worker['tag'] == tag_match.group(1)]
-        return []
-
     def _get_staged_bundles_to_run(self, workers, user_info_cache):
         """
         Fails bundles that request more resources than available for the given user.
@@ -969,35 +1007,6 @@ class BundleManager(object):
                     bundle,
                     {'state': State.FAILED, 'metadata': {'failure_message': failure_message}},
                 )
-            elif bundle.metadata.request_queue:
-                matched_workers = self._get_matched_workers(
-                    bundle.metadata.request_queue, workers.workers()
-                )
-                # For those bundles that were requested to run on a worker which does not exist in the system
-                # temporarily, we filter out those bundles so that they won't be dispatched to run on workers.
-                if len(matched_workers) == 0:
-                    if bundle.uuid not in self._bundles_without_matched_workers:
-                        self._model.update_bundle(
-                            bundle,
-                            {
-                                'metadata': {
-                                    'staged_status': 'Bundle is requested to run on a worker {} which has '
-                                    'not been connected to the CodaLab server yet.'.format(
-                                        bundle.metadata.request_queue
-                                    )
-                                }
-                            },
-                        )
-                        self._bundles_without_matched_workers.add(bundle.uuid)
-                else:
-                    # Remove the uuid from self._bundles_without_matched_workers if a matched
-                    # private worker is found in the system and update bundle's metadata
-                    if bundle.uuid in self._bundles_without_matched_workers:
-                        self._model.update_bundle(
-                            bundle, {'metadata': {'staged_status': None}}, delete=True
-                        )
-                        self._bundles_without_matched_workers.remove(bundle.uuid)
-                    staged_bundles_to_run.append((bundle, bundle_resources))
             else:
                 staged_bundles_to_run.append((bundle, bundle_resources))
 

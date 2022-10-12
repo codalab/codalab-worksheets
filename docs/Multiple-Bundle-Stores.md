@@ -39,7 +39,7 @@ cl run --store blob "echo hello"
 
 ## Steps to set up and test with GCP
 
-First, make sure the `CODALAB_GOOGLE_APPLICATION_CREDENTIALS` env var is set on the server that runs the REST server. It should be set to a path to a credentials JSON file (see this page for more information on how to create it: https://cloud.google.com/iam/docs/creating-managing-service-account-keys#iam-service-account-keys-create-console).
+First, make sure the `CODALAB_GOOGLE_APPLICATION_CREDENTIALS` env var is set on the server that runs the REST server. It should be set to a path to a credentials JSON file (see [this page](https://cloud.google.com/iam/docs/creating-managing-service-account-keys#iam-service-account-keys-create-console) for more information on how to create it).
 
 ```
 export CODALAB_GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
