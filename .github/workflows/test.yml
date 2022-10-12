@@ -109,11 +109,16 @@ jobs:
           - search link read kill write mimic workers edit_user sharing_workers
           - resources
           - memoize
-          - copy netcat netcurl
+          - copy
+          - netcat netcurl
           - edit
           - open wopen
           - store_add
         runtime: [docker, kubernetes]
+        exclude:
+          # netcat / netcurl not supported for kubernetes.
+          - test: netcat netcurl
+            runtime: kubernetes
     steps:
       - name: Clear free space
         run: |
