@@ -17,9 +17,12 @@ class BlobStorageUploader(Uploader):
   # size of 10 TiB to Blob Storage. To exceed that limit, we must either increase MIN_WRITE_SIZE
   # or modify the implementation of this class to call commit_block_list more often (and not
   # just at the end of the upload). 
-  MIN_WRITE_SIZE = 100 * 1024 * 1024
+  
+  # Set MIN_WRITE_SIZE to 20 MiB to prevent first put blob request timeout when uploading 
+  MIN_WRITE_SIZE = 20 * 1024 * 1024
   # Maximum block size is 4000 MiB (https://docs.microsoft.com/en-us/rest/api/storageservices/put-block#remarks).
-  MAX_WRITE_SIZE = 4000 * 1024 * 1024
+  # Set MAX_WRITE_SIZE to 50 MiB to prevent first put blob request timeout when uploading (https://github.com/Azure/azure-sdk-for-python/issues/12166)
+  MAX_WRITE_SIZE = 50 * 1024 * 1024
 
   def __init__(self, client, path, mime_type='application/octet-stream'):
     self._client = client
