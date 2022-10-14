@@ -78,7 +78,7 @@ def get_bundle_uuid(model, user, worksheet_uuid, bundle_spec):
         elif len(bundle_uuids) == 1:
             return bundle_uuids[0]
         else:
-            raise UsageError('uuid prefix %s more than one bundle' % bundle_spec)
+            raise UsageError('More than one bundle has uuid prefix %s' % bundle_spec)
     else:
         bundle_spec, reverse_index = _parse_relative_bundle_spec(bundle_spec)
 
