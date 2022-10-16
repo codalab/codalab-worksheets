@@ -1169,7 +1169,7 @@ class BundleModel(object):
             if self.get_user_time_quota_left(bundle.owner_id) <= 0:
                 # Tell worker to kill this job.
                 # It'll transition to finalizing on the next checkin.
-
+                logger.info("User TIME QUOTA is out!")
                 return False
 
             # Get staged bundle from worker checkin and move it to staged state
