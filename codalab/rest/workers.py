@@ -5,6 +5,7 @@ from contextlib import closing
 import http.client
 import json
 from datetime import datetime
+import logging
 
 from bottle import abort, get, local, post, request, response
 
@@ -13,6 +14,8 @@ from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
+
+logger = logging.getLogger(__name__)
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedProtectedPlugin())
