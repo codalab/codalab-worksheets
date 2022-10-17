@@ -1157,6 +1157,7 @@ class BundleModel(object):
         """
         Updates the database tables with the most recent bundle information from worker
         """
+        logger.info("In Bundle Checkin!!!")
         with self.engine.begin() as connection:
             # If bundle isn't in db anymore the user deleted it so cancel
             row = connection.execute(
@@ -1174,9 +1175,11 @@ class BundleModel(object):
 
             # Get staged bundle from worker checkin and move it to staged state
             if worker_run.state == State.STAGED:
+                logger.info("in staged")
                 return self.transition_bundle_staged(bundle)
 
             if worker_run.state == State.FINALIZING:
+                logger.info("in finalizing")
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
@@ -1184,11 +1187,13 @@ class BundleModel(object):
                 return self.transition_bundle_finalizing(bundle, worker_run, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
+                logger.info("in preparing or running")
                 return self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
 
             # State isn't one we can check in for
+            logger.info("state isn't one we can check for")
             return False
 
     def save_bundle(self, bundle):
