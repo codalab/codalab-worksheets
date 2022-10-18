@@ -405,6 +405,8 @@ class BundleManager(object):
         # Bundle specified request_queue: [False, False, False, False, True]
         # Original Bundle Order: [B1, B2, B3, B4, B5]
         # Sorted bundle order: [B3, B2, B5, B4, B1]
+        logger.info("SCHEDULING RUN BUNDLES ON WORKERS")
+        logger.info(workers)
         user_queue_positions = defaultdict(list)
         for queue_position, staged_bundle in enumerate(staged_bundles_to_run):
             user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
@@ -415,6 +417,7 @@ class BundleManager(object):
             user_staged_bundles = [
                 staged_bundles_to_run[queue_position] for queue_position in queue_positions
             ]
+            # logger.info("USER STGED BUNDLES: {}".format(user_staged_bundles))
             # Sort the staged bundles for this user, according to (1) their
             # priority. Larger values indicate higher priority (i.e., at the
             # start of the sorted list). Negative priority bundles should be
@@ -464,6 +467,7 @@ class BundleManager(object):
         # bundles, so if they come back online, we continue to ignore them in order in order to
         # respect bundle prioritization. Such workers will be assigned bundles in the BundleManager's
         # next iteration.
+        logger.info(resource_deducted_user_workers)
         offline_workers = set()
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
@@ -505,6 +509,7 @@ class BundleManager(object):
             ]
 
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
+            logger.info("WORKERS LIST: {}".format(workers_list))
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
@@ -879,6 +884,7 @@ class BundleManager(object):
         workers = WorkerInfoAccessor(
             self._model, self._worker_model, self._worker_timeout_seconds - 5
         )
+        logger.info("SCHEDULING RUN BUNDLES")
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)

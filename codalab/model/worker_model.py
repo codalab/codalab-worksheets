@@ -378,6 +378,9 @@ class WorkerModel(object):
 
                 success = False
                 try:
+                    logger.info(
+                        "SOCKET123984-1023480-132840-198: {}".format(self._socket_path(socket_id))
+                    )
                     sock.connect(self._socket_path(socket_id))
                     if autoretry:
                         # This auto retry mechanisms helps ensure that messages

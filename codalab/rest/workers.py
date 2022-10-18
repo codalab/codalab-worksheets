@@ -27,6 +27,9 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
+    logger.info("IN CHECKIN IN REST SERVER")
+    logger.info("request: {}".format(request.json))
+
     # Old workers might not have all the fields, so allow subsets to be missing.
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
@@ -45,29 +48,26 @@ def checkin(worker_id):
         request.json.get("preemptible", False),
     )
 
+    messages = []
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
+            logger.info("before bundle checin")
             local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
-            """
+            logger.info("before bundle checin")
+
             if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their time quota and we kill the job.
-                logger.info("Sending kill message to worker because user time quota exhausted.")
-                if local.worker_model.send_json_message(
-                    socket_id, {'type': 'kill', 'uuid': bundle.uuid}, 2
-                ):
-                    logger.info(
-                        'Acknowledged kill of run bundle {} on worker {}'.format(
-                            bundle.uuid, worker_id
-                        )
-                    )
-            """
+                logger.info("Adding kill for bundle {}".format(bundle.uuid))
+                messages.append({'type': 'kill', 'uuid': bundle.uuid})
+
         except Exception:
             pass
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
-        return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
+        messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))
+    return messages
 
 
 def check_reply_permission(worker_id, socket_id):
