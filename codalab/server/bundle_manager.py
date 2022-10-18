@@ -406,7 +406,7 @@ class BundleManager(object):
         # Original Bundle Order: [B1, B2, B3, B4, B5]
         # Sorted bundle order: [B3, B2, B5, B4, B1]
         logger.info("SCHEDULING RUN BUNDLES ON WORKERS")
-        logger.info(workers)
+        logger.info("workers: {}".format(workers))
         user_queue_positions = defaultdict(list)
         for queue_position, staged_bundle in enumerate(staged_bundles_to_run):
             user_queue_positions[staged_bundle[0].owner_id].append(queue_position)
@@ -470,6 +470,10 @@ class BundleManager(object):
         logger.info(resource_deducted_user_workers)
         offline_workers = set()
         # Dispatch bundles
+        logger.info("resource deducted user workers: {}".format(resource_deducted_user_workers))
+        logger.info(
+            "resource deducted cl workers: {}".format(resource_deducted_codalab_owned_workers)
+        )
         for bundle, bundle_resources in staged_bundles_to_run:
             if user_parallel_run_quota_left[bundle.owner_id] > 0:
                 workers_list = (
@@ -493,6 +497,7 @@ class BundleManager(object):
                     + workers.get_user_workers(self._model.root_user_id)
                 )
             )
+            logger.info("online worker ids: {}".format(online_worker_ids))
             # Store the worker IDs for workers that have gone offline.
             offline_workers.update(
                 [
@@ -508,10 +513,12 @@ class BundleManager(object):
                 worker for worker in workers_list if worker["worker_id"] not in offline_workers
             ]
 
+            logger.info("workers list: {}".format(workers_list))
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             logger.info("WORKERS LIST: {}".format(workers_list))
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
+                logger.info("IN WORKER LOOP")
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
                     # If we successfully started a bundle on a codalab-owned worker,
                     # decrement the parallel run quota left.
@@ -638,9 +645,11 @@ class BundleManager(object):
         """
         # Get a list of workers that can meet the bundle's resource requirements.
         dominating_workers = self._get_dominating_workers(bundle_resources, workers_list)
+        logger.info("DOMINATING WORKERS: {}".format(dominating_workers))
 
         # If no workers can meet the bundle's resource reqs, add resource recommendations to staged_status.
         if not dominating_workers:
+            logger.info("NO DOMINATING WORKERS SO NONE MEET REQURIEMENT")
             recommendations = self._get_resource_recommendations(bundle_resources, workers_list)
             staged_status = (
                 f"No worker can meet your bundle's resource requirements. {recommendations}"

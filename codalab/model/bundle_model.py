@@ -1004,8 +1004,9 @@ class BundleModel(object):
         }
 
         # Increment user time as we go to ensure user doesn't go over time quota.
-        time_increment = worker_run.container_time_total - bundle.metadata.time
-        self.increment_user_time_used(bundle.owner_id, time_increment)
+        if worker_run['user_id'] == self.root_user_id:
+            time_increment = worker_run.container_time_total - bundle.metadata.time
+            self.increment_user_time_used(bundle.owner_id, time_increment)
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
@@ -1081,8 +1082,9 @@ class BundleModel(object):
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
-        time_increment = worker_run.container_time_total - bundle.metadata.time
-        self.increment_user_time_used(bundle.owner_id, time_increment)
+        if worker_run['user_id'] == self.root_user_id:
+            time_increment = worker_run.container_time_total - bundle.metadata.time
+            self.increment_user_time_used(bundle.owner_id, time_increment)
 
         # Build metadata
         metadata = {}

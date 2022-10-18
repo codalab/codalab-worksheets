@@ -214,6 +214,7 @@ class WorkerModel(object):
         }
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
+        logger.info("IN GET WORKERS. WORKER_DICT: {}".format(list(worker_dict.values())))
         return list(worker_dict.values())
 
     def update_workers(self, user_id, worker_id, update):
