@@ -453,32 +453,33 @@ class Worker:
             return
         logger.info("@@@@@@@@@@@@@@")
         logger.info("response: {}".format(response))
-        if type(response) is not list:
+        """if type(response) is not list:
             response = [response]
-        for action in response:
-            action_type = action['type']
-            logger.debug('Received %s message: %s', action_type, action)
-            if action_type == 'run':
-                self.initialize_run(action['bundle'], action['resources'])
+        for action in response:"""
+        action = response
+        action_type = action['type']
+        logger.debug('Received %s message: %s', action_type, action)
+        if action_type == 'run':
+            self.initialize_run(action['bundle'], action['resources'])
+        else:
+            uuid = action['uuid']
+            socket_id = response.get('socket_id', None)
+            if uuid not in self.runs:
+                if action_type in ['read', 'netcat']:
+                    self.read_run_missing(socket_id)
+                return
+            if action_type == 'kill':
+                self.kill(uuid)
+            elif action_type == 'mark_finalized':
+                self.mark_finalized(uuid)
+            elif action_type == 'read':
+                self.read(socket_id, uuid, response['path'], response['read_args'])
+            elif action_type == 'netcat':
+                self.netcat(socket_id, uuid, response['port'], response['message'])
+            elif action_type == 'write':
+                self.write(uuid, response['subpath'], response['string'])
             else:
-                uuid = action['uuid']
-                socket_id = response.get('socket_id', None)
-                if uuid not in self.runs:
-                    if action_type in ['read', 'netcat']:
-                        self.read_run_missing(socket_id)
-                    return
-                if action_type == 'kill':
-                    self.kill(uuid)
-                elif action_type == 'mark_finalized':
-                    self.mark_finalized(uuid)
-                elif action_type == 'read':
-                    self.read(socket_id, uuid, response['path'], response['read_args'])
-                elif action_type == 'netcat':
-                    self.netcat(socket_id, uuid, response['port'], response['message'])
-                elif action_type == 'write':
-                    self.write(uuid, response['subpath'], response['string'])
-                else:
-                    logger.warning("Unrecognized action type from server: %s", action_type)
+                logger.warning("Unrecognized action type from server: %s", action_type)
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
