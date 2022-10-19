@@ -1004,11 +1004,9 @@ class BundleModel(object):
         }
 
         # Increment user time as we go to ensure user doesn't go over time quota.
-        logger.info("ABOUT TO INCREMENT USER TIME")
         if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        logger.info("AFTER INCREMENT USER TIME")
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
@@ -1084,11 +1082,9 @@ class BundleModel(object):
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
-        """
         if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        """
 
         # Build metadata
         metadata = {}
@@ -1163,7 +1159,6 @@ class BundleModel(object):
         """
         Updates the database tables with the most recent bundle information from worker
         """
-        logger.info("In Bundle Checkin!!!")
         with self.engine.begin() as connection:
             # If bundle isn't in db anymore the user deleted it so cancel
             row = connection.execute(
@@ -1172,20 +1167,11 @@ class BundleModel(object):
             if not row:
                 return False
 
-            # Check user has not overused quota. Kill job if so.
-            if self.get_user_time_quota_left(bundle.owner_id) <= 0:
-                # Tell worker to kill this job.
-                # It'll transition to finalizing on the next checkin.
-                logger.info("User TIME QUOTA is out!")
-                return False
-
             # Get staged bundle from worker checkin and move it to staged state
             if worker_run.state == State.STAGED:
-                logger.info("in staged")
                 return self.transition_bundle_staged(bundle)
 
             if worker_run.state == State.FINALIZING:
-                logger.info("in finalizing")
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
@@ -1193,13 +1179,11 @@ class BundleModel(object):
                 return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
-                logger.info("in preparing or running")
                 return self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
 
             # State isn't one we can check in for
-            logger.info("state isn't one we can check for")
             return False
 
     def save_bundle(self, bundle):

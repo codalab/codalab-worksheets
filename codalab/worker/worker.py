@@ -271,7 +271,6 @@ class Worker:
         self.load_state()
         self.sync_state()
         self.image_manager.start()
-        self.runs = {} # temporary!!!
         if not self.shared_file_system:
             self.dependency_manager.start()
         while not self.terminate:
@@ -454,9 +453,9 @@ class Worker:
             return
         if type(response) is not list:
             response = [response]
-        #import pdb; pdb.set_trace()
         for action in response:
-            if not action: continue
+            if not action:
+                continue
             action_type = action['type']
             logger.debug('Received %s message: %s', action_type, action)
             if action_type == 'run':

@@ -415,7 +415,6 @@ class BundleManager(object):
             user_staged_bundles = [
                 staged_bundles_to_run[queue_position] for queue_position in queue_positions
             ]
-            # logger.info("USER STGED BUNDLES: {}".format(user_staged_bundles))
             # Sort the staged bundles for this user, according to (1) their
             # priority. Larger values indicate higher priority (i.e., at the
             # start of the sorted list). Negative priority bundles should be
@@ -464,7 +463,6 @@ class BundleManager(object):
         # bundles, so if they come back online, we continue to ignore them in order in order to
         # respect bundle prioritization. Such workers will be assigned bundles in the BundleManager's
         # next iteration.
-        logger.info(resource_deducted_user_workers)
         offline_workers = set()
         # Dispatch bundles
         for bundle, bundle_resources in staged_bundles_to_run:
@@ -634,11 +632,9 @@ class BundleManager(object):
         """
         # Get a list of workers that can meet the bundle's resource requirements.
         dominating_workers = self._get_dominating_workers(bundle_resources, workers_list)
-        logger.info("DOMINATING WORKERS: {}".format(dominating_workers))
 
         # If no workers can meet the bundle's resource reqs, add resource recommendations to staged_status.
         if not dominating_workers:
-            logger.info("NO DOMINATING WORKERS SO NONE MEET REQURIEMENT")
             recommendations = self._get_resource_recommendations(bundle_resources, workers_list)
             staged_status = (
                 f"No worker can meet your bundle's resource requirements. {recommendations}"
@@ -882,7 +878,6 @@ class BundleManager(object):
         workers = WorkerInfoAccessor(
             self._model, self._worker_model, self._worker_timeout_seconds - 5
         )
-        logger.info("SCHEDULING RUN BUNDLES")
 
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
