@@ -1004,7 +1004,7 @@ class BundleModel(object):
         }
 
         # Increment user time as we go to ensure user doesn't go over time quota.
-        if worker_run['user_id'] == self.root_user_id:
+        if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
 
@@ -1071,7 +1071,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, worker_run, connection):
+    def transition_bundle_finalizing(self, bundle, worker_run, user_id, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -1082,7 +1082,7 @@ class BundleModel(object):
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
-        if worker_run['user_id'] == self.root_user_id:
+        if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
 
@@ -1186,7 +1186,7 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(bundle, worker_run, connection)
+                return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 logger.info("in preparing or running")

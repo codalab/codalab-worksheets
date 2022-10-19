@@ -5,7 +5,6 @@ from contextlib import closing
 import http.client
 import json
 from datetime import datetime
-import logging
 
 from bottle import abort, get, local, post, request, response
 
