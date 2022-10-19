@@ -375,6 +375,7 @@ class ModuleContext(object):
         self.worker_to_user = {}
         self.error = None
         self.disk_quota = None
+        self.time_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -393,6 +394,7 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
         self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
+        self.time_quota = _run_command([cl, 'uinfo', '-f', 'time']).split(' ')[2].split('y')[0] + 'y'
 
         print("[*][*] BEGIN TEST")
 
@@ -441,9 +443,11 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
-        # Reset disk quota
+        # Reset quotas
         if self.disk_quota is not None:
             _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
+        if self.time_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--time-quota', self.time_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -1715,6 +1719,14 @@ def test_search_time(ctx):
 
 @TestModule.register('run')
 def test_run(ctx):
+    # Test thaat bundle fails when run without sufficient time quota
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
+    uuid = _run_command([cl, 'run', 'sleep 100000'])
+    wait_until_state(uuid, State.KILLED)
+    #check_equals(State.FAILED, _run_command([cl, 'info', '-f', 'state', uuid]))
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota]) # reset time quota
+
+
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
