@@ -437,7 +437,6 @@ class BundleManager(object):
             )
             for queue_position, bundle in zip(queue_positions, sorted_user_staged_bundles):
                 staged_bundles_to_run[queue_position] = bundle
-
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
 
@@ -513,12 +512,14 @@ class BundleManager(object):
                 worker for worker in workers_list if worker["worker_id"] not in offline_workers
             ]
 
-            logger.info("workers list: {}".format(workers_list))
             workers_list = self._filter_and_sort_workers(workers_list, bundle, bundle_resources)
             logger.info("WORKERS LIST: {}".format(workers_list))
             # Try starting bundles on the workers that have enough computing resources
             for worker in workers_list:
                 logger.info("IN WORKER LOOP")
+                import pdb
+
+                pdb.set_trace()
                 if self._try_start_bundle(workers, worker, bundle, bundle_resources):
                     # If we successfully started a bundle on a codalab-owned worker,
                     # decrement the parallel run quota left.

@@ -11,6 +11,8 @@ services:
     stdin_open: true
     tty: true
   rest-server:
+    stdin_open: true
+    tty: true
     volumes:
       # Mount the alembic directory so that we can create new database migrations with the alembic version files mounted.
       - ./../../alembic/:/opt/codalab-worksheets/alembic/
@@ -19,3 +21,6 @@ services:
       - ./../../tests/:/opt/codalab-worksheets/tests/
       - ./../../scripts/:/opt/codalab-worksheets/scripts/
       - ./../../codalab/:/opt/codalab-worksheets/codalab/
+  bundle-manager:
+    stdin_open: true
+    tty: true
