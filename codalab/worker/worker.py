@@ -271,6 +271,7 @@ class Worker:
         self.load_state()
         self.sync_state()
         self.image_manager.start()
+        self.runs = {} # temporary!!!
         if not self.shared_file_system:
             self.dependency_manager.start()
         while not self.terminate:
@@ -453,14 +454,16 @@ class Worker:
             return
         if type(response) is not list:
             response = [response]
+        #import pdb; pdb.set_trace()
         for action in response:
+            if not action: continue
             action_type = action['type']
             logger.debug('Received %s message: %s', action_type, action)
             if action_type == 'run':
                 self.initialize_run(action['bundle'], action['resources'])
             else:
                 uuid = action['uuid']
-                socket_id = response.get('socket_id', None)
+                socket_id = action.get('socket_id', None)
                 if uuid not in self.runs:
                     if action_type in ['read', 'netcat']:
                         self.read_run_missing(socket_id)
@@ -470,11 +473,11 @@ class Worker:
                 elif action_type == 'mark_finalized':
                     self.mark_finalized(uuid)
                 elif action_type == 'read':
-                    self.read(socket_id, uuid, response['path'], response['read_args'])
+                    self.read(socket_id, uuid, action['path'], action['read_args'])
                 elif action_type == 'netcat':
-                    self.netcat(socket_id, uuid, response['port'], response['message'])
+                    self.netcat(socket_id, uuid, action['port'], action['message'])
                 elif action_type == 'write':
-                    self.write(uuid, response['subpath'], response['string'])
+                    self.write(uuid, action['subpath'], action['string'])
                 else:
                     logger.warning("Unrecognized action type from server: %s", action_type)
 

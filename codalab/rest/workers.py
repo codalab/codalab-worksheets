@@ -53,12 +53,15 @@ def checkin(worker_id):
                 # Then, user has gone over their time quota and we kill the job.
                 messages.append({'type': 'kill', 'uuid': bundle.uuid})
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.info("Exception in REST checkin: {}".format(e))
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
+        #return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
         messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))
-    return messages
+    #import pdb; pdb.set_trace()
+    response.content_type = 'application/json'
+    return json.dumps(messages)
 
 
 def check_reply_permission(worker_id, socket_id):

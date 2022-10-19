@@ -24,3 +24,6 @@ services:
   bundle-manager:
     stdin_open: true
     tty: true
+  worker:
+    stdin_open: true
+    tty: true
