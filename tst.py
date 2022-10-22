@@ -23,8 +23,8 @@ from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 
 
 # file_path = '/Users/wangjiani/Downloads/openwebtext/train/openwebtext_noshuffle_train_renamed.jsonl'
-# file_path = 'temp_10GB_file'
-file_path = 'test-upload.py'
+file_path = 'temp_10GB_file'
+# file_path = 'test-upload.py'
 
 class FileStream(BytesIO):
     """

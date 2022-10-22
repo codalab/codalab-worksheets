@@ -175,6 +175,7 @@ class SQLiteIndexedTar(MountSource):
         self.tarFileObject, self.rawFileObject, self.compression, self.isTar = SQLiteIndexedTar._openCompressedFile(
             fileObject, gzipSeekPointSpacing, encoding, self.parallelization, printDebug=self.printDebug
         )
+        self.tarFileObject.build_full_index()
         if not self.isTar and not self.rawFileObject:
             raise RatarmountError("File object (" + str(fileObject) + ") could not be opened as a TAR file!" + str(self.isTar) + str(self.rawFileObject))
 
@@ -572,6 +573,7 @@ class SQLiteIndexedTar(MountSource):
         streamOffset: int = 0
         # fmt: on
     ) -> None:
+        print(fileObject)
         if self.printDebug >= 1:
             print("Creating offset dictionary for", self.tarFileName, "...")
         t0 = timer()
@@ -662,6 +664,7 @@ class SQLiteIndexedTar(MountSource):
         # 4. Open contained TARs for recursive mounting
         oldPos = fileObject.tell()
         oldPrintName = self.tarFileName
+        print(filesToMountRecursively)
         for fileInfo in filesToMountRecursively:
             # Strip file extension for mount point if so configured
             modifiedName = fileInfo[1]
@@ -737,11 +740,13 @@ class SQLiteIndexedTar(MountSource):
 
             try:
                 tarInfo = os.fstat(fileObject.fileno())
+                print(tarInfo)
             except io.UnsupportedOperation:
                 # If fileObject doesn't have a fileno, we set tarInfo to None
                 # and set the relevant statistics (such as st_mtime) to sensible defaults.
                 tarInfo = None
             fname = os.path.basename(self.tarFileName)
+            print(fname)
             for suffix in ['.gz', '.bz2', '.bzip2', '.gzip', '.xz', '.zst', '.zstd']:
                 if fname.lower().endswith(suffix) and len(fname) > len(suffix):
                     fname = fname[: -len(suffix)]
@@ -753,8 +758,9 @@ class SQLiteIndexedTar(MountSource):
             
             # TODO: (Jiani) read until the end of a file, try to get he file size
             # Can we just comment it out and set fileSize = 0?
-            while fileObject.read(1024 * 1024): # fileObject: Indexed_gzip
-                self._updateProgressBar(progressBar, fileObject)
+            # while fileObject.read(1024 * 1024): # fileObject: Indexed_gzip
+            #     self._updateProgressBar(progressBar, fileObject)
+            fileObject.build_full_index()
             fileSize = fileObject.tell()
 
             # fmt: off
@@ -1321,6 +1327,7 @@ class SQLiteIndexedTar(MountSource):
 
         if compression == 'gz':
             # drop_handles keeps a file handle opening as is required to call tell() during decoding
+            print("The compression type is ", compression)
             tar_file = indexed_gzip.IndexedGzipFile(fileobj=fileobj, drop_handles=False, spacing=gzipSeekPointSpacing)
         elif compression == 'bz2':
             tar_file = indexed_bzip2.open(fileobj, parallelization=parallelization)

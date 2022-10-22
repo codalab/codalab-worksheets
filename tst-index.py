@@ -1,182 +1,139 @@
-from io import BytesIO, BufferedReader
+from collections import deque
+import gzip
+from io import BytesIO
+from typing import Optional, IO
+
+import indexed_gzip
+import io
 import os
-import shutil
-import tempfile
-from threading import Lock, Thread
 
-from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
-from typing import Any, Dict, Union, Tuple, IO, cast
-from contextlib import closing
-
-from codalab.common import UsageError, StorageType, urlopen_with_retry, parse_linked_bundle_url
-from codalab.worker.file_util import tar_gzip_directory, GzipStream
-from codalab.worker.bundle_state import State
-from codalab.lib import file_util, path_util, zip_util
-from codalab.objects.bundle import Bundle
-from codalab.lib.zip_util import ARCHIVE_EXTS_DIR
-from codalab.lib.print_util import FileTransferProgress
-from codalab.worker.un_gzip_stream import BytesBuffer
-
-# import indexed_gzip
-from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
-
-
-# file_path = '/Users/wangjiani/Downloads/openwebtext/train/openwebtext_noshuffle_train_renamed.jsonl'
-# file_path = 'temp_10GB_file'
-file_path = 'test-upload.py'
-
-class FileStream(BytesIO):
+class BytesBuffer(BytesIO):
     """
-    FileStream that support multiple readers
+    A class for a buffer of bytes. Unlike io.BytesIO(), this class
+    keeps track of the buffer's size (in bytes).
     """
-    NUM_READERS = 2
-    def __init__(self, fileobj):
-        self._bufs = [BytesBuffer() for _ in range(0, self.NUM_READERS)]
-        self._pos = [0 for _ in range(0, self.NUM_READERS)]
-        self._fileobj = fileobj
-        self._lock = Lock()  # lock to ensure one does not concurrently read self._fileobj / write to the buffers.
-        
-        class FileStreamReader(BytesIO):
-            def __init__(s, index):
-                s._index = index
-            
-            def read(s, num_bytes=None):
-                return self.read(s._index, num_bytes)
-            
-            def peek(s, num_bytes):
-                return self.peek(s._index, num_bytes)
-        
-        self.readers = [FileStreamReader(i) for i in range(0, self.NUM_READERS)]
 
-    def _fill_buf_bytes(self, index: int, num_bytes=None):
-        with self._lock:
-            while num_bytes is None or len(self._bufs[index]) < num_bytes:
-                print(f"Number of bytes: {num_bytes}")
-                s = self._fileobj.read(num_bytes)
-                if not s:
-                    break
-                for i in range(0, self.NUM_READERS):
-                    self._bufs[i].write(s)
-                    print(f"Length of buffer {i}: ", len(self._bufs[i]))
+    def __init__(self):
+        self.__buf = deque()
+        self.__size = 0
+        self.__pos = 0
 
-    def read(self, index: int, num_bytes=None):
-        """Read the specified number of bytes from the associated file.
-        index: index that specifies which reader is reading.
-        """
-        self._fill_buf_bytes(index, num_bytes)
-        if num_bytes is None:
-            num_bytes = len(self._bufs[index])
-        s = self._bufs[index].read(num_bytes)
-        self._pos[index] += len(s)
-        return s
+    def __len__(self):
+        return self.__size
 
-    def peek(self, index: int, num_bytes):
-        self._fill_buf_bytes(index, num_bytes)
-        s = self._bufs[index].peek(num_bytes)
-        return s
+    def write(self, data):
+        self.__buf.append(data)
+        self.__size += len(data)
+
+    def read(self, size: Optional[int] = None):
+        if size is None:
+            size = self.__size
+        ret_list = []
+        while size > 0 and len(self.__buf):
+            s = self.__buf.popleft()
+            size -= len(s)
+            ret_list.append(s)
+        if size < 0:
+            ret_list[-1], remainder = ret_list[-1][:size], ret_list[-1][size:]
+            self.__buf.appendleft(remainder)
+        ret = b''.join(ret_list)
+        self.__size -= len(ret)
+        self.__pos += len(ret)
+        return ret
+
+    def peek(self, size: int):
+        b = bytearray()
+        for i in range(0, min(size, len(self.__buf))):
+            b.extend(self.__buf[i])
+        return bytes(b)[:size]
+
+    def flush(self):
+        pass
 
     def close(self):
-        self.__input.close()
+        pass
 
-def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/contents.gz'):
-    source_fileobj = open(file_path, 'rb')
-    output_fileobj = GzipStream(source_fileobj)
-    CHUNK_SIZE = 4 * 1024
+    def tell(self):
+        return self.__pos
 
-    TEST_CONN_STR = (
-        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
-        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
-        "BlobEndpoint=http://localhost:10000/devstoreaccount1;"
-    )
-
-    os.environ['AZURE_STORAGE_CONNECTION_STRING'] = TEST_CONN_STR
-
-    # stream_file = tempfile.NamedTemporaryFile(suffix=".gz")
-    stream_file = FileStream(output_fileobj)
-    reader1 = stream_file.readers[0]
-    reader2 = stream_file.readers[1]
-    
-    def upload_file():
-        print("Upload file")
-        bytes_uploaded = 0
-        with FileSystems.create(
-            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as out:
-            while True:
-                to_send = reader1.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                out.write(to_send)
-                bytes_uploaded += len(to_send)
+    def __bool__(self):
+        return True
 
 
-    def create_index(tmp_index_file):
-        print("Create index: ", tmp_index_file.name)
-        SQLiteIndexedTar(
-            fileObject=reader2,
-            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-            writeIndex=True,
-            clearIndexCache=True,
-            indexFilePath=tmp_index_file.name,
-            printDebug=3,
-        )
+class GzipStream(BytesIO):
+    """A stream that gzips a file in chunks.
+    """
+    def __init__(self, fileobj: IO[bytes]):
+        self.__input = fileobj
+        self.__buffer = BytesBuffer()
+        self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+
+    def _fill_buf_bytes(self, num_bytes=None):
+        while num_bytes is None or len(self.__buffer) < num_bytes:
+            # print("Call _fill_buf_bytes in GZipStream, num_bytes: ", len(self.__buffer))
+            # print("Before: ", len(self.__buffer))
+            s = self.__input.read(num_bytes)
+            # print("Middle: s size is ", len(s))
+            if not s:
+                print("close")
+                self.__gzip.close()
+                break
+            self.__gzip.write(s)
+
+    def read(self, num_bytes=None) -> bytes:
+        print("before fill buffer, " + str(len(self.__buffer)) + ", num bytes: " +  str(num_bytes))
+        self._fill_buf_bytes(num_bytes)
+        print("After fill buffer, ", len(self.__buffer))
+        # print("Read of Gzip is called, data: ")
+        s = self.__buffer.read(num_bytes)
+        print("After read buffer, ", len(self.__buffer))
+        return s
         
-    def upload_index(tmp_index_file):
-        print("upload index")
-        bytes_uploaded = 0
-        with FileSystems.create(
-            parse_linked_bundle_url(bundle_path).index_path,
-            compression_type=CompressionTypes.UNCOMPRESSED,
-        ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
-            while True:
-                to_send = tif.read(CHUNK_SIZE)
-                if not to_send:
-                    break
-                out_index_file.write(to_send)
-                bytes_uploaded += len(to_send)
 
-    # upload_file()
-    # create_index()
-    tmp_index_file = tempfile.NamedTemporaryFile(suffix=".sqlite")
-    threads = [
-        Thread(target=upload_file),
-        Thread(target=create_index, args=(tmp_index_file,))
-    ]
-
-    for thread in threads:
-        thread.start()
     
-    for thread in threads:
-        thread.join()
+    def close(self):
+        self.__input.close()
+    
+    def peek(self, num_bytes):
+        # print("Peek of Gzip is called, data: " + data)
+        self._fill_buf_bytes(num_bytes)
+        data = self.__buffer.peek(num_bytes)
+        # print("Peek of Gzip is called, data: " + data)
+        return data
 
-    upload_index(tmp_index_file)
-
-    # import gzip
-    # with FileSystems.open(
-    #     parse_linked_bundle_url(bundle_path).bundle_path,
-    #     compression_type=CompressionTypes.UNCOMPRESSED,
-    # ) as f:
-    #     print(gzip.decompress(f.read()))
-
-
-# upload(file_path)
 
 def test_indexed_gzip(file_path):
     source_fileobj = open(file_path, 'rb')
-    output_fileobj = GzipStream(source_fileobj)
-    # output_fileobj is not file-like 
-    # so we download it from remote cloud storage again 
-    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-        SQLiteIndexedTar(
-            fileObject=output_fileobj,
-            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-            writeIndex=True,
-            clearIndexCache=True,
-            indexFilePath=tmp_index_file.name,
-            printDebug=3,
-        )
-        import hashlib
-        print(hashlib.md5(tmp_index_file.read()).hexdigest())
+    
+    # def fn(*args, **kwargs):
+    #     raise io.UnsupportedOperation
+    # source_fileobj.seekable = lambda: False
+    # source_fileobj.seek = fn
 
-test_indexed_gzip(file_path)  # filepath points to a large file.
+    tar_file = indexed_gzip.IndexedGzipFile(fileobj=GzipStream(source_fileobj), drop_handles=False)
+    # peek_info = tar_file.read(2)
+    # print(peek_info)
+    tar_file.build_full_index()
+    # print(len(tar_file.read(10)))
+    # print("Second read()")
+    # print(len(tar_file.read(1024 * 1024)))
+        
+file_path = 'test_1g'
+test_indexed_gzip(file_path)
+
+
+def test_gzipstream(file_path):
+    source_fileobj = open(file_path, 'rb')
+    gzip_file = GzipStream(source_fileobj)
+    # peek_info = gzip_file.peek(2)
+    # print(peek_info)
+    gzip_file.read()
+    gzip_file.read()
+       
+    # tar_file = indexed_gzip.IndexedGzipFile(fileobj=GzipStream(source_fileobj), drop_handles=False, spacing=4*1024*1024)
+
+file_path = 'test_1g'
+# test_gzipstream(file_path)
+
+
+
