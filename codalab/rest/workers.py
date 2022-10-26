@@ -54,7 +54,11 @@ def checkin(worker_id):
 
             if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their time quota and we kill the job.
-                messages.append({'type': 'kill', 'uuid': bundle.uuid})
+                kill_message = 'User time quota exceeded. To apply for more quota,'
+                ' please visit the following link:\n'
+                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                '#how-do-i-request-more-disk-quota-or-time-quota'
+                messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
 
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))

@@ -468,7 +468,10 @@ class Worker:
                         self.read_run_missing(socket_id)
                     return
                 if action_type == 'kill':
-                    self.kill(uuid)
+                    kill_message = 'Kill requested'
+                    if 'kill_message' in action:
+                        kill_message = action['kill_message']
+                    self.kill(uuid, kill_message)
                 elif action_type == 'mark_finalized':
                     self.mark_finalized(uuid)
                 elif action_type == 'read':
@@ -685,11 +688,11 @@ class Worker:
                 file=sys.stdout,
             )
 
-    def kill(self, uuid):
+    def kill(self, uuid, kill_message):
         """
         Marks the run as killed so that the next time its state is processed it is terminated.
         """
-        self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+        self.runs[uuid] = self.runs[uuid]._replace(kill_message=kill_message, is_killed=True)
 
     def restage_bundle(self, uuid):
         """
