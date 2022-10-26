@@ -146,7 +146,7 @@ class Worker:
         )
 
         # Lock ensures .checkin() is not run concurrently.
-        self._checkin_lock = Lock()
+        self._lock = Lock()
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
@@ -464,7 +464,7 @@ class Worker:
         This function must return fast to keep checkins frequent. Time consuming
         processes must be handled asynchronously.
         """
-        with self._checkin_lock:
+        with self._lock:
             request = {
                 'tag': self.tag,
                 'group_name': self.group_name,
@@ -532,14 +532,19 @@ class Worker:
         self.run_state_manager.docker_network_internal = self.docker_network_internal
 
         # 1. transition all runs
-        for uuid in self.runs:
-            prev_state = self.runs[uuid]
-            self.runs[uuid] = self.run_state_manager.transition(prev_state)
-            # Only start saving stats for a new stage when the run has actually transitioned to that stage.
-            if prev_state.stage != self.runs[uuid].stage:
-                self.end_stage_stats(uuid, prev_state.stage)
-                if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
-                    self.start_stage_stats(uuid, self.runs[uuid].stage)
+        logger.info("RUNS: {}".format(self.runs.keys()))
+        try:
+            for uuid in self.runs:
+                prev_state = self.runs[uuid]
+                self.runs[uuid] = self.run_state_manager.transition(prev_state)
+                # Only start saving stats for a new stage when the run has actually transitioned to that stage.
+                if prev_state.stage != self.runs[uuid].stage:
+                    self.end_stage_stats(uuid, prev_state.stage)
+                    if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                        self.start_stage_stats(uuid, self.runs[uuid].stage)
+        except Exception as e:
+            logger.warning(e)
+            logger.info("RUNS: {}".format(self.runs.keys()))
 
         # 2. filter out finished runs and clean up containers
         finished_container_ids = [

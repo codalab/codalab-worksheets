@@ -5,6 +5,7 @@ from contextlib import closing
 import http.client
 import json
 from datetime import datetime
+import logging
 
 from bottle import abort, get, local, post, request, response
 
@@ -13,6 +14,8 @@ from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
+
+logger = logging.getLogger(__name__)
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedProtectedPlugin())
@@ -47,11 +50,13 @@ def checkin(worker_id):
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Exception in rest checkin: {}".format(e))
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
-        return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
+        test = local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
+        logger.info("==============\n\n{}\n\n==============".format(test))
+        return test
 
 
 def check_reply_permission(worker_id, socket_id):
