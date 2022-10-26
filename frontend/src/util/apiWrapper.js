@@ -1,6 +1,11 @@
 import { Semaphore } from 'await-semaphore';
 import axios from 'axios';
-import { createDefaultBundleName, pathIsArchive, getArchiveExt } from './worksheet_utils';
+import {
+    createDefaultBundleName,
+    pathIsArchive,
+    getArchiveExt,
+    parseError,
+} from './worksheet_utils';
 
 export const get = (url, params, options = {}) => {
     const requestOptions = {
@@ -32,7 +37,9 @@ export const defaultErrorHandler = (error) => {
 };
 
 export const updateEditableField = (url, data) => {
-    return patch(url, data);
+    return patch(url, data).catch((error) => {
+        throw parseError(error);
+    });
 };
 
 export const getUser = () => {
@@ -66,9 +73,7 @@ export const executeCommand = (command, worksheet_uuid) => {
         worksheet_uuid: worksheet_uuid || null,
         command: command,
     }).catch((error) => {
-        const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
-        const exception = htmlDoc.getElementsByTagName('pre')[0].innerHTML;
-        throw exception;
+        throw parseError(error);
     });
 };
 

@@ -40,6 +40,7 @@ class MetadataSpec(object):
         hide_when_anonymous=False,
         optional=False,
         hidden=False,  # if hidden=True, field is hidden by default and can be displayed with -f
+        lock_after_start=False,  # no longer editable once a bundle has reached 'starting' state
     ):
         self.key = key
         self.type = type
@@ -53,6 +54,7 @@ class MetadataSpec(object):
         self.hide_when_anonymous = hide_when_anonymous
         self.optional = optional
         self.hidden = hidden
+        self.lock_after_start = lock_after_start
 
     def get_constructor(self):
         # Convert from string to type

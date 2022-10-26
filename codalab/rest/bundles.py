@@ -190,7 +190,7 @@ def build_bundles_document(bundle_uuids):
                 data,
                 {
                     'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
-                        bundle_class
+                        bundle_class, bundle['state']
                     ),
                     'metadata_type': worksheet_util.get_metadata_types(bundle_class),
                     'metadata_descriptions': worksheet_util.get_metadata_descriptions(bundle_class),
@@ -531,6 +531,17 @@ def _add_bundle_location(bundle_uuid: str):
                 base_conn_str = base_conn_str.replace("azurite", "localhost", 1)
             bundle_conn_str = f"{base_conn_str};SharedAccessSignature={bundle_sas_token};"
             index_conn_str = f"{base_conn_str};SharedAccessSignature={index_sas_token};"
+
+        elif bundle_url.startswith(StorageURLScheme.GCS_STORAGE.value):
+            bundle_read_url = local.upload_manager.get_bundle_signed_url(bundle_url, method="GET",)
+            # For GCS storage, the connection string is signed url
+            bundle_conn_str = local.upload_manager.get_bundle_signed_url(
+                bundle_url, method="PUT", request_content_type="application/octet-stream"
+            )
+            index_conn_str = local.upload_manager.get_bundle_index_url(
+                bundle_url, method="PUT", request_content_type="application/octet-stream"
+            )
+            data['data'][0]['attributes']['bundle_read_url'] = bundle_read_url
 
         data['data'][0]['attributes']['bundle_conn_str'] = bundle_conn_str
         data['data'][0]['attributes']['index_conn_str'] = index_conn_str

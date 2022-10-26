@@ -5,6 +5,7 @@ import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
 import Button from '@material-ui/core/Button';
 import Snackbar from '@material-ui/core/Snackbar';
+import DownloadLink from '../../DownloadLink';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/apiWrapper';
 
@@ -87,17 +88,19 @@ class BundleActions extends React.Component<{
 
     render() {
         const { bundleInfo, classes, editPermission } = this.props;
+        const state = bundleInfo.state;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
-        const isKillableBundle = bundleInfo.state === 'running' || bundleInfo.state === 'preparing';
+        const isKillableBundle = state === 'running' || state === 'preparing' || state === 'staged';
         const isDownloadableRunBundle =
-            bundleInfo.state !== 'preparing' &&
-            bundleInfo.state !== 'starting' &&
-            bundleInfo.state !== 'created' &&
-            bundleInfo.state !== 'staged';
+            state !== 'preparing' &&
+            state !== 'starting' &&
+            state !== 'created' &&
+            state !== 'staged';
+        const showDownloadLink = isRunBundle ? isDownloadableRunBundle : true;
 
         return (
-            <div>
+            <div className={classes.ctaContainer}>
                 {isRunBundle && editPermission && (
                     <>
                         <Snackbar
@@ -116,35 +119,31 @@ class BundleActions extends React.Component<{
                         >
                             Kill
                         </Button>
-                        <Button variant='contained' color='primary' onClick={this.rerun}>
+                        <Button
+                            classes={{ root: classes.rerunButton }}
+                            variant='contained'
+                            color='primary'
+                            onClick={this.rerun}
+                        >
                             Rerun
                         </Button>
                     </>
                 )}
-                <Button
-                    classes={{ root: classes.downloadButton }}
-                    style={!isRunBundle || !editPermission ? { marginLeft: 0 } : {}}
-                    disabled={isRunBundle ? !isDownloadableRunBundle : false}
-                    variant='outlined'
-                    color='primary'
-                    onClick={() => {
-                        window.open(bundleDownloadUrl, '_blank');
-                    }}
-                >
-                    <span className='glyphicon glyphicon-download-alt' />
-                </Button>
+                {showDownloadLink && <DownloadLink href={bundleDownloadUrl} />}
             </div>
         );
     }
 }
 
 const styles = () => ({
+    ctaContainer: {
+        display: 'flex',
+    },
     killButton: {
         minWidth: 50,
     },
-    downloadButton: {
-        minWidth: 'auto',
-        padding: '10px 11px',
+    rerunButton: {
+        marginRight: 14,
     },
     snackbar: {
         marginBottom: 40,

@@ -20,6 +20,7 @@ import {
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
     AUTO_HIDDEN_DURATION,
+    FINAL_BUNDLE_STATES,
 } from '../../../constants';
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
@@ -106,6 +107,7 @@ class Worksheet extends React.Component {
             showUpdateProgress: false,
             showWorksheetContent: false,
             showWorksheetContainer: true,
+            executingCommand: false,
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -286,7 +288,10 @@ class Worksheet extends React.Component {
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
-        this.setState({ updating: true });
+        this.setState({
+            updating: true,
+            executingCommand: true,
+        });
         const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
         // This toast info is used for showing a message when a command is being performed
         const toastId = toast.info(getToastMsg(cmd, 0, bundleCount), {
@@ -306,6 +311,7 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .then(() => {
+                const fromDeleteCommand = cmd === 'rm';
                 this.clearCheckedBundles(() => {
                     // This toast info is used for showing a message when a command has finished executing
                     toast.update(toastId, {
@@ -319,10 +325,8 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
-
-                const fromDeleteCommand = cmd === 'rm';
-                const param = { fromDeleteCommand };
-                this.reloadWorksheet(undefined, undefined, param);
+                this.setState({ executingCommand: false });
+                this.reloadWorksheet(undefined, undefined, { fromDeleteCommand });
             })
             .catch((e) => {
                 toast.dismiss();
@@ -331,6 +335,7 @@ class Worksheet extends React.Component {
                     errorDialogMessage: e,
                     forceDelete: false,
                     updating: false,
+                    executingCommand: false,
                 });
             });
     };
@@ -1224,13 +1229,12 @@ class Worksheet extends React.Component {
                 if (items[i].bundles_spec) {
                     for (var j = 0; j < items[i].bundles_spec.bundle_infos.length; j++) {
                         var bundle_info = items[i].bundles_spec.bundle_infos[j];
-                        if (bundle_info.bundle_type === 'run') {
-                            if (bundle_info.state !== 'ready' && bundle_info.state !== 'failed') {
-                                updatingBundleUuids[bundle_info.uuid] = true;
-                            } else {
-                                if (bundle_info.uuid in updatingBundleUuids)
-                                    delete updatingBundleUuids[bundle_info.uuid];
-                            }
+                        const inFinalState = FINAL_BUNDLE_STATES.includes(bundle_info.state);
+                        if (!inFinalState) {
+                            updatingBundleUuids[bundle_info.uuid] = true;
+                        } else {
+                            if (bundle_info.uuid in updatingBundleUuids)
+                                delete updatingBundleUuids[bundle_info.uuid];
                         }
                     }
                 }
@@ -1381,6 +1385,12 @@ class Worksheet extends React.Component {
         } = {},
         afterReload,
     ) => {
+        // Don't reload if we're in the middle of executing a command.
+        // The worksheet will get reloaded once the command has executed.
+        if (this.state.executingCommand) {
+            return;
+        }
+
         if (partialUpdateItems === undefined) {
             this.setState({ updating: true, showUpdateProgress: true });
             this.fetch({
@@ -1872,6 +1882,7 @@ class Worksheet extends React.Component {
                 showNewText={this.state.showNewText}
                 showNewRerun={this.state.showNewRerun}
                 showNewSchema={this.state.showNewSchema}
+                onError={this.onError}
                 onHideNewRun={() => this.setState({ showNewRun: false })}
                 onHideNewText={() => this.setState({ showNewText: false })}
                 onHideNewRerun={() => this.setState({ showNewRerun: false })}
@@ -2045,9 +2056,10 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
+        height: 'calc(100% - 20px)',
     },
     worksheetOuter: {
-        minHeight: 600, // Worksheet height
+        minHeight: '100%', // Worksheet height
         margin: '32px auto', // Center page horizontally
         backgroundColor: 'white', // Paper color
         border: `2px solid ${theme.color.grey.light}`,

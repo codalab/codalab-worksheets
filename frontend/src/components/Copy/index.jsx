@@ -38,7 +38,7 @@ class Copy extends React.Component {
     );
 
     render() {
-        const { classes, message, text } = this.props;
+        const { classes, fill, message, text, style } = this.props;
         if (!message || !text) {
             return null;
         }
@@ -46,8 +46,12 @@ class Copy extends React.Component {
         return (
             <>
                 <CopyToClipboard text={text}>
-                    <div className={classes.copyIconContainer} onClick={this.handleOpenSnackbar}>
-                        <CopyIcon />
+                    <div
+                        className={classes.copyIconContainer}
+                        style={style}
+                        onClick={this.handleOpenSnackbar}
+                    >
+                        <CopyIcon fill={fill} />
                     </div>
                 </CopyToClipboard>
                 <Snackbar
@@ -67,7 +71,6 @@ const styles = () => ({
     copyIconContainer: {
         width: 12,
         minWidth: 12,
-        marginLeft: 10,
         cursor: 'pointer',
     },
     snackbar: {

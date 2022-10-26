@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
-import { formatBundle, shorten_uuid } from '../../../util/worksheet_utils';
+import { formatBundle } from '../../../util/worksheet_utils';
 import { FINAL_BUNDLE_STATES } from '../../../constants';
 import CollapseButton from '../../CollapseButton';
 import NewWindowLink from '../../NewWindowLink';
@@ -33,53 +33,38 @@ class BundleDetailSideBar extends React.Component {
         this.setState({ showMoreDetail: !this.state.showMoreDetail });
     }
 
-    checkSources(bundle) {
-        if (bundle.bundle_type.value !== 'dataset') {
-            return false;
-        }
-        const sourceFields = ['license', 'source_url', 'link_url', 'link_format'];
-        for (let i in sourceFields) {
-            const field = sourceFields[i];
-            if (bundle[field]?.editable || bundle[field]?.value) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     render() {
-        const { bundleInfo, classes, hidePageLink, onUpdate, onMetaDataChange } = this.props;
+        const { bundleInfo, classes, hidePageLink, onUpdate, onMetadataChange } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
-        const time = bundle.time?.value;
-        const exclusions = bundle.exclude_patterns;
         const state = bundle.state.value;
-        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
 
+        const showRunFields = bundleType === 'run';
+        const showDatasetFields = bundleType === 'dataset';
+        const showTime = showRunFields && FINAL_BUNDLE_STATES.includes(state);
         const showPageLink = !hidePageLink;
         const showOwner = !bundle.is_anonymous.value;
-        const showTime = inFinalState && (time || bundle.request_time?.editable);
         const showDependencies = !!bundle.dependencies?.value?.length;
-        const showResources = bundleType === 'run';
-        const showSources = this.checkSources(bundle);
-        const showExclusions = exclusions?.value.length || exclusions?.editable;
         const showHostWorksheets = !!bundle.host_worksheets?.value.length;
 
         return (
             <div className={classes.sidebar}>
                 {showPageLink && (
-                    <NewWindowLink className={classes.pageLink} href={`/bundles/${uuid}`} />
+                    <NewWindowLink
+                        style={{ position: 'absolute', right: -1 }}
+                        href={`/bundles/${uuid}`}
+                    />
                 )}
                 <BundleFieldTable>
                     <BundleStateRow bundle={bundle} />
                     <BundleFieldRow
                         label='UUID'
                         description="Click the copy icon to copy the bundle's full UUID."
-                        value={`${shorten_uuid(uuid)}...`}
-                        copyValue={uuid}
+                        field={bundle.uuid}
                         allowCopy
+                        noWrap
                     />
                     <BundleFieldRow
                         label='Name'
@@ -111,23 +96,23 @@ class BundleDetailSideBar extends React.Component {
                             <BundlePermissions
                                 bundleInfo={bundleInfo}
                                 onClick={() => this.toggleExpandPermissions()}
-                                onChange={onMetaDataChange || function() {}}
+                                onChange={onMetadataChange}
                                 showDialog={expandPermissons}
                             />
                         }
                     />
                     <BundleFieldRow label='Created' field={bundle.created} />
-                    <BundleFieldRow
-                        label='Size'
-                        description='Size of this bundle in bytes (data_size).'
-                        value={bundle.data_size?.value || '--'}
-                    />
-                    <BundleFieldRow label='Remote' field={bundle.remote} />
-                    <BundleFieldRow
-                        label='Store'
-                        field={bundle.store}
-                        onChange={(store) => onUpdate({ store })}
-                    />
+                    <BundleFieldRow label='Size' field={bundle.data_size} />
+                    {showRunFields && (
+                        <BundleFieldRow label='Remote' field={bundle.remote} allowCopy noWrap />
+                    )}
+                    {(showRunFields || showDatasetFields) && (
+                        <BundleFieldRow
+                            label='Store'
+                            field={bundle.store}
+                            onChange={(store) => onUpdate({ store })}
+                        />
+                    )}
                 </BundleFieldTable>
                 {showTime && (
                     <BundleFieldTable title='Time'>
@@ -153,70 +138,85 @@ class BundleDetailSideBar extends React.Component {
                 )}
                 {showMoreDetail && (
                     <>
-                        {showResources && (
-                            <BundleFieldTable title='Resources'>
-                                <BundleFieldRow
-                                    label='Disk'
-                                    field={bundle.request_disk}
-                                    onChange={(request_disk) => onUpdate({ request_disk })}
-                                />
-                                <BundleFieldRow
-                                    label='Memory'
-                                    field={bundle.request_memory}
-                                    onChange={(request_memory) => onUpdate({ request_memory })}
-                                />
-                                <BundleFieldRow
-                                    label='CPUs'
-                                    field={bundle.request_cpus}
-                                    onChange={(request_cpus) => onUpdate({ request_cpus })}
-                                />
-                                <BundleFieldRow
-                                    label='GPUs'
-                                    field={bundle.request_gpus}
-                                    onChange={(request_gpus) => onUpdate({ request_gpus })}
-                                />
-                                <BundleFieldRow
-                                    label='Docker Image Requested'
-                                    field={bundle.request_docker_image}
-                                    onChange={(request_docker_image) =>
-                                        onUpdate({ request_docker_image })
-                                    }
-                                />
-                                <BundleFieldRow
-                                    label='Docker Image Used'
-                                    field={bundle.docker_image}
-                                    allowCopy
-                                    noWrap
-                                />
-                                <BundleFieldRow
-                                    label='Preemptible'
-                                    field={bundle.on_preemptible_worker}
-                                />
-                                <BundleFieldRow
-                                    label='Queue'
-                                    field={bundle.request_queue}
-                                    onChange={(request_queue) => onUpdate({ request_queue })}
-                                />
-                                <BundleFieldRow
-                                    label='Priority'
-                                    field={bundle.request_priority}
-                                    onChange={(request_priority) => onUpdate({ request_priority })}
-                                />
-                                <BundleFieldRow
-                                    label='Network'
-                                    field={bundle.request_network}
-                                    onChange={(request_network) => onUpdate({ request_network })}
-                                />
-                                <BundleFieldRow
-                                    label='Failed Dependencies'
-                                    field={bundle.allow_failed_dependencies}
-                                    onChange={(allow_failed_dependencies) =>
-                                        onUpdate({ allow_failed_dependencies })
-                                    }
-                                />
-                            </BundleFieldTable>
+                        {showRunFields && (
+                            <>
+                                <BundleFieldTable title='Resources'>
+                                    <BundleFieldRow
+                                        label='Disk'
+                                        field={bundle.request_disk}
+                                        onChange={(request_disk) => onUpdate({ request_disk })}
+                                    />
+                                    <BundleFieldRow
+                                        label='Memory'
+                                        field={bundle.request_memory}
+                                        onChange={(request_memory) => onUpdate({ request_memory })}
+                                    />
+                                    <BundleFieldRow
+                                        label='CPUs'
+                                        field={bundle.request_cpus}
+                                        onChange={(request_cpus) => onUpdate({ request_cpus })}
+                                    />
+                                    <BundleFieldRow
+                                        label='GPUs'
+                                        field={bundle.request_gpus}
+                                        onChange={(request_gpus) => onUpdate({ request_gpus })}
+                                    />
+                                    <BundleFieldRow
+                                        label='Docker Image Requested'
+                                        field={bundle.request_docker_image}
+                                        onChange={(request_docker_image) =>
+                                            onUpdate({ request_docker_image })
+                                        }
+                                    />
+                                    <BundleFieldRow
+                                        label='Docker Image Used'
+                                        field={bundle.docker_image}
+                                        allowCopy
+                                        noWrap
+                                    />
+                                    <BundleFieldRow
+                                        label='Preemptible'
+                                        field={bundle.on_preemptible_worker}
+                                    />
+                                    <BundleFieldRow
+                                        label='Queue'
+                                        field={bundle.request_queue}
+                                        onChange={(request_queue) => onUpdate({ request_queue })}
+                                    />
+                                    <BundleFieldRow
+                                        label='Priority'
+                                        field={bundle.request_priority}
+                                        onChange={(request_priority) =>
+                                            onUpdate({ request_priority })
+                                        }
+                                    />
+                                    <BundleFieldRow
+                                        label='Network'
+                                        field={bundle.request_network}
+                                        onChange={(request_network) =>
+                                            onUpdate({ request_network })
+                                        }
+                                    />
+                                    <BundleFieldRow
+                                        label='Failed Dependencies'
+                                        field={bundle.allow_failed_dependencies}
+                                        onChange={(allow_failed_dependencies) =>
+                                            onUpdate({ allow_failed_dependencies })
+                                        }
+                                    />
+                                </BundleFieldTable>
+                                <BundleFieldTable title='Exclusions'>
+                                    <BundleFieldRow
+                                        label='Exclude Patterns'
+                                        field={bundle.exclude_patterns}
+                                        onChange={(exclude_patterns) =>
+                                            onUpdate({ exclude_patterns })
+                                        }
+                                    />
+                                </BundleFieldTable>
+                            </>
                         )}
-                        {showSources && (
+                        {showDatasetFields && (
                             <BundleFieldTable title='Sources'>
                                 <BundleFieldRow
                                     label='License'
@@ -237,15 +237,6 @@ class BundleDetailSideBar extends React.Component {
                                     label='Link Format'
                                     field={bundle.link_format}
                                     onChange={(link_format) => onUpdate({ link_format })}
-                                />
-                            </BundleFieldTable>
-                        )}
-                        {showExclusions && (
-                            <BundleFieldTable title='Exclusions'>
-                                <BundleFieldRow
-                                    label='Exclude Patterns'
-                                    field={bundle.exclude_patterns}
-                                    onChange={(exclude_patterns) => onUpdate({ exclude_patterns })}
                                 />
                             </BundleFieldTable>
                         )}
@@ -277,10 +268,6 @@ class BundleDetailSideBar extends React.Component {
 const styles = () => ({
     sidebar: {
         position: 'relative',
-    },
-    pageLink: {
-        position: 'absolute',
-        right: 0,
     },
     collapseBtn: {
         marginTop: 5,
