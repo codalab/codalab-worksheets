@@ -450,7 +450,7 @@ class SlurmBatchWorkerManager(WorkerManager):
             slurm_args['account'] = self.args.account
         if 'account' not in slurm_args:
             accounts = subprocess.check_output(["showaccount"]).decode('utf-8').split()[8::3]
-            slurm_args['account'] = accounts[0] # just pick the last account
+            slurm_args['account'] = accounts[0]  # just pick the last account
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)
