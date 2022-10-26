@@ -24,7 +24,7 @@ from codalab.worker.docker_utils import DockerRuntime, DockerException
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
-from codalab.worker.noop_image_manager import NoopImageManager
+from codalab.worker.noop_image_manager import NoOpImageManager
 from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 
 logger = logging.getLogger(__name__)
@@ -313,7 +313,7 @@ def main():
         bundle_runtime_class = None
         docker_runtime = None
     elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
-        image_manager = NoopImageManager()
+        image_manager = NoOpImageManager()
         bundle_runtime_class = KubernetesRuntime(
             args.work_dir,
             args.kubernetes_auth_token,
