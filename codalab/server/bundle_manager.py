@@ -434,6 +434,7 @@ class BundleManager(object):
             )
             for queue_position, bundle in zip(queue_positions, sorted_user_staged_bundles):
                 staged_bundles_to_run[queue_position] = bundle
+
         # Build a dictionary which maps from uuid to running bundle and bundle_resources
         running_bundles_info = self._get_running_bundles_info(workers, staged_bundles_to_run)
 

@@ -21,6 +21,8 @@ services:
       - ./../../tests/:/opt/codalab-worksheets/tests/
       - ./../../scripts/:/opt/codalab-worksheets/scripts/
       - ./../../codalab/:/opt/codalab-worksheets/codalab/
+  
+  # Allow developers to use PDB to debug programs in Docker containers.
   bundle-manager:
     stdin_open: true
     tty: true
