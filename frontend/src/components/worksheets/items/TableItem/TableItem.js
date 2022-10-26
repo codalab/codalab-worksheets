@@ -145,7 +145,7 @@ class TableItem extends React.Component<{
 
         // update the checkbox state for each bundle row
         bundles.forEach((bundle, i) => {
-            const identifier = Math.random() * 10000;
+            const identifier = Math.random() * 10000; // see handleCheckBundle() for identifier implementation details
             this.props.handleCheckBundle(
                 bundle.uuid,
                 identifier,
