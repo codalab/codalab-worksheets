@@ -107,6 +107,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             help='The account you want the Slurm batch job to be associated with.'
             ' Required if submitter has multiple account (group) affiliations.',
         )
+        subparser.add_argument(
+            '--account_file',
+            type=str,
+            default='',
+            help='Path to a file containing the account you want to use to launch'
+            ' Slurm batch jobs.',
+        )
 
     def __init__(self, args):
         super().__init__(args)
@@ -435,8 +442,15 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['gres'] = gpu_gres_value
         if self.args.constraint:
             slurm_args['constraint'] = self.args.constraint
+        if self.args.account_file:
+            with open(self.args.account_file) as f:
+                slurm_args['account'] = f.readline().strip()
         if self.args.account:
+            # override account file if both specified.
             slurm_args['account'] = self.args.account
+        if 'account' not in slurm_args:
+            accounts = subprocess.check_output(["showaccount"]).decode('utf-8').split()[8::3]
+            slurm_args['account'] = accounts[0] # just pick the last account
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)
