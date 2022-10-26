@@ -262,7 +262,7 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            if (this.state.uuidBundlesCheckedCount[uuid] === 1) {
+            if (this.state.uuidBundlesCheckedCount[uuid] >= 1) {
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
             } else {
