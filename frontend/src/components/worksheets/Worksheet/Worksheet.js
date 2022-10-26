@@ -237,10 +237,7 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            if (!(uuid in bundlesCount)) {
-                bundlesCount[uuid] = 0;
-            }
-            bundlesCount[uuid] += 1;
+            bundlesCount[uuid] = 1;
             let checkedBundles = this.state.checkedBundles;
             if (!(uuid in checkedBundles)) {
                 checkedBundles[uuid] = {};
@@ -262,7 +259,7 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            if (this.state.uuidBundlesCheckedCount[uuid] >= 1) {
+            if (this.state.uuidBundlesCheckedCount[uuid] === 1) {
                 delete this.state.uuidBundlesCheckedCount[uuid];
                 delete this.state.checkedBundles[uuid];
             } else {
