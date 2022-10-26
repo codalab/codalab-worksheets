@@ -42,7 +42,7 @@ class TableItem extends React.Component<{
             indeterminateCheckState: false,
             curSchemaNames: this.props.item.using_schemas.join(' '),
             openSchemaTextBox: false,
-            tableSelected: false,
+            tableIsSelected: false,
         };
         this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
         this.showCheckedBundleRowsContents = this.showCheckedBundleRowsContents.bind(this);
@@ -61,6 +61,7 @@ class TableItem extends React.Component<{
             childrenCheckState: childrenStatus,
             indeterminateCheckState: false,
             checked: false,
+            tableIsSelected: false,
         });
     };
 
@@ -137,10 +138,10 @@ class TableItem extends React.Component<{
 
     toggleTableSelect = () => {
         const bundles = this.props.item.bundles_spec.bundle_infos;
-        const tableSelected = !this.state.tableSelected;
+        const tableIsSelected = !this.state.tableIsSelected;
 
         // update the table checkbox state
-        this.setState({ tableSelected });
+        this.setState({ tableIsSelected });
 
         // update the checkbox state for each bundle row
         bundles.forEach((bundle, i) => {
@@ -148,10 +149,10 @@ class TableItem extends React.Component<{
             this.props.handleCheckBundle(
                 bundle.uuid,
                 identifier,
-                tableSelected,
+                tableIsSelected,
                 this.refreshCheckBox,
             );
-            this.childrenCheck(i, tableSelected);
+            this.childrenCheck(i, tableIsSelected);
         });
     };
 
@@ -213,7 +214,7 @@ class TableItem extends React.Component<{
                                 checkedIcon={<CheckBoxIcon fontSize='small' />}
                                 classes={{ root: classes.tableCheckbox }}
                                 onChange={this.toggleTableSelect}
-                                checked={this.state.tableSelected}
+                                checked={this.state.tableIsSelected}
                             />
                             <Tooltip title={'Change the schemas of this table'}>
                                 <IconButton>
@@ -256,7 +257,7 @@ class TableItem extends React.Component<{
                     worksheetUUID={worksheetUUID}
                     item={rowItem}
                     rowIndex={rowIndex}
-                    focused={this.state.tableSelected || rowFocused}
+                    focused={this.state.tableIsSelected || rowFocused}
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     showNewRerun={this.props.showNewRerun}
