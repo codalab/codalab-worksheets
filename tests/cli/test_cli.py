@@ -1722,12 +1722,12 @@ def test_search_time(ctx):
 @TestModule.register('run')
 def test_run(ctx):
     # Test that bundle fails when run without sufficient time quota
-    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2288'])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
     wait_until_state(uuid, State.KILLED, timeout_seconds=60)
     check_equals(
-        'User time quota exceeded. To apply for more quota,'
-        ' please visit the following link:\n'
+        'Kill requested: User time quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
         'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
         '#how-do-i-request-more-disk-quota-or-time-quota',
         get_info(uuid, 'failure_message'),
