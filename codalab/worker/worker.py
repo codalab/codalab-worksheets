@@ -688,7 +688,7 @@ class Worker:
                 file=sys.stdout,
             )
 
-    def kill(self, uuid, kill_message):
+    def kill(self, uuid, kill_message='Kill requested'):
         """
         Marks the run as killed so that the next time its state is processed it is terminated.
         """
