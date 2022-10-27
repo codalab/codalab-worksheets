@@ -1108,7 +1108,8 @@ class BundleModel(object):
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
-        if 'Kill requested' in failure_message:
+        bundle_actions = getattr(bundle.metadata, 'actions', [])
+        if 'kill' in bundle_actions:
             state = State.KILLED
 
         worker = self.get_bundle_worker(bundle.uuid)
