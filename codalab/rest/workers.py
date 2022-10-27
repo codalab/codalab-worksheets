@@ -59,11 +59,6 @@ def checkin(worker_id):
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
                 messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
-
-                # Update bundle actions (we use this to determine later that the bundle was killed as opposed to failed)
-                new_actions = getattr(bundle.metadata, 'actions', []) + ['kill']
-                local.model.update_bundle(bundle, {'metadata': {'actions': new_actions}})
-
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))
 
