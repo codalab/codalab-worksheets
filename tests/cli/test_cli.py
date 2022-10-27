@@ -1722,7 +1722,7 @@ def test_search_time(ctx):
 @TestModule.register('run')
 def test_run(ctx):
     # Test that bundle fails when run without sufficient time quota
-    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2288'])
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
     wait_until_state(uuid, State.KILLED, timeout_seconds=60)
     check_equals(
