@@ -21,6 +21,7 @@ from codalab.common import (
     NotFoundError,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
+from codalab.lib.beam import filesystems
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_azure_bypass_conn_str
 from codalab.lib.server_util import (
     RequestSource,
@@ -1312,6 +1313,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         else:
             # Actually delete the bundle
             local.model.delete_bundles(relevant_uuids)
+        # TODO: get bundle location by uuiid
+        logging.info(f"relevant_uuids: {relevant_uuids}")
 
         # Update user statistics
         local.model.update_user_disk_used(request.user.user_id)
@@ -1320,13 +1323,25 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
+        logging.info(f"bundle_link_url: {bundle_link_url}") #none
+
+        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        logging.info(f"bundle_location: {bundle_location}") #none
+
+        if bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+            FileSystems.delete(bundle_location)
+        elif bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value):
+            FileSystems.delete(bundle_location)
         if bundle_link_url:
             # Don't physically delete linked bundles.
             pass
         else:
-            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            from apache_beam.io.filesystems import FileSystems
+            
+            logging.info("Bundle_location: ", bundle_location)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)
+            
 
     return relevant_uuids
 
