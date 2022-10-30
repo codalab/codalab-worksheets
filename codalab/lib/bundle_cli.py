@@ -800,7 +800,7 @@ class BundleCLI(object):
                 )
             except ValueError:
                 raise UsageError(
-                    "'{}' worksheet could not be found. Use 'cl wls' command to search for worksheets.".format(
+                    "'{}' worksheet not found. Use the 'cl wls' command to search for worksheets.".format(
                         spec
                     )
                 )
