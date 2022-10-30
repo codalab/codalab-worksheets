@@ -799,7 +799,11 @@ class BundleCLI(object):
                     client, base_worksheet_uuid, parsed_spec
                 )
             except ValueError:
-                raise UsageError('Invalid spec: "{}"'.format(spec))
+                raise UsageError(
+                    "'{}' worksheet could not be found. Use 'cl wls' command to search for worksheets.".format(
+                        spec
+                    )
+                )
         return client, worksheet_uuid
 
     @staticmethod
