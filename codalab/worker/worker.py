@@ -523,45 +523,47 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        # We (re-)initialize the Docker networks here, in case they've been removed.
-        # For any networks that exist, this is essentially a no-op.
-        self.init_docker_networks(self.docker_network_prefix, verbose=False)
-        # In case the docker networks have changed, we also update them in the RunStateMachine
-        self.run_state_manager.worker_docker_network = self.worker_docker_network
-        self.run_state_manager.docker_network_external = self.docker_network_external
-        self.run_state_manager.docker_network_internal = self.docker_network_internal
+        # This also needs to be locked because self.runs is modified in checkin.
+        with self._lock:
+            # We (re-)initialize the Docker networks here, in case they've been removed.
+            # For any networks that exist, this is essentially a no-op.
+            self.init_docker_networks(self.docker_network_prefix, verbose=False)
+            # In case the docker networks have changed, we also update them in the RunStateMachine
+            self.run_state_manager.worker_docker_network = self.worker_docker_network
+            self.run_state_manager.docker_network_external = self.docker_network_external
+            self.run_state_manager.docker_network_internal = self.docker_network_internal
 
-        # 1. transition all runs
-        logger.info("RUNS: {}".format(self.runs.keys()))
-        try:
-            for uuid in self.runs:
-                prev_state = self.runs[uuid]
-                self.runs[uuid] = self.run_state_manager.transition(prev_state)
-                # Only start saving stats for a new stage when the run has actually transitioned to that stage.
-                if prev_state.stage != self.runs[uuid].stage:
-                    self.end_stage_stats(uuid, prev_state.stage)
-                    if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
-                        self.start_stage_stats(uuid, self.runs[uuid].stage)
-        except Exception as e:
-            logger.warning(e)
+            # 1. transition all runs
             logger.info("RUNS: {}".format(self.runs.keys()))
+            try:
+                for uuid in self.runs:
+                    prev_state = self.runs[uuid]
+                    self.runs[uuid] = self.run_state_manager.transition(prev_state)
+                    # Only start saving stats for a new stage when the run has actually transitioned to that stage.
+                    if prev_state.stage != self.runs[uuid].stage:
+                        self.end_stage_stats(uuid, prev_state.stage)
+                        if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                            self.start_stage_stats(uuid, self.runs[uuid].stage)
+            except Exception as e:
+                logger.warning(e)
+                logger.info("RUNS: {}".format(self.runs.keys()))
 
-        # 2. filter out finished runs and clean up containers
-        finished_container_ids = [
-            run.container_id
-            for run in self.runs.values()
-            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
-            and run.container_id is not None
-        ]
-        for container_id in finished_container_ids:
-            self.bundle_runtime.remove(container_id)
+            # 2. filter out finished runs and clean up containers
+            finished_container_ids = [
+                run.container_id
+                for run in self.runs.values()
+                if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
+                and run.container_id is not None
+            ]
+            for container_id in finished_container_ids:
+                self.bundle_runtime.remove(container_id)
 
-        # 3. reset runs for the current worker
-        self.runs = {
-            uuid: run_state
-            for uuid, run_state in self.runs.items()
-            if run_state.stage != RunStage.FINISHED
-        }
+            # 3. reset runs for the current worker
+            self.runs = {
+                uuid: run_state
+                for uuid, run_state in self.runs.items()
+                if run_state.stage != RunStage.FINISHED
+            }
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
