@@ -237,10 +237,7 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            if (!(uuid in bundlesCount)) {
-                bundlesCount[uuid] = 0;
-            }
-            bundlesCount[uuid] += 1;
+            bundlesCount[uuid] = 1;
             let checkedBundles = this.state.checkedBundles;
             if (!(uuid in checkedBundles)) {
                 checkedBundles[uuid] = {};
