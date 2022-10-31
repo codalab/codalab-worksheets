@@ -486,7 +486,7 @@ def _add_bundle_location(bundle_uuid: str):
         default_bundle_store = local.model.get_bundle_store(
             request.user.user_id, name=default_store_name
         )
-        if default_bundle_store['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
+        if default_bundle_store['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,StorageType.GCS_STORAGE.value,):
             local.model.add_bundle_location(
                 new_location['bundle_uuid'], default_bundle_store['uuid']
             )
@@ -1325,6 +1325,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         bundle_link_url = bundle_link_urls.get(uuid)
         logging.info(f"bundle_link_url: {bundle_link_url}") #none
 
+        logging.info(f"Type pf bundle_store: {type(local.bundle_store)}")
         bundle_location = local.bundle_store.get_bundle_location(uuid)
         logging.info(f"bundle_location: {bundle_location}") #none
 
