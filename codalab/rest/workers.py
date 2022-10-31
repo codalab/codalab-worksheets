@@ -45,18 +45,27 @@ def checkin(worker_id):
         request.json.get("preemptible", False),
     )
 
+    messages = []
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
+
+            if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
+                # Then, user has gone over their time quota and we kill the job.
+                kill_message = (
+                    'Kill requested: User time quota exceeded. To apply for more quota, please visit the following link: '
+                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
+                )
+                messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
         except Exception as e:
-            logger.warning("Exception in rest checkin: {}".format(e))
+            logger.info("Exception in REST checkin: {}".format(e))
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
-        test = local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
-        logger.info("==============\n\n{}\n\n==============".format(test))
-        return test
+        messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))
+    response.content_type = 'application/json'
+    return json.dumps(messages)
 
 
 def check_reply_permission(worker_id, socket_id):
