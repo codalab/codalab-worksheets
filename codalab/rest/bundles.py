@@ -21,7 +21,6 @@ from codalab.common import (
     NotFoundError,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
-from codalab.lib.beam import filesystems
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_azure_bypass_conn_str
 from codalab.lib.server_util import (
     RequestSource,
@@ -54,6 +53,7 @@ from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
 from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
+from apache_beam.io.filesystems import FileSystems
 
 logger = logging.getLogger(__name__)
 
@@ -486,7 +486,10 @@ def _add_bundle_location(bundle_uuid: str):
         default_bundle_store = local.model.get_bundle_store(
             request.user.user_id, name=default_store_name
         )
-        if default_bundle_store['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,StorageType.GCS_STORAGE.value,):
+        if default_bundle_store['storage_type'] in (
+            StorageType.AZURE_BLOB_STORAGE.value,
+            StorageType.GCS_STORAGE.value,
+        ):
             local.model.add_bundle_location(
                 new_location['bundle_uuid'], default_bundle_store['uuid']
             )
@@ -512,6 +515,7 @@ def _add_bundle_location(bundle_uuid: str):
         local.model.update_bundle(
             bundle, {'is_dir': is_dir},
         )
+        logging.info(f"When uploading: {bundle_uuid}")
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
     logging.info(f"Bypass server upload, the URL is {bundle_url}")
@@ -1311,10 +1315,19 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Just remove references to the data hashes
             local.model.remove_data_hash_references(relevant_uuids)
         else:
+            # If the bundle is stored on cloud, first delete data on cloud.
+            for uuid in relevant_uuids:
+                logging.info("uuid: " + str(uuid))
+                bundle_location = local.bundle_store.get_bundle_location(uuid)
+
+                file_location = '/'.join(bundle_location.split('/')[0:-1]) + "/"
+                if bundle_location.startswith(
+                    StorageURLScheme.AZURE_BLOB_STORAGE.value
+                ) or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value):
+                    FileSystems.delete([file_location])
+
             # Actually delete the bundle
             local.model.delete_bundles(relevant_uuids)
-        # TODO: get bundle location by uuiid
-        logging.info(f"relevant_uuids: {relevant_uuids}")
 
         # Update user statistics
         local.model.update_user_disk_used(request.user.user_id)
@@ -1323,26 +1336,12 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
-        logging.info(f"bundle_link_url: {bundle_link_url}") #none
-
-        logging.info(f"Type pf bundle_store: {type(local.bundle_store)}")
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        logging.info(f"bundle_location: {bundle_location}") #none
-
-        if bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-            FileSystems.delete(bundle_location)
-        elif bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value):
-            FileSystems.delete(bundle_location)
         if bundle_link_url:
             # Don't physically delete linked bundles.
             pass
         else:
-            from apache_beam.io.filesystems import FileSystems
-            
-            logging.info("Bundle_location: ", bundle_location)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)
-            
 
     return relevant_uuids
 
