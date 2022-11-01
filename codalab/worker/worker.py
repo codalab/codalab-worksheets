@@ -147,6 +147,7 @@ class Worker:
 
         # Lock ensures .checkin() is not run concurrently.
         self._lock = Lock()
+        self._first_run_lock = Lock()
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
@@ -197,14 +198,15 @@ class Worker:
         )
 
     def save_state(self):
-        # Remove complex container objects from state before serializing, these can be retrieved
-        runs = {
-            uuid: state._replace(
-                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
-            )
-            for uuid, state in self.runs.items()
-        }
-        self.state_committer.commit(runs)
+        with self._lock:
+            # Remove complex container objects from state before serializing, these can be retrieved
+            runs = {
+                uuid: state._replace(
+                    container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
+                )
+                for uuid, state in self.runs.items()
+            }
+            self.state_committer.commit(runs)
 
     def load_state(self):
         # If the state file doesn't exist yet, have the state committer return an empty state.
@@ -297,8 +299,9 @@ class Worker:
                         logging.warn(
                             f"Got websocket message, got data: {data}, going to check in now."
                         )
-                        self.checkin()
-                        self.last_checkin = time.time()
+                        with self._first_run_lock:
+                            self.checkin()
+                            self.last_checkin = time.time()
 
                     while not self.terminate:
                         try:
@@ -319,8 +322,10 @@ class Worker:
         self.listen_thread.start()
         while not self.terminate:
             try:
+                self._first_run_lock.acquire()
                 self.checkin()
                 self.last_checkin = time.time()
+                first_iter = True
                 # Process runs until it's time for the next checkin.
                 while not self.terminate and (
                     time.time() - self.last_checkin <= self.checkin_frequency_seconds
@@ -333,6 +338,9 @@ class Worker:
                     self.process_runs()
                     time.sleep(0.003)
                     self.save_state()
+                    if first_iter:
+                        self._first_run_lock.release()
+                        first_iter = False
             except Exception:
                 if using_sentry():
                     capture_exception()
@@ -542,7 +550,6 @@ class Worker:
             self.run_state_manager.docker_network_internal = self.docker_network_internal
 
             # 1. transition all runs
-            logger.info("RUNS: {}".format(self.runs.keys()))
             try:
                 for uuid in self.runs:
                     prev_state = self.runs[uuid]
@@ -554,7 +561,6 @@ class Worker:
                             self.start_stage_stats(uuid, self.runs[uuid].stage)
             except Exception as e:
                 logger.warning(e)
-                logger.info("RUNS: {}".format(self.runs.keys()))
 
             # 2. filter out finished runs and clean up containers
             finished_container_ids = [
