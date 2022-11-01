@@ -302,6 +302,7 @@ class Worker:
                         with self._first_run_lock:
                             self.checkin()
                             self.last_checkin = time.time()
+                            self.process_runs() # make sure to process runs before the next start loop
 
                     while not self.terminate:
                         try:
