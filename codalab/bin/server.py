@@ -35,7 +35,6 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
 
 def run_server_with_watch():
     modified_argv = list(sys.argv)
-    modified_argv[0] = 'cl'
     modified_argv.remove('--watch')
     event_handler = ClFileWatcherEventHandler(modified_argv)
     # Listen to root dir (/codalab/bin/../../)
