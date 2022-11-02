@@ -76,7 +76,7 @@ class KubernetesWorkerManager(WorkerManager):
         configuration.api_key['authorization'] = args.auth_token
         configuration.host = args.cluster_host
         configuration.ssl_ca_cert = args.cert_path
-        if configuration.host == "https://codalab-control-plane:6443":
+        if configuration.host == "https://minikube:8443":
             # Don't verify SSL if we are connecting to a local cluster for testing / development.
             configuration.verify_ssl = False
             configuration.ssl_ca_cert = None
@@ -163,7 +163,8 @@ class KubernetesWorkerManager(WorkerManager):
         }
 
         # Start a worker pod on the k8s cluster
-        logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
+        logger.error('Starting worker {} with image {}'.format(worker_id, worker_image))
+        print('starting...')
         try:
             utils.create_from_dict(self.k8_client, config)
         except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
