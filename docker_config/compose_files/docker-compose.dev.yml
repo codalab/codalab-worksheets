@@ -11,6 +11,7 @@ services:
     stdin_open: true
     tty: true
   rest-server:
+    command: cl-server --watch
     stdin_open: true
     tty: true
     volumes:
