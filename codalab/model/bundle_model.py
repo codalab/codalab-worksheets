@@ -1003,6 +1003,11 @@ class BundleModel(object):
             'memory_usage': memory_usage,
         }
 
+        # Increment user time as we go to ensure user doesn't go over time quota.
+        if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
+            time_increment = worker_run.container_time_total - bundle.metadata.time
+            self.increment_user_time_used(bundle.owner_id, time_increment)
+
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
 
@@ -1066,7 +1071,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, worker_run, connection):
+    def transition_bundle_finalizing(self, bundle, worker_run, user_id, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -1076,6 +1081,11 @@ class BundleModel(object):
         failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
+
+        if user_id == self.root_user_id:
+            time_increment = worker_run.container_time_total - bundle.metadata.time
+            self.increment_user_time_used(bundle.owner_id, time_increment)
+
         # Build metadata
         metadata = {}
         if failure_message is not None:
@@ -1098,14 +1108,10 @@ class BundleModel(object):
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
-        if failure_message == 'Kill requested':
+        if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
         worker = self.get_bundle_worker(bundle.uuid)
-
-        # Increment the amount of time used for the user whose bundles run on CodaLab's public instances
-        if worker['user_id'] == self.root_user_id:
-            self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
 
         if worker['shared_file_system']:
             # TODO(Ashwin): fix for --link.
@@ -1170,7 +1176,7 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(bundle, worker_run, connection)
+                return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
