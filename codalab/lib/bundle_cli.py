@@ -794,16 +794,7 @@ class BundleCLI(object):
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            try:
-                worksheet_uuid = self.resolve_worksheet_uuid(
-                    client, base_worksheet_uuid, parsed_spec
-                )
-            except ValueError:
-                raise UsageError(
-                    "'{}' worksheet not found. Use the 'cl wls' command to search for worksheets.".format(
-                        spec
-                    )
-                )
+            worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, parsed_spec)
         return client, worksheet_uuid
 
     @staticmethod
