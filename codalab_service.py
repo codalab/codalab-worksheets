@@ -249,6 +249,8 @@ CODALAB_ARGUMENTS = [
     # User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
+    CodalabArg(name='edu_user_disk_quota', help='How much space a user with edu email can use', default='100g'),
+    CodalabArg(name='edu_user_time_quota', help='How much total time a user with edu email can use', default='100y'),
     CodalabArg(
         name='user_parallel_run_quota',
         help='How many simultaneous runs a user can have',
@@ -903,6 +905,8 @@ class CodalabServiceManager(object):
                     ('server/support_email', self.args.support_email),  # Use support_email
                     ('server/default_user_info/disk_quota', self.args.user_disk_quota),
                     ('server/default_user_info/time_quota', self.args.user_time_quota),
+                    ('server/default_user_info/edu_disk_quota', self.args.edu_user_disk_quota),
+                    ('server/default_user_info/edu_time_quota', self.args.edu_user_time_quota),
                     (
                         'server/default_user_info/parallel_run_quota',
                         self.args.user_parallel_run_quota,
