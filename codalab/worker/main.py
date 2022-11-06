@@ -395,18 +395,24 @@ def parse_gpuset_args(arg):
         arg: comma separated string of ints, or "ALL" representing all gpus
     """
     logger.info(f"GPUSET arg: {arg}")
+    print(f"GPUSET arg: {arg}")
     if arg == '' or arg == 'NONE':
         return set()
 
     try:
         all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except DockerException:
+        print("no error in first try")
+    except DockerException as e:
+        print("Docker Exception: {}".format(e))
         all_gpus = {}
     # Docker socket can't be used
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
+        print("docker socket exception: {}".format(e))
         try:
             all_gpus = DockerRuntime().get_nvidia_devices(use_docker=False)
-        except SingularityError:
+            print("no error on second try")
+        except SingularityError as e:
+            print("SingularityError: {}".format(e))
             all_gpus = {}
 
     if arg == 'ALL':
@@ -414,7 +420,8 @@ def parse_gpuset_args(arg):
     else:
         gpuset = arg.split(',')
         if not all(gpu in all_gpus or gpu in all_gpus.values() for gpu in gpuset):
-            raise argparse.ArgumentTypeError("GPUSET_STR invalid: GPUs out of range")
+            print("gpuset: {}. all_gpus: {}".format(gpuset, all_gpus))
+            raise argparse.ArgumentTypeError("GPUSET_STR invalid: GPUs out of range. GPUSET:{}".format(gpuset))
         return set(all_gpus.get(gpu, gpu) for gpu in gpuset)
 
 

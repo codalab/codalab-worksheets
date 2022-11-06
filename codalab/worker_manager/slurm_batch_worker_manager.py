@@ -423,7 +423,8 @@ class SlurmBatchWorkerManager(WorkerManager):
         :return: a dictionary of Slurm arguments
         """
         slurm_args = {}
-        slurm_args['nodelist'] = self.args.nodelist
+        if self.args.nodelist:
+            slurm_args['nodelist'] = self.args.nodelist
         if self.args.exclude:
             slurm_args['exclude'] = self.args.exclude
         slurm_args['mem'] = self.args.memory_mb
