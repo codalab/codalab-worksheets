@@ -5,6 +5,13 @@ import ContentWrapper from './ContentWrapper';
 import queryString from 'query-string';
 import ReCAPTCHA from 'react-google-recaptcha';
 
+// Set global properties used by reCaptcha
+// See: https://www.npmjs.com/package/react-google-recaptcha#global-properties-used-by-recaptcha
+window.recaptchaOptions = {
+    // Use recaptcha.net to avoid blocks on google.com
+    useRecaptchaNet: true,
+};
+
 export const SignUpSuccess = (props) => {
     const { email } = queryString.parse(props.location.search);
     return (
