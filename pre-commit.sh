@@ -6,8 +6,8 @@
 set -e
 
 if ! [ -e venv ]; then
-  python3.8 -m pip install virtualenv
-  python3.8 -m virtualenv -p python3 venv
+  python3 -m pip install virtualenv
+  python3 -m virtualenv -p python3 venv
 fi
 venv/bin/pip install -r requirements-server.txt
 venv/bin/pip install -r requirements.docs.txt
