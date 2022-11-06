@@ -534,7 +534,8 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
 
     # Detect and ignore Stale file handler. Please see: https://www.baeldung.com/linux/stale-file-handles
     try:
-        os.listdir(path)
+        if not os.path.islink(path) and os.path.isdir(path):
+            os.listdir(path)
     except OSError:
         if ignore_nonexistent_path:
             # If we have trouble list the dir, return the size of this path as 0
