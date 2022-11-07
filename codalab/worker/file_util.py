@@ -551,7 +551,7 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
                     except UnicodeDecodeError:
                         full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
                     result += get_path_size(full_child_path, ignore_nonexistent_path=True)
-            return result
+    return result
 
 
 def remove_path(path):
