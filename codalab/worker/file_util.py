@@ -535,7 +535,14 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
     # Detect and ignore Stale file handler. Please see: https://www.baeldung.com/linux/stale-file-handles
     try:
         if not os.path.islink(path) and os.path.isdir(path):
-            os.listdir(path)
+            for child in os.listdir(path):
+                if child not in exclude_names:
+                    try:
+                        full_child_path = os.path.join(path, child)
+                    except UnicodeDecodeError:
+                        full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
+                    result += get_path_size(full_child_path, ignore_nonexistent_path=True)
+        return result
     except OSError:
         if ignore_nonexistent_path:
             # If we have trouble list the dir, return the size of this path as 0
@@ -543,16 +550,6 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
             return 0
         else:
             raise
-
-    if not os.path.islink(path) and os.path.isdir(path):
-        for child in os.listdir(path):
-            if child not in exclude_names:
-                try:
-                    full_child_path = os.path.join(path, child)
-                except UnicodeDecodeError:
-                    full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
-                result += get_path_size(full_child_path, ignore_nonexistent_path=True)
-    return result
 
 
 def remove_path(path):
