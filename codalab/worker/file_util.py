@@ -540,6 +540,7 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
             if ignore_nonexistent_path:
                 # If we have trouble list the dir, return the size of this path as 0
                 # Do not raise error and just ignore the stale file handler/
+                logging.warning(f"Error when list the child path. Ignore the files under path: {path}")
                 return 0
             raise
         else:
