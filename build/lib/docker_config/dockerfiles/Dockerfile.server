@@ -1,0 +1,66 @@
+FROM ubuntu:16.04
+MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends software-properties-common && \
+  apt-get update && \
+  apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    libfuse-dev \
+    libjpeg-dev \
+    libmysqlclient-dev \
+    libssl-dev \
+    mysql-client \
+    zip \
+    unzip \
+    rsync && \
+    rm -rf /var/lib/apt/lists/*;
+
+### Without this Python thinks we're ASCII and unicode chars fail
+ENV LANG C.UTF-8
+
+# Miniconda 4.5.11 installs Python 3.7 by default.
+RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
+     chmod +x ~/miniconda.sh && \
+     ~/miniconda.sh -b -p /opt/conda && \
+     rm ~/miniconda.sh
+ENV PATH /opt/conda/bin:$PATH
+RUN conda --version
+
+RUN python3 -m pip install --no-cache-dir --upgrade pip==20.3.4
+RUN mkdir /opt/codalab-worksheets
+WORKDIR /opt/codalab-worksheets
+
+# Install dependencies
+COPY docker_config/compose_files/files/wait-for-it.sh /opt/wait-for-it.sh
+RUN chmod a+rx /opt/wait-for-it.sh
+COPY requirements.txt requirements.txt
+COPY requirements.docs.txt requirements.docs.txt
+COPY requirements.dev.txt requirements.dev.txt
+COPY requirements-server.txt requirements-server.txt
+RUN python3 -m pip install setuptools --upgrade
+RUN python3 -m pip install --no-cache-dir -r requirements-server.txt
+
+# Install code
+COPY setup.py setup.py
+RUN python3 -m pip install --no-cache-dir -e .
+COPY alembic alembic
+COPY alembic.ini alembic.ini
+COPY codalab codalab
+COPY codalab_service.py codalab_service.py
+COPY docs docs
+COPY mkdocs.yml mkdocs.yml
+COPY monitor.py monitor.py
+COPY scripts scripts
+COPY test_runner.py test_runner.py
+COPY tests tests
+COPY views views
+
+# Allow non-root to read everything
+RUN chmod -R og=u-w .
+
+EXPOSE 2900

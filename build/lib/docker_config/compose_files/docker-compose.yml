@@ -1,0 +1,504 @@
+version: '3.5'
+
+x-non-blocking-logging: &non-blocking-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+
+# Synchronize with codalab_service.py
+x-codalab-env: &codalab-env
+  - HOSTNAME=${HOSTNAME}
+  - CODALAB_VERSION=${CODALAB_VERSION}
+  - CODALAB_PROTECTED_MODE=${CODALAB_PROTECTED_MODE}
+  - CODALAB_USERNAME=${CODALAB_USERNAME}
+  - CODALAB_PASSWORD=${CODALAB_PASSWORD}
+  - CODALAB_MYSQL_HOST=${CODALAB_MYSQL_HOST}
+  - CODALAB_MYSQL_PORT=${CODALAB_MYSQL_PORT}
+  - CODALAB_MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+  - CODALAB_MYSQL_USERNAME=${CODALAB_MYSQL_USERNAME}
+  - CODALAB_MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+  - CODALAB_HOME=${CODALAB_HOME}
+  - CODALAB_BUNDLE_MOUNT=${CODALAB_BUNDLE_MOUNT}
+  - CODALAB_USER_DISK_QUOTA=${CODALAB_USER_DISK_QUOTA}
+  - CODALAB_USER_TIME_QUOTA=${CODALAB_USER_TIME_QUOTA}
+  - CODALAB_USER_PARALLEL_RUN_QUOTA=${CODALAB_USER_PARALLEL_RUN_QUOTA}
+  - CODALAB_ADMIN_EMAIL=${CODALAB_ADMIN_EMAIL}
+  - CODALAB_SUPPORT_EMAIL=${CODALAB_SUPPORT_EMAIL}
+  - CODALAB_EMAIL_HOST=${CODALAB_EMAIL_HOST}
+  - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
+  - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
+  - CODALAB_SERVER=${CODALAB_SERVER}
+  - CODALAB_SHARED_FILE_SYSTEM=${CODALAB_SHARED_FILE_SYSTEM}
+  - CODALAB_LINK_MOUNTS=${CODALAB_LINK_MOUNTS}
+  - CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=${CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS}
+  - CODALAB_WORKER_MANAGER_TYPE=${CODALAB_WORKER_MANAGER_TYPE}
+  - CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES=${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+  - CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX=${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+  - CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE=${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+  - CODALAB_WORKER_MANAGER_IDLE_SECONDS=${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+  - CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS=${CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS}
+  - CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS=${CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS}
+  - CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS=${CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS}
+  - CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS=${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+  - CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
+  - CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS=${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
+  - CODALAB_WORKER_MANAGER_DEFAULT_GPUS=${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
+  - CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
+  - CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
+  - CODALAB_WORKER_MANAGER_CPU_TAG=${CODALAB_WORKER_MANAGER_CPU_TAG}
+  - CODALAB_WORKER_MANAGER_GPU_TAG=${CODALAB_WORKER_MANAGER_GPU_TAG}
+  - CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+  - CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME=${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
+  - CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY=${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
+  - CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL=${CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL}
+  - CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID=${CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID}
+  - CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID=${CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID}
+  - CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL=${CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL}
+  - CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL=${CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL}
+  - CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST}
+  - CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN}
+  - CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH}
+  - CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST=${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST}
+  - CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN=${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN}
+  - CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH=${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH}
+  - CODALAB_WORKER_MANAGER_AWS_REGION=${CODALAB_WORKER_MANAGER_AWS_REGION}
+  - CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME=${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
+  - CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE=${CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE}
+  - CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE=${CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE}
+  - CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB=${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+  - CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB=${CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB}
+  - CODALAB_PUBLIC_WORKERS=${CODALAB_PUBLIC_WORKERS}
+  - COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}
+  - DOCKER_CLIENT_TIMEOUT=${DOCKER_CLIENT_TIMEOUT}
+  - CODALAB_AZURE_BLOB_CONNECTION_STRING=${CODALAB_AZURE_BLOB_CONNECTION_STRING}
+  - CODALAB_DEFAULT_BUNDLE_STORE_NAME=${CODALAB_DEFAULT_BUNDLE_STORE_NAME}
+  - GOOGLE_APPLICATION_CREDENTIALS=/google-application-credentials.json
+  - CODALAB_ALWAYS_USE_AZURE_BLOB_BETA=${CODALAB_ALWAYS_USE_AZURE_BLOB_BETA}
+  - CODALAB_SENTRY_INGEST_URL=${CODALAB_SENTRY_INGEST_URL}
+  - CODALAB_SENTRY_ENVIRONMENT=${CODALAB_SENTRY_ENVIRONMENT}
+  - CODALAB_RECAPTCHA_SECRET_KEY=${CODALAB_RECAPTCHA_SECRET_KEY}
+  # All frontend variables beginning with REACT_APP will be EXPOSED to the browser, please be careful.
+  - REACT_APP_CODALAB_RECAPTCHA_SITE_KEY=${CODALAB_RECAPTCHA_SITE_KEY}
+  - REACT_APP_CODALAB_SENTRY_INGEST_URL=${CODALAB_SENTRY_INGEST_URL}
+  - REACT_APP_CODALAB_SENTRY_ENVIRONMENT=${CODALAB_SENTRY_ENVIRONMENT}
+
+# Properties that every service inherits.
+x-codalab-base: &codalab-base
+  environment:
+    *codalab-env
+  logging:
+    *non-blocking-logging
+  user: ${CODALAB_UID}
+  networks:
+    - service
+
+# We mostly want to run in user mode when we need to save files to disk.
+# But if we don't, easier to run as root.
+x-codalab-root: &codalab-root
+  user: 0:0
+
+# Services that need direct access to disk.
+x-codalab-server: &codalab-server
+  volumes:
+  - "${CODALAB_HOME}:${CODALAB_HOME}"
+  - "${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}"
+  - "${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}"
+  - "${CODALAB_GOOGLE_APPLICATION_CREDENTIALS}:/google-application-credentials.json"
+
+############################################################
+
+services:
+  rest-server:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-server
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
+    networks:
+      - rest-server
+    expose:
+      - ${CODALAB_REST_PORT}
+
+  bundle-manager:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-bundle-manager
+      --worker-timeout-seconds ${CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS}
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
+    networks:
+      - rest-server
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.14.2
+    command: "azurite --blobHost 0.0.0.0"
+    networks:
+      - rest-server
+    expose:
+      - 10000
+    ports:
+      - 10000:10000
+    volumes:
+      - ${CODALAB_HOME}/azurite:/data
+
+  aws-batch-worker-manager-cpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+      --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+      --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+      --search request_gpus=0
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --job-queue ${CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE}
+      --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
+      --job-definition-name ${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
+      --cpus ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+    networks:
+      - rest-server
+
+  aws-batch-worker-manager-gpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+      --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+      --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+      --search request_gpus=1
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --job-queue ${CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE}
+      --region ${CODALAB_WORKER_MANAGER_AWS_REGION}
+      --job-definition-name ${CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME}
+      --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
+      --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+    networks:
+      - rest-server
+
+  azure-batch-worker-manager-cpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+      --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+      --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+      --search request_gpus=0
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
+      --account-key ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
+      --service-url ${CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL}
+      --job-id ${CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID}
+      --log-container-url ${CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL}
+      --cpus ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+    networks:
+      - rest-server
+
+  azure-batch-worker-manager-gpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+      --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+      --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+      --search request_gpus=1
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --account-name ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME}
+      --account-key ${CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY}
+      --service-url ${CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL}
+      --job-id ${CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID}
+      --log-container-url ${CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL}
+      --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
+      --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+    networks:
+      - rest-server
+
+  kubernetes-worker-manager-cpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+      --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+      --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+      --search request_gpus=0
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-tag "${CODALAB_WORKER_MANAGER_CPU_TAG}"
+      --worker-tag-exclusive
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --cluster-host ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST}
+      --auth-token ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN}
+      --cert-path ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH}
+      --cpus ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+    volumes:
+      - "${CODALAB_HOME}:${CODALAB_HOME}"
+      - ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH}:ro
+    networks:
+      - rest-server
+
+  kubernetes-worker-manager-gpu:
+    image: codalab/server:${CODALAB_VERSION}
+    command: |
+      cl-worker-manager
+      --server ${CODALAB_SERVER}
+      --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
+      --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
+      --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
+      --worker-work-dir-prefix ${CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX}
+      --worker-max-work-dir-size ${CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE}
+      --search request_gpus=1
+      --min-seconds-between-workers ${CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS}
+      --sleep-time ${CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS}
+      --worker-idle-seconds ${CODALAB_WORKER_MANAGER_IDLE_SECONDS}
+      --worker-checkin-frequency-seconds ${CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS}
+      --worker-tag "${CODALAB_WORKER_MANAGER_GPU_TAG}"
+      --worker-shared-memory-size-gb ${CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB}
+      --worker-tag-exclusive
+      ${CODALAB_WORKER_MANAGER_TYPE}
+      --cluster-host ${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST}
+      --auth-token ${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN}
+      --cert-path ${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH}
+      --cpus ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS}
+      --gpus ${CODALAB_WORKER_MANAGER_DEFAULT_GPUS}
+      --memory-mb ${CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB}
+    <<: *codalab-base
+    <<: *codalab-server
+    volumes:
+      - "${CODALAB_HOME}:${CODALAB_HOME}"
+      - ${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH}:${CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH}:ro
+    networks:
+      - rest-server
+
+  frontend:
+    image: codalab/frontend:${CODALAB_VERSION}
+    command: bash -c "node setup-frontend.js && serve -s build -l ${CODALAB_FRONTEND_PORT}"
+    <<: *codalab-base
+    <<: *codalab-root
+    depends_on:
+      - rest-server
+    networks:
+      - rest-server
+
+  nginx:
+    image: nginx:1.12.0
+    command: nginx
+    <<: *codalab-base
+    <<: *codalab-root
+    depends_on:
+      - frontend
+      - rest-server
+    ports:
+      - ${CODALAB_HTTP_PORT}:80
+    volumes:
+      - ./files/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - rest-server
+
+  mysql:
+    # https://hub.docker.com/_/mysql
+    image: mysql:5.5.53
+    <<: *codalab-base
+    environment:
+      - MYSQL_ROOT_PASSWORD=${CODALAB_MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${CODALAB_MYSQL_DATABASE}
+      - MYSQL_USER=${CODALAB_MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${CODALAB_MYSQL_PASSWORD}
+    volumes:
+      - ${CODALAB_MYSQL_MOUNT}:/var/lib/mysql
+    networks:
+      - rest-server
+
+  worker:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}
+      --verbose
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+    networks:
+      - service
+      - worker
+      - rest-server
+    shm_size: '500mb'
+
+  worker2:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}-worker2
+      --verbose
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+    networks:
+      - service
+      - worker
+      - rest-server
+    shm_size: '500mb'
+
+  worker-preemptible:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}-worker-preemptible
+      --verbose
+      --preemptible
+      --tag preemptible
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+    networks:
+      - service
+      - worker
+      - rest-server
+    shm_size: '500mb'
+
+  worker-preemptible2:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}-worker-preemptible2
+      --verbose
+      --preemptible
+      --tag preemptible
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+    networks:
+      - service
+      - worker
+      - rest-server
+    shm_size: '500mb'
+
+  worker-shared-file-system:
+    image: codalab/worker:${CODALAB_VERSION}
+    command: |
+      cl-worker
+      --server http://rest-server:${CODALAB_REST_PORT}
+      --work-dir ${CODALAB_WORKER_DIR}
+      --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
+      --id ${HOSTNAME}
+      --shared-file-system
+      --verbose
+    <<: *codalab-base
+    <<: *codalab-root  # Not ideal since worker files saved as root, but without it, can't use docker
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODALAB_WORKER_DIR}:${CODALAB_WORKER_DIR}
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
+    networks:
+      - service
+      - worker
+      - rest-server
+
+  monitor:
+    image: codalab/server:${CODALAB_VERSION}
+    command: python3 monitor.py --log-path ${CODALAB_MONITOR_DIR}/monitor.log --backup-path ${CODALAB_MONITOR_DIR}
+    <<: *codalab-base
+    depends_on:
+      - rest-server
+    volumes:
+      - /var/lib/docker:/var/lib/docker
+      - ${CODALAB_HOME}:${CODALAB_HOME}
+      - ${CODALAB_BUNDLE_MOUNT}:${CODALAB_BUNDLE_MOUNT}
+      - ${CODALAB_MONITOR_DIR}:${CODALAB_MONITOR_DIR}
+    networks:
+      - rest-server
+
+networks:
+  rest-server:
+    name: 'rest-server'
+  worker:
+    name: ${CODALAB_WORKER_NETWORK_PREFIX}_general # Make sure this is synced with the suffix set in worker/worker.py in network initialization.
+    internal: True
+  service:

@@ -1,0 +1,21 @@
+version: '3.5'
+
+services:
+  # Hot load the React code
+  frontend:
+    command: bash -c "node setup-frontend.js dev && npm start"
+    volumes:
+      - ./../../frontend/src:/opt/frontend/src
+      - ./../../frontend/public:/opt/frontend/public
+    # Fix for https://github.com/facebook/create-react-app/issues/8688
+    stdin_open: true
+    tty: true
+  rest-server:
+    volumes:
+      # Mount the alembic directory so that we can create new database migrations with the alembic version files mounted.
+      - ./../../alembic/:/opt/codalab-worksheets/alembic/
+
+      # Mount these directories so that we can modify code without having to rebuild the Docker image.
+      - ./../../tests/:/opt/codalab-worksheets/tests/
+      - ./../../scripts/:/opt/codalab-worksheets/scripts/
+      - ./../../codalab/:/opt/codalab-worksheets/codalab/
