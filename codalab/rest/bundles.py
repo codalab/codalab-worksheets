@@ -8,6 +8,7 @@ import traceback
 import time
 from io import BytesIO
 from http.client import HTTPResponse
+import time
 
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
@@ -1255,9 +1256,13 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     If |recursive|, add all bundles downstream too.
     If |data_only|, only remove from the bundle store, not the bundle metadata.
     """
+    start = time.time()
     relevant_uuids = local.model.get_self_and_descendants(uuids, depth=sys.maxsize)
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. get_self_and_descendents: {}".format(end-start))
     if not recursive:
         # If any descendants exist, then we only delete uuids if force = True.
+        start = time.time()
         if (not force) and set(uuids) != set(relevant_uuids):
             relevant = local.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
             raise UsageError(
@@ -1265,9 +1270,16 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 % (' '.join(uuids), '\n  '.join(bundle.simple_str() for bundle in relevant))
             )
         relevant_uuids = uuids
+        end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. if not recursive: {}".format(end-start))
+
+    start = time.time()
     check_bundles_have_all_permission(local.model, request.user, relevant_uuids)
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. check_bundles_have_all_permission: {}".format(end-start))
 
     # Make sure we don't delete bundles which are active.
+    start = time.time()
     bundles = local.model.batch_get_bundles(uuid=uuids)
     states = [bundle.state for bundle in bundles]
     logger.debug('delete states: %s', states)
@@ -1281,12 +1293,18 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             + 'automatically be moved to a state where they '
             + 'can be deleted.'
         )
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. don't delete active bundles: {}".format(end-start))
 
     # Make sure we don't delete frozen bundles
+    start = time.time()
     for bundle in bundles:
         bundle_util.check_bundle_not_frozen(bundle)
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. don't delete frozen bundles: {}".format(end-start))
 
     # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
+    start = time.time()
     result = local.model.get_all_host_worksheet_uuids(relevant_uuids)
     for uuid, host_worksheet_uuids in result.items():
         worksheets = local.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
@@ -1303,8 +1321,11 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 "(--force to override):\n  %s"
                 % (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets))
             )
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. make sure bundles aren't referenced in multiple places: {}".format(end-start))
 
     # Delete the actual bundle
+    start = time.time()
     if not dry_run:
         if data_only:
             # Just remove references to the data hashes
@@ -1315,8 +1336,11 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
         # Update user statistics
         local.model.update_user_disk_used(request.user.user_id)
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. delete the actual bundle: {}".format(end-start))
 
     # Delete the data.
+    start = time.time()
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
@@ -1327,6 +1351,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)
+    end = time.time()
+    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. delete the data: {}".format(end-start))
 
     return relevant_uuids
 
