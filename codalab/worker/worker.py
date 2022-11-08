@@ -4,7 +4,7 @@ import os
 import shutil
 from subprocess import PIPE, Popen
 import threading
-from threading import Lock
+from threading import RLock
 import time
 import traceback
 import socket
@@ -146,8 +146,7 @@ class Worker:
         )
 
         # Lock ensures .checkin() is not run concurrently.
-        self._lock = Lock()
-        self._first_run_lock = Lock()
+        self._lock = RLock()
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
@@ -299,10 +298,8 @@ class Worker:
                         logging.warn(
                             f"Got websocket message, got data: {data}, going to check in now."
                         )
-                        with self._first_run_lock:
-                            self.checkin()
-                            self.last_checkin = time.time()
-                            self.process_runs()  # make sure to process runs before the next start loop
+                        self.checkin()
+                        self.last_checkin = time.time()
 
                     while not self.terminate:
                         try:
@@ -323,10 +320,8 @@ class Worker:
         self.listen_thread.start()
         while not self.terminate:
             try:
-                self._first_run_lock.acquire()
                 self.checkin()
                 self.last_checkin = time.time()
-                first_iter = True
                 # Process runs until it's time for the next checkin.
                 while not self.terminate and (
                     time.time() - self.last_checkin <= self.checkin_frequency_seconds
@@ -339,9 +334,6 @@ class Worker:
                     self.process_runs()
                     time.sleep(0.003)
                     self.save_state()
-                    if first_iter:
-                        self._first_run_lock.release()
-                        first_iter = False
             except Exception:
                 if using_sentry():
                     capture_exception()
@@ -537,6 +529,7 @@ class Worker:
                         self.write(uuid, action['subpath'], action['string'])
                     else:
                         logger.warning("Unrecognized action type from server: %s", action_type)
+            self.process_runs()
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
