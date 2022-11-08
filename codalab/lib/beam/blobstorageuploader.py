@@ -6,7 +6,7 @@ from azure.storage.blob import (
 from apache_beam.io.azure.blobstorageio import parse_azfs_path
 import base64
 from codalab.worker.un_gzip_stream import BytesBuffer
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+from concurrent.futures import ThreadPoolExecutor
 
 class BlobStorageUploader(Uploader):
   """An improved version of apache_beam.io.azure.blobstorageio.BlobStorageUploader
@@ -51,7 +51,7 @@ class BlobStorageUploader(Uploader):
   def _write_to_blob(self, data):
     # block_id's have to be base-64 strings normalized to have the same length.
     block_id = base64.b64encode('{0:-32d}'.format(self.block_number).encode()).decode()
-    # put the blob content to server, blob is uncommitted
+    # put the blob content to server in parallel, but blob is uncommitted
     self.all_tasks.append(self.thread_pool.submit(self._blob_to_upload.stage_block, block_id, data))
     self.block_list.append(BlobBlock(block_id))
     self.block_number = self.block_number + 1
@@ -59,5 +59,5 @@ class BlobStorageUploader(Uploader):
   def finish(self):
     # The buffer will have a size smaller than MIN_WRITE_SIZE, so its contents can fit into memory.
     self._write_to_blob(self.buffer.read())
-    wait(self.all_tasks, return_when=ALL_COMPLETED)
+    self.thread_pool.shutdown(wait=True)
     self._blob_to_upload.commit_block_list(self.block_list, content_settings=self._content_settings)
