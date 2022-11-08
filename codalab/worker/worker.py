@@ -145,7 +145,8 @@ class Worker:
             bundle_runtime=bundle_runtime,
         )
 
-        # Lock ensures .checkin() is not run concurrently.
+        # Lock ensures listening thread and main thread don't simultaneously
+        # access the runs dictionary, thereby causing race conditions.
         self._lock = RLock()
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
@@ -533,7 +534,6 @@ class Worker:
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        # This also needs to be locked because self.runs is modified in checkin.
         with self._lock:
             # We (re-)initialize the Docker networks here, in case they've been removed.
             # For any networks that exist, this is essentially a no-op.
@@ -544,17 +544,14 @@ class Worker:
             self.run_state_manager.docker_network_internal = self.docker_network_internal
 
             # 1. transition all runs
-            try:
-                for uuid in self.runs:
-                    prev_state = self.runs[uuid]
-                    self.runs[uuid] = self.run_state_manager.transition(prev_state)
-                    # Only start saving stats for a new stage when the run has actually transitioned to that stage.
-                    if prev_state.stage != self.runs[uuid].stage:
-                        self.end_stage_stats(uuid, prev_state.stage)
-                        if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
-                            self.start_stage_stats(uuid, self.runs[uuid].stage)
-            except Exception as e:
-                logger.warning(e)
+            for uuid in self.runs:
+                prev_state = self.runs[uuid]
+                self.runs[uuid] = self.run_state_manager.transition(prev_state)
+                # Only start saving stats for a new stage when the run has actually transitioned to that stage.
+                if prev_state.stage != self.runs[uuid].stage:
+                    self.end_stage_stats(uuid, prev_state.stage)
+                    if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                        self.start_stage_stats(uuid, self.runs[uuid].stage)
 
             # 2. filter out finished runs and clean up containers
             finished_container_ids = [
