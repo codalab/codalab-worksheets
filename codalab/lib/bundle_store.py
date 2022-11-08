@@ -443,13 +443,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
         if bundle_store_uuid:
             assert len(bundle_locations) >= 1
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
-        import logging
-
-        logging.info(
-            f"In get_bundle_location_full_info, {storage_type} {is_dir} {uuid} {type(self._bundle_model)}"
-        )  # None None
-
-        logging.info("bundle_locations: " + str(bundle_locations))
+        
         if len(bundle_locations) >= 1:
             # Use the BundleLocations stored with the bundle, along with some
             # precedence rules, to determine where the bundle is stored.

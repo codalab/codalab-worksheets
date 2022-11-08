@@ -234,9 +234,6 @@ class BlobStorageUploader(Uploader):
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
-            import time
-
-            time1 = time.time()
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
             with FileSystems.create(
@@ -252,8 +249,6 @@ class BlobStorageUploader(Uploader):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
-            time2 = time.time()
-            print("upload time: ", time2 - time1)
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
