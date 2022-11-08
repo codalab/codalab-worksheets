@@ -451,29 +451,37 @@ class Worker:
         # Stop processing any new runs received from server
         if not response or self.terminate_and_restage or self.terminate:
             return
-        action_type = response['type']
-        logger.debug('Received %s message: %s', action_type, response)
-        if action_type == 'run':
-            self.initialize_run(response['bundle'], response['resources'])
-        else:
-            uuid = response['uuid']
-            socket_id = response.get('socket_id', None)
-            if uuid not in self.runs:
-                if action_type in ['read', 'netcat']:
-                    self.read_run_missing(socket_id)
-                return
-            if action_type == 'kill':
-                self.kill(uuid)
-            elif action_type == 'mark_finalized':
-                self.mark_finalized(uuid)
-            elif action_type == 'read':
-                self.read(socket_id, uuid, response['path'], response['read_args'])
-            elif action_type == 'netcat':
-                self.netcat(socket_id, uuid, response['port'], response['message'])
-            elif action_type == 'write':
-                self.write(uuid, response['subpath'], response['string'])
+        if type(response) is not list:
+            response = [response]
+        for action in response:
+            if not action:
+                continue
+            action_type = action['type']
+            logger.debug('Received %s message: %s', action_type, action)
+            if action_type == 'run':
+                self.initialize_run(action['bundle'], action['resources'])
             else:
-                logger.warning("Unrecognized action type from server: %s", action_type)
+                uuid = action['uuid']
+                socket_id = action.get('socket_id', None)
+                if uuid not in self.runs:
+                    if action_type in ['read', 'netcat']:
+                        self.read_run_missing(socket_id)
+                    return
+                if action_type == 'kill':
+                    kill_message = 'Kill requested'
+                    if 'kill_message' in action:
+                        kill_message = action['kill_message']
+                    self.kill(uuid, kill_message)
+                elif action_type == 'mark_finalized':
+                    self.mark_finalized(uuid)
+                elif action_type == 'read':
+                    self.read(socket_id, uuid, action['path'], action['read_args'])
+                elif action_type == 'netcat':
+                    self.netcat(socket_id, uuid, action['port'], action['message'])
+                elif action_type == 'write':
+                    self.write(uuid, action['subpath'], action['string'])
+                else:
+                    logger.warning("Unrecognized action type from server: %s", action_type)
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
@@ -680,11 +688,11 @@ class Worker:
                 file=sys.stdout,
             )
 
-    def kill(self, uuid):
+    def kill(self, uuid, kill_message='Kill requested'):
         """
         Marks the run as killed so that the next time its state is processed it is terminated.
         """
-        self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+        self.runs[uuid] = self.runs[uuid]._replace(kill_message=kill_message, is_killed=True)
 
     def restage_bundle(self, uuid):
         """
