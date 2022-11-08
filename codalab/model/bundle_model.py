@@ -2461,9 +2461,17 @@ class BundleModel(object):
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex
 
-            time_quota = self.default_user_info['edu_time_quota'] if email.endswith(".edu") else self.default_user_info['time_quota']
-            disk_quota = self.default_user_info['edu_disk_quota'] if email.endswith(".edu") else self.default_user_info['disk_quota']
-            
+            time_quota = (
+                self.default_user_info['edu_time_quota']
+                if email.endswith(".edu")
+                else self.default_user_info['time_quota']
+            )
+            disk_quota = (
+                self.default_user_info['edu_disk_quota']
+                if email.endswith(".edu")
+                else self.default_user_info['disk_quota']
+            )
+
             connection.execute(
                 cl_user.insert().values(
                     {

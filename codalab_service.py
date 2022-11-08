@@ -249,8 +249,16 @@ CODALAB_ARGUMENTS = [
     # User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
-    CodalabArg(name='edu_user_disk_quota', help='How much space a user with edu email can use', default='100g'),
-    CodalabArg(name='edu_user_time_quota', help='How much total time a user with edu email can use', default='100y'),
+    CodalabArg(
+        name='edu_user_disk_quota',
+        help='How much space a user with edu email can use',
+        default='100g',
+    ),
+    CodalabArg(
+        name='edu_user_time_quota',
+        help='How much total time a user with edu email can use',
+        default='100y',
+    ),
     CodalabArg(
         name='user_parallel_run_quota',
         help='How many simultaneous runs a user can have',
