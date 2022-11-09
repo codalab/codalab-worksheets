@@ -105,8 +105,8 @@ Start the CodaLab service as follows:
 
     ./codalab_service.py start -bd
 
-If you modify the frontend, you can do so without restarting.  If you would
-like to modify the rest server, bundle manager, or worker, then you can edit
+If you modify the frontend or the rest server, you can do so without restarting.
+If you would like to modify the bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 
