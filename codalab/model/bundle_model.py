@@ -1109,7 +1109,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finished(self, bundle, bundle_location, worker_run, shared_filesystem):
+    def transition_bundle_finished(self, bundle, bundle_location, worker_run=None):
         """
         Transitions bundle to READY or FAILED state:
             The final state is determined by whether a failure message or exitcode
@@ -1125,9 +1125,12 @@ class BundleModel(object):
         worker = self.get_bundle_worker(bundle.uuid)
 
         if worker['shared_file_system']:
-            self.update_disk_metadata(
-                bundle, bundle_location, current_data_size=worker_run.disk_utilization
-            )
+            if worker_run:
+                self.update_disk_metadata(
+                    bundle, bundle_location, current_data_size=worker_run.disk_utilization
+                )
+            else:
+                self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
