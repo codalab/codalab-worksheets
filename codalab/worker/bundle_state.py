@@ -282,7 +282,7 @@ class BundleCheckinState(object):
         bundle_profile_stats,  # type: dict
         cpu_usage,  # type: float
         memory_usage,  # type: int
-        disk_utilization, # type: int
+        disk_utilization,  # type: int
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -317,7 +317,7 @@ class BundleCheckinState(object):
             bundle_profile_stats=dct.get('bundle_profile_stats'),
             cpu_usage=dct.get('cpu_usage'),
             memory_usage=dct.get('memory_usage'),
-            disk_utilization=dct.get('disk_utilization')
+            disk_utilization=dct.get('disk_utilization'),
         )
 
     @property

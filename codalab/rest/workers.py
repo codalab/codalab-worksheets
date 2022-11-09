@@ -50,7 +50,13 @@ def checkin(worker_id):
         try:
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
-            local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id, request.json.get("shared_file_system", False))
+            local.model.bundle_checkin(
+                bundle,
+                worker_run,
+                request.user.user_id,
+                worker_id,
+                request.json.get("shared_file_system", False),
+            )
 
             if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their time quota and we kill the job.
