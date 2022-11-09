@@ -515,7 +515,6 @@ def _add_bundle_location(bundle_uuid: str):
         local.model.update_bundle(
             bundle, {'is_dir': is_dir},
         )
-        logging.info(f"When uploading: {bundle_uuid}")
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
     logging.info(f"Bypass server upload, the URL is {bundle_url}")
@@ -1317,7 +1316,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         else:
             # If the bundle is stored on cloud, first delete data on cloud.
             for uuid in relevant_uuids:
-                logging.info("uuid: " + str(uuid))
                 bundle_location = local.bundle_store.get_bundle_location(uuid)
 
                 file_location = '/'.join(bundle_location.split('/')[0:-1]) + "/"
@@ -1340,6 +1338,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Don't physically delete linked bundles.
             pass
         else:
+            bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 local.bundle_store.cleanup(uuid, dry_run)
 

@@ -3083,9 +3083,6 @@ class BundleModel(object):
                 )
                 .where(cl_bundle_location.c.bundle_uuid == bundle_uuid)
             ).fetchall()
-            import logging
-
-            logging.info(str(rows))
             return [
                 {
                     'bundle_store_uuid': row.uuid,
