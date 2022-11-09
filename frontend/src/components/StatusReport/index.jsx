@@ -43,12 +43,7 @@ class StatusReport extends React.Component {
     }
 
     fetchReport(date) {
-        const formattedDate = date.toISOString();
-        const newUserCommand = `cl uls .joined_after=${formattedDate} .count`;
-        const activeUserCommand = `cl uls .active_after=${formattedDate} .count`;
-        const newBundleCommand = `cl search .after=${formattedDate} .count`;
-        const failedBundleCommand = `cl search .after=${formattedDate}  state=failed .count`;
-        const activeWorkersCommand = `cl workers -c`;
+        const isoDate = date.toISOString();
         const uuid = this.props.worksheetUUID;
         const promises = [];
         const report = {};
@@ -58,31 +53,43 @@ class StatusReport extends React.Component {
             reportIsErroring: false,
         });
 
+        // new user count
         promises.push(
-            executeCommand(newUserCommand, uuid).then((resp) => {
+            executeCommand(`cl uls .joined_after=${isoDate} .count`, uuid).then((resp) => {
                 report.newUserCount = resp.output;
             }),
         );
+
+        // active user count
         promises.push(
-            executeCommand(activeUserCommand, uuid).then((resp) => {
+            executeCommand(`cl uls .active_after=${isoDate} .count`, uuid).then((resp) => {
                 report.activeUserCount = resp.output;
             }),
         );
+
+        // new bundle count
         promises.push(
-            executeCommand(newBundleCommand, uuid).then((resp) => {
+            executeCommand(`cl search .after=${isoDate} .count`, uuid).then((resp) => {
                 report.newBundleCount = resp.output;
             }),
         );
+
+        // failed bundle count
         promises.push(
-            executeCommand(failedBundleCommand, uuid).then((resp) => {
-                report.failedBundleCount = resp.output;
-            }),
+            executeCommand(`cl search .after=${isoDate}  state=failed .count`, uuid).then(
+                (resp) => {
+                    report.failedBundleCount = resp.output;
+                },
+            ),
         );
+
+        // active worker list
         promises.push(
-            executeCommand(activeWorkersCommand, uuid).then((resp) => {
+            executeCommand(`cl workers -c`, uuid).then((resp) => {
                 report.activeWorkers = resp.output;
             }),
         );
+
         Promise.all(promises)
             .then(() => {
                 this.setState({
@@ -117,8 +124,7 @@ class StatusReport extends React.Component {
         const { classes } = this.props;
         const { reportIsLoading, reportIsErroring, reportDate, report } = this.state;
         const errorText = 'Error: Unable to fetch status report.';
-        const helpText =
-            'Use the date picker below to select your report date range. Results will reflect activity between the selected date and now.';
+        const helpText = 'Report results will reflect activity between the selected date and now.';
         const tableRows = [
             this.createRowData('New User Count', report.newUserCount),
             this.createRowData('Active User Count', report.activeUserCount),
@@ -149,7 +155,7 @@ class StatusReport extends React.Component {
                         <Table>
                             <TableHead classes={{ root: classes.row }}>
                                 <TableCell>
-                                    Query [since {reportDate.toLocaleDateString()}]
+                                    Query [{reportDate.toLocaleDateString()} - Now]
                                 </TableCell>
                                 <TableCell>Data</TableCell>
                             </TableHead>
