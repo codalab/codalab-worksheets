@@ -142,7 +142,7 @@ class KubernetesRuntime(Runtime):
             logger.error(f'Exception when calling Kubernetes utils->create_from_dict...: {e}')
             raise e
 
-        return pod.metadata.name
+        return pod[0].metadata.name
 
     def get_container_stats(self, pod_name: str):
         # TODO: implement
