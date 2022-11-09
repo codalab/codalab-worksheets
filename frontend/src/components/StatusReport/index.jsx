@@ -76,7 +76,7 @@ class StatusReport extends React.Component {
 
         // failed bundle count
         promises.push(
-            executeCommand(`cl search .after=${isoDate}  state=failed .count`, uuid).then(
+            executeCommand(`cl search .after=${isoDate} state=failed .count`, uuid).then(
                 (resp) => {
                     report.failedBundleCount = resp.output;
                 },

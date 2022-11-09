@@ -63,7 +63,7 @@ class Worksheet extends React.Component {
         let localWorksheetWidthPreference = window.localStorage.getItem(
             LOCAL_STORAGE_WORKSHEET_WIDTH,
         );
-        // uuids for the "What's Running on CodaLab?" worksheets.
+        // uuids for the "What's Running on CodaLab?" worksheets
         const statusWorksheetUUIDs = [
             '0x870c3781d520468694758e665bba7345', // local (testing)
             '0xa590fd1b68944a1a95c1c40c4931dc7b', // prod
