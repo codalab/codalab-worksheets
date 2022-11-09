@@ -155,8 +155,10 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
-      - uses: medyagh/setup-minikube@latest
+      - uses: actions/setup-go@v3
         if: matrix.runtime == 'kubernetes'
+        with:
+          go-version: '1.18.1'
       - name: Run tests using Kubernetes runtime
         if: matrix.runtime == 'kubernetes'
         run: |

@@ -37,7 +37,7 @@ class KubernetesRuntime(Runtime):
         configuration.api_key['authorization'] = auth_token
         configuration.host = cluster_host
         configuration.ssl_ca_cert = cert_path
-        if configuration.host == "https://minikube:8443":
+        if configuration.host == "https://codalab-control-plane:6443":
             # Don't verify SSL if we are connecting to a local cluster for testing / development.
             configuration.verify_ssl = False
             configuration.ssl_ca_cert = None
