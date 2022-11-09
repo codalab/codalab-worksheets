@@ -2747,8 +2747,8 @@ class BundleModel(object):
     def get_user_disk_quota_left(self, user_id, user_info=None):
         if not user_info:
             user_info = self.get_user_info(user_id)
-        time_quota = user_info['disk_quota']
-        time_used = user_info['disk_used']
+        disk_quota = user_info['disk_quota']
+        disk_used = user_info['disk_used']
         return disk_quota - disk_used
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
