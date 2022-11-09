@@ -965,7 +965,7 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_running(self, bundle, worker_run, row, user_id, worker_id, connection):
+    def transition_bundle_running(self, bundle, worker_run, row, user_id, worker_id, connection, shared_filesystem):
         """
         Transitions bundle to RUNNING state:
             If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -1001,12 +1001,16 @@ class BundleModel(object):
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
             'memory_usage': memory_usage,
+            'data_size': worker_run.disk_utilization
         }
 
-        # Increment user time as we go to ensure user doesn't go over time quota.
+        # Increment user time and disk as we go to ensure user doesn't go over quota.
         if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
+        if shared_filesystem and hasattr(bundle.metadata, 'data_size'):
+            disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
+            self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
@@ -1071,7 +1075,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, worker_run, user_id, connection):
+    def transition_bundle_finalizing(self, bundle, worker_run, user_id, connection, shared_filesystem):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -1085,6 +1089,9 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
+        if shared_filesystem:
+            disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
+            self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         # Build metadata
         metadata = {}
@@ -1098,7 +1105,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finished(self, bundle, bundle_location):
+    def transition_bundle_finished(self, bundle, bundle_location, worker_run, shared_filesystem):
         """
         Transitions bundle to READY or FAILED state:
             The final state is determined by whether a failure message or exitcode
@@ -1114,8 +1121,7 @@ class BundleModel(object):
         worker = self.get_bundle_worker(bundle.uuid)
 
         if worker['shared_file_system']:
-            # TODO(Ashwin): fix for --link.
-            self.update_disk_metadata(bundle, bundle_location)
+            self.update_disk_metadata(bundle, bundle_location, current_data_size=worker_run.disk_utilization)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
@@ -1129,7 +1135,7 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False, current_data_size=None):
         """
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
@@ -1142,20 +1148,25 @@ class BundleModel(object):
 
         # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
-        data_size = path_util.get_size(bundle_location, dirs_and_files)
-        if enforce_disk_quota:
-            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
-            if data_size > disk_left:
-                raise UsageError(
-                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (data_size, disk_left)
-                )
+        if current_data_size:
+            self.increment_user_disk_used(bundle.owner_id, current_data_size - bundle.data_size)
+            bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': current_data_size}}
+            self.update_bundle(bundle, bundle_update)
+        else:
+            data_size = path_util.get_size(bundle_location, dirs_and_files)
+            if enforce_disk_quota:
+                disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+                if data_size > disk_left:
+                    raise UsageError(
+                        "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                        % (data_size, disk_left)
+                    )
 
-        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
-        self.update_bundle(bundle, bundle_update)
-        self.update_user_disk_used(bundle.owner_id)
+            bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+            self.update_bundle(bundle, bundle_update)
+            self.update_user_disk_used(bundle.owner_id)
 
-    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id, shared_filesystem):
         """
         Updates the database tables with the most recent bundle information from worker
         """
@@ -1174,13 +1185,13 @@ class BundleModel(object):
             if worker_run.state == State.FINALIZING:
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
-                    bundle, worker_run, row, user_id, worker_id, connection
+                    bundle, worker_run, row, user_id, worker_id, connection, shared_filesystem
                 )
-                return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection)
+                return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection, shared_filesystem)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
-                    bundle, worker_run, row, user_id, worker_id, connection
+                    bundle, worker_run, row, user_id, worker_id, connection, shared_filesystem
                 )
 
             # State isn't one we can check in for
@@ -2708,12 +2719,27 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
+    def increment_user_disk_used(self, user_id, amount):
+        """
+        Increment number of bytes of disk used by user by amount.
+        """
+        user_info = self.get_user_info(user_id)
+        user_info['disk_used'] += amount
+        self.update_user_info(user_info)
+
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
             user_info = self.get_user_info(user_id)
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
+    
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
+        time_quota = user_info['disk_quota']
+        time_used = user_info['disk_used']
+        return disk_quota - disk_used
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:
