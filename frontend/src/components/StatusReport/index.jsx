@@ -76,11 +76,9 @@ class StatusReport extends React.Component {
 
         // failed bundle count
         promises.push(
-            executeCommand(`cl search .after=${isoDate} state=failed .count`, uuid).then(
-                (resp) => {
-                    report.failedBundleCount = resp.output;
-                },
-            ),
+            executeCommand(`cl search .after=${isoDate} state=failed .count`, uuid).then((resp) => {
+                report.failedBundleCount = resp.output;
+            }),
         );
 
         // active worker list
