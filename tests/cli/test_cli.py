@@ -1723,7 +1723,9 @@ def test_search_time(ctx):
 def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
-    uuid = _run_command([cl, 'run', 'echo some_data_num_bytes > test.txt; sleep 100000'], request_disk='1')
+    uuid = _run_command(
+        [cl, 'run', 'echo some_data_num_bytes > test.txt; sleep 100000'], request_disk='1'
+    )
     wait_until_state(uuid, State.KILLED, timeout_seconds=70)
     check_equals(
         'Kill requested: User disk quota exceeded. To apply for more quota,'
