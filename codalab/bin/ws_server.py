@@ -16,7 +16,7 @@ async def rest_server_handler(websocket):
     """Handles routes of the form: /main. This route is called by the rest-server
     whenever a worker needs to be pinged (to ask it to check in). The body of the
     message is the worker id to ping. This function sends a message to the worker
-    with that worker id, through an appropriate websocket.
+    with that worker id through an appropriate websocket.
     """
     # Got a message from the rest server.
     worker_id = await websocket.recv()
