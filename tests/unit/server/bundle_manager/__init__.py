@@ -288,6 +288,7 @@ class TestBase:
             failure_message="",
             cpu_usage=0.0,
             memory_usage=0.0,
+            disk_utilization=0,
             bundle_profile_stats={
                 RunStage.PREPARING: {'start': 15, 'end': 20, 'elapsed': 5},
                 RunStage.RUNNING: {'start': 15, 'end': 20, 'elapsed': 5},
@@ -297,7 +298,7 @@ class TestBase:
             },
         )
         self.bundle_manager._model.bundle_checkin(
-            bundle, worker_run, user_id or self.user_id, worker_id
+            bundle, worker_run, user_id or self.user_id, worker_id, False
         )
 
 
