@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.server.bundle_manager import DISK_QUOTA_SLACK_BYTES
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -1722,18 +1723,12 @@ def test_search_time(ctx):
 @TestModule.register('run')
 def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+    #_run_command([cl, 'uedit', 'codalab', '--disk-quota', '536870913'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
     uuid = _run_command(
-        [cl, 'run', 'echo some_data_num_bytes > test.txt; sleep 100000'], request_disk='1'
+        [cl, 'run', f'head -c {int(3*DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000'], request_disk=None
     )
-    wait_until_state(uuid, State.KILLED, timeout_seconds=70)
-    check_equals(
-        'Kill requested: User disk quota exceeded. To apply for more quota,'
-        ' please visit the following link: '
-        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-        '#how-do-i-request-more-disk-quota-or-time-quota',
-        get_info(uuid, 'failure_message'),
-    )
+    wait_until_state(uuid, State.FAILED, timeout_seconds=200)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Test that bundle fails when run without sufficient time quota

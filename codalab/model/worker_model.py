@@ -393,7 +393,8 @@ class WorkerModel(object):
                     else:
                         success = True
                 except socket.error:
-                    logging.exception("socket error when calling send_json_message")
+                    pass
+                    #logging.exception("socket error when calling send_json_message")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
