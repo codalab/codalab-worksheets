@@ -1732,7 +1732,9 @@ def test_run(ctx):
         worker_info = result.split("\n")[2]
         shared_file_system = worker_info[shared_file_system_index : shared_file_system_index + 4]
         if shared_file_system == 'True':
-            _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
+            _run_command(
+                [cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}']
+            )
             uuid = _run_command(
                 [
                     cl,
@@ -1742,7 +1744,9 @@ def test_run(ctx):
                 request_disk=None,
             )
             wait_until_state(uuid, State.FAILED, timeout_seconds=300)
-            _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+            _run_command(
+                [cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota]
+            )  # reset disk quota
 
     # Test that bundle fails when run without sufficient time quota
     _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
