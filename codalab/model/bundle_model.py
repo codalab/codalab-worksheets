@@ -1119,7 +1119,9 @@ class BundleModel(object):
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
-        import pdb; pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 

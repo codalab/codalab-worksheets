@@ -1723,12 +1723,17 @@ def test_search_time(ctx):
 @TestModule.register('run')
 def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
-    #_run_command([cl, 'uedit', 'codalab', '--disk-quota', '536870913'])
+    # _run_command([cl, 'uedit', 'codalab', '--disk-quota', '536870913'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
     uuid = _run_command(
-        [cl, 'run', f'head -c {int(3*DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000'], request_disk=None
+        [
+            cl,
+            'run',
+            f'head -c {int(3*DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
+        ],
+        request_disk=None,
     )
-    wait_until_state(uuid, State.FAILED, timeout_seconds=200)
+    wait_until_state(uuid, State.FAILED, timeout_seconds=300)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Test that bundle fails when run without sufficient time quota
