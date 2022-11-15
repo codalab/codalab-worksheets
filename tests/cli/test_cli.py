@@ -1728,7 +1728,7 @@ def test_run(ctx):
     header = _run_command([cl, 'workers']).split("\n")[0]
     shared_file_system_index = header.index('shared_file_system')
     worker_info = _run_command([cl, 'workers']).split("\n")[2]
-    shared_file_system = worker_info[shared_file_system_index:shared_file_system_index+4]
+    shared_file_system = worker_info[shared_file_system_index : shared_file_system_index + 4]
     if shared_file_system == 'True':
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
         uuid = _run_command(
