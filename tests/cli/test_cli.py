@@ -1725,22 +1725,24 @@ def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
     # This is only relevant when workers use shared file system, so check that first.
     result = _run_command([cl, 'workers'])
-    header = _run_command([cl, 'workers']).split("\n")[0]
-    shared_file_system_index = header.index('shared_file_system')
-    worker_info = _run_command([cl, 'workers']).split("\n")[2]
-    shared_file_system = worker_info[shared_file_system_index : shared_file_system_index + 4]
-    if shared_file_system == 'True':
-        _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
-        uuid = _run_command(
-            [
-                cl,
-                'run',
-                f'head -c {int(3*DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
-            ],
-            request_disk=None,
-        )
-        wait_until_state(uuid, State.FAILED, timeout_seconds=300)
-        _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+    lines = result.split("\n")
+    if len(lines) > 2:
+        header = result.split("\n")[0]
+        shared_file_system_index = header.index('shared_file_system')
+        worker_info = result.split("\n")[2]
+        shared_file_system = worker_info[shared_file_system_index : shared_file_system_index + 4]
+        if shared_file_system == 'True':
+            _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
+            uuid = _run_command(
+                [
+                    cl,
+                    'run',
+                    f'head -c {int(3*DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
+                ],
+                request_disk=None,
+            )
+            wait_until_state(uuid, State.FAILED, timeout_seconds=300)
+            _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Test that bundle fails when run without sufficient time quota
     _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
