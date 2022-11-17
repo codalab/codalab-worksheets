@@ -1343,7 +1343,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         start = time.time()
         local.model.update_user_disk_used(request.user.user_id)
         end = time.time()
-        logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. actually delete the bundle: {}".format(end-start))
+        logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. update user disk used: {}".format(end-start))
 
     # Delete the data.
     start = time.time()
