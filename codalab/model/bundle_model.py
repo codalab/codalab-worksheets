@@ -1010,7 +1010,8 @@ class BundleModel(object):
         if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        if shared_filesystem and hasattr(bundle.metadata, 'data_size'):
+        #if shared_filesystem and hasattr(bundle.metadata, 'data_size'):
+        if hasattr(bundle.metadata, 'data_size'):
             disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
@@ -1093,9 +1094,9 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        if shared_filesystem:
-            disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
-            self.increment_user_disk_used(bundle.owner_id, disk_increment)
+        #if shared_filesystem:
+        disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
+        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         # Build metadata
         metadata = {}
