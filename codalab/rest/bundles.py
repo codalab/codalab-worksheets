@@ -1325,19 +1325,25 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. make sure bundles aren't referenced in multiple places: {}".format(end-start))
 
     # Delete the actual bundle
-    start = time.time()
     if not dry_run:
         if data_only:
             # Just remove references to the data hashes
+            start = time.time()
             local.model.remove_data_hash_references(relevant_uuids)
+            end = time.time()
+            logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. remove references to data hashes: {}".format(end-start))
         else:
             # Actually delete the bundle
+            start = time.time()
             local.model.delete_bundles(relevant_uuids)
+            end = time.time()
+            logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. actually delete the bundle: {}".format(end-start))
 
         # Update user statistics
+        start = time.time()
         local.model.update_user_disk_used(request.user.user_id)
-    end = time.time()
-    logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. delete the actual bundle: {}".format(end-start))
+        end = time.time()
+        logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. actually delete the bundle: {}".format(end-start))
 
     # Delete the data.
     start = time.time()
