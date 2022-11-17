@@ -1010,7 +1010,7 @@ class BundleModel(object):
         if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        #if shared_filesystem and hasattr(bundle.metadata, 'data_size'):
+        # if shared_filesystem and hasattr(bundle.metadata, 'data_size'):
         if hasattr(bundle.metadata, 'data_size'):
             disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
@@ -1094,7 +1094,7 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        #if shared_filesystem:
+        # if shared_filesystem:
         disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
@@ -1127,9 +1127,7 @@ class BundleModel(object):
 
         if worker['shared_file_system']:
             if worker_run:
-                self.update_disk_metadata(
-                    bundle, bundle_location, data_size=worker_run.disk_utilization
-                )
+                self.update_disk_metadata(bundle, bundle_location)
             else:
                 self.update_disk_metadata(bundle, bundle_location)
 
@@ -1145,9 +1143,7 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(
-        self, bundle, bundle_location, enforce_disk_quota=False, data_size=None
-    ):
+    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
         """
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
@@ -1160,7 +1156,11 @@ class BundleModel(object):
 
         # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
-        if not data_size:
+        # ok: we can do this. Get current ubndle datasize and subtract here and sould work.
+        # if not exist, jsue use 0
+        if hasattr(bundle.metadata, 'data_size'):
+            data_size = bundle.metadata.data_size
+        else:
             data_size = path_util.get_size(bundle_location, dirs_and_files)
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
