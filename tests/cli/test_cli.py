@@ -1724,6 +1724,20 @@ def test_search_time(ctx):
 def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
     # This is only relevant when workers use shared file system, so check that first.
+    
+    # Test that bundle fails when run without sufficient time quota
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
+    uuid = _run_command([cl, 'run', 'sleep 100000'])
+    wait_until_state(uuid, State.KILLED, timeout_seconds=100)
+    check_equals(
+        'Kill requested: User time quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'),
+    )
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
+
     """
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
@@ -1746,18 +1760,6 @@ def test_run(ctx):
     wait_until_state(uuid, State.FAILED, timeout_seconds=300)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
-    # Test that bundle fails when run without sufficient time quota
-    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
-    uuid = _run_command([cl, 'run', 'sleep 100000'])
-    wait_until_state(uuid, State.KILLED, timeout_seconds=100)
-    check_equals(
-        'Kill requested: User time quota exceeded. To apply for more quota,'
-        ' please visit the following link: '
-        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-        '#how-do-i-request-more-disk-quota-or-time-quota',
-        get_info(uuid, 'failure_message'),
-    )
-    _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
 
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
