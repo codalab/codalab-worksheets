@@ -1358,7 +1358,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         # Just decrement the user disk used by the sum of sizes of bundles deleted
         # OK, now let's add our change.
         start = time.time()
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
         local.model.increment_user_disk_used(request.user.user_id, (-1)*sum(map(int, bundle_data_sizes)))
         end = time.time()
