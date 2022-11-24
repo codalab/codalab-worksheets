@@ -1360,7 +1360,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         start = time.time()
         bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
         logger.info(f"data_sizes: {bundle_data_sizes}")
-        local.model.increment_user_disk_used(request.user.user_id, (-1)*sum(map(int, bundle_data_sizes.values())))
+        local.model.increment_user_disk_used(
+            request.user.user_id, (-1) * sum(map(int, bundle_data_sizes.values()))
+        )
         end = time.time()
         logger.info("^^^^^^^^&&&&&MY-TIMER-LOGGING. update user disk used: {}".format(end - start))
 
