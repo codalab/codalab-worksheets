@@ -2713,8 +2713,10 @@ class BundleModel(object):
         User used some time.
         """
         user_info = self.get_user_info(user_id)
+        logger.info(f"disk before increment: {user_info['disk_used']}")
         user_info['disk_used'] += amount
         self.update_user_info(user_info)
+        logger.info(f"disk AFTER increment: {self.get_user_info(user_id)['disk_used']}")
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
