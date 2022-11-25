@@ -35,19 +35,20 @@ class Uploader:
     """
 
     def __init__(
-        self, bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=False
+        self, bundle_model=None, bundle_store=None, destination_bundle_store=None, json_api_client=None
     ):
         """
         params:
         bundle_model: Used on rest-server.
         bundle_store: Bundle store model, used on rest-server.
         destination_bundle_store: Indicate destination for bundle storage.
-        is_client: Whether this uploader is used on client side. Used on client.
+        json_api_client: A json API client. Only non-None if uploader is used on client side.
         """
-        if not is_client:
+        if not json_api_client:
             self._bundle_model = bundle_model
             self._bundle_store = bundle_store
             self.destination_bundle_store = destination_bundle_store
+        self._client = json_api_client
 
     @property
     def storage_type(self):
@@ -244,6 +245,20 @@ class BlobStorageUploader(Uploader):
                     if not to_send:
                         break
                     out.write(to_send)
+                    # update disk
+                    client.update('users/increment_disk_used', {'disk_used_increment': len(to_send)})
+                    # abort if went over disk
+                    user_info = client.fetch(
+                        'users', <curr_user_id>, {
+                            'keywords': ['disk_used', 'disk_quota']
+                        }
+                    )
+                    if user_info['disk_used'] >= user_info['disk_quota']:
+                        raise Exception('Upload aborted. User disk quota exceeded. '
+                            'To apply for more quota, please visit the following link: '
+                            'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                            '#how-do-i-request-more-disk-quota-or-time-quota')
+
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
                         should_resume = progress_callback(bytes_uploaded)
@@ -462,6 +477,7 @@ class ClientUploadManager(object):
                         index_conn_str=index_conn_str,
                         source_ext=source_ext,
                         should_unpack=unpack_before_upload,
+                        json_api_client=self._client,
                         progress_callback=progress.update,
                     )
             except Exception as err:
@@ -499,6 +515,7 @@ class ClientUploadManager(object):
         index_conn_str,
         source_ext,
         should_unpack,
+        json_api_client,
         progress_callback=None,
     ):
         """
@@ -513,9 +530,10 @@ class ClientUploadManager(object):
         index_conn_str: Connection string for the index.sqlite file.
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
+        json_api_client: TODO
         """
         BlobStorageUploader(
-            bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=True
+            bundle_model=None, bundle_store=None, destination_bundle_store=None, json_api_client=json_api_client
         ).write_fileobj(
             source_ext,
             fileobj,
@@ -535,8 +553,10 @@ class ClientUploadManager(object):
         index_conn_str,
         source_ext,
         should_unpack,
+        json_api_client,
         progress_callback=None,
     ):
+        """TODO: add json_api_client stuff in here."""
         from codalab.lib import zip_util
 
         if should_unpack:
