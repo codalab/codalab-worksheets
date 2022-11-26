@@ -15,6 +15,7 @@ def upload_with_chunked_encoding(
     need_response=False,
     url="",
     progress_callback=None,
+    json_api_client=None
 ):
     """
         Uploads the fileobj to url using method with headers and query_params,
@@ -32,6 +33,8 @@ def upload_with_chunked_encoding(
         :param url: String. Location or sub url that indicating where the file object will be uploaded.
         :param need_response: Bool. Whether need to wait for the response.
         :param progress_callback: Function. Callback function indicating upload progress.
+        :param json_api_client: JsonApiClient. None when this function is run by the server.
+                                               Used to update disk usage from client.
         """
     CHUNK_SIZE = 16 * 1024
     TIMEOUT = 60
@@ -67,6 +70,14 @@ def upload_with_chunked_encoding(
                 break
             conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
             bytes_uploaded += len(to_send)
+            # abort if went over disk
+            self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
+            user_info = self._client.fetch('user')
+            if user_info['disk_used'] >= user_info['disk_quota']:
+                raise Exception('Upload aborted. User disk quota exceeded. '
+                    'To apply for more quota, please visit the following link: '
+                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                    '#how-do-i-request-more-disk-quota-or-time-quota')
             if progress_callback is not None:
                 should_resume = progress_callback(bytes_uploaded)
                 if not should_resume:

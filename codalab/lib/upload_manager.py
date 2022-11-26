@@ -569,6 +569,7 @@ class ClientUploadManager(object):
             fileobj=output_fileobj,
             query_params={},
             progress_callback=progress_callback,
+            json_api_client=json_api_client
         )
         # upload the index file
         with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
