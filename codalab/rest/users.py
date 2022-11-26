@@ -241,7 +241,7 @@ def update_users():
     return AdminUserSchema(many=True).dump(users).data
 
 
-@patch('/users/increment_disk_used')
+@patch('/user/increment_disk_used', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def increment_user_disk_used():
     """
     Update the disk used for the user who makes the request to this endpoint.
@@ -255,8 +255,9 @@ def increment_user_disk_used():
     security flaw.
     """
     # temporary; convert to using Schema later like in rest/schemas.py.
-    disk_used_increment = request.json['disk_used_increment']
+    disk_used_increment = request.json['data'][0]['attributes']['disk_used_increment']
     if disk_used_increment <= 0:
         abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
     
     local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
+    return AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data

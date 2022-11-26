@@ -30,8 +30,8 @@ Source = Union[str, Tuple[str, IO[bytes]]]
 class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
     non-implemented methods that perform the uploads to a bundle store.
-    Used when: 1. client -> blob storage (is_client = True in init function)
-               2. rest-server -> blob storage (is_client = False in init function)
+    Used when: 1. client -> blob storage (json_api_client = a json_api_client object in init function)
+               2. rest-server -> blob storage (json_api_client = None in init function)
     """
 
     def __init__(
@@ -241,18 +241,15 @@ class BlobStorageUploader(Uploader):
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
                 while True:
+                    import pdb; pdb.set_trace()
                     to_send = output_fileobj.read(CHUNK_SIZE)
                     if not to_send:
                         break
                     out.write(to_send)
                     # update disk
-                    client.update('users/increment_disk_used', {'disk_used_increment': len(to_send)})
+                    self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
                     # abort if went over disk
-                    user_info = client.fetch(
-                        'users', <curr_user_id>, {
-                            'keywords': ['disk_used', 'disk_quota']
-                        }
-                    )
+                    user_info = self._client.fetch('user')
                     if user_info['disk_used'] >= user_info['disk_quota']:
                         raise Exception('Upload aborted. User disk quota exceeded. '
                             'To apply for more quota, please visit the following link: '
@@ -347,7 +344,7 @@ class UploadManager(object):
             bundle_model=self._bundle_model,
             bundle_store=self._bundle_store,
             destination_bundle_store=destination_bundle_store,
-            is_client=False,
+            json_api_client=None,
         ).upload_to_bundle_store(bundle, source, git, unpack)
 
     def has_contents(self, bundle):
