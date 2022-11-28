@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
 
+from codalab.lib import path_util
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
@@ -1315,10 +1316,48 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
+    # Let's add more tests here to see if the disk quota is doing what we expect.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used + file_size
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used
+    )
+
+    # Now, for -d
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used + file_size
+    )
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used
+    )
+
+    # TODO: Add one for symlinks as well!
+
+
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+
+    
 
 
 @TestModule.register('make')

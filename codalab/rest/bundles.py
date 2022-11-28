@@ -1314,16 +1314,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Actually delete the bundle
             local.model.delete_bundles(relevant_uuids)
 
-        # Update user statistics
-        # Just decrement the user disk used by the sum of sizes of bundles deleted
-        # OK, now let's add our change.
-        bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
-        local.model.increment_user_disk_used(
-            request.user.user_id, (-1) * sum(map(int, bundle_data_sizes.values()))
-        )
-
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
+    bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
         if bundle_link_url:
@@ -1332,7 +1325,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         else:
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
-                local.bundle_store.cleanup(uuid, dry_run)
+                removed = local.bundle_store.cleanup(uuid, dry_run)
+                if removed:
+                    local.model.increment_user_disk_used(
+                        request.user.user_id, -bundle_data_sizes[uuid])
 
     return relevant_uuids
 

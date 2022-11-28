@@ -232,8 +232,9 @@ class _MultiDiskBundleStoreBase(BundleStore):
         '''
         absolute_path = self.get_bundle_location(uuid)
         print("cleanup: data %s" % absolute_path, file=sys.stderr)
-        if not dry_run:
-            path_util.remove(absolute_path)
+        if dry_run:
+            return False
+        return path_util.remove(absolute_path)
 
     def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
         """
