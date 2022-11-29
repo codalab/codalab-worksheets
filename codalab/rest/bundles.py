@@ -1329,7 +1329,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 removed = local.bundle_store.cleanup(uuid, dry_run)
                 if removed and uuid in bundle_data_sizes:
                     local.model.increment_user_disk_used(
-                        request.user.user_id, -int(bundle_data_sizes[uuid]))
+                        request.user.user_id, -int(bundle_data_sizes[uuid])
+                    )
 
     return relevant_uuids
 

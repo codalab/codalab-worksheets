@@ -310,7 +310,7 @@ def remove(path):
 
         if not FileSystems.exists(path):
             FileSystems.delete([path])
-        return True # not sure about this one
+        return True  # not sure about this one
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):
