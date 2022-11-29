@@ -1726,6 +1726,7 @@ def test_run(ctx):
     # This is only relevant when workers use shared file system, so check that first.
     
     # Test that bundle fails when run without sufficient time quota
+    """
     _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
     wait_until_state(uuid, State.KILLED, timeout_seconds=100)
@@ -1737,6 +1738,7 @@ def test_run(ctx):
         get_info(uuid, 'failure_message'),
     )
     _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
+    """
     """
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
@@ -1752,7 +1754,7 @@ def test_run(ctx):
         [
             cl,
             'run',
-            f'head -c {int(3*DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
+            f'head -c {int(DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
         ],
         request_disk=None,
     )
