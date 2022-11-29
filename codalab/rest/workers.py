@@ -69,11 +69,6 @@ def checkin(worker_id):
                 )
                 messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
             elif local.model.get_user_disk_quota_left(bundle.owner_id) <= 0:
-                logger.info("REQUESTING KILL")
-                logger.info(run)
-                logger.info("STATE")
-                logger.info(worker_run.state)
-                logger.info("END STATE")
                 # Then, user has gone over their time quota and we kill the job.
                 kill_message = (
                     'Kill requested: User disk quota exceeded. To apply for more quota, please visit the following link: '

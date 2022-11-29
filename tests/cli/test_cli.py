@@ -175,6 +175,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
     """
     start_time = time.time()
+    final_states = State.FINAL_STATES - set(exclude_final_states)
     while True:
         if time.time() - start_time > timeout_seconds:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
@@ -183,7 +184,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif current_state in State.FINAL_STATES - exclude_final_states:
+        elif current_state in final_states:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
                     uuid, expected_state, current_state
@@ -1724,7 +1725,7 @@ def test_search_time(ctx):
 def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
     # This is only relevant when workers use shared file system, so check that first.
-    
+
     # Test that bundle fails when run without sufficient time quota
     """
     _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
@@ -1758,7 +1759,9 @@ def test_run(ctx):
         ],
         request_disk=None,
     )
-    wait_until_state(uuid, State.KILLED, timeout_seconds=300, exclude_final_states={State.FAILED})  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
+    wait_until_state(
+        uuid, State.KILLED, timeout_seconds=300, exclude_final_states={State.FAILED}
+    )  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
     check_contains('Kill requested', get_info(uuid, 'failure_message'))
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
