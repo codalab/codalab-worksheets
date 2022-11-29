@@ -590,10 +590,10 @@ def _update_bundle_state(bundle_uuid: str):
     logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
 
     if success:
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
         local.model.update_bundle(
             bundle, {'state': state_on_success},
         )
-        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
     else:  # If the upload failed, cleanup the uploaded file and update bundle state
         local.model.update_bundle(
             bundle, {'state': state_on_failure, 'metadata': {'failure_message': error_msg},},
@@ -1305,6 +1305,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 % (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets))
             )
 
+    bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
+
     # Delete the actual bundle
     if not dry_run:
         if data_only:
@@ -1316,7 +1318,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
-    bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
     for uuid in relevant_uuids:
         bundle_link_url = bundle_link_urls.get(uuid)
         if bundle_link_url:
@@ -1326,9 +1327,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             bundle_location = local.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
                 removed = local.bundle_store.cleanup(uuid, dry_run)
-                if removed:
+                if removed and uuid in bundle_data_sizes:
                     local.model.increment_user_disk_used(
-                        request.user.user_id, -bundle_data_sizes[uuid])
+                        request.user.user_id, -int(bundle_data_sizes[uuid]))
 
     return relevant_uuids
 

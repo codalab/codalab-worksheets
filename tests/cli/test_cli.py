@@ -1319,10 +1319,11 @@ def test_rm(ctx):
     # Let's add more tests here to see if the disk quota is doing what we expect.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
     file_size = path_util.get_size(test_path('b.txt'))
     check_equals(
         _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
-        disk_used + file_size
+        str(int(disk_used) + file_size)
     )
     _run_command([cl, 'rm', uuid])
     check_equals(
@@ -1333,10 +1334,11 @@ def test_rm(ctx):
     # Now, for -d
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
     file_size = path_util.get_size(test_path('b.txt'))
     check_equals(
         _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
-        disk_used + file_size
+        str(int(disk_used) + file_size)
     )
     _run_command([cl, 'rm', '-d', uuid])
     check_equals(
