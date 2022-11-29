@@ -164,7 +164,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_state, timeout_seconds=1000):
+def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_states={}):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -183,7 +183,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif current_state in State.FINAL_STATES:
+        elif current_state in State.FINAL_STATES - exclude_final_states:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
                     uuid, expected_state, current_state
@@ -1754,11 +1754,12 @@ def test_run(ctx):
         [
             cl,
             'run',
-            f'head -c {int(DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
+            f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
         ],
         request_disk=None,
     )
-    wait_until_state(uuid, State.FAILED, timeout_seconds=300)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=300, exclude_final_states={State.FAILED})  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
+    check_contains('Kill requested', get_info(uuid, 'failure_message'))
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     name = random_name()

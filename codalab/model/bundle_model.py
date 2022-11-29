@@ -1117,11 +1117,17 @@ class BundleModel(object):
             was recorded during finalization of the bundle.
         """
         metadata = bundle.metadata.to_dict()
+        logger.info("-"*100)
+        logger.info(bundle)
+        logger.info(metadata)
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
+        logger.info(failure_message)
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
+        logger.info(state)
+        logger.info("-"*100)
 
         worker = self.get_bundle_worker(bundle.uuid)
 
