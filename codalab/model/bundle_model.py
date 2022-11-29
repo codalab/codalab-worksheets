@@ -966,7 +966,7 @@ class BundleModel(object):
         return True
 
     def transition_bundle_running(
-        self, bundle, worker_run, row, user_id, worker_id, connection, shared_filesystem
+        self, bundle, worker_run, row, user_id, worker_id, connection
     ):
         """
         Transitions bundle to RUNNING state:
@@ -1010,7 +1010,6 @@ class BundleModel(object):
         if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        # if shared_filesystem and hasattr(bundle.metadata, 'data_size'):
         if hasattr(bundle.metadata, 'data_size'):
             disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
@@ -1079,7 +1078,7 @@ class BundleModel(object):
         return True
 
     def transition_bundle_finalizing(
-        self, bundle, worker_run, user_id, connection, shared_filesystem
+        self, bundle, worker_run, user_id, connection
     ):
         """
         Transitions bundle to FINALIZING state:
@@ -1094,7 +1093,6 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
-        # if shared_filesystem:
         disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
@@ -1110,7 +1108,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finished(self, bundle, bundle_location, worker_run=None):
+    def transition_bundle_finished(self, bundle, bundle_location):
         """
         Transitions bundle to READY or FAILED state:
             The final state is determined by whether a failure message or exitcode
@@ -1126,10 +1124,7 @@ class BundleModel(object):
         worker = self.get_bundle_worker(bundle.uuid)
 
         if worker['shared_file_system']:
-            if worker_run:
-                self.update_disk_metadata(bundle, bundle_location)
-            else:
-                self.update_disk_metadata(bundle, bundle_location)
+            self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
@@ -1156,8 +1151,6 @@ class BundleModel(object):
 
         # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
-        # ok: we can do this. Get current ubndle datasize and subtract here and sould work.
-        # if not exist, jsue use 0
         if hasattr(bundle.metadata, 'data_size'):
             data_size = bundle.metadata.data_size
         else:
@@ -1175,7 +1168,7 @@ class BundleModel(object):
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
 
-    def bundle_checkin(self, bundle, worker_run, user_id, worker_id, shared_filesystem):
+    def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
         Updates the database tables with the most recent bundle information from worker
         """
@@ -1194,15 +1187,15 @@ class BundleModel(object):
             if worker_run.state == State.FINALIZING:
                 # update bundle metadata using transition_bundle_running one last time before finalizing it
                 self.transition_bundle_running(
-                    bundle, worker_run, row, user_id, worker_id, connection, shared_filesystem
+                    bundle, worker_run, row, user_id, worker_id, connection
                 )
                 return self.transition_bundle_finalizing(
-                    bundle, worker_run, user_id, connection, shared_filesystem
+                    bundle, worker_run, user_id, connection
                 )
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
-                    bundle, worker_run, row, user_id, worker_id, connection, shared_filesystem
+                    bundle, worker_run, row, user_id, worker_id, connection
                 )
 
             # State isn't one we can check in for

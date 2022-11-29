@@ -15,8 +15,6 @@ from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
 
-import traceback
-
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +55,6 @@ def checkin(worker_id):
                 worker_run,
                 request.user.user_id,
                 worker_id,
-                request.json.get("shared_file_system", False),
             )
 
             logger.info(f"DISK QUOTA LEFT: {local.model.get_user_disk_quota_left(bundle.owner_id)}")
@@ -77,7 +74,6 @@ def checkin(worker_id):
                 messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))
-            logger.info(traceback.format_exc())
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))

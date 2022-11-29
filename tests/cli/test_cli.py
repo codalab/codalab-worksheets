@@ -1727,7 +1727,6 @@ def test_run(ctx):
     # This is only relevant when workers use shared file system, so check that first.
 
     # Test that bundle fails when run without sufficient time quota
-    """
     _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
     wait_until_state(uuid, State.KILLED, timeout_seconds=100)
@@ -1739,30 +1738,25 @@ def test_run(ctx):
         get_info(uuid, 'failure_message'),
     )
     _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
-    """
-    """
-    result = _run_command([cl, 'workers'])
-    lines = result.split("\n")
-    if len(lines) > 2:
-        header = result.split("\n")[0]
-        shared_file_system_index = header.index('shared_file_system')
-        worker_info = result.split("\n")[2]
-        shared_file_system = worker_info[shared_file_system_index : shared_file_system_index + 4]
-        if shared_file_system == 'True':
-    """
+
+    # Test that bundle fails when run without sufficient disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
     uuid = _run_command(
         [
             cl,
             'run',
-            f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)+10} /dev/zero > test.txt; sleep 100000',
+            f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)} /dev/zero > test.txt; sleep 100000',
         ],
         request_disk=None,
     )
     wait_until_state(
         uuid, State.KILLED, timeout_seconds=300, exclude_final_states={State.FAILED}
     )  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
-    check_contains('Kill requested', get_info(uuid, 'failure_message'))
+    check_contains('Kill requested: User disk quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'))
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     name = random_name()
