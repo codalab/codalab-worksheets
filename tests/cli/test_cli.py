@@ -1316,7 +1316,7 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
-    # Let's add more tests here to see if the disk quota is doing what we expect.
+    # Make sure disk quota is adjusted correctly.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
     wait_until_state(uuid, State.READY)
@@ -1331,7 +1331,7 @@ def test_rm(ctx):
         disk_used
     )
 
-    # Now, for -d
+    # Make sure disk quota is adjusted correctly when --data-only is used.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
     wait_until_state(uuid, State.READY)
@@ -1351,7 +1351,24 @@ def test_rm(ctx):
         disk_used
     )
 
-    # TODO: Add one for symlinks as well!
+    # Make sure disk quota is adjusted correctly for symlinks is used.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
+    wait_until_state(uuid, State.READY)
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used
+    )
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+        disk_used
+    )
 
 
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
