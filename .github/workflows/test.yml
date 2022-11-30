@@ -164,7 +164,7 @@ jobs:
         run: |
           sh ./tests/test-setup.sh
           sh ./scripts/local-k8s/setup-ci.sh
-          python3 test_runner.py --version ${VERSION} ${TEST}
+          # python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
@@ -178,7 +178,9 @@ jobs:
         if: always() && matrix.runtime == 'kubernetes'
         run: |
           kubectl config use-context kind-codalab
-          for c in $(kubectl get pods --output=jsonpath={.items..metadata.name}); do kubectl logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+          kubectl get pods --output=jsonpath={.items..metadata.name}
+          for c in $(kubectl get pods --output=jsonpath={.items..metadata.name}); do echo $c; done
+          # for c in $(kubectl get pods --output=jsonpath={.items..metadata.name}); do kubectl logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v1
