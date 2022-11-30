@@ -334,6 +334,7 @@ def main():
         args.shared_file_system,
         args.tag_exclusive,
         args.group,
+        ws_server=args.ws_server,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,

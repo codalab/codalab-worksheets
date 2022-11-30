@@ -240,6 +240,12 @@ class CodaLabManager(object):
         home = path_util.normalize(home)
         path_util.make_directory(home)
         return home
+    
+    @property
+    @cached
+    def ws_server(self):
+        ws_port = os.getenv('ws_port')
+        return f"ws://ws-server:{ws_port}"
 
     @property  # type: ignore
     @cached
@@ -364,7 +370,7 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        return WorkerModel(self.model().engine, self.worker_socket_dir)
+        return WorkerModel(self.model().engine, self.worker_socket_dir, self.ws_server)
 
     @cached
     def upload_manager(self):

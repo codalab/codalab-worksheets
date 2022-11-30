@@ -35,9 +35,10 @@ class WorkerModel(object):
        listen on these sockets for messages and send messages to these sockets.
     """
 
-    def __init__(self, engine, socket_dir):
+    def __init__(self, engine, socket_dir, ws_server):
         self._engine = engine
         self._socket_dir = socket_dir
+        self._ws_server = ws_server
 
     def worker_checkin(
         self,
@@ -364,7 +365,7 @@ class WorkerModel(object):
 
     def _ping_worker_ws(self, worker_id):
         async def ping_ws():
-            async with websockets.connect("ws://ws-server:2901/main") as websocket:
+            async with websockets.connect(self._ws_server) as websocket:
                 await websocket.send(worker_id)
 
         futures = [ping_ws()]

@@ -73,6 +73,7 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
+        ws_server,  # type: str
         bundle_runtime,  # type: Runtime
         docker_runtime=DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
@@ -127,6 +128,8 @@ class Worker:
         self.last_checkin_successful = False
         self.listen_thread = None
         self.last_time_ran = None  # type: Optional[bool]
+
+        self.ws_server = ws_server
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
@@ -288,9 +291,9 @@ class Worker:
         async def listen(self):
             logging.warn("Started websocket listening thread")
             while not self.terminate:
-                logging.warn(f"Connecting anew to: ws://ws-server:2901/worker/{self.id}")
+                logging.warn(f"Connecting anew to: {self.ws_server}/worker/{self.id}")
                 async with websockets.connect(
-                    f"ws://ws-server:2901/worker/{self.id}", max_queue=1
+                    f"{self.ws_server}/worker/{self.id}", max_queue=1
                 ) as websocket:
 
                     async def receive_msg():
