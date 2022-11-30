@@ -24,8 +24,6 @@ from codalab.worker.docker_utils import DockerRuntime, DockerException
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
-from codalab.worker.noop_image_manager import NoOpImageManager
-from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -127,13 +125,9 @@ def parse_args():
     )
     parser.add_argument(
         '--bundle-runtime',
-        choices=[
-            BundleRuntime.DOCKER.value,
-            BundleRuntime.KUBERNETES.value,
-            BundleRuntime.SINGULARITY.value,
-        ],
+        choices=[BundleRuntime.DOCKER.value, BundleRuntime.SINGULARITY.value,],
         default=BundleRuntime.DOCKER.value,
-        help='The runtime through which the worker will run bundles. The options are docker (default), kubernetes, or singularity',
+        help='The runtime through which the worker will run bundles. The options are docker (default) or singularity',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -200,21 +194,6 @@ def parse_args():
     )
     parser.add_argument(
         '--preemptible', action='store_true', help='Whether the worker is preemptible.',
-    )
-    parser.add_argument(
-        '--kubernetes-cluster-host',
-        type=str,
-        help='Host address of the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
-    )
-    parser.add_argument(
-        '--kubernetes-auth-token',
-        type=str,
-        help='Kubernetes cluster authorization token. Only applicable if --bundle-runtime is set to kubernetes.',
-    )
-    parser.add_argument(
-        '--kubernetes-cert-path',
-        type=str,
-        help='Path to the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
     )
     return parser.parse_args()
 
@@ -312,15 +291,6 @@ def main():
         # todo workers with singularity don't work because this is set to none -- handle this
         bundle_runtime_class = None
         docker_runtime = None
-    elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
-        image_manager = NoOpImageManager()
-        bundle_runtime_class = KubernetesRuntime(
-            args.work_dir,
-            args.kubernetes_auth_token,
-            args.kubernetes_cluster_host,
-            args.kubernetes_cert_path,
-        )
-        docker_runtime = None
     else:
         image_manager = DockerImageManager(
             os.path.join(args.work_dir, 'images-state.json'),
@@ -356,7 +326,7 @@ def main():
         args.checkin_frequency_seconds,
         bundle_service,
         args.shared_file_system,
-        args.tag_exclusive if args.tag else False,
+        args.tag_exclusive,
         args.group,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
@@ -365,7 +335,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
-        bundle_runtime=bundle_runtime_class,
+        bundle_runtime=DockerRuntime(),
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -417,6 +387,9 @@ def parse_gpuset_args(arg):
     """
     Parse given arg into a set of strings representing gpu UUIDs
     By default, we will try to start a Docker container with nvidia-smi to get the GPUs.
+    If we get an exception that the Docker socket does not exist, which will be the case
+    on Singularity workers, because they do not have root access, and therefore, access to
+    the Docker socket, we should try to get the GPUs with Singularity.
 
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
