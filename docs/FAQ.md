@@ -40,9 +40,9 @@ If you have used up your disk quota and want to reduce your disk usage, here are
 - If you have intermediate bundles whose contents you don't need, you can use `cl rm -d <bundle>` to delete only the contents of the bundle but keep the metadata.  This way, you keep the provenance and can regenerate this bundle in the future.
 - If there are selected files that you wish to keep in a bundle, you can use `cl make <bundle>/<important-file>` to make a new bundle that only has a copy of the desired file and then you can do `cl rm -d <bundle>` to remove all the other files in that bundle.
 
-### How do I request more disk quota?
+### How do I request more disk quota or time quota?
 
-If you have tried the steps above and still need more disk quota, please fill out this [form](https://docs.google.com/forms/d/e/1FAIpQLSdS22MaLyE1kx0JL-w2a8f8IasDyc36H_ZuidNBVAE_afMCpw/viewform).
+If you have tried the steps above and still need more **disk quota** or **time quota**, please fill out this [form](https://docs.google.com/forms/d/e/1FAIpQLSebCBrglB7z2R7OeHJ_NsVWcUcHVMAW4AQnFxNt0YvTS-rDNA/viewform).
 
 ### How do I upload large bundles?
 
