@@ -1729,7 +1729,7 @@ def test_run(ctx):
     # Test that bundle fails when run without sufficient time quota
     _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
-    wait_until_state(uuid, State.KILLED, timeout_seconds=100)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=200)
     check_equals(
         'Kill requested: User time quota exceeded. To apply for more quota,'
         ' please visit the following link: '
@@ -1750,7 +1750,7 @@ def test_run(ctx):
         request_disk=None,
     )
     wait_until_state(
-        uuid, State.KILLED, timeout_seconds=300, exclude_final_states={State.FAILED}
+        uuid, State.KILLED, timeout_seconds=500, exclude_final_states={State.FAILED}
     )  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
     check_contains('Kill requested: User disk quota exceeded. To apply for more quota,'
         ' please visit the following link: '

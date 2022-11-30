@@ -298,7 +298,7 @@ class TestBase:
             },
         )
         self.bundle_manager._model.bundle_checkin(
-            bundle, worker_run, user_id or self.user_id, worker_id, False
+            bundle, worker_run, user_id or self.user_id, worker_id
         )
 
 
