@@ -1745,7 +1745,7 @@ def test_run(ctx):
         [
             cl,
             'run',
-            f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)} /dev/zero > test.txt; sleep 100000',
+            f'head -c {2*int(DISK_QUOTA_SLACK_BYTES) + 10} /dev/zero > test.txt; sleep 100000',
         ],
         request_disk=None,
     )
