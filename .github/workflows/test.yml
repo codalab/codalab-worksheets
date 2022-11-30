@@ -177,6 +177,7 @@ jobs:
       - name: Save kubernetes logs
         if: always() && matrix.runtime == 'kubernetes'
         run: |
+          kubectl config use-context kind-codalab
           for c in $(kubectl get pods --output=jsonpath={.items..metadata.name}); do kubectl logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
         if: always()
