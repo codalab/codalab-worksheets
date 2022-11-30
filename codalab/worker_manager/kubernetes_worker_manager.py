@@ -12,6 +12,7 @@ import os
 import uuid
 from argparse import ArgumentParser
 from typing import Any, Dict, List, Optional
+from codalab.common import BundleRuntime
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
@@ -65,13 +66,17 @@ class KubernetesWorkerManager(WorkerManager):
                 'Valid credentials need to be set as environment variables: CODALAB_USERNAME and CODALAB_PASSWORD'
             )
 
+        self.auth_token = args.auth_token
+        self.cluster_host = args.cluster_host
+        self.cert_path = args.cert_path
+
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
         configuration.api_key_prefix['authorization'] = 'Bearer'
         configuration.api_key['authorization'] = args.auth_token
         configuration.host = args.cluster_host
         configuration.ssl_ca_cert = args.cert_path
-        if configuration.host == "https://codalab-control-plane:8443":
+        if configuration.host == "https://codalab-control-plane:6443":
             # Don't verify SSL if we are connecting to a local cluster for testing / development.
             configuration.verify_ssl = False
             configuration.ssl_ca_cert = None
@@ -104,6 +109,14 @@ class KubernetesWorkerManager(WorkerManager):
         worker_name: str = f'cl-worker-{worker_id}'
         work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
+
+        command.extend(
+            ['--bundle-runtime', BundleRuntime.KUBERNETES.value]
+        )  # todo make configurable
+        command.extend(['--kubernetes-cluster-host', self.cluster_host])
+        command.extend(['--kubernetes-auth-token', self.auth_token])
+        command.extend(['--kubernetes-cert-path', self.cert_path])
+
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
         config: Dict[str, Any] = {
@@ -116,7 +129,6 @@ class KubernetesWorkerManager(WorkerManager):
                         'name': f'{worker_name}-container',
                         'image': worker_image,
                         'command': command,
-                        'securityContext': {'runAsUser': 0},  # Run as root
                         'env': [
                             {'name': 'CODALAB_USERNAME', 'value': self.codalab_username},
                             {'name': 'CODALAB_PASSWORD', 'value': self.codalab_password},
@@ -129,7 +141,6 @@ class KubernetesWorkerManager(WorkerManager):
                             }
                         },
                         'volumeMounts': [
-                            {'name': 'dockersock', 'mountPath': '/var/run/docker.sock'},
                             {
                                 "name": self.nfs_volume_name if self.nfs_volume_name else 'workdir',
                                 "mountPath": work_dir,
@@ -138,7 +149,7 @@ class KubernetesWorkerManager(WorkerManager):
                     }
                 ],
                 'volumes': [
-                    {'name': 'dockersock', 'hostPath': {'path': '/var/run/docker.sock'}},
+                    {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
                     {
                         "name": self.nfs_volume_name,
                         # When attaching a volume over NFS, use a persistent volume claim
@@ -152,7 +163,8 @@ class KubernetesWorkerManager(WorkerManager):
         }
 
         # Start a worker pod on the k8s cluster
-        logger.debug('Starting worker {} with image {}'.format(worker_id, worker_image))
+        logger.error('Starting worker {} with image {}'.format(worker_id, worker_image))
+        print('starting...')
         try:
             utils.create_from_dict(self.k8_client, config)
         except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
