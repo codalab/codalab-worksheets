@@ -1,12 +1,11 @@
 from typing import Optional, Tuple
 import docker
-from kubernetes.client.rest import ApiException
 
 DEFAULT_RUNTIME = 'runc'  # copied from docker_utils to avoid a circular import
 
 
 # Any errors that relate to runtime API calls failing.
-RuntimeAPIError = (docker.errors.APIError, ApiException)
+RuntimeAPIError = (docker.errors.APIError,)
 
 
 class Runtime:
