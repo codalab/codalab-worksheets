@@ -7,7 +7,7 @@ If you want to test or develop with kubernetes locally, follow these steps to do
 
 ```
 # First, start codalab without a worker:
-codalab-service start -bds default no-worker
+codalab-service start -ds default no-worker
 
 # Install initial dependencies
 wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz && rm go1.18.1.linux-amd64.tar.gz # Install go: instructions from https://go.dev/doc/install
@@ -52,7 +52,7 @@ export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
 export CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=1
-codalab-service start -ds default no-worker worker-manager-cpu
+codalab-service start -ds default worker-manager-cpu
 ```
 
 Or if you just want to run the worker manager and check its logs, run:
