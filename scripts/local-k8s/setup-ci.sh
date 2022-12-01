@@ -13,6 +13,9 @@ cfssl version # cfssl should be installed
 # Set up local kind cluster.
 ./scripts/local-k8s/setup.sh
 
+# Load worker Docker image
+kind load docker-image "codalab/worker:$VERSION" --name codalab
+
 # Run worker manager
 export CODALAB_SERVER=http://nginx
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443

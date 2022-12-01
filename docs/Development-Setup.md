@@ -52,7 +52,7 @@ export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
 export CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=1
-codalab-service start -ds default worker-manager-cpu
+codalab-service start -ds worker-manager-cpu
 ```
 
 Or if you just want to run the worker manager and check its logs, run:
