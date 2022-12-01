@@ -240,8 +240,8 @@ class CodaLabManager(object):
         home = path_util.normalize(home)
         path_util.make_directory(home)
         return home
-    
-    @property
+
+    @property  # type: ignore
     @cached
     def ws_server(self):
         ws_port = os.getenv('ws_port')
