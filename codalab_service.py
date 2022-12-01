@@ -125,9 +125,7 @@ def main():
 
 def clean_version(version):
     """Clean version name (usually a branch name) so it can be used as a
-    tag name for a Docker image.
-    Keep this function in sync with scripts/local-k8s/setup-ci.sh.
-    """
+    tag name for a Docker image."""
     return version.replace("/", "_").replace("-", "_")
 
 
@@ -519,9 +517,21 @@ class CodalabArgs(object):
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
+        version_cmd = subparsers.add_parser(
+            'version', help='Print current version of CodaLab that will be run.',
+        )
 
         # Arguments for every subcommand
-        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd]:
+        for cmd in [
+            start_cmd,
+            logs_cmd,
+            pull_cmd,
+            build_cmd,
+            run_cmd,
+            stop_cmd,
+            delete_cmd,
+            version_cmd,
+        ]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -752,6 +762,8 @@ class CodalabServiceManager(object):
             self._run_compose_cmd('stop')
         elif command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
+        elif command == 'version':
+            print(self.args.version)
         else:
             raise Exception('Bad command: ' + command)
 
