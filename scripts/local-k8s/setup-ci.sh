@@ -14,7 +14,9 @@ cfssl version # cfssl should be installed
 ./scripts/local-k8s/setup.sh
 
 # Load worker Docker image
-kind load docker-image "codalab/worker:$VERSION" --name codalab
+v=${v//\//_} # Replace / -> _ and - -> _. Keep in sync with clean_version in codalab_service.py.
+v=${v//-/_}
+kind load docker-image "codalab/worker:$v" --name codalab
 
 # Run worker manager
 export CODALAB_SERVER=http://nginx

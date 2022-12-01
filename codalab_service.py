@@ -125,7 +125,9 @@ def main():
 
 def clean_version(version):
     """Clean version name (usually a branch name) so it can be used as a
-    tag name for a Docker image."""
+    tag name for a Docker image.
+    Keep this function in sync with scripts/local-k8s/setup-ci.sh.
+    """
     return version.replace("/", "_").replace("-", "_")
 
 
