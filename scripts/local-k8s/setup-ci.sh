@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Setup local Kubernetes for CI tests
 set -e
 
