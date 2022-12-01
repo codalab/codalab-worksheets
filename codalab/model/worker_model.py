@@ -365,7 +365,7 @@ class WorkerModel(object):
 
     def _ping_worker_ws(self, worker_id):
         async def ping_ws():
-            async with websockets.connect(self._ws_server) as websocket:
+            async with websockets.connect(f"{self._ws_server}/main") as websocket:
                 await websocket.send(worker_id)
 
         futures = [ping_ws()]

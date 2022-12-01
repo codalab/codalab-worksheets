@@ -913,6 +913,7 @@ class CodalabServiceManager(object):
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
+                    ('ws-server/ws_port', self.args.ws_port),
                 ]
                 if value
             ]

@@ -202,6 +202,7 @@ class CodaLabManager(object):
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
+            'ws-server': {'ws_port': 2901},
             'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost'},
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
@@ -244,7 +245,7 @@ class CodaLabManager(object):
     @property  # type: ignore
     @cached
     def ws_server(self):
-        ws_port = os.getenv('ws_port')
+        ws_port = self.config['ws-server']['ws_port']
         return f"ws://ws-server:{ws_port}"
 
     @property  # type: ignore
