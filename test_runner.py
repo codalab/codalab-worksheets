@@ -51,7 +51,7 @@ class TestRunner(object):
                         '--instance-name %s' % name,
                         '--rest-port %s' % rest_port,
                         '--version %s' % version,
-                        '--services init rest-server',
+                        '--services init ws-server rest-server',
                     ]
                 ),
                 shell=True,
