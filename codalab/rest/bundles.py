@@ -1325,12 +1325,18 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             pass
         else:
             bundle_location = local.bundle_store.get_bundle_location(uuid)
-            if os.path.lexists(bundle_location):
+
+            # Remove bundle
+            if os.path.lexists(bundle_location) or bundle_location.startswith(
+                StorageURLScheme.AZURE_BLOB_STORAGE.value
+            ) or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value):
                 removed = local.bundle_store.cleanup(uuid, dry_run)
-                if removed and uuid in bundle_data_sizes:
-                    local.model.increment_user_disk_used(
-                        request.user.user_id, -int(bundle_data_sizes[uuid])
-                    )
+            
+            # Update user disk used.
+            if removed and uuid in bundle_data_sizes:
+                local.model.increment_user_disk_used(
+                    request.user.user_id, -int(bundle_data_sizes[uuid])
+                )
 
     return relevant_uuids
 
