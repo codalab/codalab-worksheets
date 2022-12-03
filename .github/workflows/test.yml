@@ -86,6 +86,7 @@ jobs:
           pip install -e .
           uuid=$(cl run --request-memory 20m "echo")
           echo $uuid
+          cl work localhost::
           cl wait $uuid
         env:
           TEST: ${{ matrix.test }}
