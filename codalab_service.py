@@ -30,6 +30,7 @@ DEFAULT_SERVICES = [
     'nginx',
     'frontend',
     'rest-server',
+    'ws-server',
     'bundle-manager',
     'worker',
     'init',
@@ -55,6 +56,7 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
     'rest-server': 'server',
+    'ws-server': 'server',
     'bundle-manager': 'server',
     'worker-manager-cpu': 'server',
     'worker-manager-gpu': 'server',
@@ -241,6 +243,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='https_port', help='Port for nginx (when using SSL)', type=int, default=443),
     CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
+    CodalabArg(name='ws_port', help='Port for websocket server', type=int, default=2901),
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
     CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
     CodalabArg(
@@ -313,7 +316,7 @@ CODALAB_ARGUMENTS = [
         name='worker_manager_worker_checkin_frequency_seconds',
         help='Number of seconds to wait between check-ins for a worker of the worker manager',
         type=int,
-        default=5,
+        default=20,
     ),
     CodalabArg(
         name='worker_manager_idle_seconds',
@@ -924,6 +927,7 @@ class CodalabServiceManager(object):
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
+                    ('ws-server/ws_port', self.args.ws_port),
                 ]
                 if value
             ]
@@ -953,6 +957,7 @@ class CodalabServiceManager(object):
             print_header('Setting up Azurite')
             self.run_service_cmd('python3 scripts/initialize-azurite.py')
 
+        self.bring_up_service('ws-server')
         self.bring_up_service('rest-server')
 
         if should_run_service(self.args, 'init'):

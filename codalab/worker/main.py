@@ -46,6 +46,12 @@ def parse_args():
         '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)',
     )
     parser.add_argument(
+        '--ws-server',
+        default='wss://worksheets.codalab.org/ws',
+        help='URL of the CodaLab websocket server, in the format '
+        '<ws|wss>://<hostname>[:<port>] (e.g., wss://worksheets.codalab.org/ws)',
+    )
+    parser.add_argument(
         '--work-dir',
         default='codalab-worker-scratch',
         help='Directory where to store temporary bundle data, '
@@ -358,6 +364,7 @@ def main():
         args.shared_file_system,
         args.tag_exclusive if args.tag else False,
         args.group,
+        ws_server=args.ws_server,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
