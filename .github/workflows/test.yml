@@ -91,6 +91,8 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
+          CODALAB_USERNAME: codalab
+          CODALAB_PASSWORD: codalab
       - name: Save logs
         if: always()
         run: |
