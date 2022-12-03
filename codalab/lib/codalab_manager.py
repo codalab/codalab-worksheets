@@ -202,6 +202,7 @@ class CodaLabManager(object):
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
+            'ws-server': {'ws_port': 2901},
             'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost'},
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
@@ -240,6 +241,12 @@ class CodaLabManager(object):
         home = path_util.normalize(home)
         path_util.make_directory(home)
         return home
+
+    @property  # type: ignore
+    @cached
+    def ws_server(self):
+        ws_port = self.config['ws-server']['ws_port']
+        return f"ws://ws-server:{ws_port}"
 
     @property  # type: ignore
     @cached
@@ -364,7 +371,7 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        return WorkerModel(self.model().engine, self.worker_socket_dir)
+        return WorkerModel(self.model().engine, self.worker_socket_dir, self.ws_server)
 
     @cached
     def upload_manager(self):
