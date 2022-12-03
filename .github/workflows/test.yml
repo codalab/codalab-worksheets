@@ -83,6 +83,7 @@ jobs:
           sh ./tests/test-setup.sh
           sh ./scripts/local-k8s/setup-ci.sh
           #python3 test_runner.py --version ${VERSION} ${TEST}
+          pip install -e .
           uuid=$(cl run --request-memory 20m "echo")
           echo $uuid
           cl wait $uuid
