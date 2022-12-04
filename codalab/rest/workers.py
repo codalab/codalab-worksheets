@@ -87,7 +87,7 @@ def reply(worker_id, socket_id):
     Replies with a single JSON message to the given socket ID.
     """
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, request.json, 60, autoretry=False)
+    local.worker_model.send_json_message(socket_id, worker_id, request.json, 60, autoretry=False)
 
 
 @post(
@@ -115,7 +115,7 @@ def reply_data(worker_id, socket_id):
         abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
+    local.worker_model.send_json_message(socket_id, worker_id, header_message, 60, autoretry=False)
     local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
 
 
