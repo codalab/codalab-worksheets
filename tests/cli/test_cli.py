@@ -1743,11 +1743,7 @@ def test_run(ctx):
     # Test that bundle fails when run without sufficient disk quota
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
     uuid = _run_command(
-        [
-            cl,
-            'run',
-            f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)} /dev/zero > test.txt; sleep 100000',
-        ],
+        [cl, 'run', f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)} /dev/zero > test.txt; sleep 100000',],
         request_disk=None,
     )
     wait_until_state(
