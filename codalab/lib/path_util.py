@@ -310,24 +310,25 @@ def remove(path):
 
         if FileSystems.exists(path):
             FileSystems.delete([path])
-        return True  # not sure about this one
-    check_isvalid(path, 'remove')
-    set_write_permissions(path)  # Allow permissions
-    if os.path.islink(path):
-        os.unlink(path)
-        return False
-    elif os.path.isdir(path):
-        try:
-            shutil.rmtree(path)
             return True
-        except shutil.Error:
-            pass
     else:
-        os.remove(path)
-        return True
-    if os.path.exists(path):
-        print('Failed to remove %s' % path)
-        return False
+        check_isvalid(path, 'remove')
+        set_write_permissions(path)  # Allow permissions
+        if os.path.islink(path):
+            os.unlink(path)
+            return False
+        elif os.path.isdir(path):
+            try:
+                shutil.rmtree(path)
+                return True
+            except shutil.Error:
+                pass
+        else:
+            os.remove(path)
+            return True
+        if os.path.exists(path):
+            print('Failed to remove %s' % path)
+    return False
 
 
 def soft_link(source, path):

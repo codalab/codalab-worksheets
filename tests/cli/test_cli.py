@@ -1316,6 +1316,11 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
+    uuid = _run_command([cl, 'upload', test_path('a.txt')])
+    _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
+    _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
+    _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+
     # Make sure disk quota is adjusted correctly.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
@@ -1333,27 +1338,22 @@ def test_rm(ctx):
     wait_until_state(uuid, State.READY)
     file_size = path_util.get_size(test_path('b.txt'))
     check_equals(
-        _run_command(str(int(disk_used) + file_size), [cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     )
     _run_command([cl, 'rm', '-d', uuid])
-    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     _run_command([cl, 'rm', uuid])
-    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
     # Make sure disk quota is adjusted correctly for symlinks is used.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
     wait_until_state(uuid, State.READY)
-    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     _run_command([cl, 'rm', '-d', uuid])
-    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     _run_command([cl, 'rm', uuid])
-    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)
-
-    uuid = _run_command([cl, 'upload', test_path('a.txt')])
-    _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
-    _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
-    _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
 
 @TestModule.register('make')
