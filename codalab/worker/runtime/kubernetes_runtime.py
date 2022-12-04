@@ -13,6 +13,9 @@ from codalab.worker.docker_utils import DEFAULT_RUNTIME
 from codalab.common import BundleRuntime
 from codalab.worker.runtime import Runtime
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 logger: logging.Logger = logging.getLogger(__name__)
 
 # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#create-pod-v1-core
