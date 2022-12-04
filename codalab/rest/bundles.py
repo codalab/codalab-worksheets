@@ -1305,19 +1305,11 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 % (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets))
             )
 
+    # cache these so we have them even after the metadata for the bundle has been deleted
     bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
     bundle_locations = {
         uuid: local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids
-    }  # cache these so we have them even after the metadata for the bundle has been deleted
-
-    # Delete the actual bundle
-    if not dry_run:
-        if data_only:
-            # Just remove references to the data hashes
-            local.model.remove_data_hash_references(relevant_uuids)
-        else:
-            # Actually delete the bundle
-            local.model.delete_bundles(relevant_uuids)
+    }
 
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
@@ -1338,11 +1330,20 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             ):
                 removed = local.bundle_store.cleanup(bundle_location, dry_run)
 
-            # Update user disk used.
-            if removed and uuid in bundle_data_sizes:
+            # Update user disk used.            
+            if removed:
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
+
+    # Delete the actual bundle
+    if not dry_run:
+        if data_only:
+            # Just remove references to the data hashes
+            local.model.remove_data_hash_references(relevant_uuids)
+        else:
+            # Actually delete the bundle
+            local.model.delete_bundles(relevant_uuids)
 
     return relevant_uuids
 

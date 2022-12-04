@@ -1322,10 +1322,10 @@ def test_rm(ctx):
     wait_until_state(uuid, State.READY)
     file_size = path_util.get_size(test_path('b.txt'))
     check_equals(
-        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), str(int(disk_used) + file_size)
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     )
     _run_command([cl, 'rm', uuid])
-    check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
     # Make sure disk quota is adjusted correctly when --data-only is used.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
@@ -1333,7 +1333,7 @@ def test_rm(ctx):
     wait_until_state(uuid, State.READY)
     file_size = path_util.get_size(test_path('b.txt'))
     check_equals(
-        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), str(int(disk_used) + file_size)
+        _run_command(str(int(disk_used) + file_size), [cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     )
     _run_command([cl, 'rm', '-d', uuid])
     check_equals(_run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']), disk_used)

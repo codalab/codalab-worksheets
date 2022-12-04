@@ -464,6 +464,7 @@ class ClientUploadManager(object):
                         should_unpack=unpack_before_upload,
                         progress_callback=progress.update,
                     )
+                self._client.update_bundle_state(bundle['id'], params={'success': True})
             except Exception as err:
                 self._client.update_bundle_state(
                     bundle['id'],
