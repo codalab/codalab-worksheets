@@ -965,9 +965,7 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_running(
-        self, bundle, worker_run, row, user_id, worker_id, connection
-    ):
+    def transition_bundle_running(self, bundle, worker_run, row, user_id, worker_id, connection):
         """
         Transitions bundle to RUNNING state:
             If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -1077,9 +1075,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(
-        self, bundle, worker_run, user_id, connection
-    ):
+    def transition_bundle_finalizing(self, bundle, worker_run, user_id, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -1189,9 +1185,7 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(
-                    bundle, worker_run, user_id, connection
-                )
+                return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(

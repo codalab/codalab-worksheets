@@ -1753,11 +1753,13 @@ def test_run(ctx):
     wait_until_state(
         uuid, State.KILLED, timeout_seconds=500, exclude_final_states={State.FAILED}
     )  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
-    check_contains('Kill requested: User disk quota exceeded. To apply for more quota,'
+    check_contains(
+        'Kill requested: User disk quota exceeded. To apply for more quota,'
         ' please visit the following link: '
         'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
         '#how-do-i-request-more-disk-quota-or-time-quota',
-        get_info(uuid, 'failure_message'))
+        get_info(uuid, 'failure_message'),
+    )
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     name = random_name()

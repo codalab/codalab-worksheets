@@ -51,10 +51,7 @@ def checkin(worker_id):
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(
-                bundle,
-                worker_run,
-                request.user.user_id,
-                worker_id,
+                bundle, worker_run, request.user.user_id, worker_id,
             )
 
             logger.info(f"DISK QUOTA LEFT: {local.model.get_user_disk_quota_left(bundle.owner_id)}")
