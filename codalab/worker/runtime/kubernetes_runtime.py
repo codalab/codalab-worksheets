@@ -14,6 +14,7 @@ from codalab.common import BundleRuntime
 from codalab.worker.runtime import Runtime
 
 import urllib3
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger: logging.Logger = logging.getLogger(__name__)
