@@ -1727,9 +1727,10 @@ def test_run(ctx):
     # This is only relevant when workers use shared file system, so check that first.
 
     # Test that bundle fails when run without sufficient time quota
-    _run_command([cl, 'uedit', 'codalab', '--time-quota', '2'])
+    time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
-    wait_until_state(uuid, State.KILLED, timeout_seconds=200)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=120)
     check_equals(
         'Kill requested: User time quota exceeded. To apply for more quota,'
         ' please visit the following link: '
