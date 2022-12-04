@@ -1306,6 +1306,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             )
 
     bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
+    bundle_locations = {uuid:local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids}  # cache these so we have them even after the metadata for the bundle has been deleted
 
     # Delete the actual bundle
     if not dry_run:
@@ -1324,9 +1325,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Don't physically delete linked bundles.
             pass
         else:
-            bundle_location = local.bundle_store.get_bundle_location(uuid)
+            bundle_location = bundle_locations[uuid]
 
             # Remove bundle
+            removed = False
             if os.path.lexists(bundle_location) or bundle_location.startswith(
                 StorageURLScheme.AZURE_BLOB_STORAGE.value
             ) or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value):
