@@ -54,7 +54,6 @@ def checkin(worker_id):
                 bundle, worker_run, request.user.user_id, worker_id,
             )
 
-            logger.info(f"DISK QUOTA LEFT: {local.model.get_user_disk_quota_left(bundle.owner_id)}")
             if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their time quota and we kill the job.
                 kill_message = (

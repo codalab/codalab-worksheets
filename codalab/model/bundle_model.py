@@ -1151,7 +1151,6 @@ class BundleModel(object):
             data_size = bundle.metadata.data_size
         else:
             data_size = path_util.get_size(bundle_location, dirs_and_files)
-        data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if data_size > disk_left:
@@ -2717,7 +2716,7 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
-    def increment_user_disk_used(self, user_id, amount):
+    def increment_user_disk_used(self, user_id: str, amount: int) -> None:
         """
         Increment number of bytes of disk used by user by amount.
         """
@@ -2732,11 +2731,12 @@ class BundleModel(object):
         time_used = user_info['time_used']
         return time_quota - time_used
 
-    def get_user_disk_quota_left(self, user_id, user_info=None):
+    def get_user_disk_quota_left(self, user_id: str, user_info=None) -> int:
         if not user_info:
             user_info = self.get_user_info(user_id)
-        disk_quota = user_info['disk_quota']
-        disk_used = user_info['disk_used']
+        user_info_dict = user_info
+        disk_quota = user_info_dict['disk_quota']
+        disk_used = user_info_dict['disk_used']
         return disk_quota - disk_used
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
