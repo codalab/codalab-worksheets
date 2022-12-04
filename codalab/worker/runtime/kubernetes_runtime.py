@@ -212,9 +212,11 @@ class KubernetesRuntime(Runtime):
                 ).total_seconds()
             return 0
         except (AttributeError, KeyError):
+            """
             logging.warn(
                 "get_container_running_time: status couldn't be parsed, but is: %s", status
             )
+            """
             return 0
 
     def kill(self, pod_name: str):
