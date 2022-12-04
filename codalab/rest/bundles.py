@@ -1311,6 +1311,15 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         uuid: local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids
     }
 
+    # Delete the actual bundle
+    if not dry_run:
+        if data_only:
+            # Just remove references to the data hashes
+            local.model.remove_data_hash_references(relevant_uuids)
+        else:
+            # Actually delete the bundle
+            local.model.delete_bundles(relevant_uuids)
+
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
@@ -1335,15 +1344,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
-
-    # Delete the actual bundle
-    if not dry_run:
-        if data_only:
-            # Just remove references to the data hashes
-            local.model.remove_data_hash_references(relevant_uuids)
-        else:
-            # Actually delete the bundle
-            local.model.delete_bundles(relevant_uuids)
 
     return relevant_uuids
 
