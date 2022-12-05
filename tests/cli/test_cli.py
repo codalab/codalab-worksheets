@@ -375,6 +375,7 @@ class ModuleContext(object):
         self.worker_to_user = {}
         self.error = None
         self.disk_quota = None
+        self.time_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -393,6 +394,9 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
         self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
+        self.time_quota = (
+            _run_command([cl, 'uinfo', '-f', 'time']).split(' ')[2].split('y')[0] + 'y'
+        )
 
         print("[*][*] BEGIN TEST")
 
@@ -441,9 +445,11 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
-        # Reset disk quota
+        # Reset quotas
         if self.disk_quota is not None:
             _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
+        if self.time_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--time-quota', self.time_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -1715,6 +1721,20 @@ def test_search_time(ctx):
 
 @TestModule.register('run')
 def test_run(ctx):
+    # Test that bundle fails when run without sufficient time quota
+    time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
+    uuid = _run_command([cl, 'run', 'sleep 100000'])
+    wait_until_state(uuid, State.KILLED, timeout_seconds=120)
+    check_equals(
+        'Kill requested: User time quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'),
+    )
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
+
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)

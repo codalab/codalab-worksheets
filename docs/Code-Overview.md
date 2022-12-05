@@ -154,6 +154,40 @@ containers, and periodically report on the status of the runs.
 A worker also has to respond to various commands such as reading files in the
 bundle while it's running, killing bundles, etc.
 
+All data transfer between the worker and the server happens through a process known
+as **worker check-in**. In worker check-in, the worker calls a REST endpoint on the
+server `/workers/<worker_id>/checkin` in which the following happens:
+- The worker sends its current state (such as running bundles, dependencies), which the server uses to update the database entries for the worker and its bundles.
+- If a worker socket doesn't already exist, the server creates a **worker socket** for the worker.
+- Any data that was written to the worker socket is read and returned in the REST response. This data typically includes command messages (such as "read" or "kill"). The worker will then take action based on what's in the command.
+
+Worker check-in happens periodically (default every 20 seconds), and its frequency can be configured through worker options.
+
+What happens when a user takes an action that needs the worker to do something, such as viewing the contents of a running bundle?
+- The user makes a request to the REST server to view contents of the bundle `/bundles/<bundle_id>/contents/blob/stdout`
+- The server writes a JSON message `{"action_type": "read", "path": "stdout"}` to the worker socket.
+- The worker checks in, and the check-in response will contain the JSON message from above.
+- The worker then sends the contents of `stdout` to the REST endpoint `/workers/<worker_id>/reply_data/<socket_id>`. The server streams the contents to the worker socket.
+- The user's original request to `/bundles/<bundle_id>/contents/blob/stdout` blocks until the worker socket is written to. It then streams the contents of the worker socket (`stdout`) back to the user.
+
+### Websockets for speed
+
+One problem was that reading the contents of running bundles would take up to 20 seconds. This is because in the process above, the worker only checks in every 5-10 seconds (or longer), and this can cause large delays in timing.
+
+[PR #4096](https://github.com/codalab/codalab-worksheets/pull/4096) fixes this issue by adding a websocket, which allows for bidirectional communciation and essentially lets us trigger on-demand check-ins for the worker. The server now runs a websocket server (through the `ws-server` Docker container). The above process for viewing the contents of a running bundle now looks like the following (new text in **bold**):
+
+- The user makes a request to the REST server to view contents of the bundle `/bundles/<bundle_id>/contents/blob/stdout`
+- The server writes a JSON message `{"action_type": "read", "path": "stdout"}` to the worker socket.
+- **The REST server pings ws://ws-server:2901/rest, which then forwards this ping to ws://ws-server:2901/worker/{worker_id}**
+- **The worker continually is connected to ws://ws-server:2901/worker/{worker_id} and listens for new messages. When a new message is received, the worker checks in.**
+- The worker checks in, and the check-in response will contain the JSON message from above.
+- The worker then sends the contents of `stdout` to the REST endpoint `/workers/<worker_id>/reply_data/<socket_id>`. The server streams the contents to the worker socket.
+- The user's original request to `/bundles/<bundle_id>/contents/blob/stdout` blocks until the worker socket is written to. It then streams the contents of the worker socket (`stdout`) back to the user.
+
+The main difference here is that the worker check-in now occurs immediately / on-demand. The request is no longer bound by the worker's check-in frequency.
+
+In the future, we might want to move more communication between the server and worker to websockets.
+
 ### Bundle manager
 
 When a **run bundle** is created, it transitions between states from

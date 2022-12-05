@@ -5,6 +5,7 @@ from contextlib import closing
 import http.client
 import json
 from datetime import datetime
+import logging
 
 from bottle import abort, get, local, post, request, response
 
@@ -13,6 +14,8 @@ from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin
 from codalab.worker.bundle_state import BundleCheckinState
 from codalab.worker.main import DEFAULT_EXIT_AFTER_NUM_RUNS
+
+logger = logging.getLogger(__name__)
 
 
 @post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedProtectedPlugin())
@@ -42,16 +45,27 @@ def checkin(worker_id):
         request.json.get("preemptible", False),
     )
 
+    messages = []
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
-        except Exception:
-            pass
+
+            if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
+                # Then, user has gone over their time quota and we kill the job.
+                kill_message = (
+                    'Kill requested: User time quota exceeded. To apply for more quota, please visit the following link: '
+                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
+                )
+                messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
+        except Exception as e:
+            logger.info("Exception in REST checkin: {}".format(e))
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
-        return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
+        messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))
+    response.content_type = 'application/json'
+    return json.dumps(messages)
 
 
 def check_reply_permission(worker_id, socket_id):
@@ -73,7 +87,7 @@ def reply(worker_id, socket_id):
     Replies with a single JSON message to the given socket ID.
     """
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, request.json, 60, autoretry=False)
+    local.worker_model.send_json_message(socket_id, worker_id, request.json, 60, autoretry=False)
 
 
 @post(
@@ -101,7 +115,7 @@ def reply_data(worker_id, socket_id):
         abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
+    local.worker_model.send_json_message(socket_id, worker_id, header_message, 60, autoretry=False)
     local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
 
 

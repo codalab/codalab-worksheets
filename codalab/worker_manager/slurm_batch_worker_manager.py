@@ -100,6 +100,13 @@ class SlurmBatchWorkerManager(WorkerManager):
             type=int,
             help='Stop the worker manager when this many jobs have failed to start',
         )
+        subparser.add_argument(
+            '--account',
+            type=str,
+            default='nlp',
+            help='The account you want the Slurm batch job to be associated with.'
+            ' Required if submitter has multiple account (group) affiliations.',
+        )
 
     def __init__(self, args):
         super().__init__(args)
@@ -416,7 +423,8 @@ class SlurmBatchWorkerManager(WorkerManager):
         :return: a dictionary of Slurm arguments
         """
         slurm_args = {}
-        slurm_args['nodelist'] = self.args.nodelist
+        if self.args.nodelist:
+            slurm_args['nodelist'] = self.args.nodelist
         if self.args.exclude:
             slurm_args['exclude'] = self.args.exclude
         slurm_args['mem'] = self.args.memory_mb
@@ -428,6 +436,7 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['gres'] = gpu_gres_value
         if self.args.constraint:
             slurm_args['constraint'] = self.args.constraint
+        slurm_args['account'] = self.args.account
         # job-name is unique
         slurm_args['job-name'] = worker_id
         slurm_args['cpus-per-task'] = str(self.args.cpus)
