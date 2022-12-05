@@ -8,6 +8,7 @@ import websockets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
 worker_to_ws: Dict[str, Any] = {}
 
