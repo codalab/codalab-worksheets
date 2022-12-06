@@ -116,7 +116,7 @@ class WorkerManager(object):
             '--work-dir',
             work_dir,
             '--id',
-            f'host-{worker_id}',
+            f'$(hostname -s)-{worker_id}',
             '--network-prefix',
             'cl_worker_{}_network'.format(worker_id),
         ]
