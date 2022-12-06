@@ -1316,16 +1316,11 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
-    test = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     # Check rm functions correctly
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
-    test = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
-    test = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
-    test = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
-    test = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
 
     # Make sure disk quota is adjusted correctly.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
