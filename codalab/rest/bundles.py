@@ -1323,7 +1323,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         else:
             # If the bundle is stored on cloud, first delete data on cloud.
             for uuid in relevant_uuids:
-                bundle_location = bundle_locations(uuid)
+                bundle_location = bundle_locations[uuid]
 
                 file_location = '/'.join(bundle_location.split('/')[0:-1]) + "/"
                 if bundle_location.startswith(
