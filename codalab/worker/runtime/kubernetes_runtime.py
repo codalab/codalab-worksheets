@@ -138,7 +138,6 @@ class KubernetesRuntime(Runtime):
             },
         }
 
-        logging.warn("config is: %s", json.dumps(config))
         logger.warn('Starting job {} with image {}'.format(container_name, docker_image))
         try:
             pod = utils.create_from_dict(self.k8_client, config)
@@ -183,10 +182,13 @@ class KubernetesRuntime(Runtime):
             raise e
         if pod.status.phase in ("Succeeded", "Failed"):
             try:
+                exitcode = pod.status.container_statuses[0].state.terminated
                 return (
                     True,
-                    pod.status.container_statuses[0].state.terminated.exit_code,
-                    pod.status.container_statuses[0].state.terminated.reason,
+                    exitcode,
+                    pod.status.container_statuses[0].state.terminated.reason
+                    if exitcode != 0
+                    else None,
                 )
             except (AttributeError, KeyError):
                 logging.warn("check_finished: status couldn't be parsed, but is: %s", pod)
