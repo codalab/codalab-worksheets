@@ -1321,16 +1321,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Just remove references to the data hashes
             local.model.remove_data_hash_references(relevant_uuids)
         else:
-            # If the bundle is stored on cloud, first delete data on cloud.
-            for uuid in relevant_uuids:
-                bundle_location = bundle_locations[uuid]
-
-                file_location = '/'.join(bundle_location.split('/')[0:-1]) + "/"
-                if bundle_location.startswith(
-                    StorageURLScheme.AZURE_BLOB_STORAGE.value
-                ) or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value):
-                    FileSystems.delete([file_location])
-
             # Actually delete the bundle
             local.model.delete_bundles(relevant_uuids)
 
