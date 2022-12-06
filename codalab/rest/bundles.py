@@ -1323,7 +1323,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         else:
             # If the bundle is stored on cloud, first delete data on cloud.
             for uuid in relevant_uuids:
-                bundle_location = local.bundle_store.get_bundle_location(uuid)
+                bundle_location = bundle_locations(uuid)
 
                 file_location = '/'.join(bundle_location.split('/')[0:-1]) + "/"
                 if bundle_location.startswith(
@@ -1344,6 +1344,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         else:
             bundle_location = bundle_locations[uuid]
 
+            import pdb
+
+            pdb.set_trace()
+
             # Remove bundle
             removed = False
             if (
@@ -1358,6 +1362,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
+
+            import pdb
+
+            pdb.set_trace()
 
     return relevant_uuids
 
