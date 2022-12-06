@@ -53,7 +53,6 @@ from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
 from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
-from apache_beam.io.filesystems import FileSystems
 
 logger = logging.getLogger(__name__)
 
