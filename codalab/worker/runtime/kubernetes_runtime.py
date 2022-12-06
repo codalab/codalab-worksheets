@@ -215,9 +215,7 @@ class KubernetesRuntime(Runtime):
                 return (state.terminated.finished_at - state.terminated.started_at).total_seconds()
             return 0
         except (AttributeError, KeyError):
-            logging.warn(
-                "get_container_running_time: pod info couldn't be parsed, but is: %s", pod
-            )
+            logging.warn("get_container_running_time: pod info couldn't be parsed, but is: %s", pod)
             return 0
 
     def kill(self, pod_name: str):
