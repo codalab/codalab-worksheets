@@ -1,5 +1,4 @@
 import datetime
-import json
 import logging
 from dateutil import tz
 from typing import Any, Dict, Optional, Tuple
