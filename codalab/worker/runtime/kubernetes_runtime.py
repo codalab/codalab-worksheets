@@ -181,7 +181,7 @@ class KubernetesRuntime(Runtime):
             raise e
         if pod.status.phase in ("Succeeded", "Failed"):
             try:
-                exitcode = pod.status.container_statuses[0].state.terminated
+                exitcode = pod.status.container_statuses[0].state.terminated.exit_code
                 return (
                     True,
                     exitcode,
