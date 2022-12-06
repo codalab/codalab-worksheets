@@ -37,7 +37,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-20.04, macos-latest]
         exclude:
           - os: macos-latest
             python-version: 3.6
@@ -392,7 +392,7 @@ jobs:
 
   test_backend_default_bundle_store_azure:
     name: Test backend - use azure as default bundle store 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     strategy:
       matrix:
