@@ -185,8 +185,8 @@ class KubernetesRuntime(Runtime):
             try:
                 return (
                     True,
-                    pod.status.container_statuses[0].last_state.terminated.exit_code,
-                    pod.status.container_statuses[0].last_state.terminated.reason,
+                    pod.status.container_statuses[0].state.terminated.exit_code,
+                    pod.status.container_statuses[0].state.terminated.reason,
                 )
             except (AttributeError, KeyError):
                 logging.warn("check_finished: status couldn't be parsed, but is: %s", pod)
