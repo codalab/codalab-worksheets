@@ -237,24 +237,27 @@ class BlobStorageUploader(Uploader):
         try:
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
+            ITERATIONS_PER_DISK_CHECK = 10
+            iteration = 0
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
                 while True:
-                    import pdb; pdb.set_trace()
+                    iteration += 1
                     to_send = output_fileobj.read(CHUNK_SIZE)
                     if not to_send:
                         break
                     out.write(to_send)
-                    # update disk
-                    self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
-                    # abort if went over disk
-                    user_info = self._client.fetch('user')
-                    if user_info['disk_used'] >= user_info['disk_quota']:
-                        raise Exception('Upload aborted. User disk quota exceeded. '
-                            'To apply for more quota, please visit the following link: '
-                            'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-                            '#how-do-i-request-more-disk-quota-or-time-quota')
+
+                    # Update disk and check if client has gone over disk usage.
+                    if (iteration % ITERATIONS_PER_DISK_CHECK == 0):
+                        self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
+                        user_info = self._client.fetch('user')
+                        if user_info['disk_used'] >= user_info['disk_quota']:
+                            raise Exception('Upload aborted. User disk quota exceeded. '
+                                'To apply for more quota, please visit the following link: '
+                                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                                '#how-do-i-request-more-disk-quota-or-time-quota')
 
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
@@ -588,4 +591,5 @@ class ClientUploadManager(object):
                 query_params={},
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
+                json_api_client=self._client
             )

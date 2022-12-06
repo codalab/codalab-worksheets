@@ -35,6 +35,9 @@ def upload_with_chunked_encoding(
         :param progress_callback: Function. Callback function indicating upload progress.
         :param json_api_client: JsonApiClient. None when this function is run by the server.
                                                Used to update disk usage from client.
+        :param check_disk: bool. True if the user's disk should be checked during the upload.
+        This is used by the upload manager to prevent users using parallel uploads to bypass
+        their disk quota.
         """
     CHUNK_SIZE = 16 * 1024
     TIMEOUT = 60
@@ -64,20 +67,25 @@ def upload_with_chunked_encoding(
 
         # Use chunked transfer encoding to send the data through.
         bytes_uploaded = 0
+        ITERATIONS_PER_DISK_CHECK = 10
+        iteration = 0
         while True:
+            iteration += 1
             to_send = fileobj.read(CHUNK_SIZE)
             if not to_send:
                 break
             conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
             bytes_uploaded += len(to_send)
-            # abort if went over disk
-            self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
-            user_info = self._client.fetch('user')
-            if user_info['disk_used'] >= user_info['disk_quota']:
-                raise Exception('Upload aborted. User disk quota exceeded. '
-                    'To apply for more quota, please visit the following link: '
-                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-                    '#how-do-i-request-more-disk-quota-or-time-quota')
+
+            # Update disk and check if client has gone over disk usage.
+            if (json_api_client and iteration % ITERATIONS_PER_DISK_CHECK == 0):
+                json_api_client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
+                user_info = json_api_client.fetch('user')
+                if user_info['disk_used'] >= user_info['disk_quota']:
+                    raise Exception('Upload aborted. User disk quota exceeded. '
+                        'To apply for more quota, please visit the following link: '
+                        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                        '#how-do-i-request-more-disk-quota-or-time-quota')
             if progress_callback is not None:
                 should_resume = progress_callback(bytes_uploaded)
                 if not should_resume:
