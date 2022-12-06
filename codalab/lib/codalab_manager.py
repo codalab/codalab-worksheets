@@ -202,6 +202,7 @@ class CodaLabManager(object):
                 'auth': {'class': 'RestOAuthHandler'},
                 'verbose': 1,
             },
+            'ws-server': {'ws_port': 2901},
             'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost'},
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
@@ -240,6 +241,12 @@ class CodaLabManager(object):
         home = path_util.normalize(home)
         path_util.make_directory(home)
         return home
+
+    @property  # type: ignore
+    @cached
+    def ws_server(self):
+        ws_port = self.config['ws-server']['ws_port']
+        return f"ws://ws-server:{ws_port}"
 
     @property  # type: ignore
     @cached
@@ -326,11 +333,20 @@ class CodaLabManager(object):
     @cached
     def default_user_info(self):
         info = self.config['server'].get(
-            'default_user_info', {'time_quota': '1y', 'disk_quota': '1t', 'parallel_run_quota': 3}
+            'default_user_info',
+            {
+                'time_quota': '1y',
+                'disk_quota': '1t',
+                'edu_time_quota': '1y',
+                'edu_disk_quota': '1t',
+                'parallel_run_quota': 3,
+            },
         )
         return {
             'time_quota': formatting.parse_duration(info['time_quota']),
             'disk_quota': formatting.parse_size(info['disk_quota']),
+            'edu_time_quota': formatting.parse_duration(info['edu_time_quota']),
+            'edu_disk_quota': formatting.parse_size(info['edu_disk_quota']),
             'parallel_run_quota': info['parallel_run_quota'],
         }
 
@@ -364,7 +380,7 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        return WorkerModel(self.model().engine, self.worker_socket_dir)
+        return WorkerModel(self.model().engine, self.worker_socket_dir, self.ws_server)
 
     @cached
     def upload_manager(self):

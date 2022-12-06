@@ -118,10 +118,23 @@ services:
     <<: *codalab-server
     depends_on:
       - mysql
+      - ws-server
     networks:
       - rest-server
     expose:
       - ${CODALAB_REST_PORT}
+
+  ws-server:
+    image: codalab/server:${CODALAB_VERSION}
+    command: cl-ws-server --port ${CODALAB_WS_PORT}
+    <<: *codalab-base
+    <<: *codalab-server
+    depends_on:
+      - mysql
+    networks:
+      - rest-server
+    expose:
+      - ${CODALAB_WS_PORT}
 
   bundle-manager:
     image: codalab/server:${CODALAB_VERSION}
@@ -344,6 +357,7 @@ services:
     depends_on:
       - frontend
       - rest-server
+      - ws-server
     ports:
       - ${CODALAB_HTTP_PORT}:80
     volumes:
@@ -370,6 +384,7 @@ services:
     command: |
       cl-worker
       --server http://rest-server:${CODALAB_REST_PORT}
+      --ws-server ws://ws-server:${CODALAB_WS_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
       --id ${HOSTNAME}
@@ -392,6 +407,7 @@ services:
     command: |
       cl-worker
       --server http://rest-server:${CODALAB_REST_PORT}
+      --ws-server ws://ws-server:${CODALAB_WS_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
       --id ${HOSTNAME}-worker2
@@ -414,6 +430,7 @@ services:
     command: |
       cl-worker
       --server http://rest-server:${CODALAB_REST_PORT}
+      --ws-server ws://ws-server:${CODALAB_WS_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
       --id ${HOSTNAME}-worker-preemptible
@@ -438,6 +455,7 @@ services:
     command: |
       cl-worker
       --server http://rest-server:${CODALAB_REST_PORT}
+      --ws-server ws://ws-server:${CODALAB_WS_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
       --id ${HOSTNAME}-worker-preemptible2
@@ -462,6 +480,7 @@ services:
     command: |
       cl-worker
       --server http://rest-server:${CODALAB_REST_PORT}
+      --ws-server ws://ws-server:${CODALAB_WS_PORT}
       --work-dir ${CODALAB_WORKER_DIR}
       --network-prefix ${CODALAB_WORKER_NETWORK_PREFIX}
       --id ${HOSTNAME}

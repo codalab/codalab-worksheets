@@ -2461,6 +2461,17 @@ class BundleModel(object):
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex
 
+            time_quota = (
+                self.default_user_info['edu_time_quota']
+                if email.endswith(".edu")
+                else self.default_user_info['time_quota']
+            )
+            disk_quota = (
+                self.default_user_info['edu_disk_quota']
+                if email.endswith(".edu")
+                else self.default_user_info['disk_quota']
+            )
+
             connection.execute(
                 cl_user.insert().values(
                     {
@@ -2476,10 +2487,10 @@ class BundleModel(object):
                         "has_access": has_access,
                         "is_verified": is_verified,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
-                        "time_quota": self.default_user_info['time_quota'],
+                        "time_quota": time_quota,
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": time_used,
-                        "disk_quota": self.default_user_info['disk_quota'],
+                        "disk_quota": disk_quota,
                         "disk_used": disk_used,
                         "affiliation": affiliation,
                         "url": None,
