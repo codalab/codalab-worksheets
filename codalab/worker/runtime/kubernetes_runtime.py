@@ -216,7 +216,7 @@ class KubernetesRuntime(Runtime):
             return 0
         except (AttributeError, KeyError):
             logging.warn(
-                "get_container_running_time: status couldn't be parsed, but is: %s", status
+                "get_container_running_time: pod info couldn't be parsed, but is: %s", pod
             )
             return 0
 
