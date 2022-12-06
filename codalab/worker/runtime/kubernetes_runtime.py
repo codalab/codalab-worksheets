@@ -196,7 +196,7 @@ class KubernetesRuntime(Runtime):
 
     def get_container_running_time(self, pod_name: str) -> int:
         try:
-            status = self.k8_api.read_namespaced_pod_status(pod_name, "default")
+            pod = self.k8_api.read_namespaced_pod_status(pod_name, "default")
         except ApiException as e:
             if e.status == 404:
                 # Pod no longer exists
@@ -206,22 +206,18 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         try:
-            lastState = status.container_statuses[0].last_state
-            if "running" in lastState:
+            state = pod.status.container_statuses[0].state
+            if "running" in state:
                 return (
-                    datetime.datetime.now(tz.tzutc()) - lastState.running.started_at
+                    datetime.datetime.now(tz.tzutc()) - state.running.started_at
                 ).total_seconds()
-            elif "terminated" in lastState:
-                return (
-                    lastState.terminated.finished_at - lastState.terminated.started_at
-                ).total_seconds()
+            elif "terminated" in state:
+                return (state.terminated.finished_at - state.terminated.started_at).total_seconds()
             return 0
         except (AttributeError, KeyError):
-            """
             logging.warn(
                 "get_container_running_time: status couldn't be parsed, but is: %s", status
             )
-            """
             return 0
 
     def kill(self, pod_name: str):
