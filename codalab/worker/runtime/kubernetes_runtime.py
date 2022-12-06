@@ -207,11 +207,11 @@ class KubernetesRuntime(Runtime):
             raise e
         try:
             state = pod.status.container_statuses[0].state
-            if "running" in state:
+            if state.running:
                 return (
                     datetime.datetime.now(tz.tzutc()) - state.running.started_at
                 ).total_seconds()
-            elif "terminated" in state:
+            elif state.terminated:
                 return (state.terminated.finished_at - state.terminated.started_at).total_seconds()
             return 0
         except (AttributeError, KeyError):
