@@ -309,7 +309,9 @@ def remove(path):
         from apache_beam.io.filesystems import FileSystems
 
         if FileSystems.exists(path):
-            FileSystems.delete([path])
+            # Get the full folder location (without contents.gz) deleted
+            file_location = '/'.join(path.split('/')[0:-1]) + "/"
+            FileSystems.delete([file_location])
             return True
     else:
         check_isvalid(path, 'remove')
