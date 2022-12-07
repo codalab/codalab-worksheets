@@ -1727,7 +1727,7 @@ def test_run(ctx):
     _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
     wait_until_state(uuid, State.RUNNING)
-    wait_until_state(uuid, State.KILLED, timeout_seconds=60)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=120)
     check_equals(
         'Kill requested: User time quota exceeded. To apply for more quota,'
         ' please visit the following link: '
