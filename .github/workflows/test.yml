@@ -100,7 +100,7 @@ jobs:
 
   test_backend:
     name: Test backend
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -190,7 +190,7 @@ jobs:
 
   test_backend_on_worker_restart:
     name: Test backend - on worker restart
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -239,7 +239,7 @@ jobs:
 
   test_backend_sharedfs:
     name: Test backend - shared FS
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -289,7 +289,7 @@ jobs:
 
   test_backend_protected_mode:
     name: Test backend - protected mode
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -343,7 +343,7 @@ jobs:
 
   test_backend_default_bundle_store:
     name: Test backend - default bundle store
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -392,7 +392,7 @@ jobs:
 
   test_backend_default_bundle_store_azure:
     name: Test backend - use azure as default bundle store 
-    runs-on: ubuntu-20.04
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -446,7 +446,7 @@ jobs:
 
   test_backend_preemptible_worker:
     name: Test backend - preemptible workers
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -501,7 +501,7 @@ jobs:
 
   test_backend_azure_blob:
     name: Test backend with Azure Blob Storage
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -563,7 +563,7 @@ jobs:
 
   test_ui:
     name: End-to-end UI Tests
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -618,7 +618,7 @@ jobs:
 
   ci:
     name: All CI tasks complete
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [format, install, test_frontend, build, test_backend, test_backend_on_worker_restart, test_backend_sharedfs, test_backend_protected_mode, test_ui]
     steps:
       - uses: actions/checkout@v2
