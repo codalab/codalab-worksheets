@@ -485,7 +485,10 @@ def _add_bundle_location(bundle_uuid: str):
         default_bundle_store = local.model.get_bundle_store(
             request.user.user_id, name=default_store_name
         )
-        if default_bundle_store['storage_type'] in (StorageType.AZURE_BLOB_STORAGE.value,):
+        if default_bundle_store['storage_type'] in (
+            StorageType.AZURE_BLOB_STORAGE.value,
+            StorageType.GCS_STORAGE.value,
+        ):
             local.model.add_bundle_location(
                 new_location['bundle_uuid'], default_bundle_store['uuid']
             )
@@ -590,10 +593,10 @@ def _update_bundle_state(bundle_uuid: str):
     logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
 
     if success:
+        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
         local.model.update_bundle(
             bundle, {'state': state_on_success},
         )
-        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
     else:  # If the upload failed, cleanup the uploaded file and update bundle state
         local.model.update_bundle(
             bundle, {'state': state_on_failure, 'metadata': {'failure_message': error_msg},},
@@ -1265,6 +1268,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 % (' '.join(uuids), '\n  '.join(bundle.simple_str() for bundle in relevant))
             )
         relevant_uuids = uuids
+
     check_bundles_have_all_permission(local.model, request.user, relevant_uuids)
 
     # Make sure we don't delete bundles which are active.
@@ -1304,6 +1308,12 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 % (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets))
             )
 
+    # cache these so we have them even after the metadata for the bundle has been deleted
+    bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
+    bundle_locations = {
+        uuid: local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids
+    }
+
     # Delete the actual bundle
     if not dry_run:
         if data_only:
@@ -1313,9 +1323,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Actually delete the bundle
             local.model.delete_bundles(relevant_uuids)
 
-        # Update user statistics
-        local.model.update_user_disk_used(request.user.user_id)
-
     # Delete the data.
     bundle_link_urls = local.model.get_bundle_metadata(relevant_uuids, "link_url")
     for uuid in relevant_uuids:
@@ -1324,9 +1331,22 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Don't physically delete linked bundles.
             pass
         else:
-            bundle_location = local.bundle_store.get_bundle_location(uuid)
-            if os.path.lexists(bundle_location):
-                local.bundle_store.cleanup(uuid, dry_run)
+            bundle_location = bundle_locations[uuid]
+
+            # Remove bundle
+            removed = False
+            if (
+                os.path.lexists(bundle_location)
+                or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value)
+                or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value)
+            ):
+                removed = local.bundle_store.cleanup(bundle_location, dry_run)
+
+            # Update user disk used.
+            if removed and uuid in bundle_data_sizes:
+                local.model.increment_user_disk_used(
+                    request.user.user_id, -int(bundle_data_sizes[uuid])
+                )
 
     return relevant_uuids
 
