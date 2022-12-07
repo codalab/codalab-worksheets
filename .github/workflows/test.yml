@@ -614,10 +614,10 @@ jobs:
   #         name: logs-test-${{ matrix.test }}
   #         path: /tmp/logs
 
-  ci:
-    name: All CI tasks complete
-    runs-on: ubuntu-latest
-    needs: [format, install, test_frontend, build, test_backend, test_backend_on_worker_restart, test_backend_sharedfs, test_backend_protected_mode, test_ui]
-    steps:
-      - uses: actions/checkout@v2
-      - run: echo Done
+  # ci:
+  #   name: All CI tasks complete
+  #   runs-on: ubuntu-latest
+  #   needs: [format, install, test_frontend, build, test_backend, test_backend_on_worker_restart, test_backend_sharedfs, test_backend_protected_mode, test_ui]
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - run: echo Done
