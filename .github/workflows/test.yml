@@ -181,6 +181,8 @@ jobs:
           kubectl get pods --output=jsonpath={.items..metadata.name}
           # for c in $(kubectl get pods --output=jsonpath={.items..metadata.name}); do echo $c; done
           for c in $(kubectl get pods --output=jsonpath={.items..metadata.name}); do kubectl logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+          for c in $(kubectl get nodes --output=jsonpath={.items..metadata.name}); do kubectl logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v1
