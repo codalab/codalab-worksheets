@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.server.bundle_manager import DISK_QUOTA_SLACK_BYTES
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -1000,6 +1001,18 @@ def test_upload3(ctx):
 
 @TestModule.register('upload4')
 def test_upload4(ctx):
+    # Next, uploads multiple archives at the same time and goes over disk quota on the second
+    # upload. Check to make sure the uploads fail.
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
+    uuids = list()
+    for i in range(3):
+        uuids.append(_run_command(
+            [cl, 'run', f'head -c {int(DISK_QUOTA_SLACK_BYTES) / 2} /dev/zero > test.txt; sleep 100000',],
+            request_disk=None,
+        ))
+    for i in range(3):
+        wait_until_state(uuids[i], State.FAILED, timeout_seconds=300)
+
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
     archive_paths = [temp_path(''), temp_path('')]
     archive_exts = [p + '.tar.gz' for p in archive_paths]
@@ -1019,7 +1032,6 @@ def test_upload4(ctx):
     # Cleanup
     for archive in archive_exts:
         os.unlink(archive)
-
 
 @TestModule.register('blob')
 def test_blob(ctx):
