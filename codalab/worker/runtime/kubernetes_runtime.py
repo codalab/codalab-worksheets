@@ -1,6 +1,7 @@
 import datetime
 import logging
 from dateutil import tz
+import json
 from typing import Any, Dict, Optional, Tuple
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
@@ -185,7 +186,7 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         if pod.status.phase in ("Succeeded", "Failed"):
-            logger.warn('pod status: %s', pod)
+            logger.warn('pod status: %s', json.dumps(pod))
             statuses = pod.status.container_statuses
             if statuses is None or len(statuses) == 0 or statuses[0].state.terminated is None:
                 return (False, None, None)
@@ -209,7 +210,7 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         try:
-            logger.warn('pod status: %s', pod)
+            logger.warn('pod status: %s', json.dumps(pod))
             statuses = pod.status.container_statuses
             if statuses is None or len(statuses) == 0:
                 # Pod does not exist
