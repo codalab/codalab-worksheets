@@ -97,7 +97,7 @@ class KubernetesRuntime(Runtime):
         # If we only need one CPU, only request 0.8 CPUs. This way, workers with only one CPU,
         # for example during integration tests, can still run the job
         # (as some overhead may be taken by other things in the cluster).
-        limits = {request_cpus, 'memory': memory_bytes}
+        limits = {'cpu': request_cpus, 'memory': memory_bytes}
         requests = {'cpu': 0.8 if request_cpus == 1 else request_cpus, 'memory': memory_bytes}
         if request_gpus > 0:
             limits['nvidia.com/gpu'] = request_gpus
