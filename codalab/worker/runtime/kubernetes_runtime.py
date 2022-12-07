@@ -94,9 +94,14 @@ class KubernetesRuntime(Runtime):
         command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
         working_directory = '/' + uuid
         container_name = 'codalab-run-%s' % uuid
-        limits = {'cpu': request_cpus, 'memory': memory_bytes}
+        # If we only need one CPU, only request 0.8 CPUs. This way, workers with only one CPU,
+        # for example during integration tests, can still run the job
+        # (as some overhead may be taken by other things in the cluster).
+        limits = {request_cpus, 'memory': memory_bytes}
+        requests = {'cpu': 0.8 if request_cpus == 1 else request_cpus, 'memory': memory_bytes}
         if request_gpus > 0:
-            limits['nvidia.com/gpu'] = request_gpus  # Configure NVIDIA GPUs
+            limits['nvidia.com/gpu'] = request_gpus
+            requests['nvidia.com/gpu'] = request_gpus
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
@@ -112,7 +117,7 @@ class KubernetesRuntime(Runtime):
                             {'name': 'HOME', 'value': working_directory},
                             {'name': 'CODALAB', 'value': 'true'},
                         ],
-                        'resources': {'limits': limits},
+                        'resources': {'limits': limits, 'requests': requests},
                         # Mount only the needed dependencies as read-only and the working directory of the bundle,
                         # rather than mounting all of self.work_dir.
                         'volumeMounts': [
@@ -180,7 +185,7 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         if pod.status.phase in ("Succeeded", "Failed"):
-            logger.warn('pod info: %s', pod)
+            logger.warn('pod status: %s', pod.status)
             statuses = pod.status.container_statuses
             if statuses is None or len(statuses) == 0 or statuses[0].state.terminated is None:
                 return (False, None, None)
@@ -204,7 +209,7 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         try:
-            logger.warn('pod info: %s', pod)
+            logger.warn('pod status: %s', pod.status)
             statuses = pod.status.container_statuses
             if statuses is None or len(statuses) == 0:
                 # Pod does not exist
