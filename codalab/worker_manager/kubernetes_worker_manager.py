@@ -119,6 +119,17 @@ class KubernetesWorkerManager(WorkerManager):
 
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
+        # If we only need one CPU, only request 0.5 CPUs. This way, workers with only one CPU,
+        # for example during integration tests, can still run the job
+        # (as some overhead may be taken by other things in the cluster).
+        limits = {'cpu': self.args.cpus, 'memory': f'{self.args.memory_mb}Mi'}
+        requests = {
+            'cpu': 0.5 if self.args.cpus == 1 else self.args.cpus,
+            'memory': f'{self.args.memory_mb}Mi',
+        }
+        if self.args.gpus:
+            limits['nvidia.com/gpu'] = self.args.gpus
+            requests['nvidia.com/gpu'] = self.args.gpus
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
@@ -133,13 +144,7 @@ class KubernetesWorkerManager(WorkerManager):
                             {'name': 'CODALAB_USERNAME', 'value': self.codalab_username},
                             {'name': 'CODALAB_PASSWORD', 'value': self.codalab_password},
                         ],
-                        'resources': {
-                            'limits': {
-                                'cpu': self.args.cpus,
-                                'memory': f'{self.args.memory_mb}Mi',
-                                'nvidia.com/gpu': self.args.gpus,  # Configure NVIDIA GPUs
-                            }
-                        },
+                        'resources': {'limits': limits, 'requests': requests},
                         'volumeMounts': [
                             {
                                 "name": self.nfs_volume_name if self.nfs_volume_name else 'workdir',
