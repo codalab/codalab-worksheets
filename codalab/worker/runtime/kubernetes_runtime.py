@@ -188,9 +188,7 @@ class KubernetesRuntime(Runtime):
             return (
                 True,
                 exitcode,
-                pod.status.container_statuses[0].state.terminated.reason
-                if exitcode != 0
-                else None,
+                pod.status.container_statuses[0].state.terminated.reason if exitcode != 0 else None,
             )
         return (False, None, None)
 
@@ -206,7 +204,12 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         try:
-            state = pod.status.container_statuses[0].state
+            logger.warn('pod info: %s', pod)
+            statuses = pod.status.container_statuses
+            if len(statuses) == 0:
+                # Pod does not exist
+                return 0
+            state = statuses[0].state
             if state.running:
                 return (
                     datetime.datetime.now(tz.tzutc()) - state.running.started_at
