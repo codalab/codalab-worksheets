@@ -180,18 +180,17 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         if pod.status.phase in ("Succeeded", "Failed"):
-            try:
-                exitcode = pod.status.container_statuses[0].state.terminated.exit_code
-                return (
-                    True,
-                    exitcode,
-                    pod.status.container_statuses[0].state.terminated.reason
-                    if exitcode != 0
-                    else None,
-                )
-            except (AttributeError, KeyError):
-                logging.warn("check_finished: status couldn't be parsed, but is: %s", pod)
-                return (True, None, None)
+            statuses = pod.status.container_statuses
+            if len(statuses) == 0 or statuses[0].state.terminated is None:
+                return (False, None, None)
+            exitcode = statuses[0].state.terminated.exit_code
+            return (
+                True,
+                exitcode,
+                pod.status.container_statuses[0].state.terminated.reason
+                if exitcode != 0
+                else None,
+            )
         return (False, None, None)
 
     def get_container_running_time(self, pod_name: str) -> int:
