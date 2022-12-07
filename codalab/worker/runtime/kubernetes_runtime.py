@@ -182,7 +182,7 @@ class KubernetesRuntime(Runtime):
         if pod.status.phase in ("Succeeded", "Failed"):
             logger.warn('pod info: %s', pod)
             statuses = pod.status.container_statuses
-            if len(statuses) == 0 or statuses[0].state.terminated is None:
+            if statuses is None or len(statuses) == 0 or statuses[0].state.terminated is None:
                 return (False, None, None)
             exitcode = statuses[0].state.terminated.exit_code
             return (
@@ -206,7 +206,7 @@ class KubernetesRuntime(Runtime):
         try:
             logger.warn('pod info: %s', pod)
             statuses = pod.status.container_statuses
-            if len(statuses) == 0:
+            if statuses is None or len(statuses) == 0:
                 # Pod does not exist
                 return 0
             state = statuses[0].state
