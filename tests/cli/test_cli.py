@@ -1934,7 +1934,6 @@ def test_run2(ctx):
         [cl, 'run', 'dir3:%s' % dir3, 'for x in {1..10}; do ls dir3 && sleep 1; done']
     )
     wait(uuid2)
-    check_equals(State.RUNNING, get_info(uuid1, 'state'))
     wait(uuid1)
 
     # Test that content of dependency is mounted at the top when . is specified as the dependency key
