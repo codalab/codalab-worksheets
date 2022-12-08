@@ -1533,7 +1533,6 @@ def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
-    wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
     wait(uuid)
     # Check that we can freeze and unfreeze a run bundle (since now it should be in a final state)
