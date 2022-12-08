@@ -9,8 +9,7 @@ from codalab.worker_manager.worker_manager import BundlesPayload
 class SlurmBatchWorkerManagerTest(unittest.TestCase):
     def test_base_command(self):
         args: SimpleNamespace = SimpleNamespace(
-            server='http://some_server',
-            ws_server='ws://some_server/ws',
+            server='some_server',
             temp_session=True,
             user='some_user',
             partition='some_partition',
@@ -41,7 +40,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
         self.assertTrue('--pass-down-termination' in command)
 
         expected_command_str = (
-            "cl-worker --server http://some_server --ws-server ws://some_server/ws --verbose --exit-when-idle --idle-seconds 888 "
+            "cl-worker --server some_server --verbose --exit-when-idle --idle-seconds 888 "
             "--work-dir /some/path/some_user-codalab-SlurmBatchWorkerManager-scratch/workdir "
             "--id $(hostname -s)-some_worker_id --network-prefix cl_worker_some_worker_id_network --tag some_tag "
             "--group some_group --exit-after-num-runs 8 --download-dependencies-max-retries 5 "
@@ -52,8 +51,7 @@ class SlurmBatchWorkerManagerTest(unittest.TestCase):
 
     def test_filter_bundles(self):
         args: SimpleNamespace = SimpleNamespace(
-            server='http://some_server',
-            ws_server='ws://some_server/ws',
+            server='some_server',
             temp_session=True,
             user='some_user',
             partition='some_partition',
