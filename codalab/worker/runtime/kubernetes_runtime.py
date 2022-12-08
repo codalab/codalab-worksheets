@@ -185,7 +185,6 @@ class KubernetesRuntime(Runtime):
             )
             raise e
         if pod.status.phase in ("Succeeded", "Failed"):
-            logger.warn('pod status: %s', pod.status)
             statuses = pod.status.container_statuses
             if statuses is None or len(statuses) == 0 or statuses[0].state.terminated is None:
                 return (False, None, None)
@@ -208,23 +207,17 @@ class KubernetesRuntime(Runtime):
                 f'Exception when calling Kubernetes api->read_namespaced_pod_status...: {e}'
             )
             raise e
-        try:
-            logger.warn('pod status: %s', pod.status)
-            statuses = pod.status.container_statuses
-            if statuses is None or len(statuses) == 0:
-                # Pod does not exist
-                return 0
-            state = statuses[0].state
-            if state.running:
-                return (
-                    datetime.datetime.now(tz.tzutc()) - state.running.started_at
-                ).total_seconds()
-            elif state.terminated:
-                return (state.terminated.finished_at - state.terminated.started_at).total_seconds()
+        statuses = pod.status.container_statuses
+        if statuses is None or len(statuses) == 0:
+            # Pod does not exist
             return 0
-        except (AttributeError, KeyError):
-            logger.warn("get_container_running_time: pod info couldn't be parsed, but is: %s", pod)
-            return 0
+        state = statuses[0].state
+        if state.running:
+            return (datetime.datetime.now(tz.tzutc()) - state.running.started_at).total_seconds()
+        elif state.terminated:
+            return (state.terminated.finished_at - state.terminated.started_at).total_seconds()
+        logger.warn("get_container_running_time: pod info couldn't be parsed, but is: %s", pod)
+        return 0
 
     def kill(self, pod_name: str):
         return self.remove(pod_name)

@@ -50,8 +50,8 @@ async def worker_handler(websocket, worker_id):
 
 
 ROUTES = (
-    (r'^/main$', rest_server_handler),
-    (r'^/worker/(.+)$', worker_handler),
+    (r'^.*/main$', rest_server_handler),
+    (r'^.*/worker/(.+)$', worker_handler),
 )
 
 
