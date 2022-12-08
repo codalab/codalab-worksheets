@@ -47,7 +47,7 @@ def parse_args():
     )
     parser.add_argument(
         '--ws-server',
-        default='wss://worksheets.codalab.org/ws',
+        default=None,
         help='URL of the CodaLab websocket server, in the format '
         '<ws|wss>://<hostname>[:<port>] (e.g., wss://worksheets.codalab.org/ws)',
     )
@@ -342,6 +342,10 @@ def main():
     if local_bundles_dir and not os.path.exists(local_bundles_dir):
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
+
+    if not args.ws_server:
+        # Set default
+        args.ws_server = args.server.replace('https://', 'wss://').replace('http://, ws://') + '/ws'
 
     worker = Worker(
         image_manager,

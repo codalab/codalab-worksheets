@@ -19,12 +19,6 @@ def main():
         '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)',
     )
     parser.add_argument(
-        '--ws-server',
-        default='wss://worksheets.codalab.org/ws',
-        help='URL of the CodaLab websocket server, in the format '
-        '<ws|wss>://<hostname>[:<port>] (e.g., wss://worksheets.codalab.org/ws)',
-    )
-    parser.add_argument(
         '--temp-session',
         action='store_false',
         help='Whether to use a temporary session (defaults to true).',
