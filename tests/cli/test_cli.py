@@ -423,8 +423,7 @@ class ModuleContext(object):
             return True
 
         # Clean up and restore original worksheet
-        # print("[*][*] CLEANING UP")
-        return
+        print("[*][*] CLEANING UP")
 
         switch_user('codalab')  # root user
         _run_command([cl, 'work', self.original_worksheet])
