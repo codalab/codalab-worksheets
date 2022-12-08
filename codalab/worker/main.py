@@ -345,7 +345,9 @@ def main():
 
     if not args.ws_server:
         # Set default
-        args.ws_server = args.server.replace("https://", "wss://").replace("http://", "ws://") + "/ws"
+        args.ws_server = (
+            args.server.replace("https://", "wss://").replace("http://", "ws://") + "/ws"
+        )
 
     worker = Worker(
         image_manager,
