@@ -18,6 +18,7 @@ kind load docker-image "codalab/worker:$(python3 codalab_service.py version --ve
 
 # Run worker manager
 export CODALAB_SERVER=http://nginx
+export CODALAB_WS_SERVER=ws://nginx/ws
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443
 export CODALAB_WORKER_MANAGER_TYPE=kubernetes
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null

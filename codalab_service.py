@@ -326,8 +326,7 @@ CODALAB_ARGUMENTS = [
         name='worker_manager_worker_checkin_frequency_seconds',
         help='Number of seconds to wait between check-ins for a worker of the worker manager',
         type=int,
-        # TODO(Ashwin): Change this back to 20 once we get websockets working with kubernetes workers.
-        default=5,
+        default=20,
     ),
     CodalabArg(
         name='worker_manager_idle_seconds',

@@ -28,6 +28,7 @@ x-codalab-env: &codalab-env
   - CODALAB_EMAIL_USERNAME=${CODALAB_EMAIL_USERNAME}
   - CODALAB_EMAIL_PASSWORD=${CODALAB_EMAIL_PASSWORD}
   - CODALAB_SERVER=${CODALAB_SERVER}
+  - CODALAB_WS_SERVER=${CODALAB_WS_SERVER}
   - CODALAB_SHARED_FILE_SYSTEM=${CODALAB_SHARED_FILE_SYSTEM}
   - CODALAB_LINK_MOUNTS=${CODALAB_LINK_MOUNTS}
   - CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=${CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS}
@@ -165,6 +166,7 @@ services:
     command: |
       cl-worker-manager
       --server ${CODALAB_SERVER}
+      --ws-server ${CODALAB_WS_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
       --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
@@ -192,6 +194,7 @@ services:
     command: |
       cl-worker-manager
       --server ${CODALAB_SERVER}
+      --ws-server ${CODALAB_WS_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
       --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
@@ -220,6 +223,7 @@ services:
     command: |
       cl-worker-manager
       --server ${CODALAB_SERVER}
+      --ws-server ${CODALAB_WS_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
       --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
@@ -249,6 +253,7 @@ services:
     command: |
       cl-worker-manager
       --server ${CODALAB_SERVER}
+      --ws-server ${CODALAB_WS_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
       --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
@@ -279,6 +284,7 @@ services:
     command: |
       cl-worker-manager
       --server ${CODALAB_SERVER}
+      --ws-server ${CODALAB_WS_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS}
       --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}
@@ -311,6 +317,7 @@ services:
     command: |
       cl-worker-manager
       --server ${CODALAB_SERVER}
+      --ws-server ${CODALAB_WS_SERVER}
       --min-workers ${CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS}
       --max-workers ${CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS}
       --worker-download-dependencies-max-retries ${CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES}

@@ -109,6 +109,8 @@ class WorkerManager(object):
             self.args.worker_executable,
             '--server',
             self.args.server,
+            '--ws-server',
+            self.args.ws_server,
             '--verbose',
             '--exit-when-idle',
             '--idle-seconds',

@@ -13,7 +13,16 @@ from .slurm_batch_worker_manager import SlurmBatchWorkerManager
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--server', help='CodaLab instance to connect to', default='https://worksheets.codalab.org'
+        '--server',
+        default='https://worksheets.codalab.org',
+        help='URL of the CodaLab server, in the format '
+        '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)',
+    )
+    parser.add_argument(
+        '--ws-server',
+        default='wss://worksheets.codalab.org/ws',
+        help='URL of the CodaLab websocket server, in the format '
+        '<ws|wss>://<hostname>[:<port>] (e.g., wss://worksheets.codalab.org/ws)',
     )
     parser.add_argument(
         '--temp-session',
