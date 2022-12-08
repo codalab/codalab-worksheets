@@ -7,30 +7,37 @@ assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Description
 
-**Codalab Information**
-- *Your username*:
-- *UUID of worksheet where problem occurred*:
-- *UUID of problem bundle (please don't delete)*:
-- *Error message received from Codalab (if applicable)*:
- - *OS (if on CLI)*:
- - *Codalab CLI Version (if on CLI)*: 
- - *Browser (if on Web)*;
+Describe the bug or issue you are experiencing in a clear and concise manner.
 
-**To Reproduce**
-Steps to reproduce the behavior :
+## CodaLab Information
+
+- **Your username**: 
+- **UUID of worksheet where problem occurred**: 
+- **UUID of problem bundle (please don't delete)**: 
+- **Error message received from Codalab (if applicable)**:
+- **OS (if on CLI)**: 
+- **Codalab CLI Version (if on CLI)**: 
+- **Browser (if on Web)**:
+
+## Steps to Reproduce
+
+Provide a step-by-step guide to reproduce the issue:
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected Behavior
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+Describe the behavior you expected to see.
 
-**Additional context**
-Add any other context about the problem here.
+## Screenshots
+
+If possible, include screenshots to help illustrate the issue.
+
+## Additional Context
+
+Is there any additional information that might be relevant to this issue? If so, provide it here.
