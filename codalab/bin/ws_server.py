@@ -21,7 +21,7 @@ async def rest_server_handler(websocket):
     """
     # Got a message from the rest server.
     worker_id = await websocket.recv()
-    logger.debug(f"Got a message from the rest server, to ping worker: {worker_id}.")
+    logger.warning(f"Got a message from the rest server, to ping worker: {worker_id}.")
 
     try:
         worker_ws = worker_to_ws[worker_id]
@@ -37,7 +37,7 @@ async def worker_handler(websocket, worker_id):
     """
     # runs on worker connect
     worker_to_ws[worker_id] = websocket
-    logger.debug(f"Connected to worker {worker_id}!")
+    logger.warning(f"Connected to worker {worker_id}!")
 
     while True:
         try:
@@ -58,7 +58,7 @@ ROUTES = (
 async def ws_handler(websocket, *args):
     """Handler for websocket connections. Routes websockets to the appropriate
     route handler defined in ROUTES."""
-    logger.warn(f"websocket handler, path: {websocket.path}.")
+    logger.warning(f"websocket handler, path: {websocket.path}.")
     for (pattern, handler) in ROUTES:
         match = re.match(pattern, websocket.path)
         if match:
