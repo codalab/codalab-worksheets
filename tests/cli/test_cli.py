@@ -22,7 +22,6 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib.codalab_manager import CodaLabManager
-from codalab.server.bundle_manager import DISK_QUOTA_SLACK_BYTES
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -1741,10 +1740,15 @@ def test_run(ctx):
     _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
 
     # Test that bundle fails when run without sufficient disk quota
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
+    # Note: We add 1MB to the disk quota since that's the minimum disk allowed to be requested
+    # by a container.
+    # We then create a file with size 1MB + 10 bytes, since that should now violate the disk quota.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
     uuid = _run_command(
-        [cl, 'run', f'head -c {2*int(DISK_QUOTA_SLACK_BYTES)} /dev/zero > test.txt; sleep 100000',],
+        [cl, 'run', f'head -c {1000010} /dev/zero > test.txt; sleep 100000',],
         request_disk=None,
+        request_memory=None,
     )
     wait_until_state(
         uuid, State.KILLED, timeout_seconds=500, exclude_final_states={State.FAILED}
