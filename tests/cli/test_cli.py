@@ -1003,12 +1003,14 @@ def test_upload3(ctx):
 def test_upload4(ctx):
     # Next, uploads multiple archives at the same time and goes over disk quota on the second
     # upload. Check to make sure the uploads fail.
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(DISK_QUOTA_SLACK_BYTES)+1}'])
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
     uuids = list()
-    for i in range(3):
+    for i in range(2):
         uuids.append(_run_command(
-            [cl, 'run', f'head -c {int(DISK_QUOTA_SLACK_BYTES) / 2} /dev/zero > test.txt; sleep 100000',],
+            [cl, 'run', f'head -c {1000000 / 2 + 10} /dev/zero > test.txt; sleep 100000',],
             request_disk=None,
+            request_memory=None,
         ))
     for i in range(3):
         wait_until_state(uuids[i], State.FAILED, timeout_seconds=300)
