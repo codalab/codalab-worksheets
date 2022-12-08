@@ -2,7 +2,7 @@
 set -e
 
 # First, start codalab without a worker:
-python3 codalab_service.py start --services default no-worker --version ${VERSION}
+python3 codalab_service.py start --services default no-worker --version ${VERSION} $([ -z "${DEV}" ] || echo "-d")
 
 # Install initial dependencies
 go install sigs.k8s.io/kind@v0.12.0
@@ -26,4 +26,4 @@ export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
 export CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=1
-python3 codalab_service.py start --services worker-manager-cpu --version ${VERSION}
+python3 codalab_service.py start --services worker-manager-cpu --version ${VERSION} $([ -z "${DEV}" ] || echo "-d")
