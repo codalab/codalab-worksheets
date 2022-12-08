@@ -43,7 +43,7 @@ If all is successful, you should be able to log into your dashboard. You should 
 You should repeat this step each time you change the worker docker image and want the local kind cluster to load it:
 
 ```bash
-codalab-service build -s worker && kind load docker-image "codalab/worker:$(python3 codalab_service.py version --version $VERSION)" --name codalab
+codalab-service build -s worker && kind load docker-image "codalab/worker:$(python3 codalab_service.py version)" --name codalab
 ```
 
 ### Teardown
