@@ -218,7 +218,8 @@ class KubernetesRuntime(Runtime):
             return (state.terminated.finished_at - state.terminated.started_at).total_seconds()
         elif state.waiting:
             logger.debug("get_container_running_time: pod state is waiting: %s", state)
-        logger.info("get_container_running_time: pod info couldn't be parsed, is: %s", pod)
+        else:
+            logger.info("get_container_running_time: pod info couldn't be parsed, is: %s", pod)
         return 0
 
     def kill(self, pod_name: str):
