@@ -117,6 +117,7 @@ def run_command(
                 exitcode = 0
             except SystemExit as e:
                 exitcode = e.code
+                print(traceback.format_exc())
             output = stdout.getvalue()
         else:
             output = subprocess.check_output([a.encode() for a in args], **kwargs)

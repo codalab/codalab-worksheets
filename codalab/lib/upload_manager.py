@@ -496,7 +496,7 @@ class ClientUploadManager(object):
                     bundle['id'],
                     params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
                 )
-                #raise err
+                raise err
             else:
                 self._client.update_bundle_state(bundle['id'], params={'success': True})
         else:

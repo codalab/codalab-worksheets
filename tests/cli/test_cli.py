@@ -1013,20 +1013,28 @@ def test_upload4(ctx):
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000}'])
     uuids = list()
     NUM_PROCESSES = 2
-    states = [None for _ in range(2)]
+    states = [None for _ in range(NUM_PROCESSES)]
     #threads = [None for _ in range(2)]
     args = list()
     pool = multiprocessing.Pool(processes = NUM_PROCESSES)
+    args = [
+        [[cl, 'upload', test_path('100kbfile.txt')], 1],
+        [[cl, 'upload', test_path('100kbfile.txt')], 1]
+    ]
+
+    """
     for i in range(NUM_PROCESSES):
         args.append(([cl, 'upload', test_path('100kbfile.txt')]))
-    uuids = pool.map(_run_command, args)
+    """
+    uuids = pool.starmap(_run_command, args)
     #threads[i].start()
     #uuids.append(_run_command([cl, 'upload', test_path('100kbfile.txt')]))
     #for i in range(len(threads)):
-
+    """
     for i in range(NUM_PROCESSES):
         states[i] = wait_until_state(uuids[i], set([State.READY, State.FAILED]), timeout_seconds=300)
     check_contains(states, State.FAILED)
+    """
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota]) # reset disk quota
 
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
