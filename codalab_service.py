@@ -326,7 +326,9 @@ CODALAB_ARGUMENTS = [
         name='worker_manager_worker_checkin_frequency_seconds',
         help='Number of seconds to wait between check-ins for a worker of the worker manager',
         type=int,
-        default=20,
+        # TODO (Ashwin): Temporarily changed from 20 to 5 to get the CLI "time" tests to pass with kubernetes.
+        # Revert this once the root issue is fixed.
+        default=5,
     ),
     CodalabArg(
         name='worker_manager_idle_seconds',
