@@ -20,6 +20,7 @@ from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
+from threading import Thread
 
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.server.bundle_manager import DISK_QUOTA_SLACK_BYTES
@@ -30,6 +31,7 @@ from scripts.test_util import Colorizer, run_command
 
 import argparse
 import json
+import multiprocessing
 import os
 import random
 import re
@@ -164,7 +166,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_state, timeout_seconds=1000):
+def wait_until_state(uuid, expected_states, timeout_seconds=1000):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -174,6 +176,8 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         expected_state: Expected state of bundle
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
     """
+    if type(expected_states) != set:
+        expected_states = set(expected_states)
     start_time = time.time()
     while True:
         if time.time() - start_time > timeout_seconds:
@@ -181,8 +185,8 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         current_state = get_info(uuid, 'state')
 
         # Stop waiting when the bundle is in the expected state or one of the final states
-        if current_state == expected_state:
-            return
+        if current_state in expected_states:
+            return current_state
         elif current_state in State.FINAL_STATES:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
@@ -1003,17 +1007,27 @@ def test_upload3(ctx):
 def test_upload4(ctx):
     # Next, uploads multiple archives at the same time and goes over disk quota on the second
     # upload. Check to make sure the uploads fail.
+    # Since 'echo' has size about 283K, and so uploading 4 will get us over the 1MB disk limit.
+    # We do 5 just to be safe.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
     uuids = list()
-    for i in range(2):
-        uuids.append(_run_command(
-            [cl, 'run', f'head -c {1000000 / 2 + 10} /dev/zero > test.txt; sleep 100000',],
-            request_disk=None,
-            request_memory=None,
-        ))
-    for i in range(3):
-        wait_until_state(uuids[i], State.FAILED, timeout_seconds=300)
+    NUM_PROCESSES = 2
+    states = [None for _ in range(2)]
+    #threads = [None for _ in range(2)]
+    args = list()
+    pool = multiprocessing.Pool(processes = NUM_PROCESSES)
+    for i in range(NUM_PROCESSES):
+        args.append(([cl, 'upload', test_path('100kbfile.txt')]))
+    uuids = pool.map(_run_command, args)
+    #threads[i].start()
+    #uuids.append(_run_command([cl, 'upload', test_path('100kbfile.txt')]))
+    #for i in range(len(threads)):
+
+    for i in range(NUM_PROCESSES):
+        states[i] = wait_until_state(uuids[i], set([State.READY, State.FAILED]), timeout_seconds=300)
+    check_contains(states, State.FAILED)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota]) # reset disk quota
 
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
     archive_paths = [temp_path(''), temp_path('')]
