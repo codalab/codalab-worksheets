@@ -237,7 +237,7 @@ class BlobStorageUploader(Uploader):
         try:
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
-            ITERATIONS_PER_DISK_CHECK = 10
+            ITERATIONS_PER_DISK_CHECK = 1
             iteration = 0
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
@@ -249,21 +249,31 @@ class BlobStorageUploader(Uploader):
                         break
                     out.write(to_send)
 
+                    print(f"iteration: {iteration}")
+                    print(f"bytes: {len(to_send)}")
+
                     # Update disk and check if client has gone over disk usage.
                     if (iteration % ITERATIONS_PER_DISK_CHECK == 0):
+                        print("update")
                         self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
+                        print("updated")
+                        print("getting user data")
                         user_info = self._client.fetch('user')
+                        print(f"user info: {user_info}")
                         if user_info['disk_used'] >= user_info['disk_quota']:
+                            print("EXCEPTOIN!!!")
                             raise Exception('Upload aborted. User disk quota exceeded. '
                                 'To apply for more quota, please visit the following link: '
                                 'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
                                 '#how-do-i-request-more-disk-quota-or-time-quota')
 
+                    print("at bytes uploaded")
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
+                    print("get past that")
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -290,6 +300,7 @@ class BlobStorageUploader(Uploader):
                             should_resume = progress_callback(bytes_uploaded)
                             if not should_resume:
                                 raise Exception('Upload aborted by client')
+            print("we out here")
         except Exception as err:
             raise err
         finally:  # restore the origin connection string
@@ -479,12 +490,13 @@ class ClientUploadManager(object):
                         json_api_client=self._client,
                         progress_callback=progress.update,
                     )
+                print("yeah buddy")
             except Exception as err:
                 self._client.update_bundle_state(
                     bundle['id'],
                     params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
                 )
-                raise err
+                #raise err
             else:
                 self._client.update_bundle_state(bundle['id'], params={'success': True})
         else:

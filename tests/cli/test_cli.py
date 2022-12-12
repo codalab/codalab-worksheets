@@ -275,7 +275,7 @@ def _run_command(
     expected_exit_code=0,
     max_output_chars=4096,
     env=None,
-    include_stderr=False,
+    include_stderr=True,
     binary=False,
     force_subprocess=False,
     cwd=None,
@@ -1010,7 +1010,7 @@ def test_upload4(ctx):
     # Since 'echo' has size about 283K, and so uploading 4 will get us over the 1MB disk limit.
     # We do 5 just to be safe.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000}'])
     uuids = list()
     NUM_PROCESSES = 2
     states = [None for _ in range(2)]
