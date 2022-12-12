@@ -20,10 +20,8 @@ from collections import namedtuple, OrderedDict
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
-from threading import Thread
 
 from codalab.lib.codalab_manager import CodaLabManager
-from codalab.server.bundle_manager import DISK_QUOTA_SLACK_BYTES
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
@@ -190,7 +188,7 @@ def wait_until_state(uuid, expected_states, timeout_seconds=1000):
         elif current_state in State.FINAL_STATES:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
-                    uuid, expected_state, current_state
+                    uuid, expected_states, current_state
                 )
             )
         time.sleep(0.5)
@@ -1005,38 +1003,6 @@ def test_upload3(ctx):
 
 @TestModule.register('upload4')
 def test_upload4(ctx):
-    # Next, uploads multiple archives at the same time and goes over disk quota on the second
-    # upload. Check to make sure the uploads fail.
-    # Since 'echo' has size about 283K, and so uploading 4 will get us over the 1MB disk limit.
-    # We do 5 just to be safe.
-    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000}'])
-    uuids = list()
-    NUM_PROCESSES = 2
-    states = [None for _ in range(NUM_PROCESSES)]
-    #threads = [None for _ in range(2)]
-    args = list()
-    pool = multiprocessing.Pool(processes = NUM_PROCESSES)
-    args = [
-        [[cl, 'upload', test_path('100kbfile.txt')], 1],
-        [[cl, 'upload', test_path('100kbfile.txt')], 1]
-    ]
-
-    """
-    for i in range(NUM_PROCESSES):
-        args.append(([cl, 'upload', test_path('100kbfile.txt')]))
-    """
-    uuids = pool.starmap(_run_command, args)
-    #threads[i].start()
-    #uuids.append(_run_command([cl, 'upload', test_path('100kbfile.txt')]))
-    #for i in range(len(threads)):
-    """
-    for i in range(NUM_PROCESSES):
-        states[i] = wait_until_state(uuids[i], set([State.READY, State.FAILED]), timeout_seconds=300)
-    check_contains(states, State.FAILED)
-    """
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota]) # reset disk quota
-
     # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
     archive_paths = [temp_path(''), temp_path('')]
     archive_exts = [p + '.tar.gz' for p in archive_paths]
@@ -1056,6 +1022,7 @@ def test_upload4(ctx):
     # Cleanup
     for archive in archive_exts:
         os.unlink(archive)
+
 
 @TestModule.register('blob')
 def test_blob(ctx):
@@ -1096,6 +1063,19 @@ def test_blob(ctx):
                 'Authorization': 'Bearer ' + ctx.client._get_access_token(),
             },
         )
+
+    # Uploads multiple archives at the same time and goes over disk quota on the second
+    # upload. Check to make sure the uploads fail.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000}'])
+    pool = multiprocessing.Pool(processes=2)
+    # Set the expected exit code to be 1 for both processes.
+    args = [
+        [[cl, 'upload', test_path('100kbfile.txt')], 1],
+        [[cl, 'upload', test_path('100kbfile.txt')], 1],
+    ]
+    pool.starmap(_run_command, args)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
     for (uuid, target_type) in [

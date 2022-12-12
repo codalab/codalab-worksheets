@@ -2,6 +2,7 @@
 Worksheets REST API Users Views.
 """
 import http.client
+import logging
 import os
 
 from bottle import abort, get, request, local, delete
@@ -35,7 +36,7 @@ USER_ACCESSIBLE_KEYWORDS = (
     'size',
 )
 
-import logging; logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -260,15 +261,18 @@ def increment_user_disk_used():
     disk_used_increment = request.json['data'][0]['attributes']['disk_used_increment']
     if disk_used_increment <= 0:
         abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
-    
-    test = AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+
+    test = (
+        AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+    )
     disk_used = test['data'][0]['attributes']['disk_used']
     logger.info(f"DISK USED INCREMENT: {disk_used_increment}")
     logger.info(f"DISK USED: {disk_used}")
 
-
     local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
-    test = AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+    test = (
+        AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+    )
     disk_used = test['data'][0]['attributes']['disk_used']
     logger.info(f"DISK USED: {disk_used}")
     return test

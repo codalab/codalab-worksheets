@@ -2718,7 +2718,7 @@ class BundleModel(object):
         user_info = self.get_user_info(user_id)
         user_info['time_used'] += amount
         self.update_user_info(user_info)
-    
+
     def increment_user_disk_used(self, user_id, amount):
         """
         User used some time.

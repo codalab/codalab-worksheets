@@ -35,7 +35,11 @@ class Uploader:
     """
 
     def __init__(
-        self, bundle_model=None, bundle_store=None, destination_bundle_store=None, json_api_client=None
+        self,
+        bundle_model=None,
+        bundle_store=None,
+        destination_bundle_store=None,
+        json_api_client=None,
     ):
         """
         params:
@@ -250,14 +254,18 @@ class BlobStorageUploader(Uploader):
                     out.write(to_send)
 
                     # Update disk and check if client has gone over disk usage.
-                    if (iteration % ITERATIONS_PER_DISK_CHECK == 0):
-                        self._client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
+                    if iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                        self._client.update(
+                            'user/increment_disk_used', {'disk_used_increment': len(to_send)}
+                        )
                         user_info = self._client.fetch('user')
                         if user_info['disk_used'] >= user_info['disk_quota']:
-                            raise Exception('Upload aborted. User disk quota exceeded. '
+                            raise Exception(
+                                'Upload aborted. User disk quota exceeded. '
                                 'To apply for more quota, please visit the following link: '
                                 'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-                                '#how-do-i-request-more-disk-quota-or-time-quota')
+                                '#how-do-i-request-more-disk-quota-or-time-quota'
+                            )
 
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
@@ -532,7 +540,10 @@ class ClientUploadManager(object):
         json_api_client: TODO
         """
         BlobStorageUploader(
-            bundle_model=None, bundle_store=None, destination_bundle_store=None, json_api_client=json_api_client
+            bundle_model=None,
+            bundle_store=None,
+            destination_bundle_store=None,
+            json_api_client=json_api_client,
         ).write_fileobj(
             source_ext,
             fileobj,
@@ -571,7 +582,7 @@ class ClientUploadManager(object):
             fileobj=output_fileobj,
             query_params={},
             progress_callback=progress_callback,
-            json_api_client=json_api_client
+            json_api_client=json_api_client,
         )
         # upload the index file
         with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
@@ -591,5 +602,5 @@ class ClientUploadManager(object):
                 query_params={},
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
-                json_api_client=self._client
+                json_api_client=self._client,
             )

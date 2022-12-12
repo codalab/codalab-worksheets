@@ -48,7 +48,6 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
-    DiskQuotaExceededError,
     parse_linked_bundle_url,
 )
 from codalab.lib import (
@@ -100,7 +99,6 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-from codalab.worker.file_util import get_path_size
 
 
 # Command groupings
@@ -1429,10 +1427,6 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
-            total_bundle_size = sum([get_path_size(source) for source in sources])
-            user = client.fetch('user')
-            disk_left = user['disk_quota'] - user['disk_used']
-
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
                 print(
@@ -1452,7 +1446,7 @@ class BundleCLI(object):
             # Make sure user won't go over disk quota.
             # We may also abort during upload if user is detected to go over quota during upload.
             # This could happen if the user is uploading several sources simultaneously.
-            # Right now, this doesn't work because we need to make sure itl ooks at the 
+            # Right now, this doesn't work because we need to make sure itl ooks at the
             # correct size (compressed vs uncompressed)
             # That's actually super annoying.
             # We can probably figure out away to do it, but it's a bit hard....

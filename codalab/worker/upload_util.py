@@ -15,7 +15,7 @@ def upload_with_chunked_encoding(
     need_response=False,
     url="",
     progress_callback=None,
-    json_api_client=None
+    json_api_client=None,
 ):
     """
         Uploads the fileobj to url using method with headers and query_params,
@@ -78,14 +78,18 @@ def upload_with_chunked_encoding(
             bytes_uploaded += len(to_send)
 
             # Update disk and check if client has gone over disk usage.
-            if (json_api_client and iteration % ITERATIONS_PER_DISK_CHECK == 0):
-                json_api_client.update('user/increment_disk_used', {'disk_used_increment': len(to_send)})
+            if json_api_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                json_api_client.update(
+                    'user/increment_disk_used', {'disk_used_increment': len(to_send)}
+                )
                 user_info = json_api_client.fetch('user')
                 if user_info['disk_used'] >= user_info['disk_quota']:
-                    raise Exception('Upload aborted. User disk quota exceeded. '
+                    raise Exception(
+                        'Upload aborted. User disk quota exceeded. '
                         'To apply for more quota, please visit the following link: '
                         'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-                        '#how-do-i-request-more-disk-quota-or-time-quota')
+                        '#how-do-i-request-more-disk-quota-or-time-quota'
+                    )
             if progress_callback is not None:
                 should_resume = progress_callback(bytes_uploaded)
                 if not should_resume:
