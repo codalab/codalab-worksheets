@@ -487,6 +487,7 @@ class ClientUploadManager(object):
                         json_api_client=self._client,
                         progress_callback=progress.update,
                     )
+                self._client.update_bundle_state(bundle['id'], params={'success': True})
             except Exception as err:
                 self._client.update_bundle_state(
                     bundle['id'],
