@@ -345,12 +345,9 @@ class Worker:
                     if self.check_idle_stop() or self.check_num_runs_stop():
                         self.terminate = True
                         break
-                    state_changed = self.process_runs()
-                    self.save_state()
-                    if state_changed:
-                        # If any bundle states have changed, check in now.
-                        break
+                    self.process_runs()
                     time.sleep(0.003)
+                    self.save_state()
             except Exception:
                 if using_sentry():
                     capture_exception()
@@ -549,9 +546,8 @@ class Worker:
                         logger.warning("Unrecognized action type from server: %s", action_type)
             self.process_runs()
 
-    def process_runs(self) -> bool:
-        """Transition each run then filter out finished runs. Returns True
-        if any run's state has changed."""
+    def process_runs(self):
+        """ Transition each run then filter out finished runs """
         with self._lock:
             # We (re-)initialize the Docker networks here, in case they've been removed.
             # For any networks that exist, this is essentially a no-op.
@@ -560,15 +556,11 @@ class Worker:
             self.run_state_manager.worker_docker_network = self.worker_docker_network
             self.run_state_manager.docker_network_external = self.docker_network_external
             self.run_state_manager.docker_network_internal = self.docker_network_internal
-            
-            state_changed = False
 
             # 1. transition all runs
             for uuid in self.runs:
                 prev_state = self.runs[uuid]
                 self.runs[uuid] = self.run_state_manager.transition(prev_state)
-                if self.runs[uuid] != prev_state:
-                    state_changed = True
                 # Only start saving stats for a new stage when the run has actually transitioned to that stage.
                 if prev_state.stage != self.runs[uuid].stage:
                     self.end_stage_stats(uuid, prev_state.stage)
@@ -591,8 +583,6 @@ class Worker:
                 for uuid, run_state in self.runs.items()
                 if run_state.stage != RunStage.FINISHED
             }
-            
-            return state_changed
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
