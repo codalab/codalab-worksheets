@@ -11,11 +11,13 @@ import socket
 import http.client
 import sys
 from typing import Optional, Set, Dict
+from types import SimpleNamespace
 import websockets
 
 import psutil
 
 import docker
+from codalab.common import BundleRuntime
 from codalab.lib.telemetry_util import capture_exception, using_sentry
 from codalab.worker.runtime import Runtime
 import requests
@@ -38,6 +40,8 @@ is syncing the job states with the server and passing on job-related commands fr
 to architecture-specific RunManagers that run the jobs. Workers are execution platform antagonistic
 but they expect the platform specific RunManagers they use to implement a common interface
 """
+
+NOOP = 'noop'
 
 
 class Worker:
@@ -156,6 +160,12 @@ class Worker:
         """
         Set up docker networks for runs: one with external network access and one without
         """
+        if self.bundle_runtime.name != BundleRuntime.DOCKER.value:
+            # Don't create Docker networks if we're not using the Docker runtime. Return.
+            self.worker_docker_network = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            self.docker_network_external = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            self.docker_network_internal = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            return
 
         def create_or_get_network(name, internal, verbose):
             try:
@@ -281,7 +291,7 @@ class Worker:
 
     def start(self):
         """Return whether we ran anything."""
-        logging.info(f"my id is: {self.id}")
+        logger.info(f"my id is: {self.id}")
         self.load_state()
         self.sync_state()
         self.image_manager.start()
@@ -289,9 +299,9 @@ class Worker:
             self.dependency_manager.start()
 
         async def listen(self):
-            logging.warn("Started websocket listening thread")
+            logger.warning("Started websocket listening thread")
             while not self.terminate:
-                logging.warn(f"Connecting anew to: {self.ws_server}/worker/{self.id}")
+                logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}")
                 async with websockets.connect(
                     f"{self.ws_server}/worker/{self.id}", max_queue=1
                 ) as websocket:
@@ -299,7 +309,7 @@ class Worker:
                     async def receive_msg():
                         await websocket.send("a")
                         data = await websocket.recv()
-                        logging.warn(
+                        logger.warning(
                             f"Got websocket message, got data: {data}, going to check in now."
                         )
                         self.checkin()
@@ -311,7 +321,7 @@ class Worker:
                         except asyncio.futures.TimeoutError:
                             pass
                         except websockets.exceptions.ConnectionClosed:
-                            logging.warn("Websocket connection closed, starting a new one...")
+                            logger.warning("Websocket connection closed, starting a new one...")
                             break
 
         def listen_thread_fn(self):
@@ -390,12 +400,13 @@ class Worker:
         self.save_state()
         if self.delete_work_dir_on_exit:
             shutil.rmtree(self.work_dir)
-        try:
-            self.worker_docker_network.remove()
-            self.docker_network_internal.remove()
-            self.docker_network_external.remove()
-        except docker.errors.APIError as e:
-            logger.warning("Cannot clear docker networks: %s", str(e))
+        if self.worker_docker_network.name != NOOP:
+            try:
+                self.worker_docker_network.remove()
+                self.docker_network_internal.remove()
+                self.docker_network_external.remove()
+            except docker.errors.APIError as e:
+                logger.warning("Cannot clear docker networks: %s", str(e))
 
         logger.info("Stopped Worker. Exiting")
 
