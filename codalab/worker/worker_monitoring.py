@@ -33,27 +33,21 @@ class WorkerMonitoring(object):
                 },
             )
             hub.scope.set_user({"id": run_state.bundle.owner_id})
-            transaction = hub.start_transaction(op="queue.task", name="worker.run").__enter__()
+            # TODO: Do hub.scope.set_tag here.
+            hub.start_transaction(op="queue.task", name="worker.run").__enter__()
         else:
             # The hub exists for this bundle and has a transaction for the bundle and
             # a child span for the previous stage.
             # Close the span for the previous stage.
+            assert hub.scope.span is not None
             hub.scope.span.__exit__(None, None, None)
         # At this point, the hub has a transaction for the bundle, but no child span for the stage.
         # Open the span for the current stage.
         hub.start_span(op="queue.task.stage", description=run_state.stage).__enter__()
 
         if is_terminal:
+            assert hub.scope.span is not None
             hub.scope.span.__exit__(None, None, None)
-            transaction = hub.scope.transaction
-            transaction.set_measurement('run.container_time_total', run_state.container_time_total)
-            transaction.set_measurement('run.container_time_user', run_state.container_time_user)
-            transaction.set_measurement(
-                'run.container_time_system', run_state.container_time_system
-            )
-            transaction.set_measurement('run.max_memory', run_state.max_memory)
-            transaction.set_measurement('run.disk_utilization', run_state.disk_utilization)
-            transaction.set_measurement('run.cpu_usage', run_state.cpu_usage)
-            transaction.set_measurement('run.memory_usage', run_state.memory_usage)
+            # TODO: Do transaction.set_measurement here.
             hub.scope.transaction.__exit__(None, None, None)
             del self._bundle_uuid_to_hub[bundle_uuid]
