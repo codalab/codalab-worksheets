@@ -308,22 +308,29 @@ def remove(path):
     if parse_linked_bundle_url(path).uses_beam:
         from apache_beam.io.filesystems import FileSystems
 
-        if not FileSystems.exists(path):
-            FileSystems.delete([path])
-        return
-    check_isvalid(path, 'remove')
-    set_write_permissions(path)  # Allow permissions
-    if os.path.islink(path):
-        os.unlink(path)
-    elif os.path.isdir(path):
-        try:
-            shutil.rmtree(path)
-        except shutil.Error:
-            pass
+        if FileSystems.exists(path):
+            # Get the full folder location (without contents.gz) deleted
+            file_location = '/'.join(path.split('/')[0:-1]) + "/"
+            FileSystems.delete([file_location])
+            return True
     else:
-        os.remove(path)
-    if os.path.exists(path):
-        print('Failed to remove %s' % path)
+        check_isvalid(path, 'remove')
+        set_write_permissions(path)  # Allow permissions
+        if os.path.islink(path):
+            os.unlink(path)
+            return False
+        elif os.path.isdir(path):
+            try:
+                shutil.rmtree(path)
+                return True
+            except shutil.Error:
+                pass
+        else:
+            os.remove(path)
+            return True
+        if os.path.exists(path):
+            print('Failed to remove %s' % path)
+    return False
 
 
 def soft_link(source, path):
