@@ -18,8 +18,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#create-pod-v1-core
-
 removeprefix = lambda l, p: l[len(p) :]
 
 
@@ -152,12 +150,12 @@ class KubernetesRuntime(Runtime):
         return pod[0].metadata.name
 
     def get_container_stats(self, pod_name: str):
-        # TODO: implement
+        # TODO (Ashwin): implement
         return {}
 
     def get_container_stats_with_docker_stats(self, pod_name: str):
         """Returns the cpu usage and memory limit of a container using the Docker Stats API."""
-        # TODO: implement
+        # TODO (Ashwin): implement
         return 0.0, 0
 
     def container_exists(self, pod_name: str) -> bool:

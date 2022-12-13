@@ -169,7 +169,6 @@ class KubernetesWorkerManager(WorkerManager):
 
         # Start a worker pod on the k8s cluster
         logger.error('Starting worker {} with image {}'.format(worker_id, worker_image))
-        print('starting...')
         try:
             utils.create_from_dict(self.k8_client, config)
         except (client.ApiException, FailToCreateError, MaxRetryError, NewConnectionError) as e:
