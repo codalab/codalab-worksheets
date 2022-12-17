@@ -308,7 +308,7 @@ class Worker:
 
                     async def receive_msg():
                         await websocket.send("a")
-                        data = await websocket.recv()
+                        data = await asyncio.wait_for(websocket.recv(), timeout=10)
                         logger.warning(
                             f"Got websocket message, got data: {data}, going to check in now."
                         )
