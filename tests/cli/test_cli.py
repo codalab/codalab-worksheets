@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
 
+from codalab.lib import path_util
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
@@ -393,10 +394,8 @@ class ModuleContext(object):
         temp_worksheet = _run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
-        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
-        self.time_quota = (
-            _run_command([cl, 'uinfo', '-f', 'time']).split(' ')[2].split('y')[0] + 'y'
-        )
+        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk_quota'])
+        self.time_quota = _run_command([cl, 'uinfo', '-f', 'time_quota'])
 
         print("[*][*] BEGIN TEST")
 
@@ -1315,10 +1314,45 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
+    # Check rm functions correctly
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+
+    # Make sure disk quota is adjusted correctly.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Make sure disk quota is adjusted correctly when --data-only is used.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Make sure disk quota is adjusted correctly for symlinks is used.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
+    wait_until_state(uuid, State.READY)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
 
 @TestModule.register('make')
@@ -1534,7 +1568,6 @@ def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
-    wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
     wait(uuid)
     # Check that we can freeze and unfreeze a run bundle (since now it should be in a final state)
@@ -1725,6 +1758,7 @@ def test_run(ctx):
     time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
     _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
     uuid = _run_command([cl, 'run', 'sleep 100000'])
+    wait_until_state(uuid, State.RUNNING)
     wait_until_state(uuid, State.KILLED, timeout_seconds=120)
     check_equals(
         'Kill requested: User time quota exceeded. To apply for more quota,'
@@ -1936,7 +1970,6 @@ def test_run2(ctx):
         [cl, 'run', 'dir3:%s' % dir3, 'for x in {1..10}; do ls dir3 && sleep 1; done']
     )
     wait(uuid2)
-    check_equals(State.RUNNING, get_info(uuid1, 'state'))
     wait(uuid1)
 
     # Test that content of dependency is mounted at the top when . is specified as the dependency key
