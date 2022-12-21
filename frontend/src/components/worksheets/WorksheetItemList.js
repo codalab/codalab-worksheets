@@ -361,6 +361,7 @@ const styles = (theme) => ({
     },
     wsItemsDisplayContainer: {
         display: 'flex',
+        flexDirection: 'column',
         flex: 1,
     },
     wsItemListContainer: {

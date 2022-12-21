@@ -217,15 +217,14 @@ class TableItem extends React.Component<{
                                 checked={this.state.tableIsSelected}
                             />
                             <Tooltip title={'Change the schemas of this table'}>
-                                <IconButton>
-                                    <ViewListIcon
-                                        style={{ padding: '0px', height: 15 }}
-                                        onClick={() => {
-                                            this.setState({
-                                                openSchemaTextBox: !this.state.openSchemaTextBox,
-                                            });
-                                        }}
-                                    />
+                                <IconButton
+                                    onClick={() => {
+                                        this.setState({
+                                            openSchemaTextBox: !this.state.openSchemaTextBox,
+                                        });
+                                    }}
+                                >
+                                    <ViewListIcon style={{ padding: '0px', height: 15 }} />
                                 </IconButton>
                             </Tooltip>
                         </>

@@ -25,8 +25,6 @@ import {
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
-import IconButton from '@material-ui/core/IconButton';
-import ArrowBack from '@material-ui/icons/ArrowBack';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
@@ -1583,15 +1581,16 @@ class Worksheet extends React.Component {
 
     openBundle = (bundleUUID) => {
         this.setState({
-            bundleIsOpen: true,
             openBundleUUID: bundleUUID,
+            bundleIsOpen: true,
+            showBundleOperationButtons: false,
         });
     };
 
     closeBundle = () => {
         this.setState({
-            bundleIsOpen: false,
             openBundleUUID: '',
+            bundleIsOpen: false,
         });
     };
 
@@ -1773,7 +1772,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
-                    disabled={!info}
+                    disabled={!info || bundleIsOpen}
                 >
                     <EditIcon className={classes.buttonIcon} />
                     {sourceStr}
@@ -1784,7 +1783,7 @@ class Worksheet extends React.Component {
                     color='inherit'
                     aria-label='Expand CLI'
                     id='terminal-button'
-                    disabled={!info}
+                    disabled={!info || bundleIsOpen}
                 >
                     {this.state.showTerminal ? (
                         <ContractIcon className={classes.buttonIcon} />
@@ -1800,12 +1799,12 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
-                    disabled={!editPermission}
+                    disabled={!editPermission || bundleIsOpen}
                 >
                     <Tooltip
                         disableFocusListener
                         disableTouchListener
-                        title='Delete this worksheet'
+                        title='Delete this worksheet.'
                     >
                         <DeleteIcon />
                     </Tooltip>
@@ -1921,14 +1920,12 @@ class Worksheet extends React.Component {
         );
 
         const bundleDisplay = (
-            <div className={classes.openBundleContainer}>
-                <BundleDetail
-                    uuid={openBundleUUID}
-                    onUpdate={() => {}}
-                    contentExpanded
-                    sidebarExpanded
-                />
-            </div>
+            <BundleDetail
+                uuid={openBundleUUID}
+                onUpdate={() => {}}
+                contentExpanded
+                sidebarExpanded
+            />
         );
 
         let worksheetDisplay = itemsDisplay;
@@ -1962,6 +1959,8 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     onShowNewSchema={() => this.setState({ showNewSchema: true })}
+                    onBackButtonClick={this.closeBundle}
+                    bundleIsOpen={bundleIsOpen}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {
@@ -1998,15 +1997,7 @@ class Worksheet extends React.Component {
                                     onClick={this.handleClickForDeselect}
                                     style={{ width: this.state.worksheetWidthPercentage }}
                                 >
-                                    {this.state.focusIndex === -1 ? (
-                                        <div
-                                            className={classes.worksheetDummyHeader}
-                                            id='worksheet_dummy_header'
-                                        />
-                                    ) : (
-                                        <div style={{ height: bundleIsOpen ? 0 : 8 }} />
-                                    )}
-                                    {(this.state.updating || !info) && (
+                                    {!info && (
                                         <div className={classes.loaderContainer}>
                                             <Loading />
                                         </div>
@@ -2099,7 +2090,6 @@ const styles = (theme) => ({
     worksheetOuter: {
         display: 'flex',
         flex: 1,
-        justifyContent: 'center',
         flexDirection: 'column',
         minHeight: 'calc(100vh - 173px)',
         margin: '32px auto',
@@ -2109,10 +2099,6 @@ const styles = (theme) => ({
     worksheetInner: {
         display: 'flex',
         flex: 1,
-    },
-    worksheetDummyHeader: {
-        backgroundColor: '#F1F8FE',
-        height: theme.spacing.large,
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
@@ -2141,9 +2127,6 @@ const styles = (theme) => ({
     },
     loaderContainer: {
         marginTop: 35,
-    },
-    openBundleContainer: {
-        display: 'flex',
     },
 });
 
