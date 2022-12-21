@@ -108,6 +108,7 @@ class Worksheet extends React.Component {
             showWorksheetContent: false,
             showWorksheetContainer: true,
             executingCommand: false,
+            openBundleUUID: null,
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -1576,6 +1577,12 @@ class Worksheet extends React.Component {
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
     };
 
+    openBundle = (bundleUUID) => {
+        this.setState({
+            openBundleUUID: bundleUUID,
+        });
+    };
+
     saveAndUpdateWorksheet = (fromRaw, rawIndex) => {
         this.saveWorksheet({
             success: function(data) {
@@ -1873,6 +1880,8 @@ class Worksheet extends React.Component {
                 reloadWorksheet={this.reloadWorksheet}
                 saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
                 openWorksheet={this.openWorksheet}
+                openBundle={this.openBundle}
+                openBundleUUID={this.state.openBundleUUID}
                 focusTerminal={this.focusTerminal}
                 ensureIsArray={this.ensureIsArray}
                 showNewRun={this.state.showNewRun}
@@ -1966,6 +1975,11 @@ class Worksheet extends React.Component {
                                     ) : (
                                         <div style={{ height: 8 }} />
                                     )}
+                                    {(this.state.updating || !info) && (
+                                        <div className={classes.loaderContainer}>
+                                            <Loading />
+                                        </div>
+                                    )}
                                     <div
                                         className={classes.worksheetInner}
                                         onClick={this.handleClickForDeselect}
@@ -1996,11 +2010,6 @@ class Worksheet extends React.Component {
                                     >
                                         <ExpandMoreIcon size='medium' />
                                     </Button>
-                                    {(this.state.updating || !info) && (
-                                        <div className={classes.loaderContainer}>
-                                            <Loading />
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -2053,19 +2062,20 @@ const styles = (theme) => ({
     worksheetDesktop: {
         backgroundColor: theme.color.grey.lightest,
         marginTop: NAVBAR_HEIGHT,
-        height: 'calc(100% - 20px)',
     },
     worksheetOuter: {
-        minHeight: '100%', // Worksheet height
-        margin: '32px auto', // Center page horizontally
-        backgroundColor: 'white', // Paper color
+        display: 'flex',
+        flex: 1,
+        justifyContent: 'center',
+        flexDirection: 'column',
+        minHeight: 'calc(100vh - 173px)',
+        margin: '32px auto',
+        backgroundColor: 'white',
         border: `2px solid ${theme.color.grey.light}`,
     },
     worksheetInner: {
-        padding: '0px 30px', // Horizonal padding, no vertical
-        height: '100%',
-        position: 'relative',
-        marginTop: -theme.spacing.large, // Offset DummyHeader height
+        display: 'flex',
+        flex: 1,
     },
     worksheetDummyHeader: {
         backgroundColor: '#F1F8FE',

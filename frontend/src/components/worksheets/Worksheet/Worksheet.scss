@@ -1,6 +1,6 @@
 #worksheet_content {
-    margin-top: 24px;
-    margin-bottom: 24px;
+    display: flex;
+    flex: 1;
     line-height: 1.2;
   }
   .worksheet_content hr {
@@ -219,9 +219,6 @@
   }
   .worksheet_content.editable .ws-item {
     margin-left: 24px;
-  }
-  .worksheet_content textarea {
-  
   }
   .worksheet_content textarea.raw-textarea {
     min-height: 480px;

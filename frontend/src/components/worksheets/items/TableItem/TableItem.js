@@ -261,6 +261,7 @@ class TableItem extends React.Component<{
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     showNewRerun={this.props.showNewRerun}
+                    openBundle={this.props.openBundle}
                     onHideNewRerun={this.props.onHideNewRerun}
                     url={url}
                     bundleInfo={bundleInfo}

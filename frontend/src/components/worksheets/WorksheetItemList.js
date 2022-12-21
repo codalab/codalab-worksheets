@@ -17,6 +17,7 @@ import NewUpload from './NewUpload/NewUpload';
 import ImageEditor from './items/ImageEditor';
 import TextEditorItem from './items/TextEditorItem';
 import NewRun from './NewRun';
+import BundleDetail from './BundleDetail';
 import { withStyles } from '@material-ui/core/styles';
 import { DEFAULT_SCHEMA_ROWS } from '../../constants';
 
@@ -100,6 +101,7 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
             onHideNewSchema={props.onHideNewSchema}
+            openBundle={props.openBundle}
             updateSchemaItem={props.updateSchemaItem}
             saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
             key={props.key}
@@ -230,6 +232,8 @@ class WorksheetItemList extends React.Component {
                         setFocus: this.props.setFocus,
                         focusTerminal: this.props.focusTerminal,
                         openWorksheet: this.props.openWorksheet,
+                        openBundle: this.props.openBundle,
+                        openBundleUUID: this.props.openBundleUUID,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
                         showNewRun: this.props.showNewRun,
@@ -311,7 +315,20 @@ class WorksheetItemList extends React.Component {
                             subFocusIndex={this.props.subFocusIndex}
                         />
                     )}
-                    {worksheet_items}
+                    {this.props.openBundleUUID ? (
+                        <div className={this.props.classes.openBundleContainer}>
+                            <BundleDetail
+                                uuid={this.props.openBundleUUID}
+                                onUpdate={() => {}}
+                                contentExpanded
+                                sidebarExpanded
+                            />
+                        </div>
+                    ) : (
+                        <div className={this.props.classes.wsItemListContainer}>
+                            {worksheet_items}
+                        </div>
+                    )}
                     <NewUpload
                         key={this.state.newUploadKey}
                         after_sort_key={getAfterSortKey(focusedItem, this.props.subFocusIndex)}
@@ -342,7 +359,10 @@ class WorksheetItemList extends React.Component {
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
         return (
-            <div id='worksheet_items' onClick={this.handleClickForDeselect}>
+            <div
+                className={this.props.classes.wsItemsDisplayContainer}
+                onClick={this.handleClickForDeselect}
+            >
                 {items_display}
             </div>
         );
@@ -353,6 +373,19 @@ const styles = (theme) => ({
     insertBox: {
         border: `2px solid ${theme.color.primary.base}`,
         margin: '32px 64px !important',
+    },
+    openBundleContainer: {
+        display: 'flex',
+    },
+    wsItemsDisplayContainer: {
+        display: 'flex',
+        flex: 1,
+    },
+    wsItemListContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        padding: 25,
     },
 });
 

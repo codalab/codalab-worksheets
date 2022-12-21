@@ -80,13 +80,6 @@ class BundleRow extends Component {
         this.setState({ bundleInfoUpdates });
     };
 
-    handleDetailClick = () => {
-        const { showDetail } = this.state;
-        this.setState({
-            showDetail: !showDetail,
-        });
-    };
-
     handleSelectRowClick = () => {
         this.props.updateRowIndex(this.props.rowIndex);
     };
@@ -112,11 +105,13 @@ class BundleRow extends Component {
             reloadWorksheet,
             checkStatus,
             showNewRerun,
+            openBundle,
             onHideNewRerun,
             editPermission,
             focusIndex,
             ws,
         } = this.props;
+
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
@@ -151,7 +146,9 @@ class BundleRow extends Component {
                 );
                 showDetailButton = (
                     <IconButton
-                        onClick={this.handleDetailClick}
+                        onClick={() => {
+                            openBundle(uuid);
+                        }}
                         style={{ padding: 2 }}
                         aria-label='Expand'
                     >
@@ -288,45 +285,6 @@ class BundleRow extends Component {
                 >
                     {rowCells}
                 </TableRow>
-                {/** ---------------------------------------------------------------------------------------------------
-                 *  Bundle Detail (below)
-                 */}
-                {showDetail && (
-                    <TableRow>
-                        <TableCell
-                            colSpan='100%'
-                            classes={{
-                                root: classNames({
-                                    [classes.rootNoPad]: true,
-                                    [classes.bundleDetail]: true,
-                                    [classes.highlight]: this.props.focused,
-                                    [classes.lowlight]: !this.props.focused,
-                                }),
-                            }}
-                        >
-                            <BundleDetail
-                                uuid={bundleInfo.uuid}
-                                bundleInfoFromRow={bundleInfo}
-                                bundleMetadataChanged={this.props.reloadWorksheet}
-                                onUpdate={this.receiveBundleInfoUpdates}
-                                onClose={() => {
-                                    this.setState({
-                                        showDetail: false,
-                                    });
-                                }}
-                                rerunItem={this.rerunItem}
-                                isFocused={this.props.focused}
-                                focusIndex={focusIndex}
-                                showNewRerun={showNewRerun}
-                                onHideNewRerun={onHideNewRerun}
-                                showDetail={showDetail}
-                                handleDetailClick={this.handleDetailClick}
-                                editPermission={editPermission}
-                                onOpen={() => {}}
-                            />
-                        </TableCell>
-                    </TableRow>
-                )}
                 {/** ---------------------------------------------------------------------------------------------------
                  *  Rerun
                  *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key

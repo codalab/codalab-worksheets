@@ -111,12 +111,8 @@ fieldset[disabled] .btn-secondary.active {
 #ws_search.search-hidden {
   z-index: 0;
 }
-#worksheet {
-  height: calc(100vh - 70px - 70px - 83px);
-}
 #worksheet.search-hidden {
   margin-top: -54px;
-  height: calc(100vh - 70px - 83px);
 }
 .worksheet-icon-sm {
   background: url('../img/icon_worksheet_sm.png') no-repeat 0 10px;
