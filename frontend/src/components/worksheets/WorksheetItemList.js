@@ -17,7 +17,6 @@ import NewUpload from './NewUpload/NewUpload';
 import ImageEditor from './items/ImageEditor';
 import TextEditorItem from './items/TextEditorItem';
 import NewRun from './NewRun';
-import BundleDetail from './BundleDetail';
 import { withStyles } from '@material-ui/core/styles';
 import { DEFAULT_SCHEMA_ROWS } from '../../constants';
 
@@ -233,7 +232,6 @@ class WorksheetItemList extends React.Component {
                         focusTerminal: this.props.focusTerminal,
                         openWorksheet: this.props.openWorksheet,
                         openBundle: this.props.openBundle,
-                        openBundleUUID: this.props.openBundleUUID,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
                         showNewRun: this.props.showNewRun,
@@ -315,20 +313,7 @@ class WorksheetItemList extends React.Component {
                             subFocusIndex={this.props.subFocusIndex}
                         />
                     )}
-                    {this.props.openBundleUUID ? (
-                        <div className={this.props.classes.openBundleContainer}>
-                            <BundleDetail
-                                uuid={this.props.openBundleUUID}
-                                onUpdate={() => {}}
-                                contentExpanded
-                                sidebarExpanded
-                            />
-                        </div>
-                    ) : (
-                        <div className={this.props.classes.wsItemListContainer}>
-                            {worksheet_items}
-                        </div>
-                    )}
+                    <div className={this.props.classes.wsItemListContainer}>{worksheet_items}</div>
                     <NewUpload
                         key={this.state.newUploadKey}
                         after_sort_key={getAfterSortKey(focusedItem, this.props.subFocusIndex)}
@@ -373,9 +358,6 @@ const styles = (theme) => ({
     insertBox: {
         border: `2px solid ${theme.color.primary.base}`,
         margin: '32px 64px !important',
-    },
-    openBundleContainer: {
-        display: 'flex',
     },
     wsItemsDisplayContainer: {
         display: 'flex',

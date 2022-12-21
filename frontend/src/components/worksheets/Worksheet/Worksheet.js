@@ -25,6 +25,8 @@ import {
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
 import Button from '@material-ui/core/Button';
+import IconButton from '@material-ui/core/IconButton';
+import ArrowBack from '@material-ui/icons/ArrowBack';
 import EditIcon from '@material-ui/icons/EditOutlined';
 import SaveIcon from '@material-ui/icons/SaveOutlined';
 import DeleteIcon from '@material-ui/icons/DeleteOutline';
@@ -33,6 +35,7 @@ import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
+import BundleDetail from '../BundleDetail';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import {
     addItems,
@@ -108,7 +111,8 @@ class Worksheet extends React.Component {
             showWorksheetContent: false,
             showWorksheetContainer: true,
             executingCommand: false,
-            openBundleUUID: null,
+            bundleIsOpen: false,
+            openBundleUUID: '',
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -1579,7 +1583,15 @@ class Worksheet extends React.Component {
 
     openBundle = (bundleUUID) => {
         this.setState({
+            bundleIsOpen: true,
             openBundleUUID: bundleUUID,
+        });
+    };
+
+    closeBundle = () => {
+        this.setState({
+            bundleIsOpen: false,
+            openBundleUUID: '',
         });
     };
 
@@ -1734,10 +1746,13 @@ class Worksheet extends React.Component {
         const {
             anchorEl,
             uploadAnchor,
+            inSourceEditMode,
             showUpdateProgress,
             showInformationModal,
             showWorksheetContent,
             showWorksheetContainer,
+            bundleIsOpen,
+            openBundleUUID,
         } = this.state;
 
         this.setupEventHandlers();
@@ -1881,7 +1896,6 @@ class Worksheet extends React.Component {
                 saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
                 openWorksheet={this.openWorksheet}
                 openBundle={this.openBundle}
-                openBundleUUID={this.state.openBundleUUID}
                 focusTerminal={this.focusTerminal}
                 ensureIsArray={this.ensureIsArray}
                 showNewRun={this.state.showNewRun}
@@ -1906,7 +1920,24 @@ class Worksheet extends React.Component {
             />
         );
 
-        let worksheetDisplay = this.state.inSourceEditMode ? rawDisplay : itemsDisplay;
+        const bundleDisplay = (
+            <div className={classes.openBundleContainer}>
+                <BundleDetail
+                    uuid={openBundleUUID}
+                    onUpdate={() => {}}
+                    contentExpanded
+                    sidebarExpanded
+                />
+            </div>
+        );
+
+        let worksheetDisplay = itemsDisplay;
+        if (bundleIsOpen) {
+            worksheetDisplay = bundleDisplay;
+        } else if (inSourceEditMode) {
+            worksheetDisplay = rawDisplay;
+        }
+
         let editButtons = this.state.inSourceEditMode ? sourceModeButtons : blockViewButtons;
         if (!this.state.isValid) {
             return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
@@ -1973,7 +2004,7 @@ class Worksheet extends React.Component {
                                             id='worksheet_dummy_header'
                                         />
                                     ) : (
-                                        <div style={{ height: 8 }} />
+                                        <div style={{ height: bundleIsOpen ? 0 : 8 }} />
                                     )}
                                     {(this.state.updating || !info) && (
                                         <div className={classes.loaderContainer}>
@@ -1995,21 +2026,23 @@ class Worksheet extends React.Component {
                                             </div>
                                         )}
                                     </div>
-                                    <Button
-                                        onClick={this.moveFocusToBottom}
-                                        color='primary'
-                                        variant='contained'
-                                        style={{
-                                            borderRadius: '400px',
-                                            position: 'fixed',
-                                            bottom: '50px',
-                                            right: '30px',
-                                            backgroundColor: '00BFFF',
-                                            zIndex: 10,
-                                        }}
-                                    >
-                                        <ExpandMoreIcon size='medium' />
-                                    </Button>
+                                    {!bundleIsOpen && (
+                                        <Button
+                                            onClick={this.moveFocusToBottom}
+                                            color='primary'
+                                            variant='contained'
+                                            style={{
+                                                borderRadius: '400px',
+                                                position: 'fixed',
+                                                bottom: '50px',
+                                                right: '30px',
+                                                backgroundColor: '00BFFF',
+                                                zIndex: 10,
+                                            }}
+                                        >
+                                            <ExpandMoreIcon size='medium' />
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -2108,6 +2141,9 @@ const styles = (theme) => ({
     },
     loaderContainer: {
         marginTop: 35,
+    },
+    openBundleContainer: {
+        display: 'flex',
     },
 });
 
