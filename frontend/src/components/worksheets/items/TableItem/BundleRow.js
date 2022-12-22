@@ -8,6 +8,7 @@ import TableRow from '@material-ui/core/TableRow';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import ExpandIcon from '../../../Icons/ExpandIcon';
 import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
@@ -110,6 +111,7 @@ class BundleRow extends Component {
         } = this.props;
 
         const rowItems = { ...item, ...bundleInfoUpdates };
+        var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
         var worksheetName = this.props.worksheetName;
@@ -124,6 +126,7 @@ class BundleRow extends Component {
                 url = worksheetUrl;
                 rowContent = worksheetName;
             } else if (col === 0) {
+                url = baseUrl;
                 checkBox = (
                     <Checkbox
                         icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
@@ -142,7 +145,7 @@ class BundleRow extends Component {
                             className={classes.openBundleBtn}
                             aria-label='Open full bundle details.'
                         >
-                            <span className={classes.openBundleArrow}>↕</span>
+                            <ExpandIcon className={classes.expandIcon} />
                         </button>
                     </Tooltip>
                 );
@@ -423,16 +426,14 @@ const styles = (theme) => ({
     openBundleBtn: {
         backgroundColor: 'transparent',
         border: 'none',
-        padding: '0 12px',
-        fontSize: 14,
-        color: theme.color.grey.darker,
-        '&:hover': {
-            color: theme.color.grey.darkest,
-        },
+        verticalAlign: 'text-top',
+        paddingLeft: 8,
+        paddingRight: 11,
     },
-    openBundleArrow: {
-        display: 'inline-block',
-        transform: 'rotate(45deg)',
+    expandIcon: {
+        height: 13,
+        width: 13,
+        fill: theme.color.grey.darkest,
     },
 });
 
