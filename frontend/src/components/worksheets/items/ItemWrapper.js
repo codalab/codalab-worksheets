@@ -26,8 +26,9 @@ class ItemWrapper extends React.Component {
         if (!item) {
             return null;
         }
+        const { isDummyItem, mode } = item;
+        const mainHoverClass = mode === 'table_block' ? '' : classes.mainHover;
 
-        const { isDummyItem } = item;
         return (
             <div
                 className={
@@ -39,7 +40,9 @@ class ItemWrapper extends React.Component {
                 }
                 id={id}
             >
-                {!isDummyItem && <div className={classes.main}>{children}</div>}
+                {!isDummyItem && (
+                    <div className={`${classes.main} ${mainHoverClass}`}>{children}</div>
+                )}
                 {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun
@@ -101,6 +104,8 @@ const styles = (theme) => ({
     main: {
         zIndex: 10,
         border: `2px solid transparent`,
+    },
+    mainHover: {
         '&:hover': {
             backgroundColor: theme.color.grey.lightest,
             border: `2px solid ${theme.color.grey.base}`,

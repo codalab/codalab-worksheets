@@ -1588,6 +1588,7 @@ class Worksheet extends React.Component {
     };
 
     closeBundle = () => {
+        this.reloadWorksheet();
         this.setState({
             openBundleUUID: '',
             bundleIsOpen: false,
@@ -1854,16 +1855,19 @@ class Worksheet extends React.Component {
         }
 
         let rawDisplay = (
-            <div>
-                Press ctrl-enter to save. See{' '}
-                <a
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
-                >
-                    markdown syntax
-                </a>
-                .<div id='worksheet-editor'>{rawWorksheet}</div>
+            <div className={classes.rawDisplayContainer}>
+                <div id='worksheet-editor'>{rawWorksheet}</div>
+                <div className={classes.rawDisplayInfo}>
+                    Press ctrl-enter to save. See{' '}
+                    <a
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
+                    >
+                        markdown syntax
+                    </a>
+                    .
+                </div>
             </div>
         );
 
@@ -2099,6 +2103,7 @@ const styles = (theme) => ({
     worksheetInner: {
         display: 'flex',
         flex: 1,
+        overflowX: 'hidden',
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
@@ -2127,6 +2132,12 @@ const styles = (theme) => ({
     },
     loaderContainer: {
         marginTop: 35,
+    },
+    rawDisplayContainer: {
+        width: '100%',
+    },
+    rawDisplayInfo: {
+        padding: 10,
     },
 });
 

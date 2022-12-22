@@ -64,18 +64,16 @@ class ActionButtons extends React.Component<{
                     ev.stopPropagation();
                 }}
             >
-                <Tooltip title='Back to worksheet table view.'>
-                    <Button
-                        size='small'
-                        color='inherit'
-                        aria-label='Back to worksheet table view.'
-                        onClick={onBackButtonClick}
-                        disabled={!bundleIsOpen}
-                    >
-                        <ArrowBack className={classes.buttonIcon} />
-                        Back
-                    </Button>
-                </Tooltip>
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Back to worksheet table view.'
+                    onClick={onBackButtonClick}
+                    disabled={!bundleIsOpen}
+                >
+                    <ArrowBack className={classes.buttonIcon} />
+                    Back
+                </Button>
                 {!showBundleOperationButtons ? (
                     <Button
                         size='small'

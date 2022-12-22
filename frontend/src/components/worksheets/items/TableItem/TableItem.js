@@ -175,7 +175,6 @@ class TableItem extends React.Component<{
             this.showCheckedBundleRowsContents,
         );
         let tableClassName = this.props.focused ? 'table focused' : 'table';
-        let checkboxVariant = this.props.focused || this.state.hovered ? 'action' : 'disabled';
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
@@ -199,18 +198,15 @@ class TableItem extends React.Component<{
                                   paddingBottom: 0,
                                   paddingTop: 0,
                               }
-                            : {}
+                            : {
+                                  paddingLeft: 4,
+                              }
                     }
                 >
                     {editPermission && index === 0 && (
                         <>
                             <Checkbox
-                                icon={
-                                    <CheckBoxOutlineBlankIcon
-                                        color={checkboxVariant}
-                                        fontSize='small'
-                                    />
-                                }
+                                icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
                                 checkedIcon={<CheckBoxIcon fontSize='small' />}
                                 classes={{ root: classes.tableCheckbox }}
                                 onChange={this.toggleTableSelect}
@@ -407,7 +403,7 @@ class _TableContainer extends React.Component {
     }
 }
 
-const styles = () => ({
+const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
     },
@@ -421,6 +417,10 @@ const styles = () => ({
     },
     tableCheckbox: {
         paddingRight: 2,
+        color: theme.color.grey.dark,
+        '&:hover': {
+            color: theme.color.grey.darker,
+        },
     },
 });
 

@@ -4,16 +4,12 @@ import { withStyles } from '@material-ui/core/styles';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import IconButton from '@material-ui/core/IconButton';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
 import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
-import BundleDetail from '../../BundleDetail';
 import TextEditorItem from '../TextEditorItem';
 import SchemaItem from '../SchemaItem';
 import { DEFAULT_SCHEMA_ROWS } from '../../../../constants';
@@ -131,29 +127,23 @@ class BundleRow extends Component {
                 url = baseUrl;
                 checkBox = (
                     <Checkbox
-                        icon={
-                            <CheckBoxOutlineBlankIcon
-                                color={
-                                    this.props.focused || this.state.hovered ? 'action' : 'disabled'
-                                }
-                                fontSize='small'
-                            />
-                        }
+                        icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
                         checkedIcon={<CheckBoxIcon fontSize='small' />}
                         onChange={this.handleCheckboxChange}
                         checked={checkStatus || false}
+                        classes={{ root: classes.checkBox }}
                     />
                 );
                 showDetailButton = (
-                    <IconButton
+                    <button
                         onClick={() => {
                             openBundle(uuid);
                         }}
-                        style={{ padding: 2 }}
-                        aria-label='Expand'
+                        className={classes.openBundleBtn}
+                        aria-label='Open full bundle.'
                     >
-                        {showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </IconButton>
+                        <span className={classes.openBundleArrow}>↕</span>
+                    </button>
                 );
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
@@ -407,14 +397,15 @@ const styles = (theme) => ({
         borderLeft: '3px solid transparent',
         padding: 0,
         '&:hover': {
-            boxShadow:
-                'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
-            zIndex: 1,
+            backgroundColor: theme.color.grey.lightest,
+            borderTop: `2px solid ${theme.color.grey.base}`,
+            borderBottom: `2px solid ${theme.color.grey.base}`,
         },
     },
     checkBox: {
+        color: theme.color.grey.dark,
         '&:hover': {
-            backgroundColor: '#ddd',
+            color: theme.color.grey.darker,
         },
     },
     highlight: {
@@ -427,6 +418,20 @@ const styles = (theme) => ({
     insertPanel: {
         paddingLeft: '32px !important', // align with bundle detail
         paddingRight: '32px !important', // align with bundle detail
+    },
+    openBundleBtn: {
+        backgroundColor: 'transparent',
+        border: 'none',
+        padding: '0 12px',
+        fontSize: 14,
+        color: theme.color.grey.darker,
+        '&:hover': {
+            color: theme.color.grey.darkest,
+        },
+    },
+    openBundleArrow: {
+        display: 'inline-block',
+        transform: 'rotate(45deg)',
     },
 });
 
