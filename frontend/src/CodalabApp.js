@@ -104,7 +104,7 @@ function CodalabApp() {
                                 render={(props) => <Login {...props} auth={fakeAuth} />}
                             />
                             <PrivateRoute path='/account/profile' component={UserInfo} />
-                            <Route path='/worksheets/:uuid' component={Worksheet} />
+                            <Route path='/worksheets/:uuid/:bundle_uuid?' component={Worksheet} />
                             <Route
                                 path='/worksheets'
                                 render={(props) => (

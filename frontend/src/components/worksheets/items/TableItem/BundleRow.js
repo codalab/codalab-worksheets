@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import Tooltip from '@material-ui/core/Tooltip';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
@@ -109,7 +110,6 @@ class BundleRow extends Component {
         } = this.props;
 
         const rowItems = { ...item, ...bundleInfoUpdates };
-        var baseUrl = this.props.url;
         var uuid = this.props.uuid;
         var columnWithHyperlinks = this.props.columnWithHyperlinks;
         var worksheetName = this.props.worksheetName;
@@ -124,7 +124,6 @@ class BundleRow extends Component {
                 url = worksheetUrl;
                 rowContent = worksheetName;
             } else if (col === 0) {
-                url = baseUrl;
                 checkBox = (
                     <Checkbox
                         icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
@@ -135,15 +134,17 @@ class BundleRow extends Component {
                     />
                 );
                 showDetailButton = (
-                    <button
-                        onClick={() => {
-                            openBundle(uuid);
-                        }}
-                        className={classes.openBundleBtn}
-                        aria-label='Open full bundle.'
-                    >
-                        <span className={classes.openBundleArrow}>↕</span>
-                    </button>
+                    <Tooltip title='Open full bundle details.'>
+                        <button
+                            onClick={() => {
+                                openBundle(uuid);
+                            }}
+                            className={classes.openBundleBtn}
+                            aria-label='Open full bundle details.'
+                        >
+                            <span className={classes.openBundleArrow}>↕</span>
+                        </button>
+                    </Tooltip>
                 );
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];

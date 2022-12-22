@@ -63,11 +63,14 @@ class Worksheet extends React.Component {
         let localWorksheetWidthPreference = window.localStorage.getItem(
             LOCAL_STORAGE_WORKSHEET_WIDTH,
         );
+        const { uuid, bundle_uuid } = this.props.match.params;
         this.state = {
             ws: {
-                uuid: this.props.match.params['uuid'],
+                uuid,
                 info: null,
             },
+            openBundleUUID: bundle_uuid,
+            bundleIsOpen: !!bundle_uuid,
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'itemList', // Where the focus is (terminal, itemList)
@@ -109,8 +112,6 @@ class Worksheet extends React.Component {
             showWorksheetContent: false,
             showWorksheetContainer: true,
             executingCommand: false,
-            bundleIsOpen: false,
-            openBundleUUID: '',
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -1580,6 +1581,12 @@ class Worksheet extends React.Component {
     };
 
     openBundle = (bundleUUID) => {
+        const uuid = this.state.ws.uuid;
+        const bundle_uuid = bundleUUID;
+        const url = `/worksheets/${uuid}/${bundle_uuid}`;
+
+        window.history.pushState({ uuid, bundle_uuid }, '', url);
+
         this.setState({
             openBundleUUID: bundleUUID,
             bundleIsOpen: true,
@@ -1588,6 +1595,11 @@ class Worksheet extends React.Component {
     };
 
     closeBundle = () => {
+        const uuid = this.state.ws.uuid;
+        const url = `/worksheets/${uuid}`;
+
+        window.history.pushState({ uuid }, '', url);
+
         this.reloadWorksheet();
         this.setState({
             openBundleUUID: '',
