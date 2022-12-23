@@ -70,7 +70,7 @@ class Worksheet extends React.Component {
                 info: null,
             },
             bundleIsOpen: !!bundle_uuid,
-            openBundleUUID: bundle_uuid,
+            openBundleUUID: bundle_uuid || null,
             openBundleAfterSortKey: null,
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
@@ -1580,11 +1580,8 @@ class Worksheet extends React.Component {
     };
 
     openBundle = (bundleUUID, afterSortKey) => {
-        const uuid = this.state.ws.uuid;
-        const bundle_uuid = bundleUUID;
-        const url = `/worksheets/${uuid}/${bundle_uuid}`;
-
-        this.props.history.push(url); // add bundle uuid to url
+        const url = `/worksheets/${this.state.ws.uuid}/${bundleUUID}`;
+        this.props.history.push(url);
         this.setState({
             openBundleUUID: bundleUUID,
             openBundleAfterSortKey: afterSortKey,
@@ -1594,10 +1591,8 @@ class Worksheet extends React.Component {
     };
 
     closeBundle = () => {
-        const uuid = this.state.ws.uuid;
-        const url = `/worksheets/${uuid}`;
-
-        this.props.history.push(url); // remove bundle uuid from url
+        const url = `/worksheets/${this.state.ws.uuid}`;
+        this.props.history.push(url);
         this.reloadWorksheet();
         this.setState({
             openBundleUUID: null,
