@@ -73,7 +73,7 @@ class ItemWrapper extends React.Component {
                         subFocusIndex={this.props.subFocusIndex}
                     />
                 )}
-                <Dialog open={showNewRun} onClose={this.props.onHideNewRun} maxWidth='lg'>
+                <Dialog open={showNewRun} onClose={this.props.onHideNewRun} maxWidth='md'>
                     <NewRun
                         after_sort_key={after_sort_key}
                         ws={this.props.ws}

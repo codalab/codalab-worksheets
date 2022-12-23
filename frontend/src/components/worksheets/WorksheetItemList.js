@@ -327,7 +327,7 @@ class WorksheetItemList extends React.Component {
                     <Dialog
                         open={!focusedItem && this.props.showNewRun}
                         onClose={this.props.onHideNewRun}
-                        maxWidth='lg'
+                        maxWidth='md'
                     >
                         <NewRun
                             after_sort_key={-1}

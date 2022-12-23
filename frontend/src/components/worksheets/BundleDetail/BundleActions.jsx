@@ -164,7 +164,7 @@ class BundleActions extends React.Component<{
                         <span className={classes.bold}>ERROR:</span> {rerunErrorMessage}
                     </div>
                 )}
-                <Dialog open={showNewRerun} onClose={this.handleHideNewRerun} maxWidth='lg'>
+                <Dialog open={showNewRerun} onClose={this.handleHideNewRerun} maxWidth='md'>
                     <NewRun
                         after_sort_key={after_sort_key}
                         ws={ws}
