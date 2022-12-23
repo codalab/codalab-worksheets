@@ -1,6 +1,7 @@
 // @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import Dialog from '@material-ui/core/Dialog';
 import NewRun from '../NewRun';
 import TextEditorItem from './TextEditorItem';
 import SchemaItem from './SchemaItem';
@@ -8,6 +9,7 @@ import { DEFAULT_SCHEMA_ROWS } from '../../../constants';
 
 class ItemWrapper extends React.Component {
     state = {
+        showNewRun: false,
         showNewText: false,
     };
 
@@ -21,7 +23,7 @@ class ItemWrapper extends React.Component {
             reloadWorksheet,
             id,
         } = this.props;
-        const { showNewText, showNewSchema } = this.props;
+        const { showNewRun, showNewText, showNewSchema } = this.props;
         if (!item) {
             return null;
         }
@@ -71,6 +73,15 @@ class ItemWrapper extends React.Component {
                         subFocusIndex={this.props.subFocusIndex}
                     />
                 )}
+                <Dialog open={showNewRun} onClose={this.props.onHideNewRun} maxWidth='lg'>
+                    <NewRun
+                        after_sort_key={after_sort_key}
+                        ws={this.props.ws}
+                        onError={this.props.onError}
+                        onSubmit={() => this.props.onHideNewRun()}
+                        reloadWorksheet={reloadWorksheet}
+                    />
+                </Dialog>
             </div>
         );
     }
