@@ -314,10 +314,12 @@ class NewRun extends React.Component<
         const cmd = this.getCommand();
         if (cmd) {
             executeCommand(cmd, this.props.ws.info.uuid)
-                .then(() => {
-                    const moveIndex = true;
-                    this.props.reloadWorksheet(undefined, undefined, { moveIndex });
-                    this.props.onSubmit();
+                .then((resp) => {
+                    if (this.props.reloadWorksheet) {
+                        const moveIndex = true;
+                        this.props.reloadWorksheet(undefined, undefined, { moveIndex });
+                    }
+                    this.props.onSubmit(resp);
                 })
                 .catch((errorMessage) => {
                     this.props.onError(errorMessage);
@@ -531,7 +533,7 @@ class NewRun extends React.Component<
                 }
             >
                 {/* Main Content ------------------------------------------------------- */}
-                <Typography variant='subtitle1' gutterBottom>
+                <Typography variant='h6' gutterBottom>
                     New Run
                 </Typography>
                 <ConfigLabel

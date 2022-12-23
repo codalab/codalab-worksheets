@@ -1938,9 +1938,10 @@ class Worksheet extends React.Component {
         const bundleDisplay = (
             <BundleDetail
                 uuid={openBundleUUID}
+                wsUUID={this.state.ws.info?.uuid}
+                editPermission={editPermission}
                 onUpdate={() => {}}
                 contentExpanded
-                sidebarExpanded
             />
         );
 

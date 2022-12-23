@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
+import Dialog from '@material-ui/core/Dialog';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import { getAfterSortKey, getIds } from '../../util/worksheet_utils';
 import ContentsItem from './items/ContentsItem';
@@ -280,19 +281,6 @@ class WorksheetItemList extends React.Component {
                             }}
                         />
                     )}
-                    {this.props.showNewRun && !focusedItem && (
-                        <div className={this.props.classes.insertBox}>
-                            <NewRun
-                                after_sort_key={-1}
-                                ws={this.props.ws}
-                                onSubmit={() => this.props.onHideNewRun()}
-                                onError={this.props.onError}
-                                reloadWorksheet={() =>
-                                    this.props.reloadWorksheet(undefined, (0, 0))
-                                }
-                            />
-                        </div>
-                    )}
                     {this.props.showNewSchema && !focusedItem && (
                         <SchemaItem
                             after_sort_key={-1}
@@ -336,6 +324,19 @@ class WorksheetItemList extends React.Component {
                         focusIndex={this.props.focusIndex}
                         subFocusIndex={this.props.subFocusIndex}
                     />
+                    <Dialog
+                        open={!focusedItem && this.props.showNewRun}
+                        onClose={this.props.onHideNewRun}
+                        maxWidth='lg'
+                    >
+                        <NewRun
+                            after_sort_key={-1}
+                            ws={this.props.ws}
+                            onSubmit={() => this.props.onHideNewRun()}
+                            onError={this.props.onError}
+                            reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
+                        />
+                    </Dialog>
                 </>
             );
         } else {

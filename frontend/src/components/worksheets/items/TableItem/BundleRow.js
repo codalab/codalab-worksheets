@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import Dialog from '@material-ui/core/Dialog';
 import Tooltip from '@material-ui/core/Tooltip';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -25,7 +26,6 @@ class BundleRow extends Component {
         super(props);
         this.state = {
             showDetail: false,
-            showNewRun: 0,
             bundleInfoUpdates: {},
             openDelete: false,
             runProp: {},
@@ -82,31 +82,16 @@ class BundleRow extends Component {
         this.props.updateRowIndex(this.props.rowIndex);
     };
 
-    showNewRun = (val) => () => {
-        this.setState({ showNewRun: val });
-    };
-
-    rerunItem = (runProp) => {
-        this.setState({
-            showDetail: false,
-            showNewRun: 1,
-            runProp: runProp,
-        });
-    };
-
     render() {
-        const { showDetail, showNewRun, bundleInfoUpdates, runProp } = this.state;
+        const { showDetail, bundleInfoUpdates } = this.state;
         const {
             classes,
             bundleInfo,
             item,
             reloadWorksheet,
             checkStatus,
-            showNewRerun,
             openBundle,
-            onHideNewRerun,
-            editPermission,
-            focusIndex,
+            onHideNewRun,
             ws,
         } = this.props;
 
@@ -264,101 +249,79 @@ class BundleRow extends Component {
             // unbind shortcuts that are active for markdown_block and worksheet_block
             Mousetrap.unbind('i');
         }
+
         return (
-            <TableBody classes={{ root: classes.tableBody }} id={this.props.id}>
-                {/** ---------------------------------------------------------------------------------------------------
-                 *  Main Content
-                 */}
-                <TableRow
-                    onClick={this.handleSelectRowClick}
-                    className={classNames({
-                        [classes.contentRow]: true,
-                        [classes.highlight]: this.props.focused,
-                        [classes.lowlight]: !this.props.focused && showDetail,
-                    })}
-                >
-                    {rowCells}
-                </TableRow>
-                {/** ---------------------------------------------------------------------------------------------------
-                 *  Rerun
-                 *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key
-                 */}
-                {showNewRun === 1 && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <NewRun
-                                    ws={ws}
-                                    onError={this.props.onError}
-                                    onSubmit={() => {
-                                        this.setState({ showNewRun: 0, showDetail: false });
-                                        onHideNewRerun();
-                                    }}
-                                    after_sort_key={this.props.after_sort_key}
-                                    reloadWorksheet={reloadWorksheet}
-                                    defaultRun={runProp}
-                                />
-                            </div>
-                        </TableCell>
+            <>
+                <TableBody classes={{ root: classes.tableBody }} id={this.props.id}>
+                    {/** ---------------------------------------------------------------------------------------------------
+                     *  Main Content
+                     */}
+                    <TableRow
+                        onClick={this.handleSelectRowClick}
+                        className={classNames({
+                            [classes.contentRow]: true,
+                            [classes.highlight]: this.props.focused,
+                            [classes.lowlight]: !this.props.focused && showDetail,
+                        })}
+                    >
+                        {rowCells}
                     </TableRow>
-                )}
-                {this.props.showNewRun && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <NewRun
-                                    after_sort_key={this.props.after_sort_key}
-                                    ws={this.props.ws}
-                                    onError={this.props.onError}
-                                    onSubmit={() => this.props.onHideNewRun()}
-                                    reloadWorksheet={reloadWorksheet}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-                {this.props.showNewText && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <TextEditorItem
-                                    ids={this.props.ids}
-                                    mode='create'
-                                    after_sort_key={this.props.after_sort_key + 1}
-                                    worksheetUUID={this.props.worksheetUUID}
-                                    reloadWorksheet={reloadWorksheet}
-                                    closeEditor={() => {
-                                        this.props.onHideNewText();
-                                    }}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-                {this.props.showNewSchema && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <SchemaItem
-                                    after_sort_key={this.props.after_sort_key + 1}
-                                    ws={this.props.ws}
-                                    onSubmit={() => this.props.onHideNewSchema()}
-                                    reloadWorksheet={reloadWorksheet}
-                                    editPermission={true}
-                                    item={{
-                                        field_rows: DEFAULT_SCHEMA_ROWS,
-                                        header: ['field', 'generalized-path', 'post-processor'],
-                                        schema_name: '',
-                                        sort_keys: [this.props.after_sort_key + 2],
-                                    }}
-                                    create={true}
-                                    updateSchemaItem={this.props.updateSchemaItem}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-            </TableBody>
+                    {/** ---------------------------------------------------------------------------------------------------
+                     *  Rerun
+                     *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key
+                     */}
+                    {this.props.showNewText && (
+                        <TableRow>
+                            <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                                <div className={classes.insertBox}>
+                                    <TextEditorItem
+                                        ids={this.props.ids}
+                                        mode='create'
+                                        after_sort_key={this.props.after_sort_key + 1}
+                                        worksheetUUID={this.props.worksheetUUID}
+                                        reloadWorksheet={reloadWorksheet}
+                                        closeEditor={() => {
+                                            this.props.onHideNewText();
+                                        }}
+                                    />
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    {this.props.showNewSchema && (
+                        <TableRow>
+                            <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                                <div className={classes.insertBox}>
+                                    <SchemaItem
+                                        after_sort_key={this.props.after_sort_key + 1}
+                                        ws={this.props.ws}
+                                        onSubmit={() => this.props.onHideNewSchema()}
+                                        reloadWorksheet={reloadWorksheet}
+                                        editPermission={true}
+                                        item={{
+                                            field_rows: DEFAULT_SCHEMA_ROWS,
+                                            header: ['field', 'generalized-path', 'post-processor'],
+                                            schema_name: '',
+                                            sort_keys: [this.props.after_sort_key + 2],
+                                        }}
+                                        create={true}
+                                        updateSchemaItem={this.props.updateSchemaItem}
+                                    />
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+                <Dialog open={this.props.showNewRun} onClose={onHideNewRun} maxWidth='lg'>
+                    <NewRun
+                        after_sort_key={this.props.after_sort_key}
+                        ws={this.props.ws}
+                        onError={this.props.onError}
+                        onSubmit={() => onHideNewRun()}
+                        reloadWorksheet={reloadWorksheet}
+                    />
+                </Dialog>
+            </>
         );
     }
 }

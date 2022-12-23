@@ -14,6 +14,7 @@ import BundleActions from './BundleActions';
 
 const BundleDetail = ({
     uuid,
+    wsUUID,
     bundleInfoFromRow,
     bundleMetadataChanged,
     contentExpanded,
@@ -240,6 +241,7 @@ const BundleDetail = ({
             ref={(node) => scrollToNewlyOpenedDetail(node)}
             buttons={
                 <BundleActions
+                    wsUUID={wsUUID}
                     showNewRerun={showNewRerun}
                     showDetail={showDetail}
                     handleDetailClick={handleDetailClick}
