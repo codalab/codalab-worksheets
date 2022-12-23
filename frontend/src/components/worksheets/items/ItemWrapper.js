@@ -8,7 +8,6 @@ import { DEFAULT_SCHEMA_ROWS } from '../../../constants';
 
 class ItemWrapper extends React.Component {
     state = {
-        showNewRun: false,
         showNewText: false,
     };
 
@@ -22,7 +21,7 @@ class ItemWrapper extends React.Component {
             reloadWorksheet,
             id,
         } = this.props;
-        const { showNewRun, showNewText, showNewSchema } = this.props;
+        const { showNewText, showNewSchema } = this.props;
         if (!item) {
             return null;
         }
@@ -41,17 +40,6 @@ class ItemWrapper extends React.Component {
                 id={id}
             >
                 {!isDummyItem && <div className={`${classes.main} ${hoverClass}`}>{children}</div>}
-                {showNewRun && (
-                    <div className={classes.insertBox}>
-                        <NewRun
-                            after_sort_key={after_sort_key}
-                            ws={this.props.ws}
-                            onError={this.props.onError}
-                            onSubmit={() => this.props.onHideNewRun()}
-                            reloadWorksheet={reloadWorksheet}
-                        />
-                    </div>
-                )}
                 {showNewText && (
                     <TextEditorItem
                         ids={this.props.ids}
