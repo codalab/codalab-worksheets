@@ -25,7 +25,6 @@ class BundleRow extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            showDetail: false,
             bundleInfoUpdates: {},
             openDelete: false,
             runProp: {},
@@ -65,9 +64,6 @@ class BundleRow extends Component {
                 this.props.refreshCheckBox,
             );
         }
-        if (this.props.uuid !== prevProp.uuid) {
-            this.setState({ showDetail: false });
-        }
     }
     // BULK OPERATION RELATED CODE
 
@@ -83,7 +79,7 @@ class BundleRow extends Component {
     };
 
     render() {
-        const { showDetail, bundleInfoUpdates } = this.state;
+        const { bundleInfoUpdates } = this.state;
         const {
             classes,
             bundleInfo,
@@ -94,7 +90,6 @@ class BundleRow extends Component {
             onHideNewRun,
             ws,
         } = this.props;
-
         const rowItems = { ...item, ...bundleInfoUpdates };
         var baseUrl = this.props.url;
         var uuid = this.props.uuid;
@@ -105,7 +100,7 @@ class BundleRow extends Component {
             var rowContent = rowItems[headerKey];
             // See if there's a link
             var url;
-            var showDetailButton;
+            var openBundleButton;
             var checkBox;
             if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
                 url = worksheetUrl;
@@ -121,7 +116,7 @@ class BundleRow extends Component {
                         classes={{ root: classes.checkBox }}
                     />
                 );
-                showDetailButton = (
+                openBundleButton = (
                     <Tooltip title='Open full bundle details.'>
                         <button
                             onClick={() => {
@@ -189,23 +184,13 @@ class BundleRow extends Component {
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
                     {checkBox}
-                    {showDetailButton}
+                    {openBundleButton}
                     {rowContent}
                 </TableCell>
             );
         });
         if (this.props.focused) {
             // Use e.preventDefault to avoid openning selected link
-            Mousetrap.bind(
-                ['enter'],
-                (e) => {
-                    e.preventDefault();
-                    if (!this.props.confirmBundleRowAction(e.code)) {
-                        this.setState((state) => ({ showDetail: !state.showDetail }));
-                    }
-                },
-                'keydown',
-            );
             Mousetrap.bind(
                 ['shift+enter'],
                 (e) => {
@@ -214,7 +199,6 @@ class BundleRow extends Component {
                 },
                 'keydown',
             );
-            Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(['x'], (e) => {
                 if (!this.props.confirmBundleRowAction(e.code)) {
                     this.props.handleCheckBundle(
@@ -261,14 +245,12 @@ class BundleRow extends Component {
                         className={classNames({
                             [classes.contentRow]: true,
                             [classes.highlight]: this.props.focused,
-                            [classes.lowlight]: !this.props.focused && showDetail,
                         })}
                     >
                         {rowCells}
                     </TableRow>
                     {/** ---------------------------------------------------------------------------------------------------
-                     *  Rerun
-                     *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key
+                     *  Insert the new text/schema below the bundle row, so add 1 to after_sort_key
                      */}
                     {this.props.showNewText && (
                         <TableRow>
@@ -312,6 +294,9 @@ class BundleRow extends Component {
                         </TableRow>
                     )}
                 </TableBody>
+                {/** ---------------------------------------------------------------------------------------------------
+                 *  New Run Dialog
+                 */}
                 <Dialog open={this.props.showNewRun} onClose={onHideNewRun} maxWidth='lg'>
                     <NewRun
                         after_sort_key={this.props.after_sort_key}

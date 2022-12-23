@@ -1,6 +1,5 @@
 import * as React from 'react';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
-import BundleDetail from '../BundleDetail';
 
 class ImageItem extends React.Component {
     /** Constructor. */
@@ -19,11 +18,6 @@ class ImageItem extends React.Component {
         this.setState({ bundleInfoUpdates: { ...bundleInfoUpdates, ...update } });
     };
 
-    handleClick = () => {
-        this.props.setFocus(this.props.focusIndex, 0);
-        this.setState({ showDetail: !this.state.showDetail });
-    };
-
     render() {
         if (this.props.focused) {
             // Use e.preventDefault to avoid openning selected link
@@ -40,6 +34,7 @@ class ImageItem extends React.Component {
         }
         const item = this.props.item;
         const bundleInfo = item.bundles_spec.bundle_infos[0];
+        const uuid = bundleInfo.uuid;
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
         var src = 'data:image/png;base64,' + this.props.item.image_data;
         var styles = {};
@@ -51,26 +46,15 @@ class ImageItem extends React.Component {
         }
         return (
             <div className='ws-item'>
-                <div className={className} ref={this.props.item.ref} onClick={this.handleClick}>
+                <div
+                    className={className}
+                    ref={this.props.item.ref}
+                    onClick={() => {
+                        this.props.openBundle(uuid);
+                    }}
+                >
                     <img alt='Worksheet item' style={styles} src={src} />
                 </div>
-                {this.state.showDetail && (
-                    <BundleDetail
-                        uuid={bundleInfo.uuid}
-                        ref='bundleDetail'
-                        bundleMetadataChanged={this.props.reloadWorksheet}
-                        onUpdate={this.receiveBundleInfoUpdates}
-                        onClose={() => {
-                            this.setState({
-                                showDetail: false,
-                            });
-                        }}
-                        isFocused={this.props.focused}
-                        focusIndex={this.props.focusIndex}
-                        showDetail={this.state.showDetail}
-                        editPermission={this.props.editPermission}
-                    />
-                )}
             </div>
         );
     }

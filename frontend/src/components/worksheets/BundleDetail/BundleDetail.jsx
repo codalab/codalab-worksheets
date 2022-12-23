@@ -20,7 +20,6 @@ const BundleDetail = ({
     contentExpanded,
     onOpen,
     onUpdate,
-    rerunItem,
     showNewRerun,
     showDetail,
     handleDetailClick,
@@ -246,7 +245,6 @@ const BundleDetail = ({
                     showDetail={showDetail}
                     handleDetailClick={handleDetailClick}
                     bundleInfo={bundleInfo}
-                    rerunItem={rerunItem}
                     onComplete={bundleMetadataChanged}
                     editPermission={editPermission}
                 />

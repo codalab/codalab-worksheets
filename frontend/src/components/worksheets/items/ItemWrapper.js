@@ -27,7 +27,7 @@ class ItemWrapper extends React.Component {
             return null;
         }
         const { isDummyItem, mode } = item;
-        const mainHoverClass = mode === 'table_block' ? '' : classes.mainHover;
+        const hoverClass = mode !== 'table_block' ? classes.mainHover : ''; // table blocks have unique hover style
 
         return (
             <div
@@ -40,9 +40,7 @@ class ItemWrapper extends React.Component {
                 }
                 id={id}
             >
-                {!isDummyItem && (
-                    <div className={`${classes.main} ${mainHoverClass}`}>{children}</div>
-                )}
+                {!isDummyItem && <div className={`${classes.main} ${hoverClass}`}>{children}</div>}
                 {showNewRun && (
                     <div className={classes.insertBox}>
                         <NewRun

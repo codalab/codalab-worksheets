@@ -765,9 +765,7 @@ class Worksheet extends React.Component {
 
     __innerScrollToItem = (index, subIndex) => {
         let node;
-        if (index === -1) {
-            node = document.getElementById('worksheet_dummy_header');
-        } else {
+        if (index !== -1) {
             node = document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 : document.getElementById(`codalab-worksheet-item-${index}`);
@@ -1585,7 +1583,7 @@ class Worksheet extends React.Component {
         const bundle_uuid = bundleUUID;
         const url = `/worksheets/${uuid}/${bundle_uuid}`;
 
-        window.history.pushState({ uuid, bundle_uuid }, '', url);
+        window.history.pushState({ uuid, bundle_uuid }, '', url); // add bundle uuid to url
 
         this.setState({
             openBundleUUID: bundleUUID,
@@ -1598,7 +1596,7 @@ class Worksheet extends React.Component {
         const uuid = this.state.ws.uuid;
         const url = `/worksheets/${uuid}`;
 
-        window.history.pushState({ uuid }, '', url);
+        window.history.pushState({ uuid }, '', url); // remove bundle uuid from url
 
         this.reloadWorksheet();
         this.setState({
