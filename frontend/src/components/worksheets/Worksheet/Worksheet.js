@@ -69,8 +69,9 @@ class Worksheet extends React.Component {
                 uuid,
                 info: null,
             },
-            openBundleUUID: bundle_uuid,
             bundleIsOpen: !!bundle_uuid,
+            openBundleUUID: bundle_uuid,
+            openBundleAfterSortKey: null,
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'itemList', // Where the focus is (terminal, itemList)
@@ -1578,7 +1579,7 @@ class Worksheet extends React.Component {
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
     };
 
-    openBundle = (bundleUUID) => {
+    openBundle = (bundleUUID, afterSortKey) => {
         const uuid = this.state.ws.uuid;
         const bundle_uuid = bundleUUID;
         const url = `/worksheets/${uuid}/${bundle_uuid}`;
@@ -1587,6 +1588,7 @@ class Worksheet extends React.Component {
 
         this.setState({
             openBundleUUID: bundleUUID,
+            openBundleAfterSortKey: afterSortKey,
             bundleIsOpen: true,
             showBundleOperationButtons: false,
         });
@@ -1600,7 +1602,8 @@ class Worksheet extends React.Component {
 
         this.reloadWorksheet();
         this.setState({
-            openBundleUUID: '',
+            openBundleUUID: null,
+            openBundleAfterSortKey: null,
             bundleIsOpen: false,
         });
     };
@@ -1763,6 +1766,7 @@ class Worksheet extends React.Component {
             showWorksheetContainer,
             bundleIsOpen,
             openBundleUUID,
+            openBundleAfterSortKey,
         } = this.state;
 
         this.setupEventHandlers();
@@ -1937,6 +1941,7 @@ class Worksheet extends React.Component {
             <BundleDetail
                 uuid={openBundleUUID}
                 wsUUID={this.state.ws.info?.uuid}
+                after_sort_key={openBundleAfterSortKey}
                 editPermission={editPermission}
                 onUpdate={() => {}}
                 contentExpanded

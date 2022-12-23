@@ -120,7 +120,7 @@ class BundleRow extends Component {
                     <Tooltip title='Open full bundle details.'>
                         <button
                             onClick={() => {
-                                openBundle(uuid);
+                                openBundle(uuid, this.props.after_sort_key);
                             }}
                             className={classes.openBundleBtn}
                             aria-label='Open full bundle details.'

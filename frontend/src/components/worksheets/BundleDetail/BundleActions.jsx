@@ -112,7 +112,7 @@ class BundleActions extends React.Component<{
     };
 
     render() {
-        const { bundleInfo, classes, editPermission, wsUUID } = this.props;
+        const { bundleInfo, classes, editPermission, wsUUID, after_sort_key } = this.props;
         const { showNewRerun, defaultRun, rerunErrorMessage } = this.state;
         const ws = { info: { uuid: wsUUID } }; // for NewRun
         const state = bundleInfo.state;
@@ -166,7 +166,7 @@ class BundleActions extends React.Component<{
                 )}
                 <Dialog open={showNewRerun} onClose={this.handleHideNewRerun} maxWidth='lg'>
                     <NewRun
-                        after_sort_key={-1}
+                        after_sort_key={after_sort_key}
                         ws={ws}
                         onError={this.handleRerunError}
                         onSubmit={this.handleSubmitRerun}

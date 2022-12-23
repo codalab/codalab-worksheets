@@ -15,6 +15,7 @@ import BundleActions from './BundleActions';
 const BundleDetail = ({
     uuid,
     wsUUID,
+    after_sort_key,
     bundleInfoFromRow,
     bundleMetadataChanged,
     contentExpanded,
@@ -241,6 +242,7 @@ const BundleDetail = ({
             buttons={
                 <BundleActions
                     wsUUID={wsUUID}
+                    after_sort_key={after_sort_key}
                     showNewRerun={showNewRerun}
                     showDetail={showDetail}
                     handleDetailClick={handleDetailClick}
