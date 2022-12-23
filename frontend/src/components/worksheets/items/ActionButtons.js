@@ -67,9 +67,8 @@ class ActionButtons extends React.Component<{
                 <Button
                     size='small'
                     color='inherit'
-                    aria-label='Back to worksheet table view.'
+                    aria-label='Go back to previous view.'
                     onClick={onBackButtonClick}
-                    disabled={!bundleIsOpen}
                 >
                     <ArrowBack className={classes.buttonIcon} />
                     Back

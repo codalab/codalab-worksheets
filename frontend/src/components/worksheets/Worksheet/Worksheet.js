@@ -1584,8 +1584,7 @@ class Worksheet extends React.Component {
         const bundle_uuid = bundleUUID;
         const url = `/worksheets/${uuid}/${bundle_uuid}`;
 
-        window.history.pushState({ uuid, bundle_uuid }, '', url); // add bundle uuid to url
-
+        this.props.history.push(url); // add bundle uuid to url
         this.setState({
             openBundleUUID: bundleUUID,
             openBundleAfterSortKey: afterSortKey,
@@ -1598,14 +1597,21 @@ class Worksheet extends React.Component {
         const uuid = this.state.ws.uuid;
         const url = `/worksheets/${uuid}`;
 
-        window.history.pushState({ uuid }, '', url); // remove bundle uuid from url
-
+        this.props.history.push(url); // remove bundle uuid from url
         this.reloadWorksheet();
         this.setState({
             openBundleUUID: null,
             openBundleAfterSortKey: null,
             bundleIsOpen: false,
         });
+    };
+
+    handleBackButtonClick = () => {
+        if (this.state.bundleIsOpen) {
+            this.closeBundle();
+            return;
+        }
+        this.props.history.push('/users'); // back to "My Worksheets"
     };
 
     saveAndUpdateWorksheet = (fromRaw, rawIndex) => {
@@ -1979,7 +1985,7 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     onShowNewSchema={() => this.setState({ showNewSchema: true })}
-                    onBackButtonClick={this.closeBundle}
+                    onBackButtonClick={this.handleBackButtonClick}
                     bundleIsOpen={bundleIsOpen}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
