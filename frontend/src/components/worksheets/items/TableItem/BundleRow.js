@@ -297,7 +297,7 @@ class BundleRow extends Component {
                 {/** ---------------------------------------------------------------------------------------------------
                  *  New Run Dialog
                  */}
-                <Dialog open={this.props.showNewRun} onClose={onHideNewRun} maxWidth='md'>
+                <Dialog open={this.props.showNewRun} onClose={onHideNewRun} maxWidth='lg'>
                     <NewRun
                         after_sort_key={this.props.after_sort_key}
                         ws={this.props.ws}
