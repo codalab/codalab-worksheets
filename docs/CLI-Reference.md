@@ -494,6 +494,8 @@ Usage: `cl <command> <arguments>`
 ## Commands for managing server
 ### workers
     Display information about workers that you have connected to the CodaLab instance.
+    Arguments:
+      -c, --condensed  Show a condensed worker list (worker IDs only).
 
 ### bs-add-partition
     Add another partition for storage (MultiDiskBundleStore only)

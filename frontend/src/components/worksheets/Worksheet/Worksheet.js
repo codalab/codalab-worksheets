@@ -9,6 +9,7 @@ import {
     addUTCTimeZone,
 } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
+import StatusReport from '../../StatusReport';
 import WorksheetItemList from '../WorksheetItemList';
 import InformationModal from '../InformationModal/InformationModal';
 import WorksheetHeader from './WorksheetHeader';
@@ -62,11 +63,21 @@ class Worksheet extends React.Component {
         let localWorksheetWidthPreference = window.localStorage.getItem(
             LOCAL_STORAGE_WORKSHEET_WIDTH,
         );
+        // uuids for the "What's Running on CodaLab?" worksheets
+        const statusWorksheetUUIDs = [
+            '0x870c3781d520468694758e665bba7345', // local (testing)
+            '0xa590fd1b68944a1a95c1c40c4931dc7b', // prod
+            '0xc347c4ebc5644a71b24343523bf76e7b', // stanford
+            '0xa590fd1b68944a1a95c1c40c4931dc7b', // dev
+        ];
+        const uuid = this.props.match.params['uuid'];
+
         this.state = {
             ws: {
-                uuid: this.props.match.params['uuid'],
+                uuid,
                 info: null,
             },
+            showStatusReport: statusWorksheetUUIDs.includes(uuid),
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'itemList', // Where the focus is (terminal, itemList)
@@ -1731,6 +1742,7 @@ class Worksheet extends React.Component {
             showInformationModal,
             showWorksheetContent,
             showWorksheetContainer,
+            showStatusReport,
         } = this.state;
 
         this.setupEventHandlers();
@@ -1975,6 +1987,11 @@ class Worksheet extends React.Component {
                                                 id='worksheet_content'
                                                 className={editableClassName + ' worksheet_content'}
                                             >
+                                                {showStatusReport && (
+                                                    <StatusReport
+                                                        worksheetUUID={this.state.ws.uuid}
+                                                    />
+                                                )}
                                                 {worksheetDisplay}
                                                 {/* Show error dialog if bulk bundle execution failed*/}
                                                 {this.state.BulkBundleDialog}

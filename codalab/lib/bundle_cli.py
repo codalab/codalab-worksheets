@@ -1215,7 +1215,15 @@ class BundleCLI(object):
     @Commands.command(
         'workers',
         help=['Display information about workers that you have connected to the CodaLab instance.'],
-        arguments=(),
+        arguments=(
+            Commands.Argument(
+                '-c',
+                '--condensed',
+                help='Show a condensed worker list (worker IDs only).',
+                action='store_true',
+                default=False,
+            ),
+        ),
     )
     def do_workers_command(self, args):
         client = self.manager.current_client()
@@ -1261,7 +1269,11 @@ class BundleCLI(object):
                 }
             )
 
-        self.print_table(columns, data)
+        if args.condensed:
+            for worker in data:
+                print(worker['worker_id'], file=self.stdout)
+        else:
+            self.print_table(columns, data)
 
     @Commands.command(
         'upload',
