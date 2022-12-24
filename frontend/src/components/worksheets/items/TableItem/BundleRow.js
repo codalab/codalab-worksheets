@@ -192,6 +192,16 @@ class BundleRow extends Component {
         if (this.props.focused) {
             // Use e.preventDefault to avoid openning selected link
             Mousetrap.bind(
+                ['enter'],
+                (e) => {
+                    e.preventDefault();
+                    if (!this.props.confirmBundleRowAction(e.code)) {
+                        openBundle(uuid, this.props.after_sort_key);
+                    }
+                },
+                'keydown',
+            );
+            Mousetrap.bind(
                 ['shift+enter'],
                 (e) => {
                     e.preventDefault();

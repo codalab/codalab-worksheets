@@ -1016,6 +1016,7 @@ class Worksheet extends React.Component {
                 );
             }
         }
+        Mousetrap.bind(['escape'], this.handleBackButtonClick);
         Mousetrap.bind(['?'], (e) => {
             this.setState({
                 showInformationModal: true,
