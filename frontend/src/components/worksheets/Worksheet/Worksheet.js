@@ -832,7 +832,6 @@ class Worksheet extends React.Component {
         // $('#command_line').terminal().focus(false);
         this.setState({ activeComponent: 'itemList' });
         $('#command_line').data('resizing', null);
-        $('#ws_search').removeAttr('style');
     };
     toggleInformationModal = () => {
         this.setState({ showInformationModal: !this.state.showInformationModal });
@@ -1787,9 +1786,6 @@ class Worksheet extends React.Component {
         let info = this.state.ws.info;
         let rawWorksheet = info && info.source.join('\n');
         const editPermission = this.hasEditPermission();
-
-        // TODO: likey remove
-        let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
         let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
         let disableWorksheetEditing = editPermission ? '' : 'disabled';
         let sourceStr = editPermission ? 'Edit Source' : 'View Source';
@@ -1901,22 +1897,6 @@ class Worksheet extends React.Component {
             </div>
         );
 
-        let terminalDisplay = (
-            <WorksheetTerminal
-                ws={this.state.ws}
-                handleFocus={this.handleTerminalFocus}
-                handleBlur={this.handleTerminalBlur}
-                active={this.state.activeComponent === 'terminal'}
-                reloadWorksheet={this.reloadWorksheet}
-                openWorksheet={this.openWorksheet}
-                editMode={() => {
-                    this.toggleSourceEditMode(true);
-                }}
-                setFocus={this.setFocus}
-                hidden={!this.state.showTerminal}
-            />
-        );
-
         let itemsDisplay = (
             <WorksheetItemList
                 active={this.state.activeComponent === 'itemList'}
@@ -1998,15 +1978,18 @@ class Worksheet extends React.Component {
                     toggleWorksheetSize={this.toggleWorksheetSize}
                     showBundleContent={this.showBundleContent}
                 />
-
-                {/* TODO: Fix terminal display */}
-                {/* {terminalDisplay} */}
-
-                <ToastContainer
-                    newestOnTop={false}
-                    transition={Zoom}
-                    rtl={false}
-                    pauseOnVisibilityChange
+                <WorksheetTerminal
+                    ws={this.state.ws}
+                    handleFocus={this.handleTerminalFocus}
+                    handleBlur={this.handleTerminalBlur}
+                    active={this.state.activeComponent === 'terminal'}
+                    reloadWorksheet={this.reloadWorksheet}
+                    openWorksheet={this.openWorksheet}
+                    editMode={() => {
+                        this.toggleSourceEditMode(true);
+                    }}
+                    setFocus={this.setFocus}
+                    hidden={!this.state.showTerminal}
                 />
                 {openBundleUUID && (
                     <div className={classes.bundleContainer}>
@@ -2085,6 +2068,12 @@ class Worksheet extends React.Component {
                         {this.state.messagePopover.messageContent}
                     </div>
                 </Popover>
+                <ToastContainer
+                    newestOnTop={false}
+                    transition={Zoom}
+                    rtl={false}
+                    pauseOnVisibilityChange
+                />
             </React.Fragment>
         );
     }
