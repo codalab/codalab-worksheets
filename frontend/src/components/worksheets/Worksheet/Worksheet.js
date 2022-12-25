@@ -15,6 +15,8 @@ import WorksheetHeader from './WorksheetHeader';
 import {
     NAVBAR_HEIGHT,
     HEADER_HEIGHT,
+    WORKSHEET_HEADER_HEIGHT,
+    FOOTER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
     NARROW_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
@@ -70,7 +72,7 @@ class Worksheet extends React.Component {
                 info: null,
             },
             bundleIsOpen: !!bundle_uuid,
-            openBundleUUID: bundle_uuid || null,
+            openBundleUUID: bundle_uuid,
             openBundleAfterSortKey: null,
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
@@ -111,7 +113,6 @@ class Worksheet extends React.Component {
             },
             showUpdateProgress: false,
             showWorksheetContent: false,
-            showWorksheetContainer: true,
             executingCommand: false,
         };
         this.copyCallbacks = [];
@@ -1214,7 +1215,7 @@ class Worksheet extends React.Component {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: 'Failed to update run bundles.',
-                    showWorksheetContainer: false,
+                    isValid: false,
                 });
             });
     };
@@ -1526,7 +1527,7 @@ class Worksheet extends React.Component {
                         openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                         errorDialogMessage: xhr.responseText,
                     });
-                    this.setState({ showUpdateProgress: false, showWorksheetContainer: false });
+                    this.setState({ showUpdateProgress: false, isValid: false });
                 }.bind(this),
             }).then(() => {
                 afterReload && afterReload();
@@ -1581,8 +1582,18 @@ class Worksheet extends React.Component {
     };
 
     openBundle = (bundleUUID, afterSortKey) => {
-        const url = `/worksheets/${this.state.ws.uuid}/${bundleUUID}`;
-        this.props.history.push(url);
+        const wsUUID = this.state.ws.uuid;
+        const url = `/worksheets/${wsUUID}/${bundleUUID}`;
+
+        window.history.pushState(
+            {
+                uuid: wsUUID,
+                bundle_uuid: bundleUUID,
+            },
+            '',
+            url,
+        );
+
         this.setState({
             openBundleUUID: bundleUUID,
             openBundleAfterSortKey: afterSortKey,
@@ -1592,8 +1603,11 @@ class Worksheet extends React.Component {
     };
 
     closeBundle = () => {
-        const url = `/worksheets/${this.state.ws.uuid}`;
-        this.props.history.push(url);
+        const wsUUID = this.state.ws.uuid;
+        const url = `/worksheets/${wsUUID}`;
+
+        window.history.pushState({ uuid: wsUUID }, '', url);
+
         this.reloadWorksheet();
         this.setState({
             openBundleUUID: null,
@@ -1761,11 +1775,9 @@ class Worksheet extends React.Component {
         const {
             anchorEl,
             uploadAnchor,
-            inSourceEditMode,
             showUpdateProgress,
             showInformationModal,
             showWorksheetContent,
-            showWorksheetContainer,
             bundleIsOpen,
             openBundleUUID,
             openBundleAfterSortKey,
@@ -1776,10 +1788,12 @@ class Worksheet extends React.Component {
         let rawWorksheet = info && info.source.join('\n');
         const editPermission = this.hasEditPermission();
 
+        // TODO: likey remove
         let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
         let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
         let disableWorksheetEditing = editPermission ? '' : 'disabled';
         let sourceStr = editPermission ? 'Edit Source' : 'View Source';
+
         let blockViewButtons = (
             <div style={{ display: 'inline-block' }}>
                 <Button
@@ -1939,31 +1953,15 @@ class Worksheet extends React.Component {
             />
         );
 
-        const bundleDisplay = (
-            <BundleDetail
-                uuid={openBundleUUID}
-                wsUUID={this.state.ws.info?.uuid}
-                after_sort_key={openBundleAfterSortKey}
-                editPermission={editPermission}
-                onUpdate={() => {}}
-                contentExpanded
-            />
-        );
-
-        let worksheetDisplay = itemsDisplay;
-        if (bundleIsOpen) {
-            worksheetDisplay = bundleDisplay;
-        } else if (inSourceEditMode) {
-            worksheetDisplay = rawDisplay;
-        }
-
+        let worksheetDisplay = this.state.inSourceEditMode ? rawDisplay : itemsDisplay;
         let editButtons = this.state.inSourceEditMode ? sourceModeButtons : blockViewButtons;
-        if (!this.state.isValid) {
-            return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
-        }
 
         if (info && info.title) {
             document.title = info.title;
+        }
+
+        if (!this.state.isValid) {
+            return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
         }
 
         return (
@@ -2000,67 +1998,55 @@ class Worksheet extends React.Component {
                     toggleWorksheetSize={this.toggleWorksheetSize}
                     showBundleContent={this.showBundleContent}
                 />
-                {terminalDisplay}
+
+                {/* TODO: Fix terminal display */}
+                {/* {terminalDisplay} */}
+
                 <ToastContainer
                     newestOnTop={false}
                     transition={Zoom}
                     rtl={false}
                     pauseOnVisibilityChange
                 />
-                {showWorksheetContainer && (
-                    <div id='worksheet_container'>
-                        <div id='worksheet' className={searchClassName}>
-                            <div
-                                className={classes.worksheetDesktop}
-                                onClick={this.handleClickForDeselect}
-                            >
-                                <div
-                                    className={classes.worksheetOuter}
-                                    onClick={this.handleClickForDeselect}
-                                    style={{ width: this.state.worksheetWidthPercentage }}
-                                >
-                                    {!info && (
-                                        <div className={classes.loaderContainer}>
-                                            <Loading />
-                                        </div>
-                                    )}
-                                    <div
-                                        className={classes.worksheetInner}
-                                        onClick={this.handleClickForDeselect}
-                                    >
-                                        {showWorksheetContent && (
-                                            <div
-                                                id='worksheet_content'
-                                                className={editableClassName + ' worksheet_content'}
-                                            >
-                                                {worksheetDisplay}
-                                                {/* Show error dialog if bulk bundle execution failed*/}
-                                                {this.state.BulkBundleDialog}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {!bundleIsOpen && (
-                                        <Button
-                                            onClick={this.moveFocusToBottom}
-                                            color='primary'
-                                            variant='contained'
-                                            style={{
-                                                borderRadius: '400px',
-                                                position: 'fixed',
-                                                bottom: '50px',
-                                                right: '30px',
-                                                backgroundColor: '00BFFF',
-                                                zIndex: 10,
-                                            }}
-                                        >
-                                            <ExpandMoreIcon size='medium' />
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                {openBundleUUID && (
+                    <div className={classes.bundleContainer}>
+                        <BundleDetail
+                            uuid={openBundleUUID}
+                            wsUUID={this.state.ws.info?.uuid}
+                            after_sort_key={openBundleAfterSortKey}
+                            editPermission={editPermission}
+                            onUpdate={() => {}}
+                            contentExpanded
+                            sidebarExpanded
+                            fullMinHeight
+                        />
                     </div>
                 )}
+                <div className={classes.worksheetContainer}>
+                    {!info && (
+                        <div className={classes.loaderContainer}>
+                            <Loading />
+                        </div>
+                    )}
+                    {showWorksheetContent && (
+                        <div
+                            id='worksheet_content'
+                            className={editableClassName + ' worksheet_content'}
+                        >
+                            {worksheetDisplay}
+                            {/* Show error dialog if bulk bundle execution failed*/}
+                            {this.state.BulkBundleDialog}
+                        </div>
+                    )}
+                </div>
+                <Button
+                    className={classes.scrollToBottom}
+                    onClick={this.moveFocusToBottom}
+                    color='primary'
+                    variant='contained'
+                >
+                    <ExpandMoreIcon size='medium' />
+                </Button>
                 <WorksheetDialogs
                     openedDialog={this.state.openedDialog}
                     closeDialog={() => {
@@ -2104,24 +2090,31 @@ class Worksheet extends React.Component {
     }
 }
 
+const containerHeight = `calc(100vh - ${NAVBAR_HEIGHT}px - ${WORKSHEET_HEADER_HEIGHT}px - ${FOOTER_HEIGHT}px)`;
+
 const styles = (theme) => ({
-    worksheetDesktop: {
-        backgroundColor: theme.color.grey.lightest,
-        marginTop: NAVBAR_HEIGHT,
-    },
-    worksheetOuter: {
-        display: 'flex',
-        flex: 1,
-        flexDirection: 'column',
-        minHeight: 'calc(100vh - 173px)',
-        margin: '32px auto',
+    bundleContainer: {
+        height: containerHeight,
+        overflowY: 'scroll',
+        zIndex: 7, // in front of worksheet container
+        position: 'fixed',
         backgroundColor: 'white',
-        border: `2px solid ${theme.color.grey.light}`,
+        width: '100%',
     },
-    worksheetInner: {
-        display: 'flex',
-        flex: 1,
-        overflowX: 'hidden',
+    worksheetContainer: {
+        height: containerHeight,
+        overflowY: 'scroll',
+        zIndex: 5,
+        backgroundColor: 'white',
+        width: '100%',
+    },
+    scrollToBottom: {
+        zIndex: 6,
+        borderRadius: '400px',
+        position: 'fixed',
+        bottom: '50px',
+        right: '30px',
+        backgroundColor: '00BFFF',
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
@@ -2149,7 +2142,7 @@ const styles = (theme) => ({
         marginRight: theme.spacing.large,
     },
     loaderContainer: {
-        marginTop: 35,
+        paddingTop: 35,
     },
     rawDisplayContainer: {
         width: '100%',

@@ -21,6 +21,7 @@ class BundleRoute extends React.Component {
                     contentExpanded
                     sidebarExpanded
                     hideBundlePageLink
+                    fullMinHeight
                 />
             </div>
         );

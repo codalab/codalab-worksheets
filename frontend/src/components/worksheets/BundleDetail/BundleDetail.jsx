@@ -27,7 +27,7 @@ const BundleDetail = ({
     editPermission,
     sidebarExpanded,
     hideBundlePageLink,
-    showBorder,
+    fullMinHeight,
 }) => {
     const [bundleInfo, setBundleInfo] = useState(null);
     const [contentType, setContentType] = useState(null);
@@ -260,7 +260,7 @@ const BundleDetail = ({
                     hidePageLink={hideBundlePageLink}
                 />
             }
-            showBorder={showBorder}
+            fullMinHeight={fullMinHeight}
         >
             <MainContent
                 bundleInfo={bundleInfo}
