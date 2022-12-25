@@ -1,5 +1,6 @@
 // @flow
 import * as React from 'react';
+import queryString from 'query-string';
 import { withStyles } from '@material-ui/core';
 import Dialog from '@material-ui/core/Dialog';
 import IconButton from '@material-ui/core/IconButton';
@@ -71,8 +72,11 @@ class BundleActions extends React.Component<{
         this.handleHideNewRerun();
         const bundleUUID = resp?.output;
         if (bundleUUID) {
-            const url = `/worksheets/${this.props.wsUUID}/${bundleUUID}`;
-            window.open(url, '_self'); // redirect
+            const { wsUUID } = this.props;
+            const { focus, subfocus } = queryString.parse(window.location.search);
+            const newSubFocus = parseInt(subfocus) + 1;
+            const url = `/worksheets/${wsUUID}?bundle=${bundleUUID}&focus=${focus}&subfocus=${newSubFocus}`;
+            window.open(url, '_self');
         }
     };
 
@@ -114,7 +118,6 @@ class BundleActions extends React.Component<{
     render() {
         const { bundleInfo, classes, editPermission, wsUUID, after_sort_key } = this.props;
         const { showNewRerun, defaultRun, rerunErrorMessage } = this.state;
-        const ws = { info: { uuid: wsUUID } }; // for NewRun
         const state = bundleInfo.state;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
@@ -166,8 +169,8 @@ class BundleActions extends React.Component<{
                 )}
                 <Dialog open={showNewRerun} onClose={this.handleHideNewRerun} maxWidth='lg'>
                     <NewRun
+                        ws={{ info: { uuid: wsUUID } }}
                         after_sort_key={after_sort_key}
-                        ws={ws}
                         onError={this.handleRerunError}
                         onSubmit={this.handleSubmitRerun}
                         defaultRun={defaultRun}

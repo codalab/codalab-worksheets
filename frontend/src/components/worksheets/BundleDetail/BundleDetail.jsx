@@ -13,8 +13,8 @@ import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
 
 const BundleDetail = ({
-    uuid,
     wsUUID,
+    uuid,
     after_sort_key,
     bundleInfoFromRow,
     bundleMetadataChanged,

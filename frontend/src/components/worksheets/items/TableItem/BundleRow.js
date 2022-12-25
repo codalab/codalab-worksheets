@@ -78,6 +78,11 @@ class BundleRow extends Component {
         this.props.updateRowIndex(this.props.rowIndex);
     };
 
+    handleOpenBundle = () => {
+        const { openBundle, uuid, focusIndex, rowIndex } = this.props;
+        openBundle(uuid, focusIndex, rowIndex);
+    };
+
     render() {
         const { bundleInfoUpdates } = this.state;
         const {
@@ -86,7 +91,6 @@ class BundleRow extends Component {
             item,
             reloadWorksheet,
             checkStatus,
-            openBundle,
             onHideNewRun,
             ws,
         } = this.props;
@@ -119,9 +123,7 @@ class BundleRow extends Component {
                 openBundleButton = (
                     <Tooltip title='Open full bundle details.'>
                         <button
-                            onClick={() => {
-                                openBundle(uuid, this.props.after_sort_key);
-                            }}
+                            onClick={this.handleOpenBundle}
                             className={classes.openBundleBtn}
                             aria-label='Open full bundle details.'
                         >
@@ -196,7 +198,7 @@ class BundleRow extends Component {
                 (e) => {
                     e.preventDefault();
                     if (!this.props.confirmBundleRowAction(e.code)) {
-                        openBundle(uuid, this.props.after_sort_key);
+                        this.handleOpenBundle();
                     }
                 },
                 'keydown',

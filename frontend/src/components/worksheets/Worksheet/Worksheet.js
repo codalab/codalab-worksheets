@@ -1,4 +1,5 @@
 import * as React from 'react';
+import queryString from 'query-string';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
@@ -65,14 +66,17 @@ class Worksheet extends React.Component {
         let localWorksheetWidthPreference = window.localStorage.getItem(
             LOCAL_STORAGE_WORKSHEET_WIDTH,
         );
-        const { uuid, bundle_uuid } = this.props.match.params;
+        const { bundle, focus, subfocus } = queryString.parse(this.props.location.search);
+        const focusIndex = focus ? parseInt(focus) : -1;
+        const subFocusIndex = subfocus ? parseInt(subfocus) : 0;
+
         this.state = {
             ws: {
-                uuid,
+                uuid: this.props.match.params['uuid'],
                 info: null,
             },
-            bundleIsOpen: !!bundle_uuid,
-            openBundleUUID: bundle_uuid,
+            bundleIsOpen: !!bundle,
+            openBundleUUID: bundle,
             openBundleAfterSortKey: null,
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
@@ -80,8 +84,8 @@ class Worksheet extends React.Component {
             inSourceEditMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
-            focusIndex: -1, // Which worksheet items to be on (-1 is none)
-            subFocusIndex: 0, // For tables, which row in the table
+            focusIndex, // Which worksheet items to be on (-1 is none)
+            subFocusIndex, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
             focusedBundleUuidList: [], // Uuid of the focused bundle and that of all bundles after it
             userInfo: null, // User info of the current user. (null is the default)
@@ -797,9 +801,6 @@ class Worksheet extends React.Component {
                 });
             }.bind(this),
         });
-
-        // Initialize history stack
-        window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');
         const callback = (data) => {
             var userInfo = data.data.attributes;
@@ -1580,22 +1581,18 @@ class Worksheet extends React.Component {
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
     };
 
-    openBundle = (bundleUUID, afterSortKey) => {
+    openBundle = (bundleUUID, focusIndex, subFocusIndex) => {
         const wsUUID = this.state.ws.uuid;
-        const url = `/worksheets/${wsUUID}/${bundleUUID}`;
+        const currentFocusedBlock = this.state.ws.info.blocks[focusIndex];
+        const afterSortKey = getAfterSortKey(currentFocusedBlock, subFocusIndex);
+        const url = `/worksheets/${wsUUID}?bundle=${bundleUUID}&focus=${focusIndex}&subfocus=${subFocusIndex}`;
 
-        window.history.pushState(
-            {
-                uuid: wsUUID,
-                bundle_uuid: bundleUUID,
-            },
-            '',
-            url,
-        );
-
+        window.history.pushState({ uuid: wsUUID }, '', url);
         this.setState({
             openBundleUUID: bundleUUID,
             openBundleAfterSortKey: afterSortKey,
+            focusIndex,
+            subFocusIndex,
             bundleIsOpen: true,
             showBundleOperationButtons: false,
         });
@@ -1603,15 +1600,19 @@ class Worksheet extends React.Component {
 
     closeBundle = () => {
         const wsUUID = this.state.ws.uuid;
+        const { focus, subfocus } = queryString.parse(this.props.location.search);
+        const focusIndex = focus ? parseInt(focus) : this.state.focusIndex;
+        const subFocusIndex = subfocus ? parseInt(subfocus) : this.state.subFocusIndex;
         const url = `/worksheets/${wsUUID}`;
 
         window.history.pushState({ uuid: wsUUID }, '', url);
-
         this.reloadWorksheet();
         this.setState({
             openBundleUUID: null,
             openBundleAfterSortKey: null,
             bundleIsOpen: false,
+            focusIndex,
+            subFocusIndex,
         });
     };
 
@@ -1994,8 +1995,8 @@ class Worksheet extends React.Component {
                 {openBundleUUID && (
                     <div className={classes.bundleContainer}>
                         <BundleDetail
-                            uuid={openBundleUUID}
                             wsUUID={this.state.ws.info?.uuid}
+                            uuid={openBundleUUID}
                             after_sort_key={openBundleAfterSortKey}
                             editPermission={editPermission}
                             onUpdate={() => {}}
