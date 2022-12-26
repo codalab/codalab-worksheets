@@ -66,7 +66,7 @@ class Worksheet extends React.Component {
         let localWorksheetWidthPreference = window.localStorage.getItem(
             LOCAL_STORAGE_WORKSHEET_WIDTH,
         );
-        const { bundle, focus, subfocus } = queryString.parse(this.props.location.search);
+        const { bundle, focus, subfocus } = queryString.parse(window.location.search);
         const focusIndex = focus ? parseInt(focus) : -1;
         const subFocusIndex = subfocus ? parseInt(subfocus) : 0;
 
