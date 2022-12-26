@@ -36,7 +36,6 @@ const styles = () => ({
         // We create our own content viewport to eliminate native auto-scrolling.
         // Context: https://github.com/codalab/codalab-worksheets/issues/4204
         height: `calc(100vh - ${headerHeight} - ${footerHeight})`,
-        display: 'flex',
         overflowY: 'scroll',
         overflowX: 'hidden',
     },
