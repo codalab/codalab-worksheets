@@ -771,7 +771,9 @@ class Worksheet extends React.Component {
 
     __innerScrollToItem = (index, subIndex) => {
         let node;
-        if (index !== -1) {
+        if (index === -1) {
+            node = document.getElementById('worksheet_dummy_header');
+        } else {
             node = document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 ? document.getElementById(`codalab-worksheet-item-${index}-subitem-${subIndex}`)
                 : document.getElementById(`codalab-worksheet-item-${index}`);
@@ -1969,6 +1971,11 @@ class Worksheet extends React.Component {
                     </div>
                 )}
                 <div className={classes.worksheetContainer}>
+                    {this.state.focusIndex === -1 ? (
+                        <div className={classes.worksheetDummyHeader} id='worksheet_dummy_header' />
+                    ) : (
+                        <div style={{ height: 8 }} />
+                    )}
                     {!info && (
                         <div className={classes.loaderContainer}>
                             <Loading />
@@ -2092,6 +2099,10 @@ const styles = (theme) => ({
         zIndex: 5,
         backgroundColor: 'white',
         width: '100%',
+    },
+    worksheetDummyHeader: {
+        backgroundColor: '#F1F8FE',
+        height: theme.spacing.large,
     },
     rawDisplayContainer: {
         height: containerHeight,
