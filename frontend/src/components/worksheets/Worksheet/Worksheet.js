@@ -1778,6 +1778,7 @@ class Worksheet extends React.Component {
             showUpdateProgress,
             showInformationModal,
             showWorksheetContent,
+            inSourceEditMode,
             bundleIsOpen,
             openBundleUUID,
             openBundleAfterSortKey,
@@ -1880,61 +1881,6 @@ class Worksheet extends React.Component {
         } else {
             $('.empty-worksheet').fadeIn();
         }
-
-        let rawDisplay = (
-            <div className={classes.rawDisplayContainer}>
-                <div id='worksheet-editor'>{rawWorksheet}</div>
-                <div className={classes.rawDisplayInfo}>
-                    Press ctrl-enter to save. See{' '}
-                    <a
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
-                    >
-                        markdown syntax
-                    </a>
-                    .
-                </div>
-            </div>
-        );
-
-        let itemsDisplay = (
-            <WorksheetItemList
-                active={this.state.activeComponent === 'itemList'}
-                ws={this.state.ws}
-                version={this.state.version}
-                focusIndex={this.state.focusIndex}
-                subFocusIndex={this.state.subFocusIndex}
-                setFocus={this.setFocus}
-                reloadWorksheet={this.reloadWorksheet}
-                saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
-                openWorksheet={this.openWorksheet}
-                openBundle={this.openBundle}
-                focusTerminal={this.focusTerminal}
-                ensureIsArray={this.ensureIsArray}
-                showNewRun={this.state.showNewRun}
-                showNewText={this.state.showNewText}
-                showNewRerun={this.state.showNewRerun}
-                showNewSchema={this.state.showNewSchema}
-                onError={this.onError}
-                onHideNewRun={() => this.setState({ showNewRun: false })}
-                onHideNewText={() => this.setState({ showNewText: false })}
-                onHideNewRerun={() => this.setState({ showNewRerun: false })}
-                onHideNewSchema={() => this.setState({ showNewSchema: false })}
-                handleCheckBundle={this.handleCheckBundle}
-                confirmBundleRowAction={this.confirmBundleRowAction}
-                setDeleteItemCallback={this.setDeleteItemCallback}
-                addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
-                addShowContentBundleRowsCallback={this.addShowContentBundleRowsCallback}
-                onAsyncItemLoad={this.onAsyncItemLoad}
-                updateBundleBlockSchema={this.updateBundleBlockSchema}
-                updateSchemaItem={this.updateSchemaItem}
-                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
-                addImageDisplay={this.addImageDisplay}
-            />
-        );
-
-        let worksheetDisplay = this.state.inSourceEditMode ? rawDisplay : itemsDisplay;
         let editButtons = this.state.inSourceEditMode ? sourceModeButtons : blockViewButtons;
 
         if (info && info.title) {
@@ -2006,6 +1952,22 @@ class Worksheet extends React.Component {
                         />
                     </div>
                 )}
+                {inSourceEditMode && (
+                    <div className={classes.rawDisplayContainer}>
+                        <div id='worksheet-editor'>{rawWorksheet}</div>
+                        <div className={classes.rawDisplayInfo}>
+                            Press ctrl-enter to save. See{' '}
+                            <a
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
+                            >
+                                markdown syntax
+                            </a>
+                            .
+                        </div>
+                    </div>
+                )}
                 <div className={classes.worksheetContainer}>
                     {!info && (
                         <div className={classes.loaderContainer}>
@@ -2017,8 +1979,41 @@ class Worksheet extends React.Component {
                             id='worksheet_content'
                             className={editableClassName + ' worksheet_content'}
                         >
-                            {worksheetDisplay}
-                            {/* Show error dialog if bulk bundle execution failed*/}
+                            <WorksheetItemList
+                                active={this.state.activeComponent === 'itemList'}
+                                ws={this.state.ws}
+                                version={this.state.version}
+                                focusIndex={this.state.focusIndex}
+                                subFocusIndex={this.state.subFocusIndex}
+                                setFocus={this.setFocus}
+                                reloadWorksheet={this.reloadWorksheet}
+                                saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
+                                openWorksheet={this.openWorksheet}
+                                openBundle={this.openBundle}
+                                focusTerminal={this.focusTerminal}
+                                ensureIsArray={this.ensureIsArray}
+                                showNewRun={this.state.showNewRun}
+                                showNewText={this.state.showNewText}
+                                showNewRerun={this.state.showNewRerun}
+                                showNewSchema={this.state.showNewSchema}
+                                onError={this.onError}
+                                onHideNewRun={() => this.setState({ showNewRun: false })}
+                                onHideNewText={() => this.setState({ showNewText: false })}
+                                onHideNewRerun={() => this.setState({ showNewRerun: false })}
+                                onHideNewSchema={() => this.setState({ showNewSchema: false })}
+                                handleCheckBundle={this.handleCheckBundle}
+                                confirmBundleRowAction={this.confirmBundleRowAction}
+                                setDeleteItemCallback={this.setDeleteItemCallback}
+                                addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
+                                addShowContentBundleRowsCallback={
+                                    this.addShowContentBundleRowsCallback
+                                }
+                                onAsyncItemLoad={this.onAsyncItemLoad}
+                                updateBundleBlockSchema={this.updateBundleBlockSchema}
+                                updateSchemaItem={this.updateSchemaItem}
+                                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
+                                addImageDisplay={this.addImageDisplay}
+                            />
                             {this.state.BulkBundleDialog}
                         </div>
                     )}
@@ -2098,6 +2093,13 @@ const styles = (theme) => ({
         backgroundColor: 'white',
         width: '100%',
     },
+    rawDisplayContainer: {
+        height: containerHeight,
+        backgroundColor: 'white',
+        position: 'fixed',
+        zIndex: 7,
+        width: '100%',
+    },
     scrollToBottom: {
         zIndex: 6,
         borderRadius: '400px',
@@ -2133,9 +2135,6 @@ const styles = (theme) => ({
     },
     loaderContainer: {
         paddingTop: 35,
-    },
-    rawDisplayContainer: {
-        width: '100%',
     },
     rawDisplayInfo: {
         padding: 10,
