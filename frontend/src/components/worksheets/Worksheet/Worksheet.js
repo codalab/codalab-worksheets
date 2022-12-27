@@ -1788,6 +1788,7 @@ class Worksheet extends React.Component {
             bundleIsOpen,
             openBundleUUID,
             openBundleAfterSortKey,
+            worksheetWidthPercentage,
         } = this.state;
 
         this.setupEventHandlers();
@@ -1974,7 +1975,10 @@ class Worksheet extends React.Component {
                         </div>
                     </div>
                 )}
-                <div className={classes.worksheetContainer}>
+                <div
+                    className={classes.worksheetContainer}
+                    style={{ width: worksheetWidthPercentage }}
+                >
                     {this.state.focusIndex === -1 ? (
                         <div className={classes.worksheetDummyHeader} id='worksheet_dummy_header' />
                     ) : (
@@ -2103,7 +2107,7 @@ const styles = (theme) => ({
         overflowX: 'hidden',
         zIndex: 5,
         backgroundColor: 'white',
-        width: '100%',
+        margin: '0 auto',
     },
     worksheetDummyHeader: {
         backgroundColor: '#F1F8FE',

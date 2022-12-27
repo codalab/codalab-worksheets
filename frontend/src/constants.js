@@ -10,7 +10,7 @@ export const WORKSHEET_HEADER_HEIGHT = 78;
 export const FOOTER_HEIGHT = 25;
 
 // Worksheet width
-export const EXPANDED_WORKSHEET_WIDTH = '99%';
+export const EXPANDED_WORKSHEET_WIDTH = '100%';
 export const NARROW_WORKSHEET_WIDTH = '65%';
 export const FILE_SIZE_LIMIT_GB = 2;
 export const FILE_SIZE_LIMIT_B = FILE_SIZE_LIMIT_GB * 1024 * 1024 * 1024;
