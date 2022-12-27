@@ -13,20 +13,21 @@ import BundleDetailSideBar from './BundleDetailSideBar';
 import BundleActions from './BundleActions';
 
 const BundleDetail = ({
+    wsUUID,
     uuid,
+    after_sort_key,
     bundleInfoFromRow,
     bundleMetadataChanged,
     contentExpanded,
     onOpen,
     onUpdate,
-    rerunItem,
     showNewRerun,
     showDetail,
     handleDetailClick,
     editPermission,
     sidebarExpanded,
     hideBundlePageLink,
-    showBorder,
+    fullMinHeight,
 }) => {
     const [bundleInfo, setBundleInfo] = useState(null);
     const [contentType, setContentType] = useState(null);
@@ -240,11 +241,12 @@ const BundleDetail = ({
             ref={(node) => scrollToNewlyOpenedDetail(node)}
             buttons={
                 <BundleActions
+                    wsUUID={wsUUID}
+                    after_sort_key={after_sort_key}
                     showNewRerun={showNewRerun}
                     showDetail={showDetail}
                     handleDetailClick={handleDetailClick}
                     bundleInfo={bundleInfo}
-                    rerunItem={rerunItem}
                     onComplete={bundleMetadataChanged}
                     editPermission={editPermission}
                 />
@@ -258,7 +260,7 @@ const BundleDetail = ({
                     hidePageLink={hideBundlePageLink}
                 />
             }
-            showBorder={showBorder}
+            fullMinHeight={fullMinHeight}
         >
             <MainContent
                 bundleInfo={bundleInfo}

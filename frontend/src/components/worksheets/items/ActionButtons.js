@@ -1,7 +1,8 @@
 // @flow
 import * as React from 'react';
-import Button from '@material-ui/core/Button';
 import { withStyles } from '@material-ui/core/styles';
+import Button from '@material-ui/core/Button';
+import ArrowBack from '@material-ui/icons/ArrowBack';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
@@ -40,6 +41,8 @@ class ActionButtons extends React.Component<{
     render() {
         const {
             classes,
+            bundleIsOpen,
+            onBackButtonClick,
             onShowNewRun,
             onShowNewText,
             onShowNewSchema,
@@ -61,14 +64,22 @@ class ActionButtons extends React.Component<{
                     ev.stopPropagation();
                 }}
             >
-                {' '}
+                <Button
+                    size='small'
+                    color='inherit'
+                    aria-label='Go back to previous view.'
+                    onClick={onBackButtonClick}
+                >
+                    <ArrowBack className={classes.buttonIcon} />
+                    Back
+                </Button>
                 {!showBundleOperationButtons ? (
                     <Button
                         size='small'
                         color='inherit'
                         aria-label='Add Text'
                         onClick={onShowNewText}
-                        disabled={!editPermission}
+                        disabled={!editPermission || bundleIsOpen}
                     >
                         <AddIcon className={classes.buttonIcon} />
                         Text
@@ -84,7 +95,7 @@ class ActionButtons extends React.Component<{
                             aria-controls='upload-menu'
                             aria-haspopup='true'
                             onClick={showUploadMenu}
-                            disabled={!editPermission}
+                            disabled={!editPermission || bundleIsOpen}
                         >
                             <UploadIcon className={classes.buttonIcon} />
                             Upload
@@ -131,7 +142,7 @@ class ActionButtons extends React.Component<{
                         color='inherit'
                         aria-label='Add New Run'
                         onClick={onShowNewRun}
-                        disabled={!editPermission}
+                        disabled={!editPermission || bundleIsOpen}
                     >
                         <RunIcon className={classes.buttonIcon} />
                         Run
@@ -146,39 +157,39 @@ class ActionButtons extends React.Component<{
                         showBundleContent={showBundleContent}
                     />
                 ) : null}
-                <Tooltip title='Paste cut/copied bundles to this worksheet'>
+                <Tooltip title='Paste cut/copied bundles to this worksheet.'>
                     <Button
                         size='small'
                         color='inherit'
                         aria-label='Paste'
                         onClick={toggleCmdDialog('paste')}
-                        disabled={!editPermission || !showPasteButton}
+                        disabled={!editPermission || !showPasteButton || bundleIsOpen}
                         id='paste-button'
                     >
                         <NoteAddIcon className={classes.buttonIcon} />
-                        Paste bundles
+                        Paste
                     </Button>
                 </Tooltip>
-                <Tooltip title='Add a new schema'>
+                <Tooltip title='Add a new schema.'>
                     <Button
                         size='small'
                         color='inherit'
                         aria-label='schema'
                         onClick={onShowNewSchema}
-                        disabled={!editPermission}
+                        disabled={!editPermission || bundleIsOpen}
                         id='add-schema-button'
                     >
                         <PlaylistAddIcon className={classes.buttonIcon} />
                         Schema
                     </Button>
                 </Tooltip>
-                <Tooltip title='Add an image'>
+                <Tooltip title='Add an image.'>
                     <Button
                         size='small'
                         color='inherit'
                         aria-label='image'
                         onClick={this.uploadNewImage}
-                        disabled={!editPermission}
+                        disabled={!editPermission || bundleIsOpen}
                         id='add-image-button'
                     >
                         <label htmlFor='codalab-image-upload-input'></label>
@@ -206,7 +217,7 @@ const styles = (theme) => ({
         },
     },
     buttonIcon: {
-        marginRight: theme.spacing.large,
+        marginRight: 6,
     },
     uploadButton: {
         padding: 0,

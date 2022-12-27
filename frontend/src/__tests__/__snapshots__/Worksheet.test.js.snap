@@ -22,14 +22,14 @@ Object {
               class="header-row"
             >
               <div
-                class="MuiGrid-container-12 MuiGrid-direction-xs-column-15"
+                class="MuiGrid-container-14 MuiGrid-direction-xs-column-17"
               >
                 <div
-                  class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-start-21 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
+                  class="MuiGrid-container-14 MuiGrid-item-15 MuiGrid-align-items-xs-flex-start-23 MuiGrid-justify-xs-space-between-33 MuiGrid-grid-xs-12-54"
                 >
                   <h5
                     class="worksheet-title"
-                    style="margin-bottom: 0px;"
+                    style="margin-bottom: 0px; padding-left: 11px;"
                   >
                     <span
                       class="editable-field"
@@ -40,7 +40,7 @@ Object {
                     
                   </h5>
                   <div
-                    class="MuiGrid-item-13"
+                    class="MuiGrid-item-15"
                     style="padding-top: 10px;"
                   >
                     <span
@@ -53,7 +53,7 @@ Object {
                      by 
                     codalab
                     <div
-                      class="Worksheet-permissions-8"
+                      class="Worksheet-permissions-9"
                       style="display: inline-block; margin: 0px 5px;"
                     >
                       <div>
@@ -93,26 +93,55 @@ Object {
                   </div>
                 </div>
                 <div
-                  class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-end-22 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
+                  class="MuiGrid-container-14 MuiGrid-item-15 MuiGrid-align-items-xs-flex-end-24 MuiGrid-justify-xs-space-between-33 MuiGrid-grid-xs-12-54"
                   style="line-height: 2.5;"
                 >
                   <div
-                    class="MuiGrid-item-13"
+                    class="MuiGrid-item-15"
                   >
                     <div>
-                       
                       <button
-                        aria-label="Add Text"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        aria-label="Go back to previous view."
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         tabindex="0"
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M0 0h24v24H0z"
+                              fill="none"
+                            />
+                            <path
+                              d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+                            />
+                          </svg>
+                          Back
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-203"
+                        />
+                      </button>
+                      <button
+                        aria-label="Add Text"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                        tabindex="0"
+                        type="button"
+                      >
+                        <span
+                          class="MuiButton-label-118"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -131,7 +160,7 @@ Object {
                           Text
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                       <span>
@@ -139,17 +168,17 @@ Object {
                           aria-controls="upload-menu"
                           aria-haspopup="true"
                           aria-label="Add New Upload"
-                          class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                          class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                           id="upload-button"
                           tabindex="0"
                           type="button"
                         >
                           <span
-                            class="MuiButton-label-116"
+                            class="MuiButton-label-118"
                           >
                             <svg
                               aria-hidden="true"
-                              class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                              class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
                               focusable="false"
                               role="presentation"
                               viewBox="0 0 24 24"
@@ -168,22 +197,22 @@ Object {
                             Upload
                           </span>
                           <span
-                            class="MuiTouchRipple-root-248"
+                            class="MuiTouchRipple-root-203"
                           />
                         </button>
                       </span>
                       <button
                         aria-label="Add New Run"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         tabindex="0"
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -199,23 +228,23 @@ Object {
                           Run
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                       <button
                         aria-label="Paste"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         id="paste-button"
                         tabindex="0"
-                        title="Paste cut/copied bundles to this worksheet"
+                        title="Paste cut/copied bundles to this worksheet."
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -228,26 +257,26 @@ Object {
                               d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2zm-3-7V3.5L18.5 9H13z"
                             />
                           </svg>
-                          Paste bundles
+                          Paste
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                       <button
                         aria-label="schema"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         id="add-schema-button"
                         tabindex="0"
-                        title="Add a new schema"
+                        title="Add a new schema."
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -263,26 +292,26 @@ Object {
                           Schema
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                       <button
                         aria-label="image"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         id="add-image-button"
                         tabindex="0"
-                        title="Add an image"
+                        title="Add an image."
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <label
                             for="codalab-image-upload-input"
                           />
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -298,29 +327,29 @@ Object {
                           Image
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                     </div>
                   </div>
                   <div
-                    class="MuiGrid-item-13"
+                    class="MuiGrid-item-15"
                   >
                     <div
                       style="display: inline-block;"
                     >
                       <button
                         aria-label="Edit Source"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         tabindex="0"
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 Worksheet-buttonIcon-10"
+                            class="MuiSvgIcon-root-146 Worksheet-buttonIcon-11"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -338,22 +367,22 @@ Object {
                           Edit Source
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                       <button
                         aria-label="Expand CLI"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         id="terminal-button"
                         tabindex="0"
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144 Worksheet-buttonIcon-10"
+                            class="MuiSvgIcon-root-146 Worksheet-buttonIcon-11"
                             focusable="false"
                             role="presentation"
                             viewBox="0 0 24 24"
@@ -370,24 +399,24 @@ Object {
                           SHOW TERMINAL
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                       <button
                         aria-label="Delete Worksheet"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
                         tabindex="0"
                         type="button"
                       >
                         <span
-                          class="MuiButton-label-116"
+                          class="MuiButton-label-118"
                         >
                           <svg
                             aria-hidden="true"
-                            class="MuiSvgIcon-root-144"
+                            class="MuiSvgIcon-root-146"
                             focusable="false"
                             role="presentation"
-                            title="Delete this worksheet"
+                            title="Delete this worksheet."
                             viewBox="0 0 24 24"
                           >
                             <path
@@ -400,24 +429,24 @@ Object {
                           </svg>
                         </span>
                         <span
-                          class="MuiTouchRipple-root-248"
+                          class="MuiTouchRipple-root-203"
                         />
                       </button>
                     </div>
                     <a
                       aria-label="keyboard shortcuts"
-                      class="MuiButtonBase-root-141 MuiIconButton-root-165 MuiIconButton-colorInherit-166"
+                      class="MuiButtonBase-root-143 MuiIconButton-root-167 MuiIconButton-colorInherit-168"
                       href="#"
                       role="button"
                       tabindex="0"
                       title="Shortcuts"
                     >
                       <span
-                        class="MuiIconButton-label-170"
+                        class="MuiIconButton-label-172"
                       >
                         <svg
                           aria-hidden="true"
-                          class="MuiSvgIcon-root-144 MuiSvgIcon-fontSizeSmall-151"
+                          class="MuiSvgIcon-root-146 MuiSvgIcon-fontSizeSmall-153"
                           focusable="false"
                           role="presentation"
                           viewBox="0 0 24 24"
@@ -435,23 +464,23 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-248"
+                        class="MuiTouchRipple-root-203"
                       />
                     </a>
                     <a
                       aria-label="toggle worksheet width"
-                      class="MuiButtonBase-root-141 MuiIconButton-root-165 MuiIconButton-colorInherit-166"
+                      class="MuiButtonBase-root-143 MuiIconButton-root-167 MuiIconButton-colorInherit-168"
                       href="#"
                       role="button"
                       tabindex="0"
                       title="Expand/Shrink"
                     >
                       <span
-                        class="MuiIconButton-label-170"
+                        class="MuiIconButton-label-172"
                       >
                         <svg
                           aria-hidden="true"
-                          class="MuiSvgIcon-root-144 MuiSvgIcon-fontSizeSmall-151"
+                          class="MuiSvgIcon-root-146 MuiSvgIcon-fontSizeSmall-153"
                           focusable="false"
                           role="presentation"
                           viewBox="0 0 24 24"
@@ -466,7 +495,7 @@ Object {
                         </svg>
                       </span>
                       <span
-                        class="MuiTouchRipple-root-248"
+                        class="MuiTouchRipple-root-203"
                       />
                     </a>
                   </div>
@@ -477,844 +506,13 @@ Object {
         </div>
       </div>
       <div
-        class="search-hidden"
+        class="WorksheetTerminal-terminalContainer-173 "
         id="ws_search"
-      >
-        <div
-          class=""
-        >
-          <div
-            class="terminal"
-            id="command_line"
-            style="height: 30px; --terminal-height: 30; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
-          >
-            <div
-              class="terminal-wrapper"
-              style="visibility: hidden;"
-            >
-              <svg
-                style="display: none;"
-                viewBox="0 0 16 14"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <title
-                  id="title2"
-                >
-                  rounded
-                </title>
-                <path
-                  d="m 14,10 h 2 v 1 a 3,3 0 0 1 -3,3 H 3 A 3,3 0 0 1 0,11 H 4.5 A 1.00012,1.00012 0 0 0 5.207,10.707 L 6.5,9.414 7.793,10.707 a 0.99963,0.99963 0 0 0 1.41406,0 l 2.36719,-2.36719 1.80127,1.44092 A 0.99807,0.99807 0 0 0 14,10 Z M 16,3 V 8 H 14.35059 L 12.12451,6.21924 A 0.99846,0.99846 0 0 0 10.793,6.293 L 8.5,8.586 7.207,7.293 a 0.99962,0.99962 0 0 0 -1.41406,0 L 4.08594,9 H 0 V 3 A 3,3 0 0 1 3,0 h 10 a 3,3 0 0 1 3,3 z M 6,4.5 A 1.5,1.5 0 1 0 4.5,6 1.5,1.5 0 0 0 6,4.5 Z"
-                  id="terminal-broken-image"
-                />
-              </svg>
-              <div
-                class="terminal-output"
-                role="log"
-              >
-                <div
-                  data-index="0"
-                >
-                  <div
-                    style="width: 100%;"
-                  >
-                    <span
-                      data-text="Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.)."
-                    >
-                      Click here to enter commands (e.g., help, run '&lt;bash command&gt;', rm &lt;bundle&gt;, kill &lt;bundle&gt;, etc.).
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div
-                class="cmd"
-                style="width: 100%;"
-              >
-                <div
-                  class="cmd-wrapper"
-                  style=""
-                >
-                  <span
-                    class="cmd-prompt"
-                    style=""
-                  >
-                    <span
-                      data-text="CodaLab> "
-                    >
-                      <span
-                        style="width: 9ch;"
-                      >
-                        CodaLab&gt; 
-                      </span>
-                    </span>
-                  </span>
-                  <div
-                    aria-hidden="true"
-                    class="cmd-cursor-line"
-                    role="presentation"
-                  >
-                    <span />
-                    <span
-                      class="cmd-cursor"
-                    >
-                      <span
-                        class="end"
-                        data-text=""
-                      >
-                        <span>
-                           
-                          <span />
-                        </span>
-                      </span>
-                    </span>
-                    <span />
-                  </div>
-                </div>
-                <textarea
-                  autocapitalize="off"
-                  class="cmd-clipboard"
-                  data-cmd-prompt="CodaLab> "
-                  spellcheck="false"
-                  style="top: 0px;"
-                  tabindex="1"
-                />
-              </div>
-            </div>
-            <div
-              class="terminal-font"
-            >
-               
-            </div>
-            <div
-              class="terminal-fill"
-            />
-          </div>
-        </div>
-        <div
-          class="dragbar"
-          id="dragbar_horizontal"
-        />
-      </div>
-      <div
-        class="Toastify"
-      />
-      <div
-        id="worksheet_container"
-      >
-        <div
-          class="search-hidden"
-          id="worksheet"
-        >
-          <div
-            class="Worksheet-worksheetDesktop-1"
-          >
-            <div
-              class="Worksheet-worksheetOuter-2"
-              style="width: 99%;"
-            >
-              <div
-                class="Worksheet-worksheetDummyHeader-4"
-                id="worksheet_dummy_header"
-              />
-              <div
-                class="Worksheet-worksheetInner-3"
-              >
-                <div
-                  class=" worksheet_content"
-                  id="worksheet_content"
-                >
-                  <div
-                    id="worksheet_items"
-                  >
-                    <div
-                      class="ItemWrapper-container-256"
-                      id="codalab-worksheet-item-0"
-                    >
-                      <div
-                        class="ItemWrapper-main-258"
-                      >
-                        <div
-                          class="ws-item MarkdownItem-textContainer-260"
-                        >
-                          <div
-                            class="type-markup  MarkdownItem-textRender-263"
-                          >
-                            <p>
-                              123
-1132132312
-                            </p>
-                            
-
-                          </div>
-                          <div
-                            class="MarkdownItem-buttonsPanel-261"
-                          >
-                            <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
-                              tabindex="0"
-                              title="Edit"
-                              type="button"
-                            >
-                              <span
-                                class="MuiIconButton-label-170"
-                              >
-                                <svg
-                                  aria-hidden="true"
-                                  class="MuiSvgIcon-root-144"
-                                  focusable="false"
-                                  role="presentation"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                                  />
-                                  <path
-                                    d="M0 0h24v24H0z"
-                                    fill="none"
-                                  />
-                                </svg>
-                              </span>
-                              <span
-                                class="MuiTouchRipple-root-248"
-                              />
-                            </button>
-                              
-                            <button
-                              class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
-                              tabindex="0"
-                              title="Delete"
-                              type="button"
-                            >
-                              <span
-                                class="MuiIconButton-label-170"
-                              >
-                                <svg
-                                  aria-hidden="true"
-                                  class="MuiSvgIcon-root-144"
-                                  focusable="false"
-                                  role="presentation"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                  />
-                                  <path
-                                    d="M0 0h24v24H0z"
-                                    fill="none"
-                                  />
-                                </svg>
-                              </span>
-                              <span
-                                class="MuiTouchRipple-root-248"
-                              />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <input
-                      id="codalab-file-upload-input"
-                      multiple=""
-                      style="display: none;"
-                      type="file"
-                    />
-                    <input
-                      directory="true"
-                      id="codalab-dir-upload-input"
-                      mozdirectory="true"
-                      style="display: none;"
-                      type="file"
-                      webkitdirectory="true"
-                    />
-                    <input
-                      accept="image/*"
-                      id="codalab-image-upload-input"
-                      style="display: none;"
-                      type="file"
-                    />
-                  </div>
-                </div>
-              </div>
-              <button
-                class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-contained-126 MuiButton-containedPrimary-127 MuiButton-raised-129 MuiButton-raisedPrimary-130"
-                style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px; z-index: 10;"
-                tabindex="0"
-                type="button"
-              >
-                <span
-                  class="MuiButton-label-116"
-                >
-                  <svg
-                    aria-hidden="true"
-                    class="MuiSvgIcon-root-144"
-                    focusable="false"
-                    role="presentation"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
-                    />
-                    <path
-                      d="M0 0h24v24H0z"
-                      fill="none"
-                    />
-                  </svg>
-                </span>
-                <span
-                  class="MuiTouchRipple-root-248"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div />
-      <div
-        class="progress-message"
-        id="update_progress"
-      >
-        <img
-          alt="Updating"
-          src="/img/Preloader_Small.gif"
-        />
-         Updating...
-      </div>
-    </div>
-    <div
-      aria-hidden="true"
-      class="MuiModal-root-155 MuiModal-hidden-156"
-      id="upload-menu"
-      role="presentation"
-    >
-      <div
-        aria-hidden="true"
-        class="MuiBackdrop-root-199 MuiBackdrop-invisible-200"
-        style="opacity: 0;"
-      />
-      <div
-        class="MuiPaper-root-201 MuiMenu-paper-153 MuiPaper-elevation0-203 MuiPaper-rounded-202 MuiPopover-paper-154"
-        role="document"
-        style="opacity: 0; transform: scale(0.75, 0.5625);"
-        tabindex="-1"
-      >
-        <ul
-          class="MuiList-root-228 MuiList-padding-229"
-          role="menu"
-        >
-          <li
-            class="MuiButtonBase-root-141 MuiListItem-root-236 MuiListItem-default-239 MuiListItem-gutters-244 MuiListItem-button-245 MuiMenuItem-root-233 WithStyles-MenuItem--root-232 MuiMenuItem-gutters-234"
-            role="menuitem"
-            tabindex="0"
-          >
-            <label
-              class="ActionButtons-uploadLabel-114"
-              for="codalab-file-upload-input"
-            >
-              File(s) Upload
-            </label>
-            <span
-              class="MuiTouchRipple-root-248"
-            />
-          </li>
-          <li
-            class="MuiButtonBase-root-141 MuiListItem-root-236 MuiListItem-default-239 MuiListItem-gutters-244 MuiListItem-button-245 MuiMenuItem-root-233 WithStyles-MenuItem--root-232 MuiMenuItem-gutters-234"
-            role="menuitem"
-            tabindex="-1"
-          >
-            <label
-              class="ActionButtons-uploadLabel-114"
-              for="codalab-dir-upload-input"
-            >
-              Folder Upload
-            </label>
-            <span
-              class="MuiTouchRipple-root-248"
-            />
-          </li>
-        </ul>
-      </div>
-    </div>
-  </body>,
-  "container": <div>
-    <div
-      class="sticky-outer-wrapper"
-    >
-      <div
-        class="sticky-inner-wrapper "
-        style="position: relative; z-index: 1059; transform: translate3d(0,0px,0);"
-      >
-        <div
-          class="worksheet_content"
-          style="background-color: white; padding-left: 28px; padding-right: 28px; position: relative; border-bottom: 1px solid #ddd;"
-        >
-          <div
-            class="header-row"
-          >
-            <div
-              class="MuiGrid-container-12 MuiGrid-direction-xs-column-15"
-            >
-              <div
-                class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-start-21 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
-              >
-                <h5
-                  class="worksheet-title"
-                  style="margin-bottom: 0px;"
-                >
-                  <span
-                    class="editable-field"
-                    style="color: rgb(34, 94, 168);"
-                  >
-                    &lt;none&gt;
-                  </span>
-                  
-                </h5>
-                <div
-                  class="MuiGrid-item-13"
-                  style="padding-top: 10px;"
-                >
-                  <span
-                    class="editable-field"
-                    style="color: rgb(34, 94, 168);"
-                  >
-                    codalab-
-                  </span>
-                  
-                   by 
-                  codalab
-                  <div
-                    class="Worksheet-permissions-8"
-                    style="display: inline-block; margin: 0px 5px;"
-                  >
-                    <div>
-                      [you(
-                      <span
-                        class="ws-permission-all"
-                      >
-                        all
-                      </span>
-                      )
-                      <span>
-                         
-                        public
-                        (
-                        <span
-                          class="ws-permission-read"
-                        >
-                          read
-                        </span>
-                        )
-                      </span>
-                      ]
-                    </div>
-                  </div>
-                   tags: 
-                  <div
-                    style="display: inline-block;"
-                  >
-                    <span
-                      class="editable-field"
-                      style="color: rgb(34, 94, 168);"
-                    >
-                      &lt;none&gt;
-                    </span>
-                    
-                  </div>
-                </div>
-              </div>
-              <div
-                class="MuiGrid-container-12 MuiGrid-item-13 MuiGrid-align-items-xs-flex-end-22 MuiGrid-justify-xs-space-between-31 MuiGrid-grid-xs-12-52"
-                style="line-height: 2.5;"
-              >
-                <div
-                  class="MuiGrid-item-13"
-                >
-                  <div>
-                     
-                    <button
-                      aria-label="Add Text"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      tabindex="0"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M0 0h24v24H0V0z"
-                            fill="none"
-                          />
-                          <path
-                            d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"
-                          />
-                          <path
-                            d="M11 17h2v-4h4v-2h-4V7h-2v4H7v2h4z"
-                          />
-                        </svg>
-                        Text
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                    <span>
-                      <button
-                        aria-controls="upload-menu"
-                        aria-haspopup="true"
-                        aria-label="Add New Upload"
-                        class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                        id="upload-button"
-                        tabindex="0"
-                        type="button"
-                      >
-                        <span
-                          class="MuiButton-label-116"
-                        >
-                          <svg
-                            aria-hidden="true"
-                            class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
-                            focusable="false"
-                            role="presentation"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              d="M0 0h24v24H0V0z"
-                              fill="none"
-                            />
-                            <path
-                              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"
-                            />
-                            <path
-                              d="M8 13h2.55v3h2.9v-3H16l-4-4z"
-                            />
-                          </svg>
-                          Upload
-                        </span>
-                        <span
-                          class="MuiTouchRipple-root-248"
-                        />
-                      </button>
-                    </span>
-                    <button
-                      aria-label="Add New Run"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      tabindex="0"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M0 0h24v24H0z"
-                            fill="none"
-                          />
-                          <path
-                            d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-                          />
-                        </svg>
-                        Run
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                    <button
-                      aria-label="Paste"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      id="paste-button"
-                      tabindex="0"
-                      title="Paste cut/copied bundles to this worksheet"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M0 0h24v24H0z"
-                            fill="none"
-                          />
-                          <path
-                            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2zm-3-7V3.5L18.5 9H13z"
-                          />
-                        </svg>
-                        Paste bundles
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                    <button
-                      aria-label="schema"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      id="add-schema-button"
-                      tabindex="0"
-                      title="Add a new schema"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M0 0h24v24H0z"
-                            fill="none"
-                          />
-                          <path
-                            d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"
-                          />
-                        </svg>
-                        Schema
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                    <button
-                      aria-label="image"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      id="add-image-button"
-                      tabindex="0"
-                      title="Add an image"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <label
-                          for="codalab-image-upload-input"
-                        />
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 ActionButtons-buttonIcon-112"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"
-                          />
-                          <path
-                            d="M0 0h24v24H0z"
-                            fill="none"
-                          />
-                        </svg>
-                        Image
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div
-                  class="MuiGrid-item-13"
-                >
-                  <div
-                    style="display: inline-block;"
-                  >
-                    <button
-                      aria-label="Edit Source"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      tabindex="0"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 Worksheet-buttonIcon-10"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M0 0h24v24H0V0z"
-                            fill="none"
-                          />
-                          <g>
-                            <path
-                              d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"
-                            />
-                          </g>
-                        </svg>
-                        Edit Source
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                    <button
-                      aria-label="Expand CLI"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      id="terminal-button"
-                      tabindex="0"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144 Worksheet-buttonIcon-10"
-                          focusable="false"
-                          role="presentation"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M24 24H0V0h24v24z"
-                            fill="none"
-                            opacity=".87"
-                          />
-                          <path
-                            d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"
-                          />
-                        </svg>
-                        SHOW TERMINAL
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                    <button
-                      aria-label="Delete Worksheet"
-                      class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-text-117 MuiButton-flat-120 MuiButton-sizeSmall-138 MuiButton-colorInherit-136"
-                      tabindex="0"
-                      type="button"
-                    >
-                      <span
-                        class="MuiButton-label-116"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          class="MuiSvgIcon-root-144"
-                          focusable="false"
-                          role="presentation"
-                          title="Delete this worksheet"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"
-                          />
-                          <path
-                            d="M0 0h24v24H0V0z"
-                            fill="none"
-                          />
-                        </svg>
-                      </span>
-                      <span
-                        class="MuiTouchRipple-root-248"
-                      />
-                    </button>
-                  </div>
-                  <a
-                    aria-label="keyboard shortcuts"
-                    class="MuiButtonBase-root-141 MuiIconButton-root-165 MuiIconButton-colorInherit-166"
-                    href="#"
-                    role="button"
-                    tabindex="0"
-                    title="Shortcuts"
-                  >
-                    <span
-                      class="MuiIconButton-label-170"
-                    >
-                      <svg
-                        aria-hidden="true"
-                        class="MuiSvgIcon-root-144 MuiSvgIcon-fontSizeSmall-151"
-                        focusable="false"
-                        role="presentation"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          d="M0 0h24v24H0V0z"
-                          fill="none"
-                        />
-                        <path
-                          d="M11 7h2v2h-2zM11 11h2v6h-2z"
-                        />
-                        <path
-                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-                        />
-                      </svg>
-                    </span>
-                    <span
-                      class="MuiTouchRipple-root-248"
-                    />
-                  </a>
-                  <a
-                    aria-label="toggle worksheet width"
-                    class="MuiButtonBase-root-141 MuiIconButton-root-165 MuiIconButton-colorInherit-166"
-                    href="#"
-                    role="button"
-                    tabindex="0"
-                    title="Expand/Shrink"
-                  >
-                    <span
-                      class="MuiIconButton-label-170"
-                    >
-                      <svg
-                        aria-hidden="true"
-                        class="MuiSvgIcon-root-144 MuiSvgIcon-fontSizeSmall-151"
-                        focusable="false"
-                        role="presentation"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"
-                        />
-                        <path
-                          d="M0 0h24v24H0z"
-                          fill="none"
-                        />
-                      </svg>
-                    </span>
-                    <span
-                      class="MuiTouchRipple-root-248"
-                    />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div
-      class="search-hidden"
-      id="ws_search"
-    >
-      <div
-        class=""
       >
         <div
           class="terminal"
           id="command_line"
-          style="height: 30px; --terminal-height: 30; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
+          style="--terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
         >
           <div
             class="terminal-wrapper"
@@ -1416,6 +614,845 @@ Object {
             class="terminal-fill"
           />
         </div>
+        <div
+          class="dragbar"
+          id="dragbar_horizontal"
+        />
+      </div>
+      <div
+        class="Worksheet-worksheetContainer-2"
+        id="worksheet_container"
+        style="width: 100%;"
+      >
+        <div
+          class="Worksheet-worksheetDummyHeader-3"
+          id="worksheet_dummy_header"
+        />
+        <div
+          class=" worksheet_content"
+          id="worksheet_content"
+        >
+          <div
+            class="WorksheetItemList-wsItemsDisplayContainer-260"
+          >
+            <div
+              class="WorksheetItemList-wsItemListContainer-261"
+            >
+              <div
+                class="ItemWrapper-container-262"
+                id="codalab-worksheet-item-0"
+              >
+                <div
+                  class="ItemWrapper-main-264 ItemWrapper-mainHover-265"
+                >
+                  <div
+                    class="ws-item MarkdownItem-textContainer-267"
+                  >
+                    <div
+                      class="type-markup  MarkdownItem-textRender-270"
+                    >
+                      <p>
+                        123
+1132132312
+                      </p>
+                      
+
+                    </div>
+                    <div
+                      class="MarkdownItem-buttonsPanel-268"
+                    >
+                      <button
+                        class="MuiButtonBase-root-143 MuiIconButton-root-167 MarkdownItem-iconButtonRoot-269"
+                        tabindex="0"
+                        title="Edit"
+                        type="button"
+                      >
+                        <span
+                          class="MuiIconButton-label-172"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-146"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                            />
+                            <path
+                              d="M0 0h24v24H0z"
+                              fill="none"
+                            />
+                          </svg>
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-203"
+                        />
+                      </button>
+                        
+                      <button
+                        class="MuiButtonBase-root-143 MuiIconButton-root-167 MarkdownItem-iconButtonRoot-269"
+                        tabindex="0"
+                        title="Delete"
+                        type="button"
+                      >
+                        <span
+                          class="MuiIconButton-label-172"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-146"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                            />
+                            <path
+                              d="M0 0h24v24H0z"
+                              fill="none"
+                            />
+                          </svg>
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-203"
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <input
+              id="codalab-file-upload-input"
+              multiple=""
+              style="display: none;"
+              type="file"
+            />
+            <input
+              directory="true"
+              id="codalab-dir-upload-input"
+              mozdirectory="true"
+              style="display: none;"
+              type="file"
+              webkitdirectory="true"
+            />
+            <input
+              accept="image/*"
+              id="codalab-image-upload-input"
+              style="display: none;"
+              type="file"
+            />
+          </div>
+        </div>
+      </div>
+      <button
+        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-contained-128 MuiButton-containedPrimary-129 MuiButton-raised-131 MuiButton-raisedPrimary-132 Worksheet-scrollToBottom-5"
+        tabindex="0"
+        type="button"
+      >
+        <span
+          class="MuiButton-label-118"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root-146"
+            focusable="false"
+            role="presentation"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+            />
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+          </svg>
+        </span>
+        <span
+          class="MuiTouchRipple-root-203"
+        />
+      </button>
+      <div />
+      <div
+        class="progress-message"
+        id="update_progress"
+      >
+        <img
+          alt="Updating"
+          src="/img/Preloader_Small.gif"
+        />
+         Updating...
+      </div>
+      <div
+        class="Toastify"
+      />
+    </div>
+    <div
+      aria-hidden="true"
+      class="MuiModal-root-157 MuiModal-hidden-158"
+      id="upload-menu"
+      role="presentation"
+    >
+      <div
+        aria-hidden="true"
+        class="MuiBackdrop-root-210 MuiBackdrop-invisible-211"
+        style="opacity: 0;"
+      />
+      <div
+        class="MuiPaper-root-212 MuiMenu-paper-155 MuiPaper-elevation0-214 MuiPaper-rounded-213 MuiPopover-paper-156"
+        role="document"
+        style="opacity: 0; transform: scale(0.75, 0.5625);"
+        tabindex="-1"
+      >
+        <ul
+          class="MuiList-root-239 MuiList-padding-240"
+          role="menu"
+        >
+          <li
+            class="MuiButtonBase-root-143 MuiListItem-root-247 MuiListItem-default-250 MuiListItem-gutters-255 MuiListItem-button-256 MuiMenuItem-root-244 WithStyles-MenuItem--root-243 MuiMenuItem-gutters-245"
+            role="menuitem"
+            tabindex="0"
+          >
+            <label
+              class="ActionButtons-uploadLabel-116"
+              for="codalab-file-upload-input"
+            >
+              File(s) Upload
+            </label>
+            <span
+              class="MuiTouchRipple-root-203"
+            />
+          </li>
+          <li
+            class="MuiButtonBase-root-143 MuiListItem-root-247 MuiListItem-default-250 MuiListItem-gutters-255 MuiListItem-button-256 MuiMenuItem-root-244 WithStyles-MenuItem--root-243 MuiMenuItem-gutters-245"
+            role="menuitem"
+            tabindex="-1"
+          >
+            <label
+              class="ActionButtons-uploadLabel-116"
+              for="codalab-dir-upload-input"
+            >
+              Folder Upload
+            </label>
+            <span
+              class="MuiTouchRipple-root-203"
+            />
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="sticky-outer-wrapper"
+    >
+      <div
+        class="sticky-inner-wrapper "
+        style="position: relative; z-index: 1059; transform: translate3d(0,0px,0);"
+      >
+        <div
+          class="worksheet_content"
+          style="background-color: white; padding-left: 28px; padding-right: 28px; position: relative; border-bottom: 1px solid #ddd;"
+        >
+          <div
+            class="header-row"
+          >
+            <div
+              class="MuiGrid-container-14 MuiGrid-direction-xs-column-17"
+            >
+              <div
+                class="MuiGrid-container-14 MuiGrid-item-15 MuiGrid-align-items-xs-flex-start-23 MuiGrid-justify-xs-space-between-33 MuiGrid-grid-xs-12-54"
+              >
+                <h5
+                  class="worksheet-title"
+                  style="margin-bottom: 0px; padding-left: 11px;"
+                >
+                  <span
+                    class="editable-field"
+                    style="color: rgb(34, 94, 168);"
+                  >
+                    &lt;none&gt;
+                  </span>
+                  
+                </h5>
+                <div
+                  class="MuiGrid-item-15"
+                  style="padding-top: 10px;"
+                >
+                  <span
+                    class="editable-field"
+                    style="color: rgb(34, 94, 168);"
+                  >
+                    codalab-
+                  </span>
+                  
+                   by 
+                  codalab
+                  <div
+                    class="Worksheet-permissions-9"
+                    style="display: inline-block; margin: 0px 5px;"
+                  >
+                    <div>
+                      [you(
+                      <span
+                        class="ws-permission-all"
+                      >
+                        all
+                      </span>
+                      )
+                      <span>
+                         
+                        public
+                        (
+                        <span
+                          class="ws-permission-read"
+                        >
+                          read
+                        </span>
+                        )
+                      </span>
+                      ]
+                    </div>
+                  </div>
+                   tags: 
+                  <div
+                    style="display: inline-block;"
+                  >
+                    <span
+                      class="editable-field"
+                      style="color: rgb(34, 94, 168);"
+                    >
+                      &lt;none&gt;
+                    </span>
+                    
+                  </div>
+                </div>
+              </div>
+              <div
+                class="MuiGrid-container-14 MuiGrid-item-15 MuiGrid-align-items-xs-flex-end-24 MuiGrid-justify-xs-space-between-33 MuiGrid-grid-xs-12-54"
+                style="line-height: 2.5;"
+              >
+                <div
+                  class="MuiGrid-item-15"
+                >
+                  <div>
+                    <button
+                      aria-label="Go back to previous view."
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+                          />
+                        </svg>
+                        Back
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <button
+                      aria-label="Add Text"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0V0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"
+                          />
+                          <path
+                            d="M11 17h2v-4h4v-2h-4V7h-2v4H7v2h4z"
+                          />
+                        </svg>
+                        Text
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <span>
+                      <button
+                        aria-controls="upload-menu"
+                        aria-haspopup="true"
+                        aria-label="Add New Upload"
+                        class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                        id="upload-button"
+                        tabindex="0"
+                        type="button"
+                      >
+                        <span
+                          class="MuiButton-label-118"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                            focusable="false"
+                            role="presentation"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M0 0h24v24H0V0z"
+                              fill="none"
+                            />
+                            <path
+                              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"
+                            />
+                            <path
+                              d="M8 13h2.55v3h2.9v-3H16l-4-4z"
+                            />
+                          </svg>
+                          Upload
+                        </span>
+                        <span
+                          class="MuiTouchRipple-root-203"
+                        />
+                      </button>
+                    </span>
+                    <button
+                      aria-label="Add New Run"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                          />
+                        </svg>
+                        Run
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <button
+                      aria-label="Paste"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      id="paste-button"
+                      tabindex="0"
+                      title="Paste cut/copied bundles to this worksheet."
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2zm-3-7V3.5L18.5 9H13z"
+                          />
+                        </svg>
+                        Paste
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <button
+                      aria-label="schema"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      id="add-schema-button"
+                      tabindex="0"
+                      title="Add a new schema."
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                          <path
+                            d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"
+                          />
+                        </svg>
+                        Schema
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <button
+                      aria-label="image"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      id="add-image-button"
+                      tabindex="0"
+                      title="Add an image."
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <label
+                          for="codalab-image-upload-input"
+                        />
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 ActionButtons-buttonIcon-114"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"
+                          />
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                        </svg>
+                        Image
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="MuiGrid-item-15"
+                >
+                  <div
+                    style="display: inline-block;"
+                  >
+                    <button
+                      aria-label="Edit Source"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 Worksheet-buttonIcon-11"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M0 0h24v24H0V0z"
+                            fill="none"
+                          />
+                          <g>
+                            <path
+                              d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"
+                            />
+                          </g>
+                        </svg>
+                        Edit Source
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <button
+                      aria-label="Expand CLI"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      id="terminal-button"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146 Worksheet-buttonIcon-11"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M24 24H0V0h24v24z"
+                            fill="none"
+                            opacity=".87"
+                          />
+                          <path
+                            d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"
+                          />
+                        </svg>
+                        SHOW TERMINAL
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                    <button
+                      aria-label="Delete Worksheet"
+                      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-text-119 MuiButton-flat-122 MuiButton-sizeSmall-140 MuiButton-colorInherit-138"
+                      tabindex="0"
+                      type="button"
+                    >
+                      <span
+                        class="MuiButton-label-118"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146"
+                          focusable="false"
+                          role="presentation"
+                          title="Delete this worksheet."
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"
+                          />
+                          <path
+                            d="M0 0h24v24H0V0z"
+                            fill="none"
+                          />
+                        </svg>
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                  </div>
+                  <a
+                    aria-label="keyboard shortcuts"
+                    class="MuiButtonBase-root-143 MuiIconButton-root-167 MuiIconButton-colorInherit-168"
+                    href="#"
+                    role="button"
+                    tabindex="0"
+                    title="Shortcuts"
+                  >
+                    <span
+                      class="MuiIconButton-label-172"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root-146 MuiSvgIcon-fontSizeSmall-153"
+                        focusable="false"
+                        role="presentation"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M0 0h24v24H0V0z"
+                          fill="none"
+                        />
+                        <path
+                          d="M11 7h2v2h-2zM11 11h2v6h-2z"
+                        />
+                        <path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="MuiTouchRipple-root-203"
+                    />
+                  </a>
+                  <a
+                    aria-label="toggle worksheet width"
+                    class="MuiButtonBase-root-143 MuiIconButton-root-167 MuiIconButton-colorInherit-168"
+                    href="#"
+                    role="button"
+                    tabindex="0"
+                    title="Expand/Shrink"
+                  >
+                    <span
+                      class="MuiIconButton-label-172"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="MuiSvgIcon-root-146 MuiSvgIcon-fontSizeSmall-153"
+                        focusable="false"
+                        role="presentation"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"
+                        />
+                        <path
+                          d="M0 0h24v24H0z"
+                          fill="none"
+                        />
+                      </svg>
+                    </span>
+                    <span
+                      class="MuiTouchRipple-root-203"
+                    />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="WorksheetTerminal-terminalContainer-173 "
+      id="ws_search"
+    >
+      <div
+        class="terminal"
+        id="command_line"
+        style="--terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
+      >
+        <div
+          class="terminal-wrapper"
+          style="visibility: hidden;"
+        >
+          <svg
+            style="display: none;"
+            viewBox="0 0 16 14"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <title
+              id="title2"
+            >
+              rounded
+            </title>
+            <path
+              d="m 14,10 h 2 v 1 a 3,3 0 0 1 -3,3 H 3 A 3,3 0 0 1 0,11 H 4.5 A 1.00012,1.00012 0 0 0 5.207,10.707 L 6.5,9.414 7.793,10.707 a 0.99963,0.99963 0 0 0 1.41406,0 l 2.36719,-2.36719 1.80127,1.44092 A 0.99807,0.99807 0 0 0 14,10 Z M 16,3 V 8 H 14.35059 L 12.12451,6.21924 A 0.99846,0.99846 0 0 0 10.793,6.293 L 8.5,8.586 7.207,7.293 a 0.99962,0.99962 0 0 0 -1.41406,0 L 4.08594,9 H 0 V 3 A 3,3 0 0 1 3,0 h 10 a 3,3 0 0 1 3,3 z M 6,4.5 A 1.5,1.5 0 1 0 4.5,6 1.5,1.5 0 0 0 6,4.5 Z"
+              id="terminal-broken-image"
+            />
+          </svg>
+          <div
+            class="terminal-output"
+            role="log"
+          >
+            <div
+              data-index="0"
+            >
+              <div
+                style="width: 100%;"
+              >
+                <span
+                  data-text="Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.)."
+                >
+                  Click here to enter commands (e.g., help, run '&lt;bash command&gt;', rm &lt;bundle&gt;, kill &lt;bundle&gt;, etc.).
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="cmd"
+            style="width: 100%;"
+          >
+            <div
+              class="cmd-wrapper"
+              style=""
+            >
+              <span
+                class="cmd-prompt"
+                style=""
+              >
+                <span
+                  data-text="CodaLab> "
+                >
+                  <span
+                    style="width: 9ch;"
+                  >
+                    CodaLab&gt; 
+                  </span>
+                </span>
+              </span>
+              <div
+                aria-hidden="true"
+                class="cmd-cursor-line"
+                role="presentation"
+              >
+                <span />
+                <span
+                  class="cmd-cursor"
+                >
+                  <span
+                    class="end"
+                    data-text=""
+                  >
+                    <span>
+                       
+                      <span />
+                    </span>
+                  </span>
+                </span>
+                <span />
+              </div>
+            </div>
+            <textarea
+              autocapitalize="off"
+              class="cmd-clipboard"
+              data-cmd-prompt="CodaLab> "
+              spellcheck="false"
+              style="top: 0px;"
+              tabindex="1"
+            />
+          </div>
+        </div>
+        <div
+          class="terminal-font"
+        >
+           
+        </div>
+        <div
+          class="terminal-fill"
+        />
       </div>
       <div
         class="dragbar"
@@ -1423,178 +1460,162 @@ Object {
       />
     </div>
     <div
-      class="Toastify"
-    />
-    <div
+      class="Worksheet-worksheetContainer-2"
       id="worksheet_container"
+      style="width: 100%;"
     >
       <div
-        class="search-hidden"
-        id="worksheet"
+        class="Worksheet-worksheetDummyHeader-3"
+        id="worksheet_dummy_header"
+      />
+      <div
+        class=" worksheet_content"
+        id="worksheet_content"
       >
         <div
-          class="Worksheet-worksheetDesktop-1"
+          class="WorksheetItemList-wsItemsDisplayContainer-260"
         >
           <div
-            class="Worksheet-worksheetOuter-2"
-            style="width: 99%;"
+            class="WorksheetItemList-wsItemListContainer-261"
           >
             <div
-              class="Worksheet-worksheetDummyHeader-4"
-              id="worksheet_dummy_header"
-            />
-            <div
-              class="Worksheet-worksheetInner-3"
+              class="ItemWrapper-container-262"
+              id="codalab-worksheet-item-0"
             >
               <div
-                class=" worksheet_content"
-                id="worksheet_content"
+                class="ItemWrapper-main-264 ItemWrapper-mainHover-265"
               >
                 <div
-                  id="worksheet_items"
+                  class="ws-item MarkdownItem-textContainer-267"
                 >
                   <div
-                    class="ItemWrapper-container-256"
-                    id="codalab-worksheet-item-0"
+                    class="type-markup  MarkdownItem-textRender-270"
                   >
-                    <div
-                      class="ItemWrapper-main-258"
-                    >
-                      <div
-                        class="ws-item MarkdownItem-textContainer-260"
-                      >
-                        <div
-                          class="type-markup  MarkdownItem-textRender-263"
-                        >
-                          <p>
-                            123
+                    <p>
+                      123
 1132132312
-                          </p>
-                          
+                    </p>
+                    
 
-                        </div>
-                        <div
-                          class="MarkdownItem-buttonsPanel-261"
-                        >
-                          <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
-                            tabindex="0"
-                            title="Edit"
-                            type="button"
-                          >
-                            <span
-                              class="MuiIconButton-label-170"
-                            >
-                              <svg
-                                aria-hidden="true"
-                                class="MuiSvgIcon-root-144"
-                                focusable="false"
-                                role="presentation"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                                />
-                                <path
-                                  d="M0 0h24v24H0z"
-                                  fill="none"
-                                />
-                              </svg>
-                            </span>
-                            <span
-                              class="MuiTouchRipple-root-248"
-                            />
-                          </button>
-                            
-                          <button
-                            class="MuiButtonBase-root-141 MuiIconButton-root-165 MarkdownItem-iconButtonRoot-262"
-                            tabindex="0"
-                            title="Delete"
-                            type="button"
-                          >
-                            <span
-                              class="MuiIconButton-label-170"
-                            >
-                              <svg
-                                aria-hidden="true"
-                                class="MuiSvgIcon-root-144"
-                                focusable="false"
-                                role="presentation"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                />
-                                <path
-                                  d="M0 0h24v24H0z"
-                                  fill="none"
-                                />
-                              </svg>
-                            </span>
-                            <span
-                              class="MuiTouchRipple-root-248"
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                  <input
-                    id="codalab-file-upload-input"
-                    multiple=""
-                    style="display: none;"
-                    type="file"
-                  />
-                  <input
-                    directory="true"
-                    id="codalab-dir-upload-input"
-                    mozdirectory="true"
-                    style="display: none;"
-                    type="file"
-                    webkitdirectory="true"
-                  />
-                  <input
-                    accept="image/*"
-                    id="codalab-image-upload-input"
-                    style="display: none;"
-                    type="file"
-                  />
+                  <div
+                    class="MarkdownItem-buttonsPanel-268"
+                  >
+                    <button
+                      class="MuiButtonBase-root-143 MuiIconButton-root-167 MarkdownItem-iconButtonRoot-269"
+                      tabindex="0"
+                      title="Edit"
+                      type="button"
+                    >
+                      <span
+                        class="MuiIconButton-label-172"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                          />
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                        </svg>
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                      
+                    <button
+                      class="MuiButtonBase-root-143 MuiIconButton-root-167 MarkdownItem-iconButtonRoot-269"
+                      tabindex="0"
+                      title="Delete"
+                      type="button"
+                    >
+                      <span
+                        class="MuiIconButton-label-172"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="MuiSvgIcon-root-146"
+                          focusable="false"
+                          role="presentation"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                          />
+                          <path
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          />
+                        </svg>
+                      </span>
+                      <span
+                        class="MuiTouchRipple-root-203"
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-            <button
-              class="MuiButtonBase-root-141 MuiButton-root-115 MuiButton-contained-126 MuiButton-containedPrimary-127 MuiButton-raised-129 MuiButton-raisedPrimary-130"
-              style="border-radius: 400px; position: fixed; bottom: 50px; right: 30px; z-index: 10;"
-              tabindex="0"
-              type="button"
-            >
-              <span
-                class="MuiButton-label-116"
-              >
-                <svg
-                  aria-hidden="true"
-                  class="MuiSvgIcon-root-144"
-                  focusable="false"
-                  role="presentation"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
-                  />
-                  <path
-                    d="M0 0h24v24H0z"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-              <span
-                class="MuiTouchRipple-root-248"
-              />
-            </button>
           </div>
+          <input
+            id="codalab-file-upload-input"
+            multiple=""
+            style="display: none;"
+            type="file"
+          />
+          <input
+            directory="true"
+            id="codalab-dir-upload-input"
+            mozdirectory="true"
+            style="display: none;"
+            type="file"
+            webkitdirectory="true"
+          />
+          <input
+            accept="image/*"
+            id="codalab-image-upload-input"
+            style="display: none;"
+            type="file"
+          />
         </div>
       </div>
     </div>
+    <button
+      class="MuiButtonBase-root-143 MuiButton-root-117 MuiButton-contained-128 MuiButton-containedPrimary-129 MuiButton-raised-131 MuiButton-raisedPrimary-132 Worksheet-scrollToBottom-5"
+      tabindex="0"
+      type="button"
+    >
+      <span
+        class="MuiButton-label-118"
+      >
+        <svg
+          aria-hidden="true"
+          class="MuiSvgIcon-root-146"
+          focusable="false"
+          role="presentation"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+          />
+          <path
+            d="M0 0h24v24H0z"
+            fill="none"
+          />
+        </svg>
+      </span>
+      <span
+        class="MuiTouchRipple-root-203"
+      />
+    </button>
     <div />
     <div
       class="progress-message"
@@ -1606,6 +1627,9 @@ Object {
       />
        Updating...
     </div>
+    <div
+      class="Toastify"
+    />
   </div>,
   "debug": [Function],
   "findAllByAltText": [Function],
@@ -1669,14 +1693,14 @@ Object {
   >
     <div>
       <div
-        class="MuiGrid-container-276 MuiGrid-direction-xs-column-279 MuiGrid-align-items-xs-center-284 MuiGrid-justify-xs-center-293"
+        class="MuiGrid-container-285 MuiGrid-direction-xs-column-288 MuiGrid-align-items-xs-center-293 MuiGrid-justify-xs-center-302"
         style="margin: 100px 0px 80px;"
       >
         <div
           class="alert alert-danger alert-dismissable"
         >
           <div
-            class="MuiGrid-item-277"
+            class="MuiGrid-item-286"
             style="font-size: 16px; margin-left: 10px;"
           >
             Not found: '/worksheets/sample_uuid'
@@ -1687,14 +1711,14 @@ Object {
   </body>,
   "container": <div>
     <div
-      class="MuiGrid-container-276 MuiGrid-direction-xs-column-279 MuiGrid-align-items-xs-center-284 MuiGrid-justify-xs-center-293"
+      class="MuiGrid-container-285 MuiGrid-direction-xs-column-288 MuiGrid-align-items-xs-center-293 MuiGrid-justify-xs-center-302"
       style="margin: 100px 0px 80px;"
     >
       <div
         class="alert alert-danger alert-dismissable"
       >
         <div
-          class="MuiGrid-item-277"
+          class="MuiGrid-item-286"
           style="font-size: 16px; margin-left: 10px;"
         >
           Not found: '/worksheets/sample_uuid'

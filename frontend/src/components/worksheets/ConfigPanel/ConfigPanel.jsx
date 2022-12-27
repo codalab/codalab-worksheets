@@ -22,10 +22,12 @@ class ConfigPanel extends React.Component<{
      * Renderer.
      */
     render() {
-        const { classes, children, sidebar, buttons, showBorder } = this.props;
-        const borderClass = showBorder ? classes.border : '';
+        const { classes, children, sidebar, buttons, fullMinHeight } = this.props;
+        const style = {
+            minHeight: fullMinHeight ? '100%' : 0,
+        };
         return (
-            <Grid container direction='row' className={`${classes.container} ${borderClass}`}>
+            <Grid className={classes.container} style={style} direction='row' container>
                 {/* Column 1: Main content area ================================================ */}
                 <Grid
                     item
@@ -111,9 +113,6 @@ const styles = (theme) => ({
         paddingBottom: theme.spacing.large,
         paddingTop: 24,
         maxWidth: '90%',
-    },
-    border: {
-        border: `2px solid ${theme.color.grey.light}`,
     },
 });
 
