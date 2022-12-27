@@ -1962,6 +1962,7 @@ class Worksheet extends React.Component {
                     </div>
                 )}
                 <div
+                    id='worksheet_container'
                     className={classes.worksheetContainer}
                     style={{ width: worksheetWidthPercentage }}
                 >
