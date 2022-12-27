@@ -743,13 +743,18 @@ class Worksheet extends React.Component {
             showNewRerun: false,
         });
         if (shouldScroll) {
-            let item = document.getElementById(
-                `codalab-worksheet-item-${index}-subitem-${subIndex}`,
-            );
-            if (!item) {
-                item = document.getElementById(`codalab-worksheet-item-${index}`);
+            let item;
+            if (index === -1) {
+                item = document.getElementById('worksheet_dummy_header');
+            } else {
+                item = document.getElementById(
+                    `codalab-worksheet-item-${index}-subitem-${subIndex}`,
+                );
+                if (!item) {
+                    item = document.getElementById(`codalab-worksheet-item-${index}`);
+                }
             }
-            if (!isOnScreen(item)) {
+            if (item && !isOnScreen(item)) {
                 item.scrollIntoView();
             }
         }

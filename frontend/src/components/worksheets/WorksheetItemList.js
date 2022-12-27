@@ -139,9 +139,6 @@ class WorksheetItemList extends React.Component {
         Mousetrap.bind(
             ['g g'],
             function() {
-                $('body')
-                    .stop(true)
-                    .animate({ scrollTop: 0 }, 'fast');
                 this.props.setFocus(-1, 0);
             }.bind(this),
             'keydown',
