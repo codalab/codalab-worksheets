@@ -152,7 +152,6 @@ class WorksheetItemList extends React.Component {
             ['shift+g'],
             function() {
                 this.props.setFocus(this.props.ws.info.blocks.length - 1, 'end');
-                window.scrollTo(0, document.body.scrollHeight);
             }.bind(this),
             'keydown',
         );

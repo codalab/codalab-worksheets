@@ -8,6 +8,7 @@ import {
     getAfterSortKey,
     createAlertText,
     addUTCTimeZone,
+    isOnScreen,
 } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
@@ -687,30 +688,6 @@ class Worksheet extends React.Component {
             return;
         }
 
-        // Make sure that the screen doesn't scroll when the user normally press j / k,
-        // until the target element is completely not on the screen
-        function isOnScreen(element) {
-            if (element.offset() === undefined) return false;
-            let elementOffsetTop = element.offset().top;
-            let elementHeight = element.height();
-            let screenScrollTop = $(window).scrollTop();
-            let screenHeight = $(window).height();
-            // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
-            // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
-            let scrollIsAboveElement =
-                elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
-            let elementIsVisibleOnScreen = screenScrollTop + screenHeight - elementOffsetTop >= 0;
-            return scrollIsAboveElement && elementIsVisibleOnScreen;
-        }
-        if (shouldScroll) {
-            const element =
-                $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
-                    ? $(`#codalab-worksheet-item-${index}`)
-                    : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
-
-            shouldScroll = !isOnScreen(element);
-        }
-
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
@@ -721,6 +698,7 @@ class Worksheet extends React.Component {
                 }
             }
         }
+
         // resolve to the last row of the selected item
         if (subIndex === 'end') {
             subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
@@ -765,7 +743,15 @@ class Worksheet extends React.Component {
             showNewRerun: false,
         });
         if (shouldScroll) {
-            this.scrollToItem(index, subIndex);
+            let item = document.getElementById(
+                `codalab-worksheet-item-${index}-subitem-${subIndex}`,
+            );
+            if (!item) {
+                item = document.getElementById(`codalab-worksheet-item-${index}`);
+            }
+            if (!isOnScreen(item)) {
+                item.scrollIntoView();
+            }
         }
     };
 
