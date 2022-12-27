@@ -1019,7 +1019,11 @@ class Worksheet extends React.Component {
                 );
             }
         }
-        Mousetrap.bind(['escape'], this.handleBackButtonClick);
+        Mousetrap.bind(['escape'], () => {
+            if (this.state.bundleIsOpen) {
+                this.closeBundle();
+            }
+        });
         Mousetrap.bind(['?'], (e) => {
             this.setState({
                 showInformationModal: true,
@@ -2096,6 +2100,7 @@ const styles = (theme) => ({
     worksheetContainer: {
         height: containerHeight,
         overflowY: 'scroll',
+        overflowX: 'hidden',
         zIndex: 5,
         backgroundColor: 'white',
         width: '100%',
