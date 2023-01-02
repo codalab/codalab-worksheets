@@ -248,6 +248,7 @@ class BytesBuffer(BytesIO):
     def write(self, data):
         self.__buf.append(data)
         self.__size += len(data)
+        # print(f"In BytesBuffer write, self.__size: {self.__size}, len(data): {len(data)}")
 
     def read(self, size: Optional[int] = None):
         if size is None:
@@ -256,12 +257,16 @@ class BytesBuffer(BytesIO):
         while size > 0 and len(self.__buf):
             s = self.__buf.popleft()
             size -= len(s)
+            # print(f"In BytesBUffer read, current size to read: {size}")
             ret_list.append(s)
         if size < 0:
+            # print(f"Before correct size, ret list[-1]: {len(ret_list[-1])}")
             ret_list[-1], remainder = ret_list[-1][:size], ret_list[-1][size:]
             self.__buf.appendleft(remainder)
+        
         ret = b''.join(ret_list)
         self.__size -= len(ret)
+        # print(f"After correct size, ret list[-1]: {len(ret_list[-1])}, len(reminder): {len(remainder)}, len(ret) : {len(ret)}, __size: {self.__size}")
         self.__pos += len(ret)
         return ret
 

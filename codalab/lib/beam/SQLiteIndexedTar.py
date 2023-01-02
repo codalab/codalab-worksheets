@@ -43,7 +43,8 @@ supportedCompressions = {
         ['gz', 'gzip'],
         ['taz', 'tgz'],
         'indexed_gzip',
-        lambda x: x.peek(2) == b'\x1F\x8B',
+        # lambda x: x.peek(2) == b'\x1F\x8B',
+        lambda x: True,
         lambda x: indexed_gzip.IndexedGzipFile(fileobj=x),
     )
 }
@@ -606,7 +607,7 @@ class SQLiteIndexedTar(MountSource):
                 progressBar = ProgressBar(os.fstat(fileObject.fileno()).st_size)
             except io.UnsupportedOperation:
                 pass
-
+        print(loadedTarFile)
         # 3. Iterate over files inside TAR and add them to the database
         try:
             filesToMountRecursively = []
@@ -750,9 +751,15 @@ class SQLiteIndexedTar(MountSource):
             # If the file object is actually an IndexedBzip2File or such, we can't directly use the file size
             # from os.stat and instead have to gather it from seek. Unfortunately, indexed_gzip does not support
             # io.SEEK_END even though it could as it has the index ...
-            while fileObject.read(1024 * 1024):
+           
+            print("before read 1024 * 1024")
+            data = fileObject.read(1024 * 1024)
+            while len(data) > 0:
+                print("In read loop, data size: ", len(data))
                 self._updateProgressBar(progressBar, fileObject)
+                data = fileObject.read(1024 * 1024)
             fileSize = fileObject.tell()
+            # fileSize = 0
 
             # fmt: off
             fileInfo = (
@@ -770,6 +777,7 @@ class SQLiteIndexedTar(MountSource):
                 False              ,  # 11 isTar
                 False              ,  # 12 isSparse, don't care if it is actually sparse or not because it is not in TAR
             )
+            print(fileInfo)
             # fmt: on
             self._setFileInfo(fileInfo)
 
@@ -1438,6 +1446,7 @@ class SQLiteIndexedTar(MountSource):
             # Seeking from end not supported, so we have to read the whole data in in a loop
             while fileObject.read(1024 * 1024):
                 pass
+            # fileObject.build_full_index()
 
             # The created index can unfortunately be pretty large and tmp might actually run out of memory!
             # Therefore, try different paths, starting with the location where the index resides.
