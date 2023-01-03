@@ -23,7 +23,10 @@ from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 
 
 
+# file_path = 'test_1g.yml'
+# file_path = 'test_10m'
 file_path = 'mkdocs.yml'
+# file_path = 'temp_10GB_file.gz'
 
 class FileStream(BytesIO):
     NUM_READERS = 2
@@ -144,7 +147,42 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
         parse_linked_bundle_url(bundle_path).bundle_path,
         compression_type=CompressionTypes.UNCOMPRESSED,
     ) as f:
-        print(gzip.decompress(f.read()))
+        # print(gzip.decompress(f.read()))
+        pass
 
 
-upload(file_path)
+# upload(file_path)
+
+
+def test_indexed_gzip(file_path):
+    source_fileobj = open(file_path, 'rb')
+    output_fileobj = GzipStream(source_fileobj)
+    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+        SQLiteIndexedTar(
+            fileObject=output_fileobj,
+            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+            writeIndex=True,
+            clearIndexCache=True,
+            indexFilePath=tmp_index_file.name,
+            printDebug=3,
+        )
+
+
+def test_without_gzip_stream(file_path):
+    # this does not work becuase source_file is a seekable file
+    # assert file_path.contains(".gz")
+    source_fileobj = open(file_path, 'rb')
+    output_fileobj = BytesBuffer()
+    output_fileobj.write(source_fileobj.read())
+    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+        SQLiteIndexedTar(
+            fileObject=output_fileobj,
+            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+            writeIndex=True,
+            clearIndexCache=True,
+            indexFilePath=tmp_index_file.name,
+            printDebug=3,
+        )
+
+test_indexed_gzip(file_path)  # filepath points to a large file.
+# test_without_gzip_stream("temp_10GB_file.gz")
