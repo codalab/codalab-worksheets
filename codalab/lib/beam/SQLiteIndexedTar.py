@@ -752,14 +752,13 @@ class SQLiteIndexedTar(MountSource):
             # from os.stat and instead have to gather it from seek. Unfortunately, indexed_gzip does not support
             # io.SEEK_END even though it could as it has the index ...
            
-            print("before read 1024 * 1024")
-            data = fileObject.read(1024 * 1024)
-            while len(data) > 0:
-                print("In read loop, data size: ", len(data))
-                self._updateProgressBar(progressBar, fileObject)
-                data = fileObject.read(1024 * 1024)
-            fileSize = fileObject.tell()
-            # fileSize = 0
+            # data = fileObject.read(1024 * 1024)
+            # while len(data) > 0:
+            #     print("In read loop, data size: ", len(data))
+            #     self._updateProgressBar(progressBar, fileObject)
+            #     data = fileObject.read(1024 * 1024)
+            # fileSize = fileObject.tell()
+            fileSize = 0
 
             # fmt: off
             fileInfo = (
@@ -1444,9 +1443,9 @@ class SQLiteIndexedTar(MountSource):
 
             # Transparently force index to be built if not already done so. build_full_index was buggy for me.
             # Seeking from end not supported, so we have to read the whole data in in a loop
-            while fileObject.read(1024 * 1024):
-                pass
-            # fileObject.build_full_index()
+            # while fileObject.read(1024 * 1024):
+            #     pass
+            fileObject.build_full_index()
 
             # The created index can unfortunately be pretty large and tmp might actually run out of memory!
             # Therefore, try different paths, starting with the location where the index resides.

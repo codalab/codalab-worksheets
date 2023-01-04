@@ -312,6 +312,7 @@ class GzipStream(BytesIO):
         self.__input = fileobj
         self.__buffer = BytesBuffer()
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+        self.__size = 0
 
     def _fill_buf_bytes(self, num_bytes=None):
         while num_bytes is None or len(self.__buffer) < num_bytes:
@@ -327,8 +328,10 @@ class GzipStream(BytesIO):
         self._fill_buf_bytes(num_bytes)
         # print(f"In GzipStream read(). num_bytes = {num_bytes}")
         data = self.__buffer.read(num_bytes)
-        print(f"In GzipStream read(). num_bytes = {num_bytes}, read out data from GzipStream length = {len(data)}")
+        # print(f"In GzipStream read(). num_bytes = {num_bytes}, read out data from GzipStream length = {len(data)}")
+        self.__size += len(data)
         return data
+
 
     def close(self):
         self.__input.close()
@@ -336,6 +339,11 @@ class GzipStream(BytesIO):
     def peek(self, num_bytes):
         self._fill_buf_bytes(num_bytes)
         return self.__buffer.peek(num_bytes)
+    
+    def tell(self):
+        print("In GzipStream, tell() is called")
+        return self.__size
+
 
 
 def gzip_file(file_path: str) -> IO[bytes]:
