@@ -227,7 +227,8 @@ class BundleManager(object):
     def _make_bundle(self, bundle):
         try:
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
-            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
+            # bundle_location might be a blob storage / disk storage 
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)  
 
             path = normpath(bundle_location)
 
@@ -285,7 +286,7 @@ class BundleManager(object):
 
                 remove_path(path)
 
-                if len(deps) == 1 and deps[0][1] == path:
+                if len(deps) == 1 and deps[0][1] == path:   # cl make test.txt, only make 1 bundles
                     path_util.copy(deps[0][0], path, follow_symlinks=False)
                 else:
                     os.mkdir(path)
