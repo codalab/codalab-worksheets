@@ -152,9 +152,16 @@ file_path = 'requirements.txt'
 # file_path = 'test_500m'
 
 def test_indexed_gzip(file_path):
+    """
+    A simple test function only envolve SQLiteIndexedTar
+    """
     source_fileobj = open(file_path, 'rb')
-    # output_fileobj = GzipStream(source_fileobj) # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work
-    output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))  # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
+    # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work for GzipStream()
+    # output_fileobj = GzipStream(source_fileobj) 
+    
+    # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
+    output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))  
+
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
         SQLiteIndexedTar(
             fileObject=output_fileobj,

@@ -607,7 +607,6 @@ class SQLiteIndexedTar(MountSource):
                 progressBar = ProgressBar(os.fstat(fileObject.fileno()).st_size)
             except io.UnsupportedOperation:
                 pass
-        print(loadedTarFile)
         # 3. Iterate over files inside TAR and add them to the database
         try:
             filesToMountRecursively = []
@@ -776,7 +775,6 @@ class SQLiteIndexedTar(MountSource):
                 False              ,  # 11 isTar
                 False              ,  # 12 isSparse, don't care if it is actually sparse or not because it is not in TAR
             )
-            print(fileInfo)
             # fmt: on
             self._setFileInfo(fileInfo)
 

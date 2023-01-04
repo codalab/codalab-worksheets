@@ -324,7 +324,6 @@ class GzipStream(BytesIO):
             self.__gzip.write(s)  # gzip the current file
 
     def read(self, num_bytes=None) -> bytes:
-        print("READ is called")
         self._fill_buf_bytes(num_bytes)
         # print(f"In GzipStream read(). num_bytes = {num_bytes}")
         data = self.__buffer.read(num_bytes)
