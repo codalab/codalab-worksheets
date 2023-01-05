@@ -175,7 +175,6 @@ class TableItem extends React.Component<{
             this.showCheckedBundleRowsContents,
         );
         let tableClassName = this.props.focused ? 'table focused' : 'table';
-        let checkboxVariant = this.props.focused || this.state.hovered ? 'action' : 'disabled';
         let item = this.props.item;
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
@@ -199,33 +198,29 @@ class TableItem extends React.Component<{
                                   paddingBottom: 0,
                                   paddingTop: 0,
                               }
-                            : {}
+                            : {
+                                  paddingLeft: 4,
+                              }
                     }
                 >
                     {editPermission && index === 0 && (
                         <>
                             <Checkbox
-                                icon={
-                                    <CheckBoxOutlineBlankIcon
-                                        color={checkboxVariant}
-                                        fontSize='small'
-                                    />
-                                }
+                                icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
                                 checkedIcon={<CheckBoxIcon fontSize='small' />}
                                 classes={{ root: classes.tableCheckbox }}
                                 onChange={this.toggleTableSelect}
                                 checked={this.state.tableIsSelected}
                             />
                             <Tooltip title={'Change the schemas of this table'}>
-                                <IconButton>
-                                    <ViewListIcon
-                                        style={{ padding: '0px', height: 15 }}
-                                        onClick={() => {
-                                            this.setState({
-                                                openSchemaTextBox: !this.state.openSchemaTextBox,
-                                            });
-                                        }}
-                                    />
+                                <IconButton
+                                    onClick={() => {
+                                        this.setState({
+                                            openSchemaTextBox: !this.state.openSchemaTextBox,
+                                        });
+                                    }}
+                                >
+                                    <ViewListIcon style={{ padding: '0px', height: 15 }} />
                                 </IconButton>
                             </Tooltip>
                         </>
@@ -261,6 +256,7 @@ class TableItem extends React.Component<{
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     showNewRerun={this.props.showNewRerun}
+                    openBundle={this.props.openBundle}
                     onHideNewRerun={this.props.onHideNewRerun}
                     url={url}
                     bundleInfo={bundleInfo}
@@ -407,7 +403,7 @@ class _TableContainer extends React.Component {
     }
 }
 
-const styles = () => ({
+const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
     },
@@ -421,6 +417,10 @@ const styles = () => ({
     },
     tableCheckbox: {
         paddingRight: 2,
+        color: theme.color.grey.dark,
+        '&:hover': {
+            color: theme.color.grey.darker,
+        },
     },
 });
 
