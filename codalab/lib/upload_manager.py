@@ -254,7 +254,7 @@ class BlobStorageUploader(Uploader):
                     out.write(to_send)
 
                     # Update disk and check if client has gone over disk usage.
-                    if iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                    if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                         self._client.update(
                             'user/increment_disk_used', {'disk_used_increment': len(to_send)}
                         )
