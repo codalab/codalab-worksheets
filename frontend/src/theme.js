@@ -81,4 +81,7 @@ export default createMuiTheme({
             },
         },
     },
+    boxShadow: {
+        card: '0 2px 4px 0 rgba(138, 148, 159, 0.2)',
+    },
 });

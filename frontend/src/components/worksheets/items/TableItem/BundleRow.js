@@ -1,19 +1,18 @@
 import classNames from 'classnames';
 import React, { Component } from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import Dialog from '@material-ui/core/Dialog';
+import Tooltip from '@material-ui/core/Tooltip';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import IconButton from '@material-ui/core/IconButton';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import Checkbox from '@material-ui/core/Checkbox';
 import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import ExpandIcon from '../../../Icons/ExpandIcon';
 import NewRun from '../../NewRun';
 
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
-import BundleDetail from '../../BundleDetail';
 import TextEditorItem from '../TextEditorItem';
 import SchemaItem from '../SchemaItem';
 import { DEFAULT_SCHEMA_ROWS } from '../../../../constants';
@@ -26,8 +25,6 @@ class BundleRow extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            showDetail: false,
-            showNewRun: 0,
             bundleInfoUpdates: {},
             openDelete: false,
             runProp: {},
@@ -67,9 +64,6 @@ class BundleRow extends Component {
                 this.props.refreshCheckBox,
             );
         }
-        if (this.props.uuid !== prevProp.uuid) {
-            this.setState({ showDetail: false });
-        }
     }
     // BULK OPERATION RELATED CODE
 
@@ -80,41 +74,24 @@ class BundleRow extends Component {
         this.setState({ bundleInfoUpdates });
     };
 
-    handleDetailClick = () => {
-        const { showDetail } = this.state;
-        this.setState({
-            showDetail: !showDetail,
-        });
-    };
-
     handleSelectRowClick = () => {
         this.props.updateRowIndex(this.props.rowIndex);
     };
 
-    showNewRun = (val) => () => {
-        this.setState({ showNewRun: val });
-    };
-
-    rerunItem = (runProp) => {
-        this.setState({
-            showDetail: false,
-            showNewRun: 1,
-            runProp: runProp,
-        });
+    handleOpenBundle = () => {
+        const { openBundle, uuid, focusIndex, rowIndex } = this.props;
+        openBundle(uuid, focusIndex, rowIndex);
     };
 
     render() {
-        const { showDetail, showNewRun, bundleInfoUpdates, runProp } = this.state;
+        const { bundleInfoUpdates } = this.state;
         const {
             classes,
             bundleInfo,
             item,
             reloadWorksheet,
             checkStatus,
-            showNewRerun,
-            onHideNewRerun,
-            editPermission,
-            focusIndex,
+            onHideNewRun,
             ws,
         } = this.props;
         const rowItems = { ...item, ...bundleInfoUpdates };
@@ -127,7 +104,7 @@ class BundleRow extends Component {
             var rowContent = rowItems[headerKey];
             // See if there's a link
             var url;
-            var showDetailButton;
+            var openBundleButton;
             var checkBox;
             if (headerKey === 'host_worksheet' && worksheetUrl !== undefined) {
                 url = worksheetUrl;
@@ -136,27 +113,23 @@ class BundleRow extends Component {
                 url = baseUrl;
                 checkBox = (
                     <Checkbox
-                        icon={
-                            <CheckBoxOutlineBlankIcon
-                                color={
-                                    this.props.focused || this.state.hovered ? 'action' : 'disabled'
-                                }
-                                fontSize='small'
-                            />
-                        }
+                        icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
                         checkedIcon={<CheckBoxIcon fontSize='small' />}
                         onChange={this.handleCheckboxChange}
                         checked={checkStatus || false}
+                        classes={{ root: classes.checkBox }}
                     />
                 );
-                showDetailButton = (
-                    <IconButton
-                        onClick={this.handleDetailClick}
-                        style={{ padding: 2 }}
-                        aria-label='Expand'
-                    >
-                        {showDetail ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </IconButton>
+                openBundleButton = (
+                    <Tooltip title='Open full bundle details.'>
+                        <button
+                            onClick={this.handleOpenBundle}
+                            className={classes.openBundleBtn}
+                            aria-label='Open full bundle details.'
+                        >
+                            <ExpandIcon className={classes.expandIcon} />
+                        </button>
+                    </Tooltip>
                 );
             } else if (columnWithHyperlinks.indexOf(headerKey) !== -1) {
                 url = '/rest/bundles/' + uuid + '/contents/blob' + rowContent['path'];
@@ -213,7 +186,7 @@ class BundleRow extends Component {
                     onMouseLeave={(e) => this.setState({ hovered: false })}
                 >
                     {checkBox}
-                    {showDetailButton}
+                    {openBundleButton}
                     {rowContent}
                 </TableCell>
             );
@@ -225,7 +198,7 @@ class BundleRow extends Component {
                 (e) => {
                     e.preventDefault();
                     if (!this.props.confirmBundleRowAction(e.code)) {
-                        this.setState((state) => ({ showDetail: !state.showDetail }));
+                        this.handleOpenBundle();
                     }
                 },
                 'keydown',
@@ -238,7 +211,6 @@ class BundleRow extends Component {
                 },
                 'keydown',
             );
-            Mousetrap.bind(['escape'], () => this.setState({ showDetail: false }), 'keydown');
             Mousetrap.bind(['x'], (e) => {
                 if (!this.props.confirmBundleRowAction(e.code)) {
                     this.props.handleCheckBundle(
@@ -273,140 +245,80 @@ class BundleRow extends Component {
             // unbind shortcuts that are active for markdown_block and worksheet_block
             Mousetrap.unbind('i');
         }
+
         return (
-            <TableBody classes={{ root: classes.tableBody }} id={this.props.id}>
+            <>
+                <TableBody classes={{ root: classes.tableBody }} id={this.props.id}>
+                    {/** ---------------------------------------------------------------------------------------------------
+                     *  Main Content
+                     */}
+                    <TableRow
+                        onClick={this.handleSelectRowClick}
+                        className={classNames({
+                            [classes.contentRow]: true,
+                            [classes.highlight]: this.props.focused,
+                        })}
+                    >
+                        {rowCells}
+                    </TableRow>
+                    {/** ---------------------------------------------------------------------------------------------------
+                     *  Insert the new text/schema below the bundle row, so add 1 to after_sort_key
+                     */}
+                    {this.props.showNewText && (
+                        <TableRow>
+                            <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                                <div className={classes.insertBox}>
+                                    <TextEditorItem
+                                        ids={this.props.ids}
+                                        mode='create'
+                                        after_sort_key={this.props.after_sort_key + 1}
+                                        worksheetUUID={this.props.worksheetUUID}
+                                        reloadWorksheet={reloadWorksheet}
+                                        closeEditor={() => {
+                                            this.props.onHideNewText();
+                                        }}
+                                    />
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    {this.props.showNewSchema && (
+                        <TableRow>
+                            <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
+                                <div className={classes.insertBox}>
+                                    <SchemaItem
+                                        after_sort_key={this.props.after_sort_key + 1}
+                                        ws={this.props.ws}
+                                        onSubmit={() => this.props.onHideNewSchema()}
+                                        reloadWorksheet={reloadWorksheet}
+                                        editPermission={true}
+                                        item={{
+                                            field_rows: DEFAULT_SCHEMA_ROWS,
+                                            header: ['field', 'generalized-path', 'post-processor'],
+                                            schema_name: '',
+                                            sort_keys: [this.props.after_sort_key + 2],
+                                        }}
+                                        create={true}
+                                        updateSchemaItem={this.props.updateSchemaItem}
+                                    />
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
                 {/** ---------------------------------------------------------------------------------------------------
-                 *  Main Content
+                 *  New Run Dialog
                  */}
-                <TableRow
-                    onClick={this.handleSelectRowClick}
-                    className={classNames({
-                        [classes.contentRow]: true,
-                        [classes.highlight]: this.props.focused,
-                        [classes.lowlight]: !this.props.focused && showDetail,
-                    })}
-                >
-                    {rowCells}
-                </TableRow>
-                {/** ---------------------------------------------------------------------------------------------------
-                 *  Bundle Detail (below)
-                 */}
-                {showDetail && (
-                    <TableRow>
-                        <TableCell
-                            colSpan='100%'
-                            classes={{
-                                root: classNames({
-                                    [classes.rootNoPad]: true,
-                                    [classes.bundleDetail]: true,
-                                    [classes.highlight]: this.props.focused,
-                                    [classes.lowlight]: !this.props.focused,
-                                }),
-                            }}
-                        >
-                            <BundleDetail
-                                uuid={bundleInfo.uuid}
-                                bundleInfoFromRow={bundleInfo}
-                                bundleMetadataChanged={this.props.reloadWorksheet}
-                                onUpdate={this.receiveBundleInfoUpdates}
-                                onClose={() => {
-                                    this.setState({
-                                        showDetail: false,
-                                    });
-                                }}
-                                rerunItem={this.rerunItem}
-                                isFocused={this.props.focused}
-                                focusIndex={focusIndex}
-                                showNewRerun={showNewRerun}
-                                onHideNewRerun={onHideNewRerun}
-                                showDetail={showDetail}
-                                handleDetailClick={this.handleDetailClick}
-                                editPermission={editPermission}
-                                onOpen={() => {}}
-                            />
-                        </TableCell>
-                    </TableRow>
-                )}
-                {/** ---------------------------------------------------------------------------------------------------
-                 *  Rerun
-                 *  Insert the new run/text/schema below the bundle row, so add 1 to after_sort_key
-                 */}
-                {showNewRun === 1 && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <NewRun
-                                    ws={ws}
-                                    onError={this.props.onError}
-                                    onSubmit={() => {
-                                        this.setState({ showNewRun: 0, showDetail: false });
-                                        onHideNewRerun();
-                                    }}
-                                    after_sort_key={this.props.after_sort_key}
-                                    reloadWorksheet={reloadWorksheet}
-                                    defaultRun={runProp}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-                {this.props.showNewRun && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <NewRun
-                                    after_sort_key={this.props.after_sort_key}
-                                    ws={this.props.ws}
-                                    onError={this.props.onError}
-                                    onSubmit={() => this.props.onHideNewRun()}
-                                    reloadWorksheet={reloadWorksheet}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-                {this.props.showNewText && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <TextEditorItem
-                                    ids={this.props.ids}
-                                    mode='create'
-                                    after_sort_key={this.props.after_sort_key + 1}
-                                    worksheetUUID={this.props.worksheetUUID}
-                                    reloadWorksheet={reloadWorksheet}
-                                    closeEditor={() => {
-                                        this.props.onHideNewText();
-                                    }}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-                {this.props.showNewSchema && (
-                    <TableRow>
-                        <TableCell colSpan='100%' classes={{ root: classes.insertPanel }}>
-                            <div className={classes.insertBox}>
-                                <SchemaItem
-                                    after_sort_key={this.props.after_sort_key + 1}
-                                    ws={this.props.ws}
-                                    onSubmit={() => this.props.onHideNewSchema()}
-                                    reloadWorksheet={reloadWorksheet}
-                                    editPermission={true}
-                                    item={{
-                                        field_rows: DEFAULT_SCHEMA_ROWS,
-                                        header: ['field', 'generalized-path', 'post-processor'],
-                                        schema_name: '',
-                                        sort_keys: [this.props.after_sort_key + 2],
-                                    }}
-                                    create={true}
-                                    updateSchemaItem={this.props.updateSchemaItem}
-                                />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                )}
-            </TableBody>
+                <Dialog open={this.props.showNewRun} onClose={onHideNewRun} maxWidth='lg'>
+                    <NewRun
+                        after_sort_key={this.props.after_sort_key}
+                        ws={this.props.ws}
+                        onError={this.props.onError}
+                        onSubmit={() => onHideNewRun()}
+                        reloadWorksheet={reloadWorksheet}
+                    />
+                </Dialog>
+            </>
         );
     }
 }
@@ -449,14 +361,15 @@ const styles = (theme) => ({
         borderLeft: '3px solid transparent',
         padding: 0,
         '&:hover': {
-            boxShadow:
-                'inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)',
-            zIndex: 1,
+            backgroundColor: theme.color.grey.lightest,
+            borderTop: `2px solid ${theme.color.grey.base}`,
+            borderBottom: `2px solid ${theme.color.grey.base}`,
         },
     },
     checkBox: {
+        color: theme.color.grey.dark,
         '&:hover': {
-            backgroundColor: '#ddd',
+            color: theme.color.grey.darker,
         },
     },
     highlight: {
@@ -469,6 +382,18 @@ const styles = (theme) => ({
     insertPanel: {
         paddingLeft: '32px !important', // align with bundle detail
         paddingRight: '32px !important', // align with bundle detail
+    },
+    openBundleBtn: {
+        backgroundColor: 'transparent',
+        border: 'none',
+        verticalAlign: 'text-top',
+        paddingLeft: 8,
+        paddingRight: 11,
+    },
+    expandIcon: {
+        height: 13,
+        width: 13,
+        fill: theme.color.grey.darkest,
     },
 });
 

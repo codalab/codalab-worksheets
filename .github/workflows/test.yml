@@ -113,11 +113,16 @@ jobs:
           - search link read kill write mimic workers edit_user sharing_workers
           - resources
           - memoize
-          - copy netcat netcurl
+          - copy
+          - netcat netcurl
           - edit
           - open wopen
           - store_add
         runtime: [docker, kubernetes]
+        exclude:
+          # netcat / netcurl not supported for kubernetes.
+          - test: netcat netcurl
+            runtime: kubernetes
     steps:
       - name: Clear free space
         run: |
@@ -150,14 +155,16 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
-      - uses: medyagh/setup-minikube@latest
+      - uses: actions/setup-go@v3
         if: matrix.runtime == 'kubernetes'
+        with:
+          go-version: '1.18.1'
       - name: Run tests using Kubernetes runtime
         if: matrix.runtime == 'kubernetes'
         run: |
           sh ./tests/test-setup.sh
           sh ./scripts/local-k8s/setup-ci.sh
-          #python3 test_runner.py --version ${VERSION} ${TEST}
+          python3 test_runner.py --version ${VERSION} ${TEST}
         env:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
@@ -167,11 +174,16 @@ jobs:
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+      - name: Save kubernetes logs
+        if: always() && matrix.runtime == 'kubernetes'
+        run: |
+          kubectl config use-context kind-codalab
+          kubectl cluster-info dump --output-directory /tmp/logs
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v1
         with:
-          name: logs-test-${{ matrix.test }}
+          name: logs-test-${{ matrix.runtime }}-${{ matrix.test }}
           path: /tmp/logs
 
   test_backend_on_worker_restart:

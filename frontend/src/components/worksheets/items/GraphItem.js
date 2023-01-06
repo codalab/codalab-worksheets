@@ -3,7 +3,6 @@ import { worksheetItemPropsChanged } from '../../../util/worksheet_utils';
 import _ from 'underscore';
 import c3 from 'c3';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
-import BundleDetail from '../BundleDetail';
 
 class GraphItem extends React.Component {
     /** Constructor. */
@@ -14,11 +13,6 @@ class GraphItem extends React.Component {
             bundleInfoUpdates: {},
         };
     }
-
-    handleClick = () => {
-        this.props.setFocus(this.props.focusIndex, 0);
-        this.setState({ showDetail: !this.state.showDetail });
-    };
 
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
@@ -132,28 +126,17 @@ class GraphItem extends React.Component {
 
         var className = 'type-image' + (this.props.focused ? ' focused' : '');
         var bundleInfo = this.props.item.bundles_spec.bundle_infos[0];
+        const uuid = bundleInfo.uuid;
         return (
             <div className='ws-item'>
-                <div className={className} onClick={this.handleClick}>
+                <div
+                    className={className}
+                    onClick={() => {
+                        this.props.openBundle(uuid);
+                    }}
+                >
                     <div id={this._chartId()} />
                 </div>
-                {this.state.showDetail && (
-                    <BundleDetail
-                        uuid={bundleInfo.uuid}
-                        ref='bundleDetail'
-                        bundleMetadataChanged={this.props.reloadWorksheet}
-                        onUpdate={this.receiveBundleInfoUpdates}
-                        onClose={() => {
-                            this.setState({
-                                showDetail: false,
-                            });
-                        }}
-                        isFocused={this.props.focused}
-                        focusIndex={this.props.focusIndex}
-                        showDetail={this.state.showDetail}
-                        editPermission={this.props.editPermission}
-                    />
-                )}
             </div>
         );
     }

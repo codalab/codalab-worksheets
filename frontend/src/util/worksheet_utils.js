@@ -428,3 +428,20 @@ export function parseError(error) {
     const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
     return htmlDoc.getElementsByTagName('pre')[0].innerHTML;
 }
+
+/**
+ * Returns true if given element is visible in the viewport.
+ * Returns false otherwise.
+ *
+ * @param {object} element - DOM node
+ * @returns {boolean}
+ */
+export function isOnScreen(element) {
+    const bounding = element.getBoundingClientRect();
+    return (
+        bounding.top >= 0 &&
+        bounding.left >= 0 &&
+        bounding.right <= window.innerWidth &&
+        bounding.bottom <= window.innerHeight
+    );
+}
