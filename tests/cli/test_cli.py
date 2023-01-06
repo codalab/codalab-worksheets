@@ -173,6 +173,11 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
         uuid: UUID of bundle to check state for
         expected_state: Expected state of bundle
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
+        exclude_final_states: States that are normally FINAL and would cause the function to exit,
+                              but which we do not want to cause the function to exit in this case.
+                              This can happen in special circumstances when a bundle transitions again
+                              from one final state to another and we want to wait until it reaches that
+                              last final state.
     """
     start_time = time.time()
     final_states = State.FINAL_STATES - exclude_final_states
@@ -1782,7 +1787,7 @@ def test_run(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
     uuid = _run_command(
-        [cl, 'run', f'head -c {1000010} /dev/zero > test.txt; sleep 100000',],
+        [cl, 'run', 'head -c 1000010 /dev/zero > test.txt; sleep 100000',],
         request_disk=None,
         request_memory=None,
     )
