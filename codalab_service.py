@@ -326,7 +326,9 @@ CODALAB_ARGUMENTS = [
         name='worker_manager_worker_checkin_frequency_seconds',
         help='Number of seconds to wait between check-ins for a worker of the worker manager',
         type=int,
-        default=20,
+        # TODO (Ashwin): Temporarily changed from 20 to 5 to get the CLI "time" tests to pass with kubernetes.
+        # Revert this once the root issue is fixed.
+        default=5,
     ),
     CodalabArg(
         name='worker_manager_idle_seconds',
@@ -445,7 +447,7 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name='worker_manager_{}_tag'.format(worker_manager_type),
             help='Tag of worker for {} jobs'.format(worker_manager_type),
-            default='codalab-{}'.format(worker_manager_type),
+            default='',
         ),
         CodalabArg(
             name='worker_manager_max_{}_workers'.format(worker_manager_type),
@@ -530,9 +532,21 @@ class CodalabArgs(object):
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
+        version_cmd = subparsers.add_parser(
+            'version', help='Print current version of CodaLab that will be run.',
+        )
 
         # Arguments for every subcommand
-        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd]:
+        for cmd in [
+            start_cmd,
+            logs_cmd,
+            pull_cmd,
+            build_cmd,
+            run_cmd,
+            stop_cmd,
+            delete_cmd,
+            version_cmd,
+        ]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -763,6 +777,8 @@ class CodalabServiceManager(object):
             self._run_compose_cmd('stop')
         elif command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
+        elif command == 'version':
+            print(self.args.version)
         else:
             raise Exception('Bad command: ' + command)
 

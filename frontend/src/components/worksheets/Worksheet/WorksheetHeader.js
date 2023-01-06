@@ -17,10 +17,11 @@ const styles = {
     paddingRight: 28,
     position: 'relative',
     borderBottom: '1px solid #ddd',
-    // overflow: 'hidden',
 };
 
 export default ({
+    bundleIsOpen,
+    onBackButtonClick,
     onShowNewRun,
     onShowNewText,
     onShowNewSchema,
@@ -58,7 +59,10 @@ export default ({
                         alignItems='flex-start'
                         justify='space-between'
                     >
-                        <h5 className='worksheet-title' style={{ marginBottom: 0 }}>
+                        <h5
+                            className='worksheet-title'
+                            style={{ marginBottom: 0, paddingLeft: 11 }}
+                        >
                             {/*TODO: use html contenteditable*/}
                             <WorksheetEditableField
                                 key={'title' + editPermission}
@@ -145,6 +149,8 @@ export default ({
                         <Grid item>
                             <ActionButtons
                                 info={info}
+                                bundleIsOpen={bundleIsOpen}
+                                onBackButtonClick={onBackButtonClick}
                                 onShowNewRun={onShowNewRun}
                                 onShowNewText={onShowNewText}
                                 onShowNewSchema={onShowNewSchema}
@@ -172,6 +178,7 @@ export default ({
                                     color='inherit'
                                     href='#'
                                     onClick={toggleInformationModal}
+                                    disabled={bundleIsOpen}
                                 >
                                     <InfoIcon fontSize='small' />
                                 </IconButton>
@@ -182,7 +189,12 @@ export default ({
                                 title='Expand/Shrink'
                                 aria-label='toggle worksheet width'
                             >
-                                <IconButton color='inherit' href='#' onClick={toggleWorksheetSize}>
+                                <IconButton
+                                    color='inherit'
+                                    href='#'
+                                    onClick={toggleWorksheetSize}
+                                    disabled={bundleIsOpen}
+                                >
                                     <OpenWithIcon fontSize='small' />
                                 </IconButton>
                             </Tooltip>

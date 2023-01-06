@@ -1,11 +1,14 @@
 // @flow
 import * as React from 'react';
+import queryString from 'query-string';
 import { withStyles } from '@material-ui/core';
+import Dialog from '@material-ui/core/Dialog';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
 import Button from '@material-ui/core/Button';
 import Snackbar from '@material-ui/core/Snackbar';
 import DownloadLink from '../../DownloadLink';
+import NewRun from '../NewRun';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import { executeCommand } from '../../../util/apiWrapper';
 
@@ -17,6 +20,9 @@ class BundleActions extends React.Component<{
         super(props);
         this.state = {
             killSnackbarIsOpen: false,
+            showNewRerun: false,
+            defaultRun: {},
+            rerunErrorMessage: null,
         };
     }
 
@@ -24,7 +30,7 @@ class BundleActions extends React.Component<{
         onComplete: () => undefined,
     };
 
-    rerun = () => {
+    handleShowNewRerun = () => {
         const { bundleInfo } = this.props;
         const run = {};
         run.command = bundleInfo.command;
@@ -48,7 +54,37 @@ class BundleActions extends React.Component<{
         run.failedDependencies = bundleInfo.metadata.allow_failed_dependencies;
         run.queue = bundleInfo.metadata.request_queue;
         run.exclude_patterns = bundleInfo.metadata.exclude_patterns;
-        this.props.rerunItem(run);
+
+        this.setState({
+            showNewRerun: true,
+            defaultRun: run,
+        });
+    };
+
+    handleHideNewRerun = () => {
+        this.setState({
+            showNewRerun: false,
+            rerunErrorMessage: null,
+        });
+    };
+
+    handleSubmitRerun = (resp) => {
+        this.handleHideNewRerun();
+        const bundleUUID = resp?.output;
+        if (bundleUUID) {
+            const { wsUUID } = this.props;
+            const { focus, subfocus } = queryString.parse(window.location.search);
+            const newSubFocus = parseInt(subfocus) + 1;
+            const url = `/worksheets/${wsUUID}?bundle=${bundleUUID}&focus=${focus}&subfocus=${newSubFocus}`;
+            window.open(url, '_self');
+        }
+    };
+
+    handleRerunError = (errorMessage) => {
+        this.setState({
+            showNewRerun: false,
+            rerunErrorMessage: errorMessage,
+        });
     };
 
     handleOpenKillSnackbar = () => {
@@ -79,15 +115,9 @@ class BundleActions extends React.Component<{
         });
     };
 
-    componentDidUpdate = () => {
-        const { showNewRerun } = this.props;
-        if (showNewRerun) {
-            this.rerun();
-        }
-    };
-
     render() {
-        const { bundleInfo, classes, editPermission } = this.props;
+        const { bundleInfo, classes, editPermission, wsUUID, after_sort_key } = this.props;
+        const { showNewRerun, defaultRun, rerunErrorMessage } = this.state;
         const state = bundleInfo.state;
         const bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
         const isRunBundle = bundleInfo.bundle_type === 'run' && bundleInfo.metadata;
@@ -100,42 +130,58 @@ class BundleActions extends React.Component<{
         const showDownloadLink = isRunBundle ? isDownloadableRunBundle : true;
 
         return (
-            <div className={classes.ctaContainer}>
-                {isRunBundle && editPermission && (
-                    <>
-                        <Snackbar
-                            classes={{ root: classes.snackbar }}
-                            open={this.state.killSnackbarIsOpen}
-                            onClose={this.handleCloseKillSnackbar}
-                            message='Executing kill command...'
-                            action={this.killSnackbarAction}
-                        />
-                        <Button
-                            classes={{ root: classes.killButton }}
-                            variant='text'
-                            color='primary'
-                            disabled={!isKillableBundle}
-                            onClick={this.kill}
-                        >
-                            Kill
-                        </Button>
-                        <Button
-                            classes={{ root: classes.rerunButton }}
-                            variant='contained'
-                            color='primary'
-                            onClick={this.rerun}
-                        >
-                            Rerun
-                        </Button>
-                    </>
+            <>
+                <div className={classes.ctaContainer}>
+                    {isRunBundle && editPermission && (
+                        <>
+                            <Snackbar
+                                classes={{ root: classes.snackbar }}
+                                open={this.state.killSnackbarIsOpen}
+                                onClose={this.handleCloseKillSnackbar}
+                                message='Executing kill command...'
+                                action={this.killSnackbarAction}
+                            />
+                            <Button
+                                classes={{ root: classes.killButton }}
+                                variant='text'
+                                color='primary'
+                                disabled={!isKillableBundle}
+                                onClick={this.kill}
+                            >
+                                Kill
+                            </Button>
+                            <Button
+                                classes={{ root: classes.rerunButton }}
+                                variant='contained'
+                                color='primary'
+                                onClick={this.handleShowNewRerun}
+                            >
+                                Rerun
+                            </Button>
+                        </>
+                    )}
+                    {showDownloadLink && <DownloadLink href={bundleDownloadUrl} />}
+                </div>
+                {rerunErrorMessage && (
+                    <div className={classes.rerunError}>
+                        <span className={classes.bold}>ERROR:</span> {rerunErrorMessage}
+                    </div>
                 )}
-                {showDownloadLink && <DownloadLink href={bundleDownloadUrl} />}
-            </div>
+                <Dialog open={showNewRerun} onClose={this.handleHideNewRerun} maxWidth='lg'>
+                    <NewRun
+                        ws={{ info: { uuid: wsUUID } }}
+                        after_sort_key={after_sort_key}
+                        onError={this.handleRerunError}
+                        onSubmit={this.handleSubmitRerun}
+                        defaultRun={defaultRun}
+                    />
+                </Dialog>
+            </>
         );
     }
 }
 
-const styles = () => ({
+const styles = (theme) => ({
     ctaContainer: {
         display: 'flex',
     },
@@ -147,6 +193,15 @@ const styles = () => ({
     },
     snackbar: {
         marginBottom: 40,
+    },
+    rerunError: {
+        width: '100%',
+        marginTop: 30,
+        fontSize: 16,
+        color: theme.color.red.base,
+    },
+    bold: {
+        fontWeight: 500,
     },
 });
 

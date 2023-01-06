@@ -40,10 +40,17 @@ class SchemaItem extends React.Component<{
             curSchemaName: this.props.item.schema_name,
             newAddedRow: -1,
             deleting: false,
+            missingSchemaName: false,
         };
     }
 
     toggleEdit = (clear, save) => () => {
+        if (!this.state.curSchemaName) {
+            this.setState({
+                missingSchemaName: true,
+            });
+            return;
+        }
         if (!this.props.editPermission) return;
         if (clear) {
             this.clearChanges();
@@ -162,6 +169,7 @@ class SchemaItem extends React.Component<{
                 .replace(/\n/g, ' ')
                 .replace("'", '')
                 .replace(' ', ''),
+            missingSchemaName: false,
         });
     };
 
@@ -335,9 +343,8 @@ class SchemaItem extends React.Component<{
                                 onClick={this.toggleEdit(false, true)}
                                 disabled={
                                     /* disable if no textField value has changed compared with the initial state*/
-                                    this.state.curSchemaName === '' ||
-                                    (this.state.curSchemaName === schemaName &&
-                                        !this.checkIfTextChanged())
+                                    this.state.curSchemaName === schemaName &&
+                                    !this.checkIfTextChanged()
                                 }
                             >
                                 <SaveIcon />
@@ -567,11 +574,9 @@ class SchemaItem extends React.Component<{
                                 },
                             }}
                             multiline
-                            error={this.state.curSchemaName === ''}
+                            error={this.state.missingSchemaName}
                             helperText={
-                                this.state.curSchemaName === ''
-                                    ? 'Schema name can not be empty'
-                                    : ''
+                                this.state.missingSchemaName ? 'Schema name can not be empty' : ''
                             }
                             size='small'
                             disabled={!editPermission}
