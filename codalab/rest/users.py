@@ -257,22 +257,10 @@ def increment_user_disk_used():
     that we can safely increment user disk used without introducing a
     security flaw.
     """
-    # temporary; convert to using Schema later like in rest/schemas.py.
+    # TODO(agaut): Potentially convert the below to use a Schema (like those in schemas.py)
+    # (Although, that does have downsides in this case.)
     disk_used_increment = request.json['data'][0]['attributes']['disk_used_increment']
     if disk_used_increment <= 0:
         abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
-
-    test = (
-        AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
-    )
-    disk_used = test['data'][0]['attributes']['disk_used']
-    logger.info(f"DISK USED INCREMENT: {disk_used_increment}")
-    logger.info(f"DISK USED: {disk_used}")
-
     local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
-    test = (
-        AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
-    )
-    disk_used = test['data'][0]['attributes']['disk_used']
-    logger.info(f"DISK USED: {disk_used}")
-    return test
+    return AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
