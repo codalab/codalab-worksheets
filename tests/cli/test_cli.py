@@ -272,7 +272,7 @@ def _run_command(
     expected_exit_code=0,
     max_output_chars=4096,
     env=None,
-    include_stderr=True,
+    include_stderr=False,
     binary=False,
     force_subprocess=False,
     cwd=None,
