@@ -263,4 +263,6 @@ def increment_user_disk_used():
     if disk_used_increment <= 0:
         abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
     local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
-    return AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+    return (
+        AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+    )
