@@ -165,7 +165,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_states, timeout_seconds=1000):
+def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -175,8 +175,6 @@ def wait_until_state(uuid, expected_states, timeout_seconds=1000):
         expected_state: Expected state of bundle
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
     """
-    if type(expected_states) != set:
-        expected_states = set(expected_states)
     start_time = time.time()
     while True:
         if time.time() - start_time > timeout_seconds:
@@ -184,12 +182,12 @@ def wait_until_state(uuid, expected_states, timeout_seconds=1000):
         current_state = get_info(uuid, 'state')
 
         # Stop waiting when the bundle is in the expected state or one of the final states
-        if current_state in expected_states:
-            return current_state
+        if current_state == expected_state:
+            return
         elif current_state in State.FINAL_STATES:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
-                    uuid, expected_states, current_state
+                    uuid, expected_state, current_state
                 )
             )
         time.sleep(0.5)
