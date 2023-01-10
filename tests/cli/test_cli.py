@@ -1076,12 +1076,12 @@ def test_blob(ctx):
     failure_messages = pool.starmap(_run_command, args)
     for failure_message in failure_messages:
         check_contains(
-        'Upload aborted. User disk quota exceeded. '
-        'To apply for more quota, please visit the following link: '
-        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-        '#how-do-i-request-more-disk-quota-or-time-quota',
-        failure_message,
-    )
+            'Upload aborted. User disk quota exceeded. '
+            'To apply for more quota, please visit the following link: '
+            'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+            '#how-do-i-request-more-disk-quota-or-time-quota',
+            failure_message,
+        )
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
