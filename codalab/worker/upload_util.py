@@ -115,7 +115,10 @@ def upload_with_chunked_encoding(
                 logging.debug("Socket timeout, retrying url: %s", url)
                 conn.send(b'\0')
         logging.debug("Finished reading the response, url: %s", url)
+        print("Finished reading the response, url: %s", url)
         if response.status != 200:
+            print(response.status)
+            print(vars(response))
             # Low-level httplib module doesn't throw HTTPError
             raise urllib.error.HTTPError(
                 base_url + path,

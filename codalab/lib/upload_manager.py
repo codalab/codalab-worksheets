@@ -26,6 +26,7 @@ from codalab.lib.print_util import FileTransferProgress
 
 Source = Union[str, Tuple[str, IO[bytes]]]
 
+import logging
 
 class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
@@ -254,12 +255,19 @@ class BlobStorageUploader(Uploader):
                     out.write(to_send)
 
                     # Update disk and check if client has gone over disk usage.
+                    logging.info("CHECKINGGGGGGGGGGGGGGGGGGGGGGGGGG")
+                    print("CHECKINGGGGGGGGGGGGGGGGGGGGGGGGGG")
                     if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                         self._client.update(
                             'user/increment_disk_used', {'disk_used_increment': len(to_send)}
                         )
                         user_info = self._client.fetch('user')
+                        print("-"*100)
+                        print(len(to_send))
+                        print(user_info['disk_used'])
+                        print("-"*100)
                         if user_info['disk_used'] >= user_info['disk_quota']:
+                            print("raising exception")
                             raise Exception(
                                 'Upload aborted. User disk quota exceeded. '
                                 'To apply for more quota, please visit the following link: '
@@ -433,7 +441,8 @@ class ClientUploadManager(object):
         # 1. The server set CODALAB_DEFAULT_BUNDLE_STORE_NAME
         # 2. If the user specify `--store` and blob storage is on Azure
         """
-
+        logging.info("HEREEEEE")
+        print("HEREEEE")
         need_bypass = True
         bundle_store_uuid = None
         # 1) Read destination store from --store if user has specified it
@@ -457,15 +466,23 @@ class ClientUploadManager(object):
         else:
             unpack_before_upload = False
             is_dir = False
+        logging.info("HEREEEEE")
+        print("HEREEEE")
 
         # 3) Create a bundle location for the bundle
         params = {'need_bypass': need_bypass, 'is_dir': is_dir}
         data = self._client.add_bundle_location(bundle['id'], bundle_store_uuid, params)[0].get(
             'attributes'
         )
+        logging.info("HEREEEEE")
+        print("HEREEEE")
 
+        print("hello????")
+        print(data)
         # 4) If bundle location has bundle_conn_str, we should bypass the server when uploading.
         if data.get('bundle_conn_str', None) is not None:
+            logging.info("HEREEEE AZURE")
+            print("HEREEEE AZURE")
             # Mimic the rest server behavior
             # decided the bundle type (file/directory) and decide whether need to unpack
             bundle_conn_str = data.get('bundle_conn_str')

@@ -1063,6 +1063,8 @@ def test_blob(ctx):
 
     # Uploads multiple archives at the same time and goes over disk quota on the second
     # upload. Check to make sure the uploads fail.
+    # Note: After zip, 100kbfile.txt has size 522 bytes.
+    # Note: THIS ACTUALLY WORKS!!!! WE JUST NEED TO CAPTURE THE EXCEPTION!!!
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000}'])
     pool = multiprocessing.Pool(processes=2)
@@ -1071,7 +1073,15 @@ def test_blob(ctx):
         [[cl, 'upload', test_path('100kbfile.txt')], 1],
         [[cl, 'upload', test_path('100kbfile.txt')], 1],
     ]
-    pool.starmap(_run_command, args)
+    failure_messages = pool.starmap(_run_command, args)
+    for failure_message in failure_messages:
+        check_contains(
+        'Upload aborted. User disk quota exceeded. '
+        'To apply for more quota, please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        failure_message,
+    )
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
