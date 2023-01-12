@@ -1433,12 +1433,6 @@ class BundleCLI(object):
             # Calculate size of sources
             total_bundle_size = sum([get_path_size(source) for source in sources])
             user = client.fetch('user')
-            disk_left = user['disk_quota'] - user['disk_used']
-            if disk_left - total_bundle_size <= 0:
-                raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
-                    % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
-                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -1456,21 +1450,7 @@ class BundleCLI(object):
                 ignore_file=args.ignore,
             )
 
-            # Make sure user won't go over disk quota.
-            # We may also abort during upload if user is detected to go over quota during upload.
-            # This could happen if the user is uploading several sources simultaneously.
-            # Right now, this doesn't work because we need to make sure itl ooks at the
-            # correct size (compressed vs uncompressed)
-            # That's actually super annoying.
-            # We can probably figure out away to do it, but it's a bit hard....
-            # if disk_left - packed['filesize'] <= 0:
-            #     raise DiskQuotaExceededError(
-            #         'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
-            #         % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
-            #     )
-            # NOTE: the filesize in the zip util thing doesn't correspond to uploaded file size
-            # either because that will use a GzipStream for uploading to blob storage.
-            # Basically, we aren't sure how big the file will be until later.
+            bundle_size = total_bundle_size
 
             # Create bundle.
             # We must create the bundle right before we upload it because we
