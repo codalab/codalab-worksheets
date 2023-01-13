@@ -148,8 +148,8 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
 
 import gzip
 
-file_path = 'requirements.txt'
-# file_path = 'test_500m'
+# file_path = 'requirements.txt'
+file_path = 'test_1.5g'
 
 def test_indexed_gzip(file_path):
     """
@@ -161,6 +161,16 @@ def test_indexed_gzip(file_path):
     
     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
     output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))  
+    # def new_seek(*args, **kwargs):
+    #     raise OSError("Seek ERROR")
+    # def new_tell(*args, **kwargs):
+    #     raise OSError("Tell() ERROR")
+    # old_seek = output_fileobj.seek
+    # old_tell = output_fileobj.tell
+    # output_fileobj.seekable = lambda: False
+    # output_fileobj.seek = new_seek
+    # output_fileobj.tell = new_tell
+
 
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
         SQLiteIndexedTar(

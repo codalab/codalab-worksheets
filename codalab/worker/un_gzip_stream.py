@@ -263,6 +263,8 @@ class BytesBuffer(BytesIO):
             # print(f"Before correct size, ret list[-1]: {len(ret_list[-1])}")
             ret_list[-1], remainder = ret_list[-1][:size], ret_list[-1][size:]
             self.__buf.appendleft(remainder)
+            size += len(remainder)
+            assert size == 0
         
         ret = b''.join(ret_list)
         self.__size -= len(ret)
