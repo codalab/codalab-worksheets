@@ -807,13 +807,22 @@ def test_upload1(ctx):
 
         # Run the same tests when on a non root user
         user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='2000')
+        create_user(ctx, user_name, disk_quota='10')
+        # group_uuid = _run_command([cl, 'gnew', user_name])
         switch_user(user_name)
+        worksheet_uuid = _run_command([cl, 'work', '-u'])
+        switch_user('codalab')
+        _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
+        switch_user(user_name)
+        _run_command([cl, 'work', worksheet_uuid])
         # expect to fail when we upload something more than 2k bytes
         check_contains(
-            "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
+            'Upload aborted. User disk quota exceeded. '
+            'To apply for more quota, please visit the following link: '
+            'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+            '#how-do-i-request-more-disk-quota-or-time-quota',
             _run_command(
-                [cl, 'upload', test_path('codalab.png')] + suffix,
+                [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
                 expected_exit_code=1,
                 # To return stderr, we need to include
                 # the following two arguments:
