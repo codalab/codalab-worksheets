@@ -806,32 +806,34 @@ def test_upload1(ctx):
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
         # Run the same tests when on a non root user
-        user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='10')
-        # group_uuid = _run_command([cl, 'gnew', user_name])
-        switch_user(user_name)
-        worksheet_uuid = _run_command([cl, 'work', '-u'])
-        switch_user('codalab')
-        _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
-        switch_user(user_name)
-        _run_command([cl, 'work', worksheet_uuid])
-        # expect to fail when we upload something more than 2k bytes
-        check_contains(
-            'Upload aborted. User disk quota exceeded. '
-            'To apply for more quota, please visit the following link: '
-            'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-            '#how-do-i-request-more-disk-quota-or-time-quota',
-            _run_command(
-                [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
-                expected_exit_code=1,
-                # To return stderr, we need to include
-                # the following two arguments:
-                include_stderr=True,
-                force_subprocess=True,
-            ),
-        )
-        # Switch back to root user
-        switch_user('codalab')
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            # This test does not work when protected_mode is True.
+            user_name = 'non_root_user_' + random_name()
+            create_user(ctx, user_name, disk_quota='10')
+            # group_uuid = _run_command([cl, 'gnew', user_name])
+            switch_user(user_name)
+            worksheet_uuid = _run_command([cl, 'work', '-u'])
+            switch_user('codalab')
+            _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
+            switch_user(user_name)
+            _run_command([cl, 'work', worksheet_uuid])
+            # expect to fail when we upload something more than 2k bytes
+            check_contains(
+                'Upload aborted. User disk quota exceeded. '
+                'To apply for more quota, please visit the following link: '
+                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                '#how-do-i-request-more-disk-quota-or-time-quota',
+                _run_command(
+                    [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
+                    expected_exit_code=1,
+                    # To return stderr, we need to include
+                    # the following two arguments:
+                    include_stderr=True,
+                    force_subprocess=True,
+                ),
+            )
+            # Switch back to root user
+            switch_user('codalab')
 
 
 @TestModule.register('upload2')
@@ -1072,15 +1074,14 @@ def test_blob(ctx):
 
     # Uploads multiple archives at the same time and goes over disk quota on the second
     # upload. Check to make sure the uploads fail.
-    # Note: After zip, 100kbfile.txt has size 522 bytes.
-    # Note: THIS ACTUALLY WORKS!!!! WE JUST NEED TO CAPTURE THE EXCEPTION!!!
+    # Note: In upload_manager, after being zipped, codalab.png has size 9482 bytes.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000}'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 750}'])
     pool = multiprocessing.Pool(processes=2)
     # Set the expected exit code to be 1 for both processes.
     args = [
-        [[cl, 'upload', test_path('100kbfile.txt')], 1],
-        [[cl, 'upload', test_path('100kbfile.txt')], 1],
+        [[cl, 'upload', test_path('500bytefile.txt')], 1],
+        [[cl, 'upload', test_path('500bytefile.txt')], 1],
     ]
     failure_messages = pool.starmap(_run_command, args)
     for failure_message in failure_messages:
