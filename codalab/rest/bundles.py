@@ -473,7 +473,7 @@ def _add_bundle_location(bundle_uuid: str):
     bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     logging.info(
-        f"Try to bypass server upload, need_bypass: {need_bypass}, is_dir: {is_dir}, new_location: {new_location}"
+        f"Try to add bundle location, need_bypass: {need_bypass}, is_dir: {is_dir}, new_location: {new_location}"
     )
     # Scenario 1: User does not specify destination store, but rest-server set default storage name.
     # Should bypass server and upload to default Azure store.
@@ -517,7 +517,7 @@ def _add_bundle_location(bundle_uuid: str):
         )
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
-    logging.info(f"Bypass server upload, the URL is {bundle_url}")
+    logging.info(f"When adding bundle location, the URL is {bundle_url}")
     if need_bypass:
         if bundle_url is None:
             # Not support bypass server upload: user specifies neeed_bypass, but the server does not set default storage as Azure or GCS

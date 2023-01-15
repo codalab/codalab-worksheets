@@ -226,9 +226,10 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
+            # If it's link bundle, the actual storage place will be in the link_url
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             # bundle_location might be a blob storage / disk storage 
-            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)  
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
             path = normpath(bundle_location)
 
