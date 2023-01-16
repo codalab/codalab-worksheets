@@ -114,7 +114,7 @@ class RestClient(object):
                     raise RestClientException('Invalid JSON: ' + response_data, False)
 
     def _upload_with_chunked_encoding(
-        self, method, url, query_params, fileobj, progress_callback=None
+        self, method, url, query_params, fileobj, pass_self=False, progress_callback=None
     ):
         """
         Uploads the fileobj to url using method with query_params,
@@ -132,6 +132,7 @@ class RestClient(object):
         }
         headers.update(self._extra_headers)
 
+        json_api_client = self if pass_self else None
         upload_with_chunked_encoding(
             method=method,
             base_url=self._base_url,
@@ -141,4 +142,5 @@ class RestClient(object):
             need_response=True,
             url=url,
             progress_callback=progress_callback,
+            json_api_client=json_api_client
         )

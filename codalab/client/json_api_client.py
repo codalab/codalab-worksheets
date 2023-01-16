@@ -633,7 +633,7 @@ class JsonApiClient(RestClient):
         )
 
     @wrap_exception('Unable to upload contents of bundle {1}')
-    def upload_contents_blob(self, bundle_id, fileobj=None, params=None, progress_callback=None):
+    def upload_contents_blob(self, bundle_id, fileobj=None, pass_self=False, params=None, progress_callback=None):
         """
         Uploads the contents of the given fileobj as the contents of specified
         bundle.
@@ -657,6 +657,7 @@ class JsonApiClient(RestClient):
                 url=request_path,
                 query_params=params,
                 fileobj=fileobj,
+                pass_self=pass_self,
                 progress_callback=progress_callback,
             )
 

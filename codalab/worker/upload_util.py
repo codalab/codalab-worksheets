@@ -70,7 +70,6 @@ def upload_with_chunked_encoding(
         ITERATIONS_PER_DISK_CHECK = 10
         iteration = 0
         while True:
-            iteration += 1
             to_send = fileobj.read(CHUNK_SIZE)
             if not to_send:
                 break
@@ -94,6 +93,7 @@ def upload_with_chunked_encoding(
                 should_resume = progress_callback(bytes_uploaded)
                 if not should_resume:
                     raise Exception('Upload aborted by client')
+            iteration += 1
         conn.send(b'0\r\n\r\n')
 
         if not need_response:
