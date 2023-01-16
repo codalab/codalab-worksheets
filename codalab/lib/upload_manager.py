@@ -463,7 +463,6 @@ class ClientUploadManager(object):
             'attributes'
         )
 
-        
         # 4) If bundle location has bundle_conn_str, we should bypass the server when uploading.
         if data.get('bundle_conn_str', None) is not None:
             # Mimic the rest server behavior
@@ -512,7 +511,7 @@ class ClientUploadManager(object):
                         'store': destination_bundle_store or '',
                     },
                     progress_callback=progress.update,
-                    pass_self=True
+                    pass_self=True,
                 )
 
     def upload_Azure_blob_storage(

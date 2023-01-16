@@ -142,5 +142,5 @@ class RestClient(object):
             need_response=True,
             url=url,
             progress_callback=progress_callback,
-            json_api_client=json_api_client
+            json_api_client=json_api_client,
         )

@@ -1083,6 +1083,7 @@ def test_blob(ctx):
         [[cl, 'upload', test_path('codalab.png')], 1],
         [[cl, 'upload', test_path('codalab.png')], 1],
     ]
+    pool.starmap(_run_command, args)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
