@@ -1153,7 +1153,7 @@ class BundleModel(object):
 
         bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
-        self.update_user_disk_used(bundle.owner_id)
+        self.increment_user_disk_used(bundle.owner_id, data_size)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
