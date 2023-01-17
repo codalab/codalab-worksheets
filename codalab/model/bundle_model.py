@@ -2773,12 +2773,6 @@ class BundleModel(object):
             user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
 
-    def update_user_disk_used(self, user_id):
-        user_info = self.get_user_info(user_id)
-        # Compute from scratch for simplicity
-        user_info['disk_used'] = self._get_disk_used(user_id)
-        self.update_user_info(user_info)
-
     # ===========================================================================
     # OAuth-related methods follow!
     # ===========================================================================
