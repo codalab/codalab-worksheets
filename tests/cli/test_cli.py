@@ -1331,7 +1331,21 @@ def test_rm(ctx):
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
-    # Make sure disk quota is adjusted correctly when --data-only is used.
+
+@TestModule.register('disk')
+def test_disk(ctx):
+    # Basic test.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test rm --data-only.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
     wait_until_state(uuid, State.READY)
@@ -1344,7 +1358,7 @@ def test_rm(ctx):
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
-    # Make sure disk quota is adjusted correctly for symlinks is used.
+    # Test with symlinks
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
     wait_until_state(uuid, State.READY)
@@ -1353,6 +1367,60 @@ def test_rm(ctx):
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with running bundle
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    raw_bundle_file_size = 100
+    uuid = _run_command([cl, 'run', f'head -c {raw_bundle_file_size} /dev/zero > test.txt'])
+    wait_until_state(uuid, State.READY)
+    total_bundle_size = raw_bundle_file_size + 160 # Run bundles get 160 bytes extra added on
+    check_equals(str(total_bundle_size + int(disk_used)), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with archive upload
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    archive_paths = [temp_path(''), temp_path('')]
+    archive_exts = [p + '.tar.gz' for p in archive_paths]
+    contents_paths = [test_path('dir1'), test_path('a.txt')]
+    for (archive, content) in zip(archive_exts, contents_paths):
+        _run_command(
+            ['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)]
+        )
+    uuid = _run_command([cl, 'upload'] + archive_exts)
+    wait_until_state(uuid, State.READY)
+    check_equals(
+        str(int(disk_used) + 546), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with folder upload
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('dir1')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('dir1'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with make.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
+    uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
+    uploaded_files_size = path_util.get_size(test_path('a.txt')) + path_util.get_size(test_path('b.txt'))
+    uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2])
+    wait_until_state(uuid3, State.READY)
+    data_size = _run_command([cl, 'info', uuid3, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size) + uploaded_files_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid3])
+    _run_command([cl, 'rm', uuid2])
+    _run_command([cl, 'rm', uuid1])
+    check_equals(disk_used , _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
 
 @TestModule.register('make')
