@@ -339,7 +339,7 @@ class UploadManager(object):
         return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
-        data_size = local.model.get_bundle_metadata(bundle.uuid, 'data_size')[bundle.uuid]
+        data_size = self._bundle_model.get_bundle_metadata(bundle.uuid, 'data_size')[bundle.uuid]
         removed = self._bundle_store.cleanup(bundle.uuid, dry_run=False)
         bundle_update = {'data_hash': None, 'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
