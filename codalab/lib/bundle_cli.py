@@ -1721,25 +1721,27 @@ class BundleCLI(object):
 
         # Add new bundle's location. If user specify the storage using `--store`, the bundle will be added to that storage.
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
-        need_bypass = False
-        bundle_store_uuid = None
         destination_bundle_store = metadata.get('store')
-        # 1) Read destination store from --store if user has specified it
-        if destination_bundle_store is not None and destination_bundle_store != '':
-            storage_info = client.fetch_one(
-                'bundle_stores',
-                params={
-                    'name': destination_bundle_store,
-                    'include': ['uuid', 'storage_type', 'url'],
-                },
-            )
-            bundle_store_uuid = storage_info['uuid']
-            if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
-                need_bypass = False  # The user specify --store to upload to disk storage
-        
-        # 2) Add bundle to destination bundle storage
-        params = {'need_bypass': need_bypass, 'is_dir': is_dir}
-        client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
+        if destination_bundle_store is not None:
+            need_bypass = False
+            bundle_store_uuid = None
+            
+            # 1) Read destination store from --store if user has specified it
+            if destination_bundle_store is not None and destination_bundle_store != '':
+                storage_info = client.fetch_one(
+                    'bundle_stores',
+                    params={
+                        'name': destination_bundle_store,
+                        'include': ['uuid', 'storage_type', 'url'],
+                    },
+                )
+                bundle_store_uuid = storage_info['uuid']
+                if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
+                    need_bypass = False  # The user specify --store to upload to disk storage
+            
+            # 2) Add bundle to destination bundle storage
+            params = {'need_bypass': need_bypass} # is_dir: ???
+            client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
 
         print(new_bundle['uuid'], file=self.stdout)
 
@@ -1773,6 +1775,10 @@ class BundleCLI(object):
                     'parent_path': parent_target.subpath,
                 }
             )
+        # Jiani Debug: 
+        if bundle_type == MakeBundle.BUNDLE_TYPE:
+            print(f"The dependencied info are: {dependencies}")
+        
         return {
             'bundle_type': bundle_type,
             'command': command,

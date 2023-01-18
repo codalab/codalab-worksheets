@@ -19,7 +19,7 @@ from codalab.objects.permission import (
     check_bundle_have_run_permission,
 )
 from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url
-from codalab.lib import bundle_util, formatting, path_util
+from codalab.lib import bundle_util, formatting, path_util, zip_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
@@ -231,7 +231,9 @@ class BundleManager(object):
             # bundle_location might be a blob storage / disk storage 
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
+            # Here the path might be a blob storage or
             path = normpath(bundle_location)
+            logging.info(f"Destination path is: {path}")
 
             deps = []
             parent_bundle_link_urls = self._model.get_bundle_metadata(
@@ -263,9 +265,13 @@ class BundleManager(object):
                     if not child_path.startswith(path):
                         raise Exception('Invalid key for dependency: %s' % (dep.child_path))
 
+                    # # If destination path is on Blob Storage, copy everything to tempdir, and upload the tempdir 
+                    # if parse_linked_bundle_url(path).uses_beam:
+                    #     child_path = os.path.join(path, dep.uuid)
+                    
                     # If source path is on Azure Blob Storage, we should download it to a temporary local directory first.
                     if parse_linked_bundle_url(dependency_path).uses_beam:
-                        dependency_path = os.path.join(tempdir, dep.parent_uuid)
+                        dependency_path = os.path.join(tempdir, dep.child_path)
 
                         target_info = self._download_manager.get_target_info(
                             BundleTarget(dep.parent_uuid, dep.parent_path), 0
@@ -282,17 +288,39 @@ class BundleManager(object):
                             fileobj = self._download_manager.stream_file(target, gzipped=False)
                             with open(dependency_path, 'wb') as f:
                                 shutil.copyfileobj(fileobj, f)
+                    
+                    # If destination storage is blob storage, need to copy everything into a single folder
+                    elif parse_linked_bundle_url(path).uses_beam and dep.child_path is not '':
+                        tempdir_dependency_path = os.path.join(tempdir, dep.child_path)
+                        logging.info(f"before copy, the path is : {tempdir_dependency_path}")
+                        path_util.copy(dependency_path, tempdir_dependency_path, follow_symlinks=False)
+                        dependency_path = tempdir_dependency_path
 
                     deps.append((dependency_path, child_path))
-
-                remove_path(path)
-
-                if len(deps) == 1 and deps[0][1] == path:   # cl make test.txt, only make 1 bundles
-                    path_util.copy(deps[0][0], path, follow_symlinks=False)
-                else:
-                    os.mkdir(path)
-                    for dependency_path, child_path in deps:
-                        path_util.copy(dependency_path, child_path, follow_symlinks=False)
+                logging.info(f"Deps is: {deps}")
+                remove_path(path) # delete the original bundle path
+                
+                if parse_linked_bundle_url(path).uses_beam: # if the destination is using blob storage:
+                    # destination_store = self._bundle_store.get_bundle_location_full_info(bundle.uuid)[0] 
+                    # need to pack all the files in temp folder to a fileobj
+                    source_fileobj = zip_util.tar_gzip_directory(tempdir)
+                    source_filename = "MakeBundle"
+                    logging.info("Before upload_manager.upload_to_bundle_store")
+                    self._upload_manager.upload_to_bundle_store(
+                        bundle,
+                        source=(source_filename, source_fileobj),  # (filename, fileobj)
+                        git=False, # for MakeBundle, git = Falske
+                        unpack=True,  # upload using GzipStream
+                        use_azure_blob_beta=True,  # upload to blob storage
+                    )
+                    # need to gzip and upload the content to blob storage
+                else: # using local file system
+                    if len(deps) == 1 and deps[0][1] == path:   # cl make test.txt, only make 1 bundles, and no keys, eg "cl make :0x840780"
+                        path_util.copy(deps[0][0], path, follow_symlinks=False)
+                    else:
+                        os.mkdir(path)
+                        for dependency_path, child_path in deps:
+                            path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)

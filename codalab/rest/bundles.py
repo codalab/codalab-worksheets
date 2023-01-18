@@ -468,7 +468,7 @@ def _add_bundle_location(bundle_uuid: str):
     """
     check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
     need_bypass = query_get_bool('need_bypass', default=False)
-    is_dir = query_get_bool('is_dir', default=False)
+    is_dir = query_get_bool('is_dir', default=None)
 
     bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
