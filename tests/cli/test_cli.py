@@ -1369,6 +1369,7 @@ def test_disk(ctx):
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
     # Test with running bundle
+    _run_command([cl, 'search', '.mine', '.limit=1000'])
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'run', 'head -c 50 /dev/zero > test.txt'])
     wait_until_state(uuid, State.READY)
