@@ -1370,11 +1370,10 @@ def test_disk(ctx):
 
     # Test with running bundle
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
-    raw_bundle_file_size = 100
     uuid = _run_command([cl, 'run', f'head -c {raw_bundle_file_size} /dev/zero > test.txt'])
     wait_until_state(uuid, State.READY)
-    total_bundle_size = raw_bundle_file_size + 160 # Run bundles get 160 bytes extra added on
-    check_equals(str(total_bundle_size + int(disk_used)), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(str(data_size + int(disk_used)), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
