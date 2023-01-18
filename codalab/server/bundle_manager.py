@@ -292,12 +292,10 @@ class BundleManager(object):
                     # If destination storage is blob storage, need to copy everything into a single folder
                     elif parse_linked_bundle_url(path).uses_beam and dep.child_path is not '':
                         tempdir_dependency_path = os.path.join(tempdir, dep.child_path)
-                        logging.info(f"before copy, the path is : {tempdir_dependency_path}")
                         path_util.copy(dependency_path, tempdir_dependency_path, follow_symlinks=False)
                         dependency_path = tempdir_dependency_path
 
                     deps.append((dependency_path, child_path))
-                logging.info(f"Deps is: {deps}")
                 remove_path(path) # delete the original bundle path
                 
                 if parse_linked_bundle_url(path).uses_beam: # if the destination is using blob storage:
@@ -305,7 +303,6 @@ class BundleManager(object):
                     # need to pack all the files in temp folder to a fileobj
                     source_fileobj = zip_util.tar_gzip_directory(tempdir)
                     source_filename = "MakeBundle"
-                    logging.info("Before upload_manager.upload_to_bundle_store")
                     self._upload_manager.upload_to_bundle_store(
                         bundle,
                         source=(source_filename, source_fileobj),  # (filename, fileobj)
@@ -313,9 +310,8 @@ class BundleManager(object):
                         unpack=True,  # upload using GzipStream
                         use_azure_blob_beta=True,  # upload to blob storage
                     )
-                    # need to gzip and upload the content to blob storage
                 else: # using local file system
-                    if len(deps) == 1 and deps[0][1] == path:   # cl make test.txt, only make 1 bundles, and no keys, eg "cl make :0x840780"
+                    if len(deps) == 1 and deps[0][1] == path:
                         path_util.copy(deps[0][0], path, follow_symlinks=False)
                     else:
                         os.mkdir(path)
