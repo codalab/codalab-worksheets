@@ -538,7 +538,7 @@ class ClientUploadManager(object):
         index_conn_str: Connection string for the index.sqlite file.
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
-        json_api_client: TODO
+        json_api_client: A JsonApiClient object
         """
         BlobStorageUploader(
             bundle_model=None,
@@ -567,7 +567,6 @@ class ClientUploadManager(object):
         json_api_client,
         progress_callback=None,
     ):
-        """TODO: add json_api_client stuff in here."""
         from codalab.lib import zip_util
 
         if should_unpack:
