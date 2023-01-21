@@ -324,12 +324,15 @@ class GzipStream(BytesIO):
             self.__gzip.write(s)  # gzip the current file
 
     def read(self, num_bytes=None) -> bytes:
-        self._fill_buf_bytes(num_bytes)
-        print(f"length of buffer = {len(self.__buffer)}")
-        data = self.__buffer.read(num_bytes)
-        print(f"In GzipStream read(). num_bytes = {num_bytes}, length of buffer = {len(self.__buffer)}, read out data from GzipStream length = {len(data)}")
-        self.__size += len(data)
-        return data
+        try:
+            self._fill_buf_bytes(num_bytes)
+            print(f"length of buffer = {len(self.__buffer)}")
+            data = self.__buffer.read(num_bytes)
+            print(f"In GzipStream read(). num_bytes = {num_bytes}, length of buffer = {len(self.__buffer)}, read out data from GzipStream length = {len(data)}")
+            self.__size += len(data)
+            return data
+        except Exception as e:
+            print("Error in GzipStream read() ", repr(e))
 
 
     def close(self):

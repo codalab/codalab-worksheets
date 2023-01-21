@@ -148,8 +148,8 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
 
 import gzip
 
-# file_path = 'requirements.txt'
-file_path = 'test_1.5g'
+file_path = 'requirements.txt'
+# file_path = 'test_1.5g'
 
 def test_indexed_gzip(file_path):
     """
@@ -157,10 +157,11 @@ def test_indexed_gzip(file_path):
     """
     source_fileobj = open(file_path, 'rb')
     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work for GzipStream()
-    # output_fileobj = GzipStream(source_fileobj) 
+    # output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
+    output_fileobj = GzipStream(source_fileobj)
     
     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
-    output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))  
+    # output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))  
     # def new_seek(*args, **kwargs):
     #     raise OSError("Seek ERROR")
     # def new_tell(*args, **kwargs):
