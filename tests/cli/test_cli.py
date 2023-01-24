@@ -1388,12 +1388,10 @@ def test_disk(ctx):
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
     # Test with running bundle
-    _run_command([cl, 'search', '.mine', '.limit=1000'])
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'run', 'head -c 50 /dev/zero > test.txt'])
     wait_until_state(uuid, State.READY)
     data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
-    _run_command([cl, 'search', '.mine', '.limit=1000'])
     check_equals(
         str(int(data_size) + int(disk_used)),
         _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
@@ -1411,11 +1409,8 @@ def test_disk(ctx):
             ['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)]
         )
     uuid = _run_command([cl, 'upload'] + archive_exts)
-    # data_size = sum([path_util.get_size(archive_ext) for archive_ext in archive_exts]) THIS FAILS! It shoudl not
-    # something weird going on with the data_size for the final bundle stored in the bundle_store? Will have to check
     wait_until_state(uuid, State.READY)
     data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
-    _run_command([cl, 'search', '.mine', '.limit=1000'])
     check_equals(
         str(int(disk_used) + int(data_size)),
         _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
