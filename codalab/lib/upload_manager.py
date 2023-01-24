@@ -472,8 +472,6 @@ class ClientUploadManager(object):
                     params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
                 )
                 raise err
-            else:
-                self._client.update_bundle_state(bundle['id'], params={'success': True})
         else:
             # 5) Otherwise, upload the bundle directly through the server.
             progress = FileTransferProgress('Sent ', packed_source['filesize'], f=self.stderr)
