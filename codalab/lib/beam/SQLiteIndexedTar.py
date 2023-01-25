@@ -158,16 +158,17 @@ class SQLiteIndexedTar(MountSource):
                 self.tarFileName = os.path.abspath(tarFileName)
             else:
                 raise ValueError("At least one of tarFileName and fileObject arguments should be set!")
-
+        print("here4: ", fileObject.tell())
         # If no fileObject given, then self.tarFileName is the path to the archive to open.
         if not fileObject:
             fileObject = open(self.tarFileName, 'rb')
         fileSize = None
         if fileObject.seekable():
+            print("In seekable branch")
             fileObject.seek(0, io.SEEK_END)
             fileSize = fileObject.tell()
             fileObject.seek(0)  # Even if not interested in the file size, seeking to the start might be useful.
-
+        print("here5: ", fileObject.tell())
         # rawFileObject : Only set when opening a compressed file and only kept to keep the
         #                 compressed file handle from being closed by the garbage collector.
         # tarFileObject : File object to the uncompressed (or decompressed) TAR file to read actual data out of.
@@ -176,6 +177,7 @@ class SQLiteIndexedTar(MountSource):
         self.tarFileObject, self.rawFileObject, self.compression, self.isTar = SQLiteIndexedTar._openCompressedFile(
             fileObject, gzipSeekPointSpacing, encoding, self.parallelization, printDebug=self.printDebug
         )
+        print("here3: ", self.tarFileObject.tell())
         if not self.isTar and not self.rawFileObject:
             raise RatarmountError("File object (" + str(fileObject) + ") could not be opened as a TAR file!" + str(self.isTar) + str(self.rawFileObject))
 
@@ -229,6 +231,7 @@ class SQLiteIndexedTar(MountSource):
                 if os.path.isfile(indexPath):
                     os.remove(indexPath)
 
+        print("here 2: ", self.tarFileObject.tell())
         # Try to find an already existing index
         for indexPath in possibleIndexFilePaths:
             if self._tryLoadIndex(indexPath):
@@ -251,6 +254,7 @@ class SQLiteIndexedTar(MountSource):
             self._reloadIndexReadOnly()
             return
 
+        print("here2: ", self.tarFileObject.tell())
         # Find a suitable (writable) location for the index database
         if writeIndex and indexFilePath != ':memory:':
             for indexPath in possibleIndexFilePaths:
@@ -266,8 +270,9 @@ class SQLiteIndexedTar(MountSource):
                     + str(possibleIndexFilePaths)
                 )
 
+        print("here: ", self.tarFileObject.tell())
         self._createIndex(self.tarFileObject)
-        self._loadOrStoreCompressionOffsets()  # store
+        # self._loadOrStoreCompressionOffsets()  # store
         if self.sqlConnection:
             self._storeMetadata(self.sqlConnection)
             self._reloadIndexReadOnly()
@@ -556,10 +561,12 @@ class SQLiteIndexedTar(MountSource):
             elif hasattr(fileobj, 'tell_compressed'):
                 progressBar.update(fileobj.tell_compressed())
             elif hasattr(fileobj, 'fileobj'):
+                print("branch 3 in _updateProgressBar")
                 progressBar.update(fileobj.fileobj().tell())
             elif self.rawFileObject and hasattr(self.rawFileObject, 'tell'):
                 progressBar.update(self.rawFileObject.tell())
             else:
+                print("branch 5 in _updateProgressBar")
                 progressBar.update(fileobj.tell())
         except Exception:
             pass
@@ -599,7 +606,9 @@ class SQLiteIndexedTar(MountSource):
                     encoding     = self.encoding,
                     # fmt:on
                 )
+                
             except tarfile.ReadError:
+                print("[info] Can Not open the file using tar file reader")
                 pass
 
         if progressBar is None:
@@ -610,7 +619,7 @@ class SQLiteIndexedTar(MountSource):
         # 3. Iterate over files inside TAR and add them to the database
         try:
             filesToMountRecursively = []
-
+            print(f"[info] Loaded file is {loadedTarFile}")
             for tarInfo in loadedTarFile:
                 loadedTarFile.members = []  # Clear this in order to limit memory usage by tarfile
                 self._updateProgressBar(progressBar, fileObject)
@@ -661,7 +670,9 @@ class SQLiteIndexedTar(MountSource):
 
         # 4. Open contained TARs for recursive mounting
         oldPos = fileObject.tell()
+        print(f"old pos is: {oldPos}")
         oldPrintName = self.tarFileName
+        print(f"filesToMountRecursively: {filesToMountRecursively}")
         for fileInfo in filesToMountRecursively:
             # Strip file extension for mount point if so configured
             modifiedName = fileInfo[1]
@@ -717,7 +728,7 @@ class SQLiteIndexedTar(MountSource):
             else:
                 self._setFileInfo(fileInfo)
 
-        fileObject.seek(oldPos)
+        # fileObject.seek(oldPos) # Jiani: it's not seekable
         self.tarFileName = oldPrintName
 
         # Everything below should not be done in a recursive call of createIndex
@@ -1310,8 +1321,7 @@ class SQLiteIndexedTar(MountSource):
         raw_file_obj will be none if compression is None.
         """
         compression = SQLiteIndexedTar._detectCompression(fileobj, printDebug=printDebug)
-        if printDebug >= 3:
-            print(f"[Info] Detected compression {compression} for file object:", fileobj)
+        print(f"[Info] Detected compression {compression} for file object: {fileobj} position {fileobj.tell()}")
 
         if compression not in supportedCompressions:
             return fileobj, None, compression, SQLiteIndexedTar._detectTar(fileobj, encoding, printDebug=printDebug)
@@ -1323,14 +1333,19 @@ class SQLiteIndexedTar(MountSource):
             )
 
         if compression == 'gz':
+            print(f"before indexed_gzip.IndexedGzipFile(), gzipSeekPointSpacing: {gzipSeekPointSpacing}")
             # drop_handles keeps a file handle opening as is required to call tell() during decoding
             tar_file = indexed_gzip.IndexedGzipFile(fileobj=fileobj, drop_handles=False, spacing=gzipSeekPointSpacing)
         elif compression == 'bz2':
             tar_file = indexed_bzip2.open(fileobj, parallelization=parallelization)
         else:
             tar_file = cinfo.open(fileobj)
-
-        return tar_file, fileobj, compression, SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
+        
+        # is_tar = SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
+        is_tar = False
+        print(f"before return: {tar_file.tell()}")
+        # return tar_file, fileobj, compression, SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
+        return tar_file, fileobj, compression, is_tar
 
     @staticmethod
     def _uncheckedRemove(path: Optional[AnyStr]):
@@ -1438,7 +1453,10 @@ class SQLiteIndexedTar(MountSource):
             # Store the offsets into a temporary file and then into the SQLite database
             if self.printDebug >= 2:
                 print("[Info] Could not load GZip Block offset data. Will create it from scratch.")
-
+            
+            print(f"before build_full_index: {fileObject.tell()}")
+            import pdb
+            pdb.set_trace()
             # Transparently force index to be built if not already done so. build_full_index was buggy for me.
             # Seeking from end not supported, so we have to read the whole data in in a loop
             # while fileObject.read(1024 * 1024):

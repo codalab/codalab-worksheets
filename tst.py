@@ -148,8 +148,8 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
 
 import gzip
 
-file_path = 'requirements.txt'
-# file_path = 'test_1.5g'
+# file_path = 'requirements.txt'
+file_path = 'test_1.5g'
 
 def test_indexed_gzip(file_path):
     """
@@ -172,7 +172,6 @@ def test_indexed_gzip(file_path):
     # output_fileobj.seek = new_seek
     # output_fileobj.tell = new_tell
 
-
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
         SQLiteIndexedTar(
             fileObject=output_fileobj,
@@ -184,3 +183,13 @@ def test_indexed_gzip(file_path):
         )
 
 test_indexed_gzip(file_path)  # filepath points to a large file.
+
+# file_path = 'requirements.txt'
+# def simple_test(file_path):
+#     source_fileobj = open(file_path, 'rb')
+#     # output_fileobj = GzipStream(source_fileobj)
+#     output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
+#     tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
+#     tar_file.build_full_index()
+
+# simple_test(file_path)
