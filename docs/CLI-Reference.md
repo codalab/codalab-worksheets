@@ -45,6 +45,7 @@ Usage: `cl <command> <arguments>`
       -d, --description            Full description of the bundle (description).
       --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags).
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).
+      --store                      The name of the bundle store where the bundle should be uploaded to (store). If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                   Show an editor to allow editing of the bundle metadata.
 
 ### run
@@ -201,6 +202,7 @@ Usage: `cl <command> <arguments>`
       -d, --description            Full description of the bundle (description). (for makes and runs)
       --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags). (for makes and runs)
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies). (for makes and runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen. (for makes and runs)
       --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use (request_docker_image). (for runs)
       --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left. (for runs)
       --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_memory). (for runs)
@@ -211,7 +213,6 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access (request_network). (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents (exclude_patterns). (for runs)
-      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
@@ -231,6 +232,7 @@ Usage: `cl <command> <arguments>`
       -d, --description            Full description of the bundle (description). (for makes and runs)
       --tags                       Space-separated list of tags used for search, e.g. machine-learning (tags). (for makes and runs)
       --allow-failed-dependencies  Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies). (for makes and runs)
+      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen. (for makes and runs)
       --request-docker-image       Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use (request_docker_image). (for runs)
       --request-time               Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run (request_time). Defaults to user time quota left. (for runs)
       --request-memory             Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run (request_memory). (for runs)
@@ -241,7 +243,6 @@ Usage: `cl <command> <arguments>`
       --request-priority           Job priority (request_priority). Higher is more important. Negative priority bundles are queued behind bundles with no specified priority. (for runs)
       --request-network            Whether to allow network access (request_network). (for runs)
       --exclude-patterns           Exclude these file patterns from being saved into the bundle contents (exclude_patterns). (for runs)
-      --store                      The name of the bundle store where bundle results should be initially uploaded (store). If unspecified, an optimal available bundle store will be chosen. (for runs)
       --depth                      Number of parents to look back from the old output in search of the old input.
       -s, --shadow                 Add the newly created bundles right after the old bundles that are being mimicked.
       -i, --dry-run                Perform a dry run (just show what will be done without doing it)
