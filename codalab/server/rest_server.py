@@ -54,6 +54,10 @@ sentry_sdk.init(
     dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
     environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
     integrations=[BottleIntegration()],
+    traces_sample_rate=1.0,
+    _experiments={
+        "profiles_sample_rate": 1.0,
+    }
 )
 
 

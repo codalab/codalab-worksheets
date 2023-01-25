@@ -25,9 +25,15 @@ def using_sentry():
 def initialize_sentry():
     """
     Initialize the Sentry SDK if it hasn't already been initialized.
+
+    Playing around with Sentry profiling
     """
     if sentry_sdk.Hub.current.client is None:
-        sentry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT)
+        sentry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT,
+        traces_sample_rate=1.0,
+        _experiments={
+            "profiles_sample_rate": 1.0,
+        })
         print_sentry_warning()
 
 
