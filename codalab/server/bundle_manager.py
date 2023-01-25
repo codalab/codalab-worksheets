@@ -263,7 +263,6 @@ class BundleManager(object):
                     if not child_path.startswith(path):
                         raise Exception('Invalid key for dependency: %s' % (dep.child_path))
 
-
                     # If source path is on Azure Blob Storage, we should download it to a temporary local directory first.
                     if parse_linked_bundle_url(dependency_path).uses_beam:
                         if dep.child_path != "":
@@ -281,7 +280,6 @@ class BundleManager(object):
                         # into common utility functions.
                         if target_info['type'] == 'directory':
                             fileobj = self._download_manager.stream_tarred_gzipped_directory(target)
-                            logging.info(f"Before the un_tar_directory, {fileobj} {dependency_path}")
                             un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
                             fileobj = self._download_manager.stream_file(target, gzipped=False)
@@ -291,7 +289,7 @@ class BundleManager(object):
                     # If source is local file system and destination is blob storage:
                     # need to copy everything into a temp folder and upload together
                     elif parse_linked_bundle_url(path).uses_beam:
-                        if dep.child_path != "": 
+                        if dep.child_path != "":
                             tempdir_dependency_path = os.path.join(tempdir, dep.child_path)
                         else:
                             tempdir_dependency_path = os.path.join(tempdir, dep.parent_uuid)
@@ -302,29 +300,27 @@ class BundleManager(object):
                     deps.append((dependency_path, child_path))
                 remove_path(path)  # delete the original bundle path
 
-                # If the destination is using blob storage
-                if parse_linked_bundle_url(
-                    path
-                ).uses_beam:  
-                    source_fileobj = zip_util.tar_gzip_directory(tempdir) # pack all the files in temp folder to a fileobj
-                    source_filename = "MakeBundle.tar.gz" # TODO(Jiani): Get the original filename
-                    logging.info("Before upload to upload_to_bundle_store")
+                # The destination is using blob storage
+                if parse_linked_bundle_url(path).uses_beam:
+                    source_fileobj = zip_util.tar_gzip_directory(
+                        tempdir
+                    )  # pack all the files in temp folder to a fileobj
+                    source_filename = "MakeBundle.tar.gz"  # TODO(Jiani): Use the original filename
                     self._upload_manager.upload_to_bundle_store(
                         bundle,
                         source=tuple((source_filename, source_fileobj)),
                         git=False,
                         unpack=True,
-                        use_azure_blob_beta=True,  # upload to blob storage
+                        use_azure_blob_beta=True,
                     )
-                    logging.info("Finish upload to upload_to_bundle_store")
-                else:  # using local file system
+                else:  # The destination is using local filesystem
                     if len(deps) == 1 and deps[0][1] == path:
                         path_util.copy(deps[0][0], path, follow_symlinks=False)
                     else:
                         os.mkdir(path)
                         for dependency_path, child_path in deps:
                             path_util.copy(dependency_path, child_path, follow_symlinks=False)
-                            
+
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
