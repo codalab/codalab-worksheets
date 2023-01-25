@@ -1725,7 +1725,7 @@ class BundleCLI(object):
         if destination_bundle_store is not None:
             need_bypass = False
             bundle_store_uuid = None
-            
+
             # 1) Read destination store from --store if user has specified it
             if destination_bundle_store is not None and destination_bundle_store != '':
                 storage_info = client.fetch_one(
@@ -1738,9 +1738,9 @@ class BundleCLI(object):
                 bundle_store_uuid = storage_info['uuid']
                 if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
                     need_bypass = False  # The user specify --store to upload to disk storage
-            
+
             # 2) Add bundle to destination bundle storage
-            params = {'need_bypass': need_bypass} # is_dir: ???
+            params = {'need_bypass': need_bypass}  # is_dir: ???
             client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
 
         print(new_bundle['uuid'], file=self.stdout)
@@ -1775,10 +1775,10 @@ class BundleCLI(object):
                     'parent_path': parent_target.subpath,
                 }
             )
-        # Jiani Debug: 
+        # Jiani Debug:
         if bundle_type == MakeBundle.BUNDLE_TYPE:
             print(f"The dependencied info are: {dependencies}")
-        
+
         return {
             'bundle_type': bundle_type,
             'command': command,

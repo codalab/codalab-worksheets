@@ -20,7 +20,7 @@ class MakeBundle(DerivedBundle):
             generated=True,
         )
     )
-    METADATA_SPECS.append( # support `--store` command, set the 
+    METADATA_SPECS.append(  # support `--store` command, set the
         MetadataSpec(
             'store',
             str,

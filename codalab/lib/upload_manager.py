@@ -88,6 +88,7 @@ class Uploader:
         """Uploads the given source to the bundle store.
         Given arguments are the same as UploadManager.upload_to_bundle_store().
         Used when uploading from rest server."""
+        import logging
         try:
             # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
@@ -107,9 +108,12 @@ class Uploader:
                     bundle_path = self._update_and_get_bundle_location(
                         bundle, is_directory=source_ext in ARCHIVE_EXTS_DIR
                     )
+                    logging.info(f"branch 1, bundle_path: {bundle_path} is_dir: {source_ext in ARCHIVE_EXTS_DIR}")
+                    
                     self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
                 else:
                     bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
+                    logging.info(f"branch 2, bundle_path: {bundle_path} is_dir: false")
                     self.write_fileobj(
                         source_ext, source_fileobj, bundle_path, unpack_archive=False
                     )
@@ -136,16 +140,21 @@ class Uploader:
             # In this case, we are using the new BundleStore / BundleLocation model to track the bundle location.
             # Create the appropriate bundle location.
             # For Make bundles,
-            locations = self._bundle_model.get_bundle_locations(bundle.uuid)
-            need_add_location = True
-            for location in locations:
-                if location[' bundle_store_uuid'] == self.destination_bundle_store["uuid"]:
-                    need_add_location = False
-                    break
-            if need_add_location:
-                self._bundle_model.add_bundle_location(
-                    bundle.uuid, self.destination_bundle_store["uuid"]
-                )
+            # locations = self._bundle_model.get_bundle_locations(bundle.uuid)
+            # need_add_location = True
+            # # Avoid adding multiple (bundle_uuid, bundle_store_uuid) pairs.
+            # # In our bundle store model, one bundle is only stored in one bundle store.
+            # for location in locations:
+            #     if location['bundle_store_uuid'] == self.destination_bundle_store["uuid"]:
+            #         need_add_location = False
+            #         break
+            # if need_add_location:
+                # self._bundle_model.add_bundle_location(
+                #     bundle.uuid, self.destination_bundle_store["uuid"]
+                # )
+            self._bundle_model.add_bundle_location(
+                bundle.uuid, self.destination_bundle_store["uuid"]
+            )
             self._bundle_model.update_bundle(
                 bundle, {'is_dir': is_directory},
             )
@@ -257,6 +266,8 @@ class BlobStorageUploader(Uploader):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
+            import logging
+            logging.info(f"After upload file content, {bundle_path}")
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
