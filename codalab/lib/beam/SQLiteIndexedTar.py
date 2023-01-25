@@ -272,7 +272,7 @@ class SQLiteIndexedTar(MountSource):
 
         print("here: ", self.tarFileObject.tell())
         self._createIndex(self.tarFileObject)
-        # self._loadOrStoreCompressionOffsets()  # store
+        self._loadOrStoreCompressionOffsets()  # store
         if self.sqlConnection:
             self._storeMetadata(self.sqlConnection)
             self._reloadIndexReadOnly()
@@ -670,9 +670,7 @@ class SQLiteIndexedTar(MountSource):
 
         # 4. Open contained TARs for recursive mounting
         oldPos = fileObject.tell()
-        print(f"old pos is: {oldPos}")
         oldPrintName = self.tarFileName
-        print(f"filesToMountRecursively: {filesToMountRecursively}")
         for fileInfo in filesToMountRecursively:
             # Strip file extension for mount point if so configured
             modifiedName = fileInfo[1]
@@ -1455,10 +1453,9 @@ class SQLiteIndexedTar(MountSource):
                 print("[Info] Could not load GZip Block offset data. Will create it from scratch.")
             
             print(f"before build_full_index: {fileObject.tell()}")
-            import pdb
-            pdb.set_trace()
             # Transparently force index to be built if not already done so. build_full_index was buggy for me.
             # Seeking from end not supported, so we have to read the whole data in in a loop
+            # Jiani: read the whole file to build index is buggy for me. 
             # while fileObject.read(1024 * 1024):
             #     pass
             fileObject.build_full_index()

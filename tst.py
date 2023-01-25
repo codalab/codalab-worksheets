@@ -149,7 +149,7 @@ def upload(file_path, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/cont
 import gzip
 
 # file_path = 'requirements.txt'
-file_path = 'test_1.5g'
+file_path = 'test_10g'
 
 def test_indexed_gzip(file_path):
     """
