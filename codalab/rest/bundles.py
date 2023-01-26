@@ -916,6 +916,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Disposition: inline; filename=<bundle name or target filename>`
     - `Content-Type: <guess of mimetype based on file extension>`
     - `Content-Encoding: [gzip|identity]`
+    - `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
     - `Target-Type: file`
     - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -923,6 +924,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
     - `Content-Type: application/gzip`
     - `Content-Encoding: identity`
+    - `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
     - `Target-Type: directory`
     - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -1038,6 +1040,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         response.set_header('Content-Disposition', 'inline; filename="%s"' % filename)
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
+    response.set_header('Access-Control-Allow-Origin', '*')
     response.set_header('Target-Type', target_info['type'])
     if target_info['type'] == 'file':
         size = target_info['size']

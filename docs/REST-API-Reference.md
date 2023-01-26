@@ -667,7 +667,6 @@ Query parameters:
 - `support_redirect`: Set to 1 if the client supports bypassing the server
   and redirecting to another URL (such as Blob Storage). If so, the Target-Type and
   X-CodaLab-Target-Size headers will not be present in the response.
-
   If this endpoint is called from a web browser (`Referer` header is set), this parameter
   defaults to 1. Otherwise, it defaults to 0, meant for compatibility
   with older clients / CLI versions that depend on the Target-Type and
@@ -678,6 +677,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
+- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -685,6 +685,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
+- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -718,7 +719,6 @@ Query parameters:
 - `support_redirect`: Set to 1 if the client supports bypassing the server
   and redirecting to another URL (such as Blob Storage). If so, the Target-Type and
   X-CodaLab-Target-Size headers will not be present in the response.
-
   If this endpoint is called from a web browser (`Referer` header is set), this parameter
   defaults to 1. Otherwise, it defaults to 0, meant for compatibility
   with older clients / CLI versions that depend on the Target-Type and
@@ -729,6 +729,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
+- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -736,6 +737,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
+- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
