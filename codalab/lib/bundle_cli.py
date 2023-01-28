@@ -1775,9 +1775,6 @@ class BundleCLI(object):
                     'parent_path': parent_target.subpath,
                 }
             )
-        # Jiani Debug:
-        if bundle_type == MakeBundle.BUNDLE_TYPE:
-            print(f"The dependencied info are: {dependencies}")
 
         return {
             'bundle_type': bundle_type,
