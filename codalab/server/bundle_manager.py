@@ -300,8 +300,8 @@ class BundleManager(object):
                     deps.append((dependency_path, child_path))
                 remove_path(path)  # delete the original bundle path
 
-                # The destination is using blob storage
-                if parse_linked_bundle_url(path).uses_beam:
+                # Upload to destination bundle storage
+                if parse_linked_bundle_url(path).uses_beam:  # The destination is using blob storage
                     source_fileobj = zip_util.tar_gzip_directory(
                         tempdir
                     )  # pack all the files in temp folder to a fileobj
