@@ -900,6 +900,21 @@ Provide secure services using OAuth2.
 Fetch authenticated user.
 ### `PATCH /user`
 Update one or multiple fields of the authenticated user.
+### `PATCH /user/increment_disk_used`
+
+Update the disk used for the user who makes the request to this endpoint.
+
+This is required because users who are bypassing the server to upload
+files straight to Azure will need their client to tell the server
+to increment their disk used as file chunks are uploaded. They cannot
+use the users/ PATCH endpoint since disk_used is in
+USER_READ_ONLY_FIELDS. We make this special function (which only allows
+positive disk increments so that users can't decrement their disk used) to ensure
+that we can safely increment user disk used without introducing a
+security flaw.
+
+The request body should look like: { 'disk_used_increment': len(to_send) }
+
 
 &uarr; [Back to Top](#table-of-contents)
 ## Users API

@@ -239,3 +239,33 @@ def update_users():
     # Return updated users
     users = local.model.get_users(user_ids=[users[0]['user_id']])['results']
     return AdminUserSchema(many=True).dump(users).data
+
+
+@patch('/user/increment_disk_used', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
+def increment_user_disk_used():
+    """
+    Update the disk used for the user who makes the request to this endpoint.
+
+    This is required because users who are bypassing the server to upload
+    files straight to Azure will need their client to tell the server
+    to increment their disk used as file chunks are uploaded. They cannot
+    use the users/ PATCH endpoint since disk_used is in
+    USER_READ_ONLY_FIELDS. We make this special function (which only allows
+    positive disk increments so that users can't decrement their disk used) to ensure
+    that we can safely increment user disk used without introducing a
+    security flaw.
+
+    The request body should look like: { 'disk_used_increment': len(to_send) }
+    """
+    # TODO(agaut): Potentially convert the below to use a Schema (like those in schemas.py)
+    # (Although, that does have downsides in this case.)
+    disk_used_increment = request.json['data'][0]['attributes']['disk_used_increment']
+
+    # only allow positive disk increments so that users can't abuse this endpoint.
+    if disk_used_increment <= 0:
+        abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
+
+    local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
+    return (
+        AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
+    )

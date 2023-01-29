@@ -30,24 +30,29 @@ Source = Union[str, Tuple[str, IO[bytes]]]
 class Uploader:
     """Uploader base class. Subclasses should extend this class and implement the
     non-implemented methods that perform the uploads to a bundle store.
-    Used when: 1. client -> blob storage (is_client = True in init function)
-               2. rest-server -> blob storage (is_client = False in init function)
+    Used when: 1. client -> blob storage (json_api_client = a json_api_client object in init function)
+               2. rest-server -> blob storage (json_api_client = None in init function)
     """
 
     def __init__(
-        self, bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=False
+        self,
+        bundle_model=None,
+        bundle_store=None,
+        destination_bundle_store=None,
+        json_api_client=None,
     ):
         """
         params:
         bundle_model: Used on rest-server.
         bundle_store: Bundle store model, used on rest-server.
         destination_bundle_store: Indicate destination for bundle storage.
-        is_client: Whether this uploader is used on client side. Used on client.
+        json_api_client: A json API client. Only set if uploader is used on client side; if the uploader is used on the server side, it is set to None.
         """
-        if not is_client:
+        if not json_api_client:
             self._bundle_model = bundle_model
             self._bundle_store = bundle_store
             self.destination_bundle_store = destination_bundle_store
+        self._client = json_api_client
 
     @property
     def storage_type(self):
@@ -236,14 +241,32 @@ class BlobStorageUploader(Uploader):
         try:
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
+            ITERATIONS_PER_DISK_CHECK = 1
+            iteration = 0
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
                 while True:
+                    iteration += 1
                     to_send = output_fileobj.read(CHUNK_SIZE)
                     if not to_send:
                         break
                     out.write(to_send)
+
+                    # Update disk and check if client has gone over disk usage.
+                    if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                        self._client.update(
+                            'user/increment_disk_used', {'disk_used_increment': len(to_send)}
+                        )
+                        user_info = self._client.fetch('user')
+                        if user_info['disk_used'] >= user_info['disk_quota']:
+                            raise Exception(
+                                'Upload aborted. User disk quota exceeded. '
+                                'To apply for more quota, please visit the following link: '
+                                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                                '#how-do-i-request-more-disk-quota-or-time-quota'
+                            )
+
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
                         should_resume = progress_callback(bytes_uploaded)
@@ -331,7 +354,7 @@ class UploadManager(object):
             bundle_model=self._bundle_model,
             bundle_store=self._bundle_store,
             destination_bundle_store=destination_bundle_store,
-            is_client=False,
+            json_api_client=None,
         ).upload_to_bundle_store(bundle, source, git, unpack)
 
     def has_contents(self, bundle):
@@ -410,7 +433,6 @@ class ClientUploadManager(object):
         # 1. The server set CODALAB_DEFAULT_BUNDLE_STORE_NAME
         # 2. If the user specify `--store` and blob storage is on Azure
         """
-
         need_bypass = True
         bundle_store_uuid = None
         # 1) Read destination store from --store if user has specified it
@@ -461,6 +483,7 @@ class ClientUploadManager(object):
                         index_conn_str=index_conn_str,
                         source_ext=source_ext,
                         should_unpack=unpack_before_upload,
+                        json_api_client=self._client,
                         progress_callback=progress.update,
                     )
                 self._client.update_bundle_state(bundle['id'], params={'success': True})
@@ -488,6 +511,7 @@ class ClientUploadManager(object):
                         'store': destination_bundle_store or '',
                     },
                     progress_callback=progress.update,
+                    pass_self=True,
                 )
 
     def upload_Azure_blob_storage(
@@ -499,6 +523,7 @@ class ClientUploadManager(object):
         index_conn_str,
         source_ext,
         should_unpack,
+        json_api_client,
         progress_callback=None,
     ):
         """
@@ -513,9 +538,13 @@ class ClientUploadManager(object):
         index_conn_str: Connection string for the index.sqlite file.
         source_ext: Extension of the file.
         should_unpack: Unpack the file before upload iff True.
+        json_api_client: A JsonApiClient object
         """
         BlobStorageUploader(
-            bundle_model=None, bundle_store=None, destination_bundle_store=None, is_client=True
+            bundle_model=None,
+            bundle_store=None,
+            destination_bundle_store=None,
+            json_api_client=json_api_client,
         ).write_fileobj(
             source_ext,
             fileobj,
@@ -535,6 +564,7 @@ class ClientUploadManager(object):
         index_conn_str,
         source_ext,
         should_unpack,
+        json_api_client,
         progress_callback=None,
     ):
         from codalab.lib import zip_util
@@ -552,6 +582,7 @@ class ClientUploadManager(object):
             fileobj=output_fileobj,
             query_params={},
             progress_callback=progress_callback,
+            json_api_client=json_api_client,
         )
         # upload the index file
         with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
@@ -571,4 +602,5 @@ class ClientUploadManager(object):
                 query_params={},
                 fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
+                json_api_client=self._client,
             )
