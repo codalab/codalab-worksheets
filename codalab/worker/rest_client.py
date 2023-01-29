@@ -123,6 +123,11 @@ class RestClient(object):
         the optional progress_callback should return a boolean which interrupts the
         download if False and resumes it if True. If i's not specified the download
         runs to completion
+
+        passs_self indicates whether or not this json_api_client should pass itself into
+        the called upload_with_chunked_encoding function, since we need to do that
+        if we want to check the user's disk quota by sending requests to the
+        /user/increment_disk_used endpoint.
         """
 
         headers = {

@@ -35,9 +35,6 @@ def upload_with_chunked_encoding(
         :param progress_callback: Function. Callback function indicating upload progress.
         :param json_api_client: JsonApiClient. None when this function is run by the server.
                                                Used to update disk usage from client.
-        :param check_disk: bool. True if the user's disk should be checked during the upload.
-        This is used by the upload manager to prevent users using parallel uploads to bypass
-        their disk quota.
         """
     CHUNK_SIZE = 16 * 1024
     TIMEOUT = 60
@@ -115,10 +112,7 @@ def upload_with_chunked_encoding(
                 logging.debug("Socket timeout, retrying url: %s", url)
                 conn.send(b'\0')
         logging.debug("Finished reading the response, url: %s", url)
-        print("Finished reading the response, url: %s", url)
         if response.status != 200:
-            print(response.status)
-            print(vars(response))
             # Low-level httplib module doesn't throw HTTPError
             raise urllib.error.HTTPError(
                 base_url + path,

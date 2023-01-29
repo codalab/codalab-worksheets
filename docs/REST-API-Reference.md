@@ -913,6 +913,8 @@ positive disk increments so that users can't decrement their disk used) to ensur
 that we can safely increment user disk used without introducing a
 security flaw.
 
+The request body should look like: { 'disk_used_increment': len(to_send) }
+
 
 &uarr; [Back to Top](#table-of-contents)
 ## Users API

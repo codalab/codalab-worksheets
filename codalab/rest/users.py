@@ -254,6 +254,8 @@ def increment_user_disk_used():
     positive disk increments so that users can't decrement their disk used) to ensure
     that we can safely increment user disk used without introducing a
     security flaw.
+
+    The request body should look like: { 'disk_used_increment': len(to_send) }
     """
     # TODO(agaut): Potentially convert the below to use a Schema (like those in schemas.py)
     # (Although, that does have downsides in this case.)
