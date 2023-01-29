@@ -1403,12 +1403,14 @@ def test_make(ctx):
             wait(uuid3)
             check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
             uuid4 = _run_command([cl, 'make', 'dep:' + uuid1] + store[2])
+            wait(uuid4)
             check_equals(
-                test_path_contents('a.txt', binary=True),
-                _run_command([cl, 'cat', uuid4 + '/dep'], binary=True),
+                test_path_contents('a.txt'),
+                _run_command([cl, 'cat', uuid4 + '/dep']),
             )
             # clean up
             _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+            _run_command([cl, 'rm', '-r', uuid2])
         _run_command([cl, 'store', 'rm', bundle_store_uuid])
 
 
