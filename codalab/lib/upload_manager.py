@@ -46,7 +46,7 @@ class Uploader:
         bundle_model: Used on rest-server.
         bundle_store: Bundle store model, used on rest-server.
         destination_bundle_store: Indicate destination for bundle storage.
-        json_api_client: A json API client. Only non-None if uploader is used on client side.
+        json_api_client: A json API client. Only set if uploader is used on client side; if the uploader is used on the server side, it is set to None.
         """
         if not json_api_client:
             self._bundle_model = bundle_model
