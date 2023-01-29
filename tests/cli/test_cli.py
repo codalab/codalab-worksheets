@@ -34,6 +34,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -160,9 +161,46 @@ def get_uuid(line):
     return m.group(1)
 
 
-def get_info(uuid, key):
+def get_info(uuid, key, timeout_seconds=None):
     return _run_command([cl, 'info', '-f', key, uuid])
 
+
+class timeout:
+    """
+    Class that uses signal to interrupt functions while they're running
+    if they run for longer than timeout_seconds.
+    Used for the timing tests.
+    """
+    def __init__(self, timeout_seconds=1, uuid=None):
+        self.timeout_seconds = timeout_seconds
+        self.uuid = None
+    def handle_timeout(self, signum, frame):
+        timeout_message = "Timeout ocurred"
+        if self.uuid:
+            timeout_message += " while waiting for %s to run" % uuid
+        raise TimeoutError(timeout_message)
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.setitimer(signal.ITIMER_REAL, self.timeout_seconds, self.timeout_seconds)
+        
+        # now, reset itimer.
+        signal.setitimer(signal.ITIMER_REAL, 0, 0)
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
+
+def timeout_wrapper(timeout_seconds, fn, *args, **kwargs):
+    """
+    TODO!
+    """
+    start_time = time.time()
+    return_value = fn(*args, **kwargs)
+    duration = time.time() - start_time
+    if duration > timeout_seconds:
+        raise AssertionError(
+            f'Timeout while waiting for {fn.__name__} to run.',
+            f'Timeout was {timeout_seconds}, but true time taken was {duration}.'
+        )
+    return return_value
 
 def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     """
@@ -1898,12 +1936,65 @@ def test_run(ctx):
 
 @TestModule.register('time')
 def test_time(ctx):
-    """Various tests that ensure the timing of runs is still fast."""
+    """ Basic tests. """
+    # Uploading. Sweep file sizes.
+    # NOTE: check what timeout should be! Make it relatively tight.
+    #FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
+    #TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
+    """
+    FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6]
+    TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6]
+    temp_file_path = temp_path(random_name())
+    f = open(temp_file_path, 'w+')
+    for i, size in enumerate(FILE_SIZES):
+        # Have to use subprocess because redirection is impossible with _run_command.
+        subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
+        with timeout(TIMEOUTS[i]):
+            start = time.time()
+            uuid =  _run_command([cl, 'upload', temp_file_path])
+            wait_until_state(uuid, State.READY, timeout_seconds=1)
+            duration = time.time() - start
+            print(f"{duration}")
+    _run_command(['rm', temp_file_path])
+    """
+    
+    # Run simple bundle.
+    start = time.time()
     uuid = _run_command([cl, 'run', 'echo hello'])
     wait_until_state(uuid, State.READY, timeout_seconds=20)
+    duration = time.time() - start
+    print(f"{duration}")
 
-    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
-    wait_until_state(uuid, State.READY, timeout_seconds=20)
+    # Loading bundle info
+    with timeout(0.1):
+        start = time.time()
+        get_info(uuid, 'name')
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Loading a worksheet and getting worksheet info
+    with timeout(0.1):
+        start = time.time()
+        _run_command([cl, 'new', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with timeout(0.3):
+        start = time.time()
+        _run_command([cl, 'work', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with timeout(0.2):
+        start = time.time()
+        _run_command([cl, 'wrm', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Removing a bundle
+    with timeout(0.2):
+        start = time.time()
+        _run_command([cl, 'rm', uuid])
+        duration = time.time() - start
+        print(f"{duration}")
 
 
 @TestModule.register('link')
