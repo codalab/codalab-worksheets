@@ -59,7 +59,7 @@ sentry_sdk.init(
         "profiles_sample_rate": 1.0,
     }
 )
-sentry_sdk.start_transaction(name="TESTTTT")
+sentry_sdk.start_transaction(name="rest-server-TESTTTT")
 
 
 class SaveEnvironmentPlugin(object):
