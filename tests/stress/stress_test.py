@@ -101,11 +101,11 @@ class StressTestRunner:
         'sonarqube:latest',
         'tensorflow/tensorflow:latest',
     ]
-    _TAG = 'codalab-stress-test'
 
-    def __init__(self, cl, args):
+    def __init__(self, cl, args, tag='codalab-stress-test'):
         self._cl = cl
         self._args = args
+        self._TAG = tag
 
         # Connect to the instance the stress tests will run on
         print('Connecting to instance %s...' % args.instance)
@@ -113,7 +113,7 @@ class StressTestRunner:
 
     def run(self):
         print('Cleaning up stress test files from other runs...')
-        cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
+        cleanup(self._cl, self._TAG, should_wait=False)
 
         print('Running stress tests...')
         self._start_heartbeat()
@@ -328,7 +328,7 @@ class StressTestRunner:
         worksheet_name = self._create_worksheet_name(run_name)
         uuid = run_command([self._cl, 'new', worksheet_name])
         run_command([self._cl, 'work', worksheet_name])
-        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG])
+        run_command([self._cl, 'wedit', '--tag=%s' % self._TAG])
         return uuid
 
     def _create_worksheet_name(self, base_name):
@@ -340,17 +340,17 @@ class StressTestRunner:
         )
 
     def _run_bundle(self, args, expected_exit_code=0):
-        args.append('--tags=%s' % StressTestRunner._TAG)
+        args.append('--tags=%s' % self._TAG)
         return run_command(args, expected_exit_code)
 
     def cleanup(self):
         if self._args.bypass_cleanup:
             return
-        cleanup(self._cl, StressTestRunner._TAG, not self._args.bypass_wait)
+        cleanup(self._cl, self._TAG, not self._args.bypass_wait)
 
     @staticmethod
     def _simple_run(cl):
-        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG])
+        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % self._TAG])
 
     @staticmethod
     def _heartbeat_cl_commands(cl):

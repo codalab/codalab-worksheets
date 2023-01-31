@@ -1,35 +1,35 @@
 from stress_test import *
 from enum import Enum
 import random
+class FileSizeType(Enum):
+    SMALL = 1
+    MEDIUM = 2
+    LARGE = 3
+    RANDOM = 4
 
-def TimingTestRunner(StressTestRunner):
-    _TAG = 'codalab-timing-test'
-    class FileSizeType = [
-        SMALL = 1
-        MEDIUM = 2
-        LARGE = 3
-        RANDOM = 4
-    ]
-    self.upload_bundle_uuids = None
+class TimingTestRunner(StressTestRunner):
+    def __init__(self, cl, args):
+        super().__init__(cl, args, 'codalab-timing-test')
+        self.upload_bundle_uuids = None
 
-    def create_test_file(size_type):
+    def create_test_file(self, size_type):
         """
         Creates a TestFile of a certain size.
 
         size_type(FileSizeType): indicates how big the file should be.
         """
-        file_size = None
+        file_size = 10
         if size_type == FileSizeType.SMALL:
             file_size = 1
         elif size_type == FileSizeType.MEDIUM:
             file_size = 10
-        elif size_type = FileSizeType.LARGE:
+        elif size_type == FileSizeType.LARGE:
             file_size = 100
-        elif size_type = FileSizeType.RANDOM:
+        elif size_type == FileSizeType.RANDOM:
             file_size = random.randint(1, 100)
         return TestFile('file', file_size)
     
-    def upload_bundle(size_mb):
+    def upload_bundle(self, size_mb):
         """
         TODO
         """
@@ -39,13 +39,13 @@ def TimingTestRunner(StressTestRunner):
         file.delete()
         return uuid
     
-    def get_info(uuid):
+    def get_info(self, uuid):
         """
         TODO
         """
         run_command([cl, 'info', uuid, '-f', 'name'])
     
-    def rm(uuid):
+    def rm(self, uuid):
         """
         TODO
         """
@@ -53,7 +53,7 @@ def TimingTestRunner(StressTestRunner):
 
         
 
-    def setup_database(num_bundles, size_type):
+    def setup_database(self, num_bundles, size_type):
         """
         Setup the database to mimic prod to some extent.
 
@@ -64,16 +64,16 @@ def TimingTestRunner(StressTestRunner):
         Returns:
             A list of the uuids of the uploaded files.
         """
-        file = create_test_file(size_type)
+        file = self.create_test_file(size_type)
         uuids = list()
-        for _ in range(self._args.bundle_upload_count):
+        for _ in range(self._args.num_bundles):
             uuid = self._run_bundle([self._cl, 'upload', file.name()])
             uuids.append(uuid)
             run_command([cl, 'wait', uuid])
         file.delete()
         self.upload_bundle_uuids = uuids
         
-    def run_bundle_with_wide_dependencies(num_dependencies):
+    def run_bundle_with_wide_dependencies(self, num_dependencies):
         """
         TODO!
         """
@@ -82,7 +82,7 @@ def TimingTestRunner(StressTestRunner):
         uuid = self._run_bundle([self.cl, 'run'] + dependency_strs + ['echo hello'])
         run_command([cl, 'wait', uuid])
     
-    def run_bundle_with_narrow_dependencies(num_dependencies):
+    def run_bundle_with_narrow_dependencies(self, num_dependencies):
         """
         TODO!
         """
@@ -96,10 +96,10 @@ def main(args):
     Note that there is no timing code inserted here; we use the Sentry profiler to
     upload timing results to Sentry.
     """
-    test_runner = TimingTestRunner()
+    test_runner = TimingTestRunner(args.cl_executable, args)
 
     # Populate the database with all the bundles.
-    test_runner.setup_database(args.num_bundles)
+    test_runner.setup_database(args.num_bundles, args.file_size_type)
 
     # Try basic uploads. Sweep file sizes.
     for file_size in test_runner.upload_test_file_sizes:
@@ -126,13 +126,19 @@ if __name__ == '__main__':
         default='cl',
     )
     parser.add_argument(
+        '--instance',
+        type=str,
+        help='CodaLab instance to run timing tests against (defaults to "localhost")',
+        default='localhost',
+    )
+    parser.add_argument(
         '--num-bundles',
         type=int,
         help='Number of bundles to add to the database.',
         default=100#2e5
     )
     parser.add_argument(
-        '--file-size',
+        '--file-size-type',
         type=str,
         help='Size of files to upload to the database.',
         default='small'
@@ -153,4 +159,4 @@ if __name__ == '__main__':
     # Parse args and run this script
     args = parser.parse_args()
     cl = args.cl_executable
-    main(args.num_bundles, args.file_size)
+    main(args)

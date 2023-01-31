@@ -1262,7 +1262,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     """
     #import pdb; pdb.set_trace()
     #sentry_sdk.Hub.current.start_transaction(op="queue.task", name="HI BLAHHHHH").__enter__()
-    sentry_sdk.Hub.current.scope.transaction.name = "WHAT IS HAPPENING!!!!"
+    hub = sentry_sdk.Hub(sentry_sdk.Hub.current)
+    hub.start_transaction(op="queue.task", name=f"using-new-hub-{uuids}").__enter__()
     #sentry_sdk.Hub.current.start_transaction(op = "queue.task", name = "ANOTHER TEST NAME").__enter__()
     #tx = sentry_sdk.start_transaction(op = "queue.task", name = "ANOTHER TEST NAME")
     #tx.__enter__()
@@ -1366,6 +1367,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     #sentry_sdk.Hub.current.scope.transaction.finish()
     #sentry_sdk.start_transaction(name = "BLLLLAHHHHHHH")
     #sentry_sdk.Hub.current.scope.transaction.name = "XXXXXYYYYYY"
+    hub.scope.transaction.__exit__(None, None, None)
     return relevant_uuids
 
 
