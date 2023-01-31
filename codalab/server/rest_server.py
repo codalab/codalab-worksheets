@@ -57,8 +57,10 @@ sentry_sdk.init(
     traces_sample_rate=1.0,
     _experiments={
         "profiles_sample_rate": 1.0,
-    }
+    },
+    debug = True
 )
+sentry_sdk.Hub.current.scope.transaction = sentry_sdk.start_transaction(name="LET'S SEE")
 
 
 class SaveEnvironmentPlugin(object):
