@@ -38,7 +38,7 @@ sentry_sdk.init(
         "profiles_sample_rate": 1.0,
     }
 )
-sentry_sdk.start_transaction(name="worker-TESTTTT")
+sentry_sdk.Hub.current.scope.transaction.name = "worker-TESTTTT"
 
 DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
 

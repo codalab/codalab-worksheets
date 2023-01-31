@@ -9,6 +9,8 @@ import time
 from io import BytesIO
 from http.client import HTTPResponse
 
+import sentry_sdk
+
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
@@ -1258,6 +1260,14 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     If |recursive|, add all bundles downstream too.
     If |data_only|, only remove from the bundle store, not the bundle metadata.
     """
+    #import pdb; pdb.set_trace()
+    #sentry_sdk.Hub.current.start_transaction(op="queue.task", name="HI BLAHHHHH").__enter__()
+    sentry_sdk.Hub.current.scope.transaction.name = "WHAT IS HAPPENING!!!!"
+    #sentry_sdk.Hub.current.start_transaction(op = "queue.task", name = "ANOTHER TEST NAME").__enter__()
+    #tx = sentry_sdk.start_transaction(op = "queue.task", name = "ANOTHER TEST NAME")
+    #tx.__enter__()
+    #span = sentry_sdk.start_span(op="http", description="GET /")
+    #span.__enter__()
     relevant_uuids = local.model.get_self_and_descendants(uuids, depth=sys.maxsize)
     if not recursive:
         # If any descendants exist, then we only delete uuids if force = True.
@@ -1347,7 +1357,15 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
-
+    #sentry_sdk.Hub.current.scope.transaction.__exit__(None, None, None)
+    #sentry_sdk.Hub.current.scope.transaction.__exit__(None, None, None)
+    #span.__exit__(None, None, None)
+    #tx.__exit__(None, None, None)
+    #tx.finish()
+    #sentry_sdk.Hub.current.scope.transaction.__exit__(None, None, None)
+    #sentry_sdk.Hub.current.scope.transaction.finish()
+    #sentry_sdk.start_transaction(name = "BLLLLAHHHHHHH")
+    #sentry_sdk.Hub.current.scope.transaction.name = "XXXXXYYYYYY"
     return relevant_uuids
 
 

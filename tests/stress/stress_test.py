@@ -46,7 +46,7 @@ class TestFile:
 
     def _make_random_file(self):
         with open(self._file_name, 'wb') as file:
-            file.seek(self._size_mb * 1024 * 1024)  # Seek takes in file size in terms of bytes
+            file.seek(int(self._size_mb * 1024 * 1024)) # Seek takes in file size in terms of bytes
             file.write(b'0')
         print('Created file {} of size {} MB.'.format(self._file_name, self._size_mb))
 
