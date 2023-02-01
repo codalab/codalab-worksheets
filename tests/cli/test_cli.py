@@ -1437,6 +1437,18 @@ def test_disk(ctx):
     _run_command([cl, 'rm', uuid1])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
+    # Test cleanup_existing_contents.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
+    uuid = _run_command(
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',],
+        request_disk=None,
+        request_memory=None,
+    )
+    wait_until_state(uuid, State.FAILED)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
 
 @TestModule.register('make')
 def test_make(ctx):
