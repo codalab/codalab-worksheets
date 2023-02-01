@@ -17,7 +17,9 @@ from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
-from ratarmountcore import SQLiteIndexedTar, FileInfo
+# from ratarmountcore import SQLiteIndexedTar, FileInfo
+from ratarmountcore import FileInfo
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -317,7 +319,7 @@ class GzipStream(BytesIO):
     def _fill_buf_bytes(self, num_bytes=None):
         while num_bytes is None or len(self.__buffer) < num_bytes:
             s = self.__input.read(num_bytes)
-            print(f"In GzipStream _fill_buf_bytes, num_bytes = {num_bytes}, read in length = {len(s)}, length of buffer = {len(self.__buffer)}")
+            # print(f"In GzipStream _fill_buf_bytes, num_bytes = {num_bytes}, read in length = {len(s)}, length of buffer = {len(self.__buffer)}")
             if not s:
                 self.__gzip.close()  # write some end 
                 break
@@ -326,9 +328,9 @@ class GzipStream(BytesIO):
     def read(self, num_bytes=None) -> bytes:
         try:
             self._fill_buf_bytes(num_bytes)
-            print(f"length of buffer = {len(self.__buffer)}")
+            # print(f"length of buffer = {len(self.__buffer)}")
             data = self.__buffer.read(num_bytes)
-            print(f"In GzipStream read(). num_bytes = {num_bytes}, length of buffer = {len(self.__buffer)}, read out data from GzipStream length = {len(data)}")
+            # print(f"In GzipStream read(). num_bytes = {num_bytes}, length of buffer = {len(self.__buffer)}, read out data from GzipStream length = {len(data)}")
             self.__size += len(data)
             return data
         except Exception as e:

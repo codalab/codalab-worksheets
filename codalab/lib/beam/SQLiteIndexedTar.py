@@ -158,17 +158,17 @@ class SQLiteIndexedTar(MountSource):
                 self.tarFileName = os.path.abspath(tarFileName)
             else:
                 raise ValueError("At least one of tarFileName and fileObject arguments should be set!")
-        print("here4: ", fileObject.tell())
+        # print("here4: ", fileObject.tell())
         # If no fileObject given, then self.tarFileName is the path to the archive to open.
         if not fileObject:
             fileObject = open(self.tarFileName, 'rb')
         fileSize = None
         if fileObject.seekable():
-            print("In seekable branch")
+            # print("In seekable branch")
             fileObject.seek(0, io.SEEK_END)
             fileSize = fileObject.tell()
             fileObject.seek(0)  # Even if not interested in the file size, seeking to the start might be useful.
-        print("here5: ", fileObject.tell())
+        # print("here5: ", fileObject.tell())
         # rawFileObject : Only set when opening a compressed file and only kept to keep the
         #                 compressed file handle from being closed by the garbage collector.
         # tarFileObject : File object to the uncompressed (or decompressed) TAR file to read actual data out of.

@@ -5,9 +5,11 @@ import tempfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
-from ratarmountcore import SQLiteIndexedTar
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
+from codalab.lib.beam.MultiReaderFileStream import MultiReaderFileStream
 from contextlib import closing
 from codalab.worker.upload_util import upload_with_chunked_encoding
+from threading import Lock, Thread
 
 from codalab.common import (
     StorageURLScheme,
@@ -234,6 +236,10 @@ class BlobStorageUploader(Uploader):
         else:
             output_fileobj = GzipStream(source_fileobj)
 
+        stream_file = MultiReaderFileStream(output_fileobj)
+        file_reader = stream_file.readers[0]
+        index_reader = stream_file.readers[1]
+
         # Write archive file.
         if bundle_conn_str is not None:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
@@ -243,45 +249,51 @@ class BlobStorageUploader(Uploader):
             CHUNK_SIZE = 16 * 1024
             ITERATIONS_PER_DISK_CHECK = 1
             iteration = 0
-            with FileSystems.create(
-                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            ) as out:
-                while True:
-                    iteration += 1
-                    to_send = output_fileobj.read(CHUNK_SIZE)
-                    if not to_send:
-                        break
-                    out.write(to_send)
+            
+            def upload_file_content():
+                with FileSystems.create(
+                    bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+                ) as out:
+                    while True:
+                        iteration += 1
+                        to_send = file_reader.read(CHUNK_SIZE)
+                        if not to_send:
+                            break
+                        out.write(to_send)
 
-                    # Update disk and check if client has gone over disk usage.
-                    if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
-                        self._client.update(
-                            'user/increment_disk_used', {'disk_used_increment': len(to_send)}
-                        )
-                        user_info = self._client.fetch('user')
-                        if user_info['disk_used'] >= user_info['disk_quota']:
-                            raise Exception(
-                                'Upload aborted. User disk quota exceeded. '
-                                'To apply for more quota, please visit the following link: '
-                                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-                                '#how-do-i-request-more-disk-quota-or-time-quota'
+                        # Update disk and check if client has gone over disk usage.
+                        if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                            self._client.update(
+                                'user/increment_disk_used', {'disk_used_increment': len(to_send)}
                             )
+                            user_info = self._client.fetch('user')
+                            if user_info['disk_used'] >= user_info['disk_quota']:
+                                raise Exception(
+                                    'Upload aborted. User disk quota exceeded. '
+                                    'To apply for more quota, please visit the following link: '
+                                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                                    '#how-do-i-request-more-disk-quota-or-time-quota'
+                                )
 
-                    bytes_uploaded += len(to_send)
-                    if progress_callback is not None:
-                        should_resume = progress_callback(bytes_uploaded)
-                        if not should_resume:
-                            raise Exception('Upload aborted by client')
-            with FileSystems.open(
-                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+                        bytes_uploaded += len(to_send)
+                        if progress_callback is not None:
+                            should_resume = progress_callback(bytes_uploaded)
+                            if not should_resume:
+                                raise Exception('Upload aborted by client')
+            
+            # temporary file that used to store index file
+            tmp_index_file = tempfile.NamedTemporaryFile(suffix=".sqlite")
+            
+            def create_index():
                 SQLiteIndexedTar(
-                    fileObject=ttf,
+                    fileObject=index_reader,
                     tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
                 )
+                
+            def upload_index():       
                 if bundle_conn_str is not None:
                     os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
                 with FileSystems.create(
@@ -298,6 +310,19 @@ class BlobStorageUploader(Uploader):
                             should_resume = progress_callback(bytes_uploaded)
                             if not should_resume:
                                 raise Exception('Upload aborted by client')
+            threads = [
+                Thread(target=upload_file_content),
+                Thread(target=create_index)
+            ]
+
+            for thread in threads:
+                thread.start()
+            
+            for thread in threads:
+                thread.join()
+            
+            upload_index()
+
         except Exception as err:
             raise err
         finally:  # restore the origin connection string
@@ -573,34 +598,50 @@ class ClientUploadManager(object):
             output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
         else:
             output_fileobj = GzipStream(fileobj)
+        
+        stream_file = MultiReaderFileStream(output_fileobj)
+        file_reader = stream_file.readers[0]
+        index_reader = stream_file.readers[1]
 
-        # Write archive file.
-        upload_with_chunked_encoding(
-            method='PUT',
-            base_url=bundle_conn_str,
-            headers={'Content-type': 'application/octet-stream'},
-            fileobj=output_fileobj,
-            query_params={},
-            progress_callback=progress_callback,
-            json_api_client=json_api_client,
-        )
-        # upload the index file
-        with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
-            suffix=".sqlite"
-        ) as tmp_index_file:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
+        def upload_file_content():
+            # Write archive file.
             upload_with_chunked_encoding(
                 method='PUT',
-                base_url=index_conn_str,
+                base_url=bundle_conn_str,
                 headers={'Content-type': 'application/octet-stream'},
+                fileobj=file_reader,
                 query_params={},
-                fileobj=open(tmp_index_file.name, "rb"),
-                progress_callback=None,
-                json_api_client=self._client,
+                progress_callback=progress_callback,
+                json_api_client=json_api_client,
             )
+
+        def create_upload_index():
+            # upload the index file
+            with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+                SQLiteIndexedTar(
+                    fileObject=index_reader,
+                    tarFileName="contents",
+                    writeIndex=True,
+                    clearIndexCache=True,
+                    indexFilePath=tmp_index_file.name,
+                )
+                upload_with_chunked_encoding(
+                    method='PUT',
+                    base_url=index_conn_str,
+                    headers={'Content-type': 'application/octet-stream'},
+                    query_params={},
+                    fileobj=open(tmp_index_file.name, "rb"),
+                    progress_callback=None,
+                    json_api_client=self._client,
+                )
+
+        threads = [
+            Thread(target=upload_file_content),
+            Thread(target=create_upload_index)
+        ]
+
+        for thread in threads:
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
