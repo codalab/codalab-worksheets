@@ -17,6 +17,7 @@ from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
+
 # from ratarmountcore import SQLiteIndexedTar, FileInfo
 from ratarmountcore import FileInfo
 from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
@@ -321,7 +322,7 @@ class GzipStream(BytesIO):
             s = self.__input.read(num_bytes)
             # print(f"In GzipStream _fill_buf_bytes, num_bytes = {num_bytes}, read in length = {len(s)}, length of buffer = {len(self.__buffer)}")
             if not s:
-                self.__gzip.close()  # write some end 
+                self.__gzip.close()  # write some end
                 break
             self.__gzip.write(s)  # gzip the current file
 
@@ -336,18 +337,16 @@ class GzipStream(BytesIO):
         except Exception as e:
             print("Error in GzipStream read() ", repr(e))
 
-
     def close(self):
         self.__input.close()
-    
+
     def peek(self, num_bytes):
         self._fill_buf_bytes(num_bytes)
         return self.__buffer.peek(num_bytes)
-    
+
     def tell(self):
         print("In GzipStream, tell() is called")
         return self.__size
-
 
 
 def gzip_file(file_path: str) -> IO[bytes]:

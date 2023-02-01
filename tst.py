@@ -24,22 +24,25 @@ from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 
 class FileStream(BytesIO):
     NUM_READERS = 2
+
     def __init__(self, fileobj):
         self._bufs = [BytesBuffer() for _ in range(0, self.NUM_READERS)]
         self._pos = [0 for _ in range(0, self.NUM_READERS)]
         self._fileobj = fileobj
-        self._lock = Lock()  # lock to ensure one does not concurrently read self._fileobj / write to the buffers.
-        
+        self._lock = (
+            Lock()
+        )  # lock to ensure one does not concurrently read self._fileobj / write to the buffers.
+
         class FileStreamReader(BytesIO):
             def __init__(s, index):
                 s._index = index
-            
+
             def read(s, num_bytes=None):
                 return self.read(s._index, num_bytes)
-            
+
             def peek(s, num_bytes):
                 return self.peek(s._index, num_bytes)
-        
+
         self.readers = [FileStreamReader(i) for i in range(0, self.NUM_READERS)]
 
     def _fill_buf_bytes(self, index: int, num_bytes=None):
@@ -70,7 +73,10 @@ class FileStream(BytesIO):
     def close(self):
         self.__input.close()
 
-def upload(file_path, is_dir=False, bundle_path = 'azfs://devstoreaccount1/bundles/0x1234/contents.gz'):
+
+def upload(
+    file_path, is_dir=False, bundle_path='azfs://devstoreaccount1/bundles/0x1234/contents.gz'
+):
     if is_dir:
         source_fileobj = zip_util.tar_gzip_directory(file_path)
     else:
@@ -90,13 +96,11 @@ def upload(file_path, is_dir=False, bundle_path = 'azfs://devstoreaccount1/bundl
     stream_file = FileStream(output_fileobj)
     reader1 = stream_file.readers[0]
     reader2 = stream_file.readers[1]
-    
+
     def upload_file():
         print("Upload file")
         bytes_uploaded = 0
-        with FileSystems.create(
-            bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-        ) as out:
+        with FileSystems.create(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as out:
             while True:
                 to_send = reader1.read(CHUNK_SIZE)
                 if not to_send:
@@ -128,18 +132,16 @@ def upload(file_path, is_dir=False, bundle_path = 'azfs://devstoreaccount1/bundl
                     out_index_file.write(to_send)
                     bytes_uploaded += len(to_send)
 
-    threads = [
-        Thread(target=upload_file),
-        Thread(target=create_index)
-    ]
+    threads = [Thread(target=upload_file), Thread(target=create_index)]
 
     for thread in threads:
         thread.start()
-    
+
     for thread in threads:
         thread.join()
 
     import gzip
+
     with FileSystems.open(
         parse_linked_bundle_url(bundle_path).bundle_path,
         compression_type=CompressionTypes.UNCOMPRESSED,
@@ -148,10 +150,11 @@ def upload(file_path, is_dir=False, bundle_path = 'azfs://devstoreaccount1/bundl
         pass
 
     if is_dir:
-        linked_bundle_path = parse_linked_bundle_url(bundle_path + '/dir1/f1') 
+        linked_bundle_path = parse_linked_bundle_url(bundle_path + '/dir1/f1')
         print(linked_bundle_path.archive_subpath)
         from codalab.worker.file_util import OpenIndexedArchiveFile
         from ratarmountcore import FileInfo
+
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
             # listdir = lambda path: cast(Dict[str, FileInfo], tf.listDir(path) or {})
             # print(listdir)
@@ -160,8 +163,6 @@ def upload(file_path, is_dir=False, bundle_path = 'azfs://devstoreaccount1/bundl
             print(info)  # here info is none
 
 
-           
- 
 file_path = 'dir1'
 upload(file_path, is_dir=True)
 
@@ -178,9 +179,9 @@ upload(file_path, is_dir=True)
 #     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work for GzipStream()
 #     # output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
 #     output_fileobj = GzipStream(source_fileobj)
-    
+
 #     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
-#     # output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))  
+#     # output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))
 #     # def new_seek(*args, **kwargs):
 #     #     raise OSError("Seek ERROR")
 #     # def new_tell(*args, **kwargs):

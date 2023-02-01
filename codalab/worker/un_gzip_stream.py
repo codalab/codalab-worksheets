@@ -265,7 +265,7 @@ class BytesBuffer(BytesIO):
             self.__buf.appendleft(remainder)
             size += len(remainder)
             assert size == 0
-        
+
         ret = b''.join(ret_list)
         self.__size -= len(ret)
         # print(f"After correct size, ret list[-1]: {len(ret_list[-1])}, len(reminder): {len(remainder)}, len(ret) : {len(ret)}, __size: {self.__size}")

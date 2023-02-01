@@ -245,9 +245,8 @@ class BlobStorageUploader(Uploader):
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
-            
             CHUNK_SIZE = 16 * 1024
-            
+
             def upload_file_content():
                 iteration = 0
                 ITERATIONS_PER_DISK_CHECK = 1
@@ -282,24 +281,24 @@ class BlobStorageUploader(Uploader):
                             should_resume = progress_callback(bytes_uploaded)
                             if not should_resume:
                                 raise Exception('Upload aborted by client')
-            
+
             # temporary file that used to store index file
             tmp_index_file = tempfile.NamedTemporaryFile(suffix=".sqlite")
-            
-            def create_index():
 
+            def create_index():
                 is_dir = parse_linked_bundle_url(bundle_path).is_archive_dir
-                print(f"IS dir: {is_dir} {bundle_path}")
                 SQLiteIndexedTar(
                     fileObject=index_reader,
-                    tarFileName="contents.tar.gz" if is_dir else "contents.gz"  ,  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                    tarFileName="contents.tar.gz"
+                    if is_dir
+                    else "contents.gz",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
-                    printDebug=3
+                    printDebug=3,
                 )
-                
-            def upload_index():       
+
+            def upload_index():
                 if bundle_conn_str is not None:
                     os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
                 with FileSystems.create(
@@ -316,17 +315,15 @@ class BlobStorageUploader(Uploader):
                         #     should_resume = progress_callback(bytes_uploaded)
                         #     if not should_resume:
                         #         raise Exception('Upload aborted by client')
-            threads = [
-                Thread(target=upload_file_content),
-                Thread(target=create_index)
-            ]
+
+            threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
             for thread in threads:
                 thread.start()
-            
+
             for thread in threads:
                 thread.join()
-            
+
             upload_index()
 
         except Exception as err:
@@ -604,7 +601,7 @@ class ClientUploadManager(object):
             output_fileobj = zip_util.unpack_to_archive(source_ext, fileobj)
         else:
             output_fileobj = GzipStream(fileobj)
-        
+
         stream_file = MultiReaderFileStream(output_fileobj)
         file_reader = stream_file.readers[0]
         index_reader = stream_file.readers[1]
@@ -641,13 +638,10 @@ class ClientUploadManager(object):
                     json_api_client=self._client,
                 )
 
-        threads = [
-            Thread(target=upload_file_content),
-            Thread(target=create_upload_index)
-        ]
+        threads = [Thread(target=upload_file_content), Thread(target=create_upload_index)]
 
         for thread in threads:
             thread.start()
-        
+
         for thread in threads:
             thread.join()
