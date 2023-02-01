@@ -1260,16 +1260,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     If |recursive|, add all bundles downstream too.
     If |data_only|, only remove from the bundle store, not the bundle metadata.
     """
-    #import pdb; pdb.set_trace()
-    #sentry_sdk.Hub.current.start_transaction(op="queue.task", name="HI BLAHHHHH").__enter__()
-    hub = sentry_sdk.Hub(sentry_sdk.Hub.current)
-    hub.start_transaction(name=f"using-new-hub-{uuids}").__enter__()
-    hub.scope.transaction.name = f"using-new-hub-{uuids}"
-    #sentry_sdk.Hub.current.start_transaction(op = "queue.task", name = "ANOTHER TEST NAME").__enter__()
-    #tx = sentry_sdk.start_transaction(op = "queue.task", name = "ANOTHER TEST NAME")
-    #tx.__enter__()
-    #span = sentry_sdk.start_span(op="http", description="GET /")
-    #span.__enter__()
     relevant_uuids = local.model.get_self_and_descendants(uuids, depth=sys.maxsize)
     if not recursive:
         # If any descendants exist, then we only delete uuids if force = True.
@@ -1359,16 +1349,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
-    #sentry_sdk.Hub.current.scope.transaction.__exit__(None, None, None)
-    #sentry_sdk.Hub.current.scope.transaction.__exit__(None, None, None)
-    #span.__exit__(None, None, None)
-    #tx.__exit__(None, None, None)
-    #tx.finish()
-    #sentry_sdk.Hub.current.scope.transaction.__exit__(None, None, None)
-    #sentry_sdk.Hub.current.scope.transaction.finish()
-    #sentry_sdk.start_transaction(name = "BLLLLAHHHHHHH")
-    #sentry_sdk.Hub.current.scope.transaction.name = "XXXXXYYYYYY"
-    hub.scope.transaction.__exit__(None, None, None)
     return relevant_uuids
 
 
