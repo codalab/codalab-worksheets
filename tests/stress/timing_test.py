@@ -99,23 +99,22 @@ def main(args):
     test_runner = TimingTestRunner(args.cl_executable, args)
 
     # Populate the database with all the bundles.
-    test_runner.setup_database(args.num_bundles, args.file_size_type)
+    #test_runner.setup_database(args.num_bundles, args.file_size_type)
 
-    """
     # Try basic uploads. Sweep file sizes.
+    uuids = list()
     for file_size in test_runner.upload_test_file_sizes:
-        upload_bundle(file_size)
+        uuids.append(upload_bundle(file_size))
     
     # Try getting bundle info
     # Do this a bunch of times so we can take the mean of the times.
-    sample_uuids = random.sample(test_runner.upload_bundle_uuids, args.num_random_samples)
+    sample_uuids = random.sample(uuids, args.num_random_samples)
     for uuid in sample_uuids: test_runner.get_info(uuid)
 
     # Try removing bundle.
     for uuid in sample_uuids: test_runner.remove(uuid)
 
     # Worksheet stuff goes down here.
-    """
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
