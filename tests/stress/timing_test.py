@@ -103,7 +103,7 @@ def main(args):
 
     # Try basic uploads. Sweep file sizes.
     uuids = list()
-    for file_size in test_runner.upload_test_file_sizes:
+    for file_size in args.upload_test_file_sizes:
         uuids.append(upload_bundle(file_size))
     
     # Try getting bundle info
