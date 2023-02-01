@@ -245,12 +245,14 @@ class BlobStorageUploader(Uploader):
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
-            bytes_uploaded = 0
+            
             CHUNK_SIZE = 16 * 1024
-            ITERATIONS_PER_DISK_CHECK = 1
-            iteration = 0
             
             def upload_file_content():
+                iteration = 0
+                ITERATIONS_PER_DISK_CHECK = 1
+                bytes_uploaded = 0
+
                 with FileSystems.create(
                     bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
                 ) as out:
@@ -285,12 +287,16 @@ class BlobStorageUploader(Uploader):
             tmp_index_file = tempfile.NamedTemporaryFile(suffix=".sqlite")
             
             def create_index():
+
+                is_dir = parse_linked_bundle_url(bundle_path).is_archive_dir
+                print(f"IS dir: {is_dir} {bundle_path}")
                 SQLiteIndexedTar(
                     fileObject=index_reader,
-                    tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                    tarFileName="contents.tar.gz" if is_dir else "contents.gz"  ,  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
+                    printDebug=3
                 )
                 
             def upload_index():       
@@ -305,11 +311,11 @@ class BlobStorageUploader(Uploader):
                         if not to_send:
                             break
                         out_index_file.write(to_send)
-                        bytes_uploaded += len(to_send)
-                        if progress_callback is not None:
-                            should_resume = progress_callback(bytes_uploaded)
-                            if not should_resume:
-                                raise Exception('Upload aborted by client')
+                        # bytes_uploaded += len(to_send)
+                        # if progress_callback is not None:
+                        #     should_resume = progress_callback(bytes_uploaded)
+                        #     if not should_resume:
+                        #         raise Exception('Upload aborted by client')
             threads = [
                 Thread(target=upload_file_content),
                 Thread(target=create_index)

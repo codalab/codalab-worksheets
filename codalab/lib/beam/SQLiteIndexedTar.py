@@ -175,7 +175,7 @@ class SQLiteIndexedTar(MountSource):
         # compression   : Stores what kind of compression the originally specified TAR file uses.
         # isTar         : Can be false for the degenerated case of only a bz2 or gz file not containing a TAR
         self.tarFileObject, self.rawFileObject, self.compression, self.isTar = SQLiteIndexedTar._openCompressedFile(
-            fileObject, gzipSeekPointSpacing, encoding, self.parallelization, printDebug=self.printDebug
+            fileObject, gzipSeekPointSpacing, encoding, self.parallelization, printDebug=self.printDebug, filename=self.tarFileName
         )
         print("here3: ", self.tarFileObject.tell())
         if not self.isTar and not self.rawFileObject:
@@ -601,7 +601,7 @@ class SQLiteIndexedTar(MountSource):
                 loadedTarFile = tarfile.open(
                     # fmt:off
                     fileobj      = fileObject,
-                    mode         = 'r|' if self.compression else 'r:',
+                    mode         = 'r|',
                     ignore_zeros = self.ignoreZeros,
                     encoding     = self.encoding,
                     # fmt:on
@@ -741,6 +741,7 @@ class SQLiteIndexedTar(MountSource):
         # so check stream offset.
         fileCount = self.sqlConnection.execute('SELECT COUNT(*) FROM "files";').fetchone()[0]
         if fileCount == 0:
+            # This branch is not used.
             if self.printDebug >= 3:
                 print(f"Did not find any file in the given TAR: {self.tarFileName}. Assuming a compressed file.")
 
@@ -760,13 +761,18 @@ class SQLiteIndexedTar(MountSource):
             # from os.stat and instead have to gather it from seek. Unfortunately, indexed_gzip does not support
             # io.SEEK_END even though it could as it has the index ...
            
+            
+            fileObject.build_full_index()
             # data = fileObject.read(1024 * 1024)
             # while len(data) > 0:
             #     print("In read loop, data size: ", len(data))
             #     self._updateProgressBar(progressBar, fileObject)
             #     data = fileObject.read(1024 * 1024)
-            # fileSize = fileObject.tell()
-            fileSize = 0
+            
+            # print("after build full index")
+            fileSize = fileObject.tell()
+            print(f"File size is : {fileSize}")
+            # fileSize = 0
 
             # fmt: off
             fileInfo = (
@@ -1311,7 +1317,7 @@ class SQLiteIndexedTar(MountSource):
 
     @staticmethod
     def _openCompressedFile(
-        fileobj: IO[bytes], gzipSeekPointSpacing: int, encoding: str, parallelization: int, printDebug: int = 0
+        fileobj: IO[bytes], gzipSeekPointSpacing: int, encoding: str, parallelization: int, printDebug: int = 0, filename = None,
     ) -> Any:
         """
         Opens a file possibly undoing the compression.
@@ -1340,8 +1346,7 @@ class SQLiteIndexedTar(MountSource):
             tar_file = cinfo.open(fileobj)
         
         # is_tar = SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
-        is_tar = False
-        print(f"before return: {tar_file.tell()}")
+        is_tar = filename.endswith(".tar.gz")  # if it's .tar.gz
         # return tar_file, fileobj, compression, SQLiteIndexedTar._detectTar(tar_file, encoding, printDebug=printDebug)
         return tar_file, fileobj, compression, is_tar
 
@@ -1405,6 +1410,7 @@ class SQLiteIndexedTar(MountSource):
             and self.compression == 'gz'
             # fmt: on
         ):
+            print(f"in _loadOrStore, this branch")
             tables = [x[0] for x in db.execute('SELECT name FROM sqlite_master WHERE type="table"')]
 
             # indexed_gzip index only has a file based API, so we need to write all the index data from the SQL
@@ -1458,7 +1464,7 @@ class SQLiteIndexedTar(MountSource):
             # Jiani: read the whole file to build index is buggy for me. 
             # while fileObject.read(1024 * 1024):
             #     pass
-            fileObject.build_full_index()
+            # fileObject.build_full_index()
 
             # The created index can unfortunately be pretty large and tmp might actually run out of memory!
             # Therefore, try different paths, starting with the location where the index resides.
