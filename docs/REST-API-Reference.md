@@ -678,7 +678,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
-- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -686,7 +686,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
-- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -731,7 +731,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
-- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -739,7 +739,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
-- `Access-Control-Allow-Origin: *` (only sent if the bundle is public)
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
