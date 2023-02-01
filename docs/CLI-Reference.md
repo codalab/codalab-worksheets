@@ -30,7 +30,7 @@ Usage: `cl <command> <arguments>`
       --license                  The license under which this program/dataset is released (license).
       --source-url               URL corresponding to the original source of this bundle (source_url).
       --link-url                 Link URL of bundle (link_url).
-      --link-format              Link format of bundle (link_format). Can be equal to"raw" or "zip" (only "raw" is supported as of now).
+      --link-format              Link format of bundle (link_format). Can be equal to "raw" or "zip" (only "raw" is supported as of now).
       --store                    The name of the bundle store where the bundle should be uploaded to (store). If unspecified, an optimal available bundle store will be chosen.
       -e, --edit                 Show an editor to allow editing of the bundle metadata.
 

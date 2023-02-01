@@ -2,7 +2,6 @@
 import * as React from 'react';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
-import { FINAL_BUNDLE_STATES } from '../../../constants';
 import { FileBrowserLite } from '../../FileBrowser/FileBrowser';
 import CollapseButton from '../../CollapseButton';
 import CodeSnippet from '../../CodeSnippet';
@@ -61,26 +60,23 @@ class MainContent extends React.Component<{
             classes,
             contentType,
             expanded,
-            fetchingContent,
             fileContents,
             stderr,
             stdout,
         } = this.props;
-        const uuid = bundleInfo.uuid;
+        const { command, metadata, state, uuid } = bundleInfo || {};
         const stdoutUrl = '/rest/bundles/' + uuid + '/contents/blob/stdout';
         const stderrUrl = '/rest/bundles/' + uuid + '/contents/blob/stderr';
-        const command = bundleInfo.command;
-        const failureMessage = bundleInfo.metadata.failure_message;
-        const state = bundleInfo.state;
-        const inFinalState = FINAL_BUNDLE_STATES.includes(state);
-        const isLoading = !inFinalState || fetchingContent;
+        const failureMessage = metadata.failure_message;
+        const inErrorState = ['killed', 'failed'].includes(state);
+        const isLoading = !contentType && !inErrorState;
 
         return (
             <div className={classes.outter}>
                 <Grid container>
                     {/** Failure components ================================================================= */}
                     {failureMessage && (
-                        <Grid classes={{ container: classes.failureContainer }} container>
+                        <Grid container>
                             <CollapseButton
                                 label='Failure Message'
                                 collapsed={this.state.showFailureMessage}
@@ -183,12 +179,9 @@ class MainContent extends React.Component<{
     }
 }
 
-const styles = (theme) => ({
+const styles = () => ({
     outter: {
         flex: 1,
-    },
-    failureContainer: {
-        color: theme.color.red.base,
     },
 });
 

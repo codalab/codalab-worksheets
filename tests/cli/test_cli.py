@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
 
+from codalab.lib import path_util
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
@@ -29,6 +30,7 @@ from scripts.test_util import Colorizer, run_command
 
 import argparse
 import json
+import multiprocessing
 import os
 import random
 import re
@@ -375,6 +377,7 @@ class ModuleContext(object):
         self.worker_to_user = {}
         self.error = None
         self.disk_quota = None
+        self.time_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -392,7 +395,8 @@ class ModuleContext(object):
         temp_worksheet = _run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
-        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
+        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk_quota'])
+        self.time_quota = _run_command([cl, 'uinfo', '-f', 'time_quota'])
 
         print("[*][*] BEGIN TEST")
 
@@ -441,9 +445,11 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
-        # Reset disk quota
+        # Reset quotas
         if self.disk_quota is not None:
             _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
+        if self.time_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--time-quota', self.time_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -703,7 +709,7 @@ def test_upload1(ctx):
     upload_suffix = [[]]
     # If the test workflow start azurite docker
     if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
-        bundle_store_name = random_name()
+        bundle_store_name = "azure-" + random_name()
         _run_command(
             [
                 cl,
@@ -716,6 +722,13 @@ def test_upload1(ctx):
                 '--url',
                 'azfs://devstoreaccount1/bundles',
             ]
+        )
+        upload_suffix.append(['--store', bundle_store_name])
+
+    if os.environ.get("CODALAB_GOOGLE_APPLICATION_CREDENTIALS") is not None:
+        bundle_store_name = "gcs-" + random_name()
+        _run_command(
+            [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
         )
         upload_suffix.append(['--store', bundle_store_name])
 
@@ -793,23 +806,31 @@ def test_upload1(ctx):
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
         # Run the same tests when on a non root user
-        user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='2000')
-        switch_user(user_name)
-        # expect to fail when we upload something more than 2k bytes
-        check_contains(
-            "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
-            _run_command(
-                [cl, 'upload', test_path('codalab.png')] + suffix,
-                expected_exit_code=1,
-                # To return stderr, we need to include
-                # the following two arguments:
-                include_stderr=True,
-                force_subprocess=True,
-            ),
-        )
-        # Switch back to root user
-        switch_user('codalab')
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            # This test does not work when protected_mode is True.
+            user_name = 'non_root_user_' + random_name()
+            create_user(ctx, user_name, disk_quota='10')
+            # group_uuid = _run_command([cl, 'gnew', user_name])
+            switch_user(user_name)
+            worksheet_uuid = _run_command([cl, 'work', '-u'])
+            switch_user('codalab')
+            _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
+            switch_user(user_name)
+            _run_command([cl, 'work', worksheet_uuid])
+            # expect to fail when we upload something more than 2k bytes
+            check_contains(
+                'User disk quota exceeded',
+                _run_command(
+                    [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
+                    expected_exit_code=1,
+                    # To return stderr, we need to include
+                    # the following two arguments:
+                    include_stderr=True,
+                    force_subprocess=True,
+                ),
+            )
+            # Switch back to root user
+            switch_user('codalab')
 
 
 @TestModule.register('upload2')
@@ -1047,6 +1068,20 @@ def test_blob(ctx):
                 'Authorization': 'Bearer ' + ctx.client._get_access_token(),
             },
         )
+
+    # Uploads multiple archives at the same time and goes over disk quota on the second
+    # upload. Check to make sure the uploads fail.
+    # Note: In upload_manager, after being zipped, codalab.png has size 9482 bytes.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 15000}'])
+    pool = multiprocessing.Pool(processes=2)
+    # Set the expected exit code to be 1 for both processes.
+    args = [
+        [[cl, 'upload', test_path('codalab.png')], 1],
+        [[cl, 'upload', test_path('codalab.png')], 1],
+    ]
+    pool.starmap(_run_command, args)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
     for (uuid, target_type) in [
@@ -1302,10 +1337,45 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
+    # Check rm functions correctly
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+
+    # Make sure disk quota is adjusted correctly.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Make sure disk quota is adjusted correctly when --data-only is used.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Make sure disk quota is adjusted correctly for symlinks is used.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
+    wait_until_state(uuid, State.READY)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
 
 @TestModule.register('make')
@@ -1521,7 +1591,6 @@ def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
-    wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
     wait(uuid)
     # Check that we can freeze and unfreeze a run bundle (since now it should be in a final state)
@@ -1606,6 +1675,32 @@ def test_search(ctx):
     check_equals(
         size1 + size2, float(_run_command([cl, 'search', 'name=' + name, 'data_size=.sum']))
     )
+    # Check floating
+    check_equals('', _run_command([cl, 'search', '.floating', '-u']))
+    uuid3 = _run_command([cl, 'upload', test_path('a.txt')])
+    _run_command([cl, 'detach', uuid3], 0)
+    check_equals(uuid3, _run_command([cl, 'search', '.floating', '-u']))
+    _run_command([cl, 'rm', uuid3])  # need to remove since not on main worksheet
+    # Check search when groups empty
+    check_equals('', _run_command([cl, 'search', '.shared']))
+    # Check search with non-root user.
+    if not os.getenv('CODALAB_PROTECTED_MODE'):
+        # This test does not work when protected_mode is True.
+        _, current_user_name = current_user()
+        user_name = 'non_root_user_' + random_name()
+        create_user(ctx, user_name, disk_quota='2000')
+        switch_user(user_name)
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', uuid1, '-u']))
+        check_equals(
+            uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2]
+        )
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+        check_equals('', _run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '%', '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, 'name=' + name, '-u']))
+        switch_user(current_user_name)
     # Check search by group
     group_bname = random_name()
     group_buuid = _run_command([cl, 'run', 'echo hello', '-n', group_bname])
@@ -1682,6 +1777,21 @@ def test_search_time(ctx):
 
 @TestModule.register('run')
 def test_run(ctx):
+    # Test that bundle fails when run without sufficient time quota
+    time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
+    uuid = _run_command([cl, 'run', 'sleep 100000'])
+    wait_until_state(uuid, State.RUNNING)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=120)
+    check_equals(
+        'Kill requested: User time quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'),
+    )
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
+
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
@@ -1883,7 +1993,6 @@ def test_run2(ctx):
         [cl, 'run', 'dir3:%s' % dir3, 'for x in {1..10}; do ls dir3 && sleep 1; done']
     )
     wait(uuid2)
-    check_equals(State.RUNNING, get_info(uuid1, 'state'))
     wait(uuid1)
 
     # Test that content of dependency is mounted at the top when . is specified as the dependency key

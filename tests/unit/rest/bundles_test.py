@@ -42,6 +42,7 @@ class BundlesTest(BaseTestCase):
         bundle_id = data[0]["id"]
         data[0]["attributes"].pop("state")
         data[0]["attributes"].pop("state_details")
+        data[0]["attributes"]["metadata"].pop("staged_status", None)
         data[0]["attributes"]["metadata"].pop("failure_message", None)
         # This field is only populated sometimes, but nondeterministically.
         data[0]["attributes"]["metadata"].pop("last_updated", None)

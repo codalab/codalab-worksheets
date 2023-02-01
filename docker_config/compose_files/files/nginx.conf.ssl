@@ -68,6 +68,10 @@ http {
     server rest-server:2900;
   }
 
+  upstream ws {
+    server ws-server:2901;
+  }
+
   # Redirects all http traffic to https.
   server {	
     listen 80;		
@@ -124,6 +128,18 @@ http {
       proxy_send_timeout          1200;
       proxy_read_timeout          1200;
       send_timeout                1200;
+    }
+
+    location /ws {
+      if ($maintenance = 1) {
+        return 503;
+      }
+      proxy_pass http://ws;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
     }
 
     location / {

@@ -2,7 +2,7 @@
 set -e
 
 # First, start codalab without a worker:
-python3 codalab_service.py start --services default no-worker --version ${VERSION}
+python3 codalab_service.py start --services default no-worker --version ${VERSION} $([ -z "${DEV}" ] || echo "-d")
 
 # Install initial dependencies
 go install sigs.k8s.io/kind@v0.12.0
@@ -13,6 +13,9 @@ cfssl version # cfssl should be installed
 # Set up local kind cluster.
 ./scripts/local-k8s/setup.sh
 
+# Load worker Docker image
+kind load docker-image "codalab/worker:$(python3 codalab_service.py version --version $VERSION)" --name codalab
+
 # Run worker manager
 export CODALAB_SERVER=http://nginx
 export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443
@@ -22,4 +25,5 @@ export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
 export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
 export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
-python3 codalab_service.py start --services worker-manager-cpu --version ${VERSION}
+export CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=1
+python3 codalab_service.py start --services worker-manager-cpu --version ${VERSION} $([ -z "${DEV}" ] || echo "-d")

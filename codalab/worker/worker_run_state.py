@@ -297,7 +297,7 @@ class RunStateMachine(StateTransitioner):
         image_state = self.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
-                'Pulling docker image %s %s' % (docker_image, image_state.message)
+                'Pulling docker image %s. %s' % (docker_image, image_state.message)
             )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
@@ -575,8 +575,9 @@ class RunStateMachine(StateTransitioner):
             return run_state._replace(stage=RunStage.CLEANING_UP)
         if run_state.finished:
             logger.debug(
-                'Finished run with UUID %s, exitcode %s, failure_message %s',
+                'Finished run with UUID %s, container_id %s, exitcode %s, failure_message %s',
                 run_state.bundle.uuid,
+                run_state.container_id,
                 run_state.exitcode,
                 run_state.failure_message,
             )

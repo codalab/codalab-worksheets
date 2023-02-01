@@ -55,7 +55,10 @@ def check_uuid(uuid_str):
 
 def check_name(name):
     if not NAME_REGEX.match(name):
-        raise UsageError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
+        raise UsageError(
+            "Invalid name '%s'. Name must start with a letter or underscore and can only contain letters, digits, underscores, periods, and dashes."
+            % (name)
+        )
 
 
 def check_id(owner_id):

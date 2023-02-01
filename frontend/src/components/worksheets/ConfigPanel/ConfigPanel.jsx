@@ -22,10 +22,12 @@ class ConfigPanel extends React.Component<{
      * Renderer.
      */
     render() {
-        const { classes, children, sidebar, buttons, showBorder } = this.props;
-        const borderClass = showBorder ? classes.border : '';
+        const { classes, children, sidebar, buttons, fullMinHeight } = this.props;
+        const style = {
+            minHeight: fullMinHeight ? '100%' : 0,
+        };
         return (
-            <Grid container direction='row' className={`${classes.container} ${borderClass}`}>
+            <Grid className={classes.container} style={style} direction='row' container>
                 {/* Column 1: Main content area ================================================ */}
                 <Grid
                     item
@@ -73,6 +75,9 @@ const styles = (theme) => ({
         flexGrow: 1,
         flexWrap: 'nowrap',
         maxWidth: '100%',
+        [theme.breakpoints.down('sm')]: {
+            flexDirection: 'column',
+        },
     },
     content: {
         justifyContent: 'flex-start',
@@ -82,6 +87,11 @@ const styles = (theme) => ({
         overflow: 'auto',
         flexGrow: 1,
         maxWidth: '90%',
+        [theme.breakpoints.down('sm')]: {
+            order: 2,
+            maxWidth: 'none',
+            width: '100%',
+        },
     },
     sidebar: {
         backgroundColor: theme.color.grey.lighter,
@@ -90,6 +100,11 @@ const styles = (theme) => ({
         overflow: 'auto',
         minWidth: '400px',
         flexGrow: 1,
+        [theme.breakpoints.down('sm')]: {
+            order: 1,
+            minWidth: 'none',
+            width: '100%',
+        },
     },
     buttons: {
         '& button': {
@@ -98,9 +113,6 @@ const styles = (theme) => ({
         paddingBottom: theme.spacing.large,
         paddingTop: 24,
         maxWidth: '90%',
-    },
-    border: {
-        border: `2px solid ${theme.color.grey.light}`,
     },
 });
 

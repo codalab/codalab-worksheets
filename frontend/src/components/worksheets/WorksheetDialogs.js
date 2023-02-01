@@ -201,7 +201,7 @@ class WorksheetDialogs extends React.Component {
                     <DialogTitle id='error-title'>
                         <Grid container direction='row'>
                             <Grid item xs={10}>
-                                {'Error occurred'}
+                                {'Error Occurred'}
                             </Grid>
                             <Grid item xs={2}>
                                 <Button

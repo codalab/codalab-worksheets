@@ -3,6 +3,14 @@ from codalab.lib.bundle_util import get_bundle_state_details
 
 
 class GetBundleStateDetailsTest(unittest.TestCase):
+    def test_deprecated_bundle(self):
+        """
+        Returns an empty string for deprecated bundle types.
+        """
+        deprecated_bundle = {'bundle_type': 'program', 'state': 'ready'}
+        state_details = get_bundle_state_details(deprecated_bundle)
+        self.assertEqual(state_details, '')
+
     def test_running_bundle(self):
         """
         Returns `run_status` if state is `running`.

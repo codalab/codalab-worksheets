@@ -78,7 +78,8 @@ def do_signup():
     if not token:
         errors.append('Google reCAPTCHA token is missing.')
     else:
-        url = 'https://www.google.com/recaptcha/api/siteverify'
+        # URL from https://developers.google.com/recaptcha/docs/faq#can-i-use-recaptcha-globally
+        url = 'https://www.recaptcha.net/recaptcha/api/siteverify'
         data = {
             'secret': os.environ['CODALAB_RECAPTCHA_SECRET_KEY'],
             'response': token,

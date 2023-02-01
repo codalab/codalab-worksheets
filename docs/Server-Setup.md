@@ -43,6 +43,7 @@ Docker Container | Docker Image Used            | Purpose
  frontend        | `codalab/frontend:<version>` | Website (serves static pages)
  rest-server     | `codalab/server:<version>`   | REST API endpoint (used by website and CLI)
  bundle-manager  | `codalab/server:<version>`   | Schedules bundles to workers in the background
+ ws-server     | `codalab/server:<version>`   | Websocket API endpoint (used by workers)
  nginx           | `nginx:1.12.0`               | Routes requests to frontend or rest-server
  mysql           | `mysql/mysql:5.53`           | Database for users/bundles/worksheets
  worker          | `codalab/worker:<version>`   | Runs bundle in a Docker container
@@ -51,6 +52,7 @@ If you run `docker ps`, you should see a list of Docker containers like this
 (by default, we have `--instance-name codalab`):
 
 * `codalab_rest-server_1`
+* `codalab_ws-server_1`
 * `codalab_bundle-manager_1`
 * `codalab_frontend_1`
 * `codalab_mysql_1`
@@ -103,8 +105,8 @@ Start the CodaLab service as follows:
 
     ./codalab_service.py start -bd
 
-If you modify the frontend, you can do so without restarting.  If you would
-like to modify the rest server, bundle manager, or worker, then you can edit
+If you modify the frontend or the rest server, you can do so without restarting.
+If you would like to modify the bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 

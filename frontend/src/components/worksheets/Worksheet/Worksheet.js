@@ -1,4 +1,5 @@
 import * as React from 'react';
+import queryString from 'query-string';
 import $ from 'jquery';
 import _ from 'underscore';
 import { withStyles } from '@material-ui/core/styles';
@@ -7,6 +8,7 @@ import {
     getAfterSortKey,
     createAlertText,
     addUTCTimeZone,
+    isOnScreen,
 } from '../../../util/worksheet_utils';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
 import WorksheetItemList from '../WorksheetItemList';
@@ -15,11 +17,14 @@ import WorksheetHeader from './WorksheetHeader';
 import {
     NAVBAR_HEIGHT,
     HEADER_HEIGHT,
+    WORKSHEET_HEADER_HEIGHT,
+    FOOTER_HEIGHT,
     EXPANDED_WORKSHEET_WIDTH,
     NARROW_WORKSHEET_WIDTH,
     LOCAL_STORAGE_WORKSHEET_WIDTH,
     DIALOG_TYPES,
     AUTO_HIDDEN_DURATION,
+    FINAL_BUNDLE_STATES,
 } from '../../../constants';
 import WorksheetTerminal from '../WorksheetTerminal';
 import Loading from '../../Loading';
@@ -32,6 +37,7 @@ import ContractIcon from '@material-ui/icons/ExpandLessOutlined';
 import ExpandIcon from '@material-ui/icons/ExpandMoreOutlined';
 import './Worksheet.scss';
 import ErrorMessage from '../ErrorMessage';
+import BundleDetail from '../BundleDetail';
 import { buildTerminalCommand } from '../../../util/worksheet_utils';
 import {
     addItems,
@@ -61,19 +67,26 @@ class Worksheet extends React.Component {
         let localWorksheetWidthPreference = window.localStorage.getItem(
             LOCAL_STORAGE_WORKSHEET_WIDTH,
         );
+        const { bundle, focus, subfocus } = queryString.parse(window.location.search);
+        const focusIndex = focus ? parseInt(focus) : -1;
+        const subFocusIndex = subfocus ? parseInt(subfocus) : 0;
+
         this.state = {
             ws: {
                 uuid: this.props.match.params['uuid'],
                 info: null,
             },
+            bundleIsOpen: !!bundle,
+            openBundleUUID: bundle,
+            openBundleAfterSortKey: null,
             version: 0, // Increment when we refresh
             escCount: 0, // Increment when the user presses esc keyboard shortcut, a hack to allow esc shortcut to work
             activeComponent: 'itemList', // Where the focus is (terminal, itemList)
             inSourceEditMode: false, // Whether we're editing the worksheet
             editorEnabled: false, // Whether the editor is actually showing (sometimes lags behind inSourceEditMode)
             showTerminal: false, // Whether the terminal is shown
-            focusIndex: -1, // Which worksheet items to be on (-1 is none)
-            subFocusIndex: 0, // For tables, which row in the table
+            focusIndex, // Which worksheet items to be on (-1 is none)
+            subFocusIndex, // For tables, which row in the table
             numOfBundles: -1, // Number of bundles in this worksheet (-1 is just the initial value)
             focusedBundleUuidList: [], // Uuid of the focused bundle and that of all bundles after it
             userInfo: null, // User info of the current user. (null is the default)
@@ -105,7 +118,7 @@ class Worksheet extends React.Component {
             },
             showUpdateProgress: false,
             showWorksheetContent: false,
-            showWorksheetContainer: true,
+            executingCommand: false,
         };
         this.copyCallbacks = [];
         this.showContentCallbacks = [];
@@ -235,10 +248,7 @@ class Worksheet extends React.Component {
             ) {
                 return;
             }
-            if (!(uuid in bundlesCount)) {
-                bundlesCount[uuid] = 0;
-            }
-            bundlesCount[uuid] += 1;
+            bundlesCount[uuid] = 1;
             let checkedBundles = this.state.checkedBundles;
             if (!(uuid in checkedBundles)) {
                 checkedBundles[uuid] = {};
@@ -286,7 +296,10 @@ class Worksheet extends React.Component {
         // Refreshes the checkbox after commands
         // If the action failed, the check will persist
         let force_delete = cmd === 'rm' && this.state.forceDelete ? '--force' : null;
-        this.setState({ updating: true });
+        this.setState({
+            updating: true,
+            executingCommand: true,
+        });
         const bundleCount: number = Object.keys(this.state.uuidBundlesCheckedCount).length;
         // This toast info is used for showing a message when a command is being performed
         const toastId = toast.info(getToastMsg(cmd, 0, bundleCount), {
@@ -306,6 +319,7 @@ class Worksheet extends React.Component {
             worksheet_uuid,
         )
             .then(() => {
+                const fromDeleteCommand = cmd === 'rm';
                 this.clearCheckedBundles(() => {
                     // This toast info is used for showing a message when a command has finished executing
                     toast.update(toastId, {
@@ -319,10 +333,8 @@ class Worksheet extends React.Component {
                         draggable: true,
                     });
                 });
-
-                const fromDeleteCommand = cmd === 'rm';
-                const param = { fromDeleteCommand };
-                this.reloadWorksheet(undefined, undefined, param);
+                this.setState({ executingCommand: false });
+                this.reloadWorksheet(undefined, undefined, { fromDeleteCommand });
             })
             .catch((e) => {
                 toast.dismiss();
@@ -331,6 +343,7 @@ class Worksheet extends React.Component {
                     errorDialogMessage: e,
                     forceDelete: false,
                     updating: false,
+                    executingCommand: false,
                 });
             });
     };
@@ -675,30 +688,6 @@ class Worksheet extends React.Component {
             return;
         }
 
-        // Make sure that the screen doesn't scroll when the user normally press j / k,
-        // until the target element is completely not on the screen
-        function isOnScreen(element) {
-            if (element.offset() === undefined) return false;
-            let elementOffsetTop = element.offset().top;
-            let elementHeight = element.height();
-            let screenScrollTop = $(window).scrollTop();
-            let screenHeight = $(window).height();
-            // HEADER_HEIGHT is the sum of height of WorksheetHeader and NavBar.
-            // Since they block the user's view, we should take them into account when calculating whether the item is on the screen or not.
-            let scrollIsAboveElement =
-                elementOffsetTop + elementHeight - screenScrollTop - HEADER_HEIGHT >= 0;
-            let elementIsVisibleOnScreen = screenScrollTop + screenHeight - elementOffsetTop >= 0;
-            return scrollIsAboveElement && elementIsVisibleOnScreen;
-        }
-        if (shouldScroll) {
-            const element =
-                $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`)[0] === undefined
-                    ? $(`#codalab-worksheet-item-${index}`)
-                    : $(`#codalab-worksheet-item-${index}-subitem-${subIndex}`);
-
-            shouldScroll = !isOnScreen(element);
-        }
-
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {
             index = -1;
@@ -709,6 +698,7 @@ class Worksheet extends React.Component {
                 }
             }
         }
+
         // resolve to the last row of the selected item
         if (subIndex === 'end') {
             subIndex = (this._numTableRows(info.blocks[index]) || 1) - 1;
@@ -753,7 +743,20 @@ class Worksheet extends React.Component {
             showNewRerun: false,
         });
         if (shouldScroll) {
-            this.scrollToItem(index, subIndex);
+            let item;
+            if (index === -1) {
+                item = document.getElementById('worksheet_dummy_header');
+            } else {
+                item = document.getElementById(
+                    `codalab-worksheet-item-${index}-subitem-${subIndex}`,
+                );
+                if (!item) {
+                    item = document.getElementById(`codalab-worksheet-item-${index}`);
+                }
+            }
+            if (item && !isOnScreen(item)) {
+                item.scrollIntoView();
+            }
         }
     };
 
@@ -791,9 +794,6 @@ class Worksheet extends React.Component {
                 });
             }.bind(this),
         });
-
-        // Initialize history stack
-        window.history.replaceState({ uuid: this.state.ws.uuid }, '', window.location.pathname);
         $('body').addClass('ws-interface');
         const callback = (data) => {
             var userInfo = data.data.attributes;
@@ -826,7 +826,6 @@ class Worksheet extends React.Component {
         // $('#command_line').terminal().focus(false);
         this.setState({ activeComponent: 'itemList' });
         $('#command_line').data('resizing', null);
-        $('#ws_search').removeAttr('style');
     };
     toggleInformationModal = () => {
         this.setState({ showInformationModal: !this.state.showInformationModal });
@@ -1011,6 +1010,11 @@ class Worksheet extends React.Component {
                 );
             }
         }
+        Mousetrap.bind(['escape'], () => {
+            if (this.state.bundleIsOpen) {
+                this.closeBundle();
+            }
+        });
         Mousetrap.bind(['?'], (e) => {
             this.setState({
                 showInformationModal: true,
@@ -1208,7 +1212,7 @@ class Worksheet extends React.Component {
                 this.setState({
                     openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                     errorDialogMessage: 'Failed to update run bundles.',
-                    showWorksheetContainer: false,
+                    isValid: false,
                 });
             });
     };
@@ -1224,13 +1228,12 @@ class Worksheet extends React.Component {
                 if (items[i].bundles_spec) {
                     for (var j = 0; j < items[i].bundles_spec.bundle_infos.length; j++) {
                         var bundle_info = items[i].bundles_spec.bundle_infos[j];
-                        if (bundle_info.bundle_type === 'run') {
-                            if (bundle_info.state !== 'ready' && bundle_info.state !== 'failed') {
-                                updatingBundleUuids[bundle_info.uuid] = true;
-                            } else {
-                                if (bundle_info.uuid in updatingBundleUuids)
-                                    delete updatingBundleUuids[bundle_info.uuid];
-                            }
+                        const inFinalState = FINAL_BUNDLE_STATES.includes(bundle_info.state);
+                        if (!inFinalState) {
+                            updatingBundleUuids[bundle_info.uuid] = true;
+                        } else {
+                            if (bundle_info.uuid in updatingBundleUuids)
+                                delete updatingBundleUuids[bundle_info.uuid];
                         }
                     }
                 }
@@ -1381,6 +1384,12 @@ class Worksheet extends React.Component {
         } = {},
         afterReload,
     ) => {
+        // Don't reload if we're in the middle of executing a command.
+        // The worksheet will get reloaded once the command has executed.
+        if (this.state.executingCommand) {
+            return;
+        }
+
         if (partialUpdateItems === undefined) {
             this.setState({ updating: true, showUpdateProgress: true });
             this.fetch({
@@ -1515,7 +1524,7 @@ class Worksheet extends React.Component {
                         openedDialog: DIALOG_TYPES.OPEN_ERROR_DIALOG,
                         errorDialogMessage: xhr.responseText,
                     });
-                    this.setState({ showUpdateProgress: false, showWorksheetContainer: false });
+                    this.setState({ showUpdateProgress: false, isValid: false });
                 }.bind(this),
             }).then(() => {
                 afterReload && afterReload();
@@ -1567,6 +1576,49 @@ class Worksheet extends React.Component {
 
         // Create a new entry in the browser history with new URL.
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
+    };
+
+    openBundle = (bundleUUID, focusIndex, subFocusIndex) => {
+        const wsUUID = this.state.ws.uuid;
+        const currentFocusedBlock = this.state.ws.info.blocks[focusIndex];
+        const afterSortKey = getAfterSortKey(currentFocusedBlock, subFocusIndex);
+        const url = `/worksheets/${wsUUID}?bundle=${bundleUUID}&focus=${focusIndex}&subfocus=${subFocusIndex}`;
+
+        window.history.pushState({ uuid: wsUUID }, '', url);
+        this.setState({
+            openBundleUUID: bundleUUID,
+            openBundleAfterSortKey: afterSortKey,
+            focusIndex,
+            subFocusIndex,
+            bundleIsOpen: true,
+            showBundleOperationButtons: false,
+        });
+    };
+
+    closeBundle = () => {
+        const wsUUID = this.state.ws.uuid;
+        const { focus, subfocus } = queryString.parse(this.props.location.search);
+        const focusIndex = focus ? parseInt(focus) : this.state.focusIndex;
+        const subFocusIndex = subfocus ? parseInt(subfocus) : this.state.subFocusIndex;
+        const url = `/worksheets/${wsUUID}`;
+
+        window.history.pushState({ uuid: wsUUID }, '', url);
+        this.reloadWorksheet();
+        this.setState({
+            openBundleUUID: null,
+            openBundleAfterSortKey: null,
+            bundleIsOpen: false,
+            focusIndex,
+            subFocusIndex,
+        });
+    };
+
+    handleBackButtonClick = () => {
+        if (this.state.bundleIsOpen) {
+            this.closeBundle();
+            return;
+        }
+        this.props.history.push('/users'); // back to "My Worksheets"
     };
 
     saveAndUpdateWorksheet = (fromRaw, rawIndex) => {
@@ -1723,18 +1775,21 @@ class Worksheet extends React.Component {
             showUpdateProgress,
             showInformationModal,
             showWorksheetContent,
-            showWorksheetContainer,
+            inSourceEditMode,
+            bundleIsOpen,
+            openBundleUUID,
+            openBundleAfterSortKey,
+            worksheetWidthPercentage,
         } = this.state;
 
         this.setupEventHandlers();
         let info = this.state.ws.info;
         let rawWorksheet = info && info.source.join('\n');
         const editPermission = this.hasEditPermission();
-
-        let searchClassName = this.state.showTerminal ? '' : 'search-hidden';
         let editableClassName = editPermission && this.state.openSourceEditMode ? 'editable' : '';
         let disableWorksheetEditing = editPermission ? '' : 'disabled';
         let sourceStr = editPermission ? 'Edit Source' : 'View Source';
+
         let blockViewButtons = (
             <div style={{ display: 'inline-block' }}>
                 <Button
@@ -1744,7 +1799,7 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Edit Source'
-                    disabled={!info}
+                    disabled={!info || bundleIsOpen}
                 >
                     <EditIcon className={classes.buttonIcon} />
                     {sourceStr}
@@ -1755,7 +1810,7 @@ class Worksheet extends React.Component {
                     color='inherit'
                     aria-label='Expand CLI'
                     id='terminal-button'
-                    disabled={!info}
+                    disabled={!info || bundleIsOpen}
                 >
                     {this.state.showTerminal ? (
                         <ContractIcon className={classes.buttonIcon} />
@@ -1771,12 +1826,12 @@ class Worksheet extends React.Component {
                     size='small'
                     color='inherit'
                     aria-label='Delete Worksheet'
-                    disabled={!editPermission}
+                    disabled={!editPermission || bundleIsOpen}
                 >
                     <Tooltip
                         disableFocusListener
                         disableTouchListener
-                        title='Delete this worksheet'
+                        title='Delete this worksheet.'
                     >
                         <DeleteIcon />
                     </Tooltip>
@@ -1824,79 +1879,14 @@ class Worksheet extends React.Component {
         } else {
             $('.empty-worksheet').fadeIn();
         }
-
-        let rawDisplay = (
-            <div>
-                Press ctrl-enter to save. See{' '}
-                <a
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
-                >
-                    markdown syntax
-                </a>
-                .<div id='worksheet-editor'>{rawWorksheet}</div>
-            </div>
-        );
-
-        let terminalDisplay = (
-            <WorksheetTerminal
-                ws={this.state.ws}
-                handleFocus={this.handleTerminalFocus}
-                handleBlur={this.handleTerminalBlur}
-                active={this.state.activeComponent === 'terminal'}
-                reloadWorksheet={this.reloadWorksheet}
-                openWorksheet={this.openWorksheet}
-                editMode={() => {
-                    this.toggleSourceEditMode(true);
-                }}
-                setFocus={this.setFocus}
-                hidden={!this.state.showTerminal}
-            />
-        );
-
-        let itemsDisplay = (
-            <WorksheetItemList
-                active={this.state.activeComponent === 'itemList'}
-                ws={this.state.ws}
-                version={this.state.version}
-                focusIndex={this.state.focusIndex}
-                subFocusIndex={this.state.subFocusIndex}
-                setFocus={this.setFocus}
-                reloadWorksheet={this.reloadWorksheet}
-                saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
-                openWorksheet={this.openWorksheet}
-                focusTerminal={this.focusTerminal}
-                ensureIsArray={this.ensureIsArray}
-                showNewRun={this.state.showNewRun}
-                showNewText={this.state.showNewText}
-                showNewRerun={this.state.showNewRerun}
-                showNewSchema={this.state.showNewSchema}
-                onHideNewRun={() => this.setState({ showNewRun: false })}
-                onHideNewText={() => this.setState({ showNewText: false })}
-                onHideNewRerun={() => this.setState({ showNewRerun: false })}
-                onHideNewSchema={() => this.setState({ showNewSchema: false })}
-                handleCheckBundle={this.handleCheckBundle}
-                confirmBundleRowAction={this.confirmBundleRowAction}
-                setDeleteItemCallback={this.setDeleteItemCallback}
-                addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
-                addShowContentBundleRowsCallback={this.addShowContentBundleRowsCallback}
-                onAsyncItemLoad={this.onAsyncItemLoad}
-                updateBundleBlockSchema={this.updateBundleBlockSchema}
-                updateSchemaItem={this.updateSchemaItem}
-                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
-                addImageDisplay={this.addImageDisplay}
-            />
-        );
-
-        let worksheetDisplay = this.state.inSourceEditMode ? rawDisplay : itemsDisplay;
         let editButtons = this.state.inSourceEditMode ? sourceModeButtons : blockViewButtons;
-        if (!this.state.isValid) {
-            return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
-        }
 
         if (info && info.title) {
             document.title = info.title;
+        }
+
+        if (!this.state.isValid) {
+            return <ErrorMessage message={"Not found: '/worksheets/" + this.state.ws.uuid + "'"} />;
         }
 
         return (
@@ -1914,6 +1904,8 @@ class Worksheet extends React.Component {
                     onShowNewRun={() => this.setState({ showNewRun: true })}
                     onShowNewText={() => this.setState({ showNewText: true })}
                     onShowNewSchema={() => this.setState({ showNewSchema: true })}
+                    onBackButtonClick={this.handleBackButtonClick}
+                    bundleIsOpen={bundleIsOpen}
                     uploadAnchor={uploadAnchor}
                     showUploadMenu={this.showUploadMenu}
                     closeUploadMenu={() => {
@@ -1931,73 +1923,116 @@ class Worksheet extends React.Component {
                     toggleWorksheetSize={this.toggleWorksheetSize}
                     showBundleContent={this.showBundleContent}
                 />
-                {terminalDisplay}
-                <ToastContainer
-                    newestOnTop={false}
-                    transition={Zoom}
-                    rtl={false}
-                    pauseOnVisibilityChange
+                <WorksheetTerminal
+                    ws={this.state.ws}
+                    handleFocus={this.handleTerminalFocus}
+                    handleBlur={this.handleTerminalBlur}
+                    active={this.state.activeComponent === 'terminal'}
+                    reloadWorksheet={this.reloadWorksheet}
+                    openWorksheet={this.openWorksheet}
+                    editMode={() => {
+                        this.toggleSourceEditMode(true);
+                    }}
+                    setFocus={this.setFocus}
+                    hidden={!this.state.showTerminal}
                 />
-                {showWorksheetContainer && (
-                    <div id='worksheet_container'>
-                        <div id='worksheet' className={searchClassName}>
-                            <div
-                                className={classes.worksheetDesktop}
-                                onClick={this.handleClickForDeselect}
+                {openBundleUUID && (
+                    <div className={classes.bundleContainer}>
+                        <BundleDetail
+                            wsUUID={this.state.ws.info?.uuid}
+                            uuid={openBundleUUID}
+                            after_sort_key={openBundleAfterSortKey}
+                            editPermission={editPermission}
+                            onUpdate={() => {}}
+                            contentExpanded
+                            sidebarExpanded
+                            fullMinHeight
+                        />
+                    </div>
+                )}
+                {inSourceEditMode && (
+                    <div className={classes.rawDisplayContainer}>
+                        <div id='worksheet-editor'>{rawWorksheet}</div>
+                        <div className={classes.rawDisplayInfo}>
+                            Press ctrl-enter to save. See{' '}
+                            <a
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                href='https://codalab-worksheets.readthedocs.io/en/latest/Worksheet-Markdown'
                             >
-                                <div
-                                    className={classes.worksheetOuter}
-                                    onClick={this.handleClickForDeselect}
-                                    style={{ width: this.state.worksheetWidthPercentage }}
-                                >
-                                    {this.state.focusIndex === -1 ? (
-                                        <div
-                                            className={classes.worksheetDummyHeader}
-                                            id='worksheet_dummy_header'
-                                        />
-                                    ) : (
-                                        <div style={{ height: 8 }} />
-                                    )}
-                                    <div
-                                        className={classes.worksheetInner}
-                                        onClick={this.handleClickForDeselect}
-                                    >
-                                        {showWorksheetContent && (
-                                            <div
-                                                id='worksheet_content'
-                                                className={editableClassName + ' worksheet_content'}
-                                            >
-                                                {worksheetDisplay}
-                                                {/* Show error dialog if bulk bundle execution failed*/}
-                                                {this.state.BulkBundleDialog}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <Button
-                                        onClick={this.moveFocusToBottom}
-                                        color='primary'
-                                        variant='contained'
-                                        style={{
-                                            borderRadius: '400px',
-                                            position: 'fixed',
-                                            bottom: '50px',
-                                            right: '30px',
-                                            backgroundColor: '00BFFF',
-                                            zIndex: 10,
-                                        }}
-                                    >
-                                        <ExpandMoreIcon size='medium' />
-                                    </Button>
-                                    {(this.state.updating || !info) && (
-                                        <div className={classes.loaderContainer}>
-                                            <Loading />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                markdown syntax
+                            </a>
+                            .
                         </div>
                     </div>
                 )}
+                <div
+                    id='worksheet_container'
+                    className={classes.worksheetContainer}
+                    style={{ width: worksheetWidthPercentage }}
+                >
+                    {this.state.focusIndex === -1 ? (
+                        <div className={classes.worksheetDummyHeader} id='worksheet_dummy_header' />
+                    ) : (
+                        <div style={{ height: 8 }} />
+                    )}
+                    {!info && (
+                        <div className={classes.loaderContainer}>
+                            <Loading />
+                        </div>
+                    )}
+                    {showWorksheetContent && (
+                        <div
+                            id='worksheet_content'
+                            className={editableClassName + ' worksheet_content'}
+                        >
+                            <WorksheetItemList
+                                active={this.state.activeComponent === 'itemList'}
+                                ws={this.state.ws}
+                                version={this.state.version}
+                                focusIndex={this.state.focusIndex}
+                                subFocusIndex={this.state.subFocusIndex}
+                                setFocus={this.setFocus}
+                                reloadWorksheet={this.reloadWorksheet}
+                                saveAndUpdateWorksheet={this.saveAndUpdateWorksheet}
+                                openWorksheet={this.openWorksheet}
+                                openBundle={this.openBundle}
+                                focusTerminal={this.focusTerminal}
+                                ensureIsArray={this.ensureIsArray}
+                                showNewRun={this.state.showNewRun}
+                                showNewText={this.state.showNewText}
+                                showNewRerun={this.state.showNewRerun}
+                                showNewSchema={this.state.showNewSchema}
+                                onError={this.onError}
+                                onHideNewRun={() => this.setState({ showNewRun: false })}
+                                onHideNewText={() => this.setState({ showNewText: false })}
+                                onHideNewRerun={() => this.setState({ showNewRerun: false })}
+                                onHideNewSchema={() => this.setState({ showNewSchema: false })}
+                                handleCheckBundle={this.handleCheckBundle}
+                                confirmBundleRowAction={this.confirmBundleRowAction}
+                                setDeleteItemCallback={this.setDeleteItemCallback}
+                                addCopyBundleRowsCallback={this.addCopyBundleRowsCallback}
+                                addShowContentBundleRowsCallback={
+                                    this.addShowContentBundleRowsCallback
+                                }
+                                onAsyncItemLoad={this.onAsyncItemLoad}
+                                updateBundleBlockSchema={this.updateBundleBlockSchema}
+                                updateSchemaItem={this.updateSchemaItem}
+                                setDeleteSchemaItemCallback={this.setDeleteSchemaItemCallback}
+                                addImageDisplay={this.addImageDisplay}
+                            />
+                            {this.state.BulkBundleDialog}
+                        </div>
+                    )}
+                </div>
+                <Button
+                    className={classes.scrollToBottom}
+                    onClick={this.moveFocusToBottom}
+                    color='primary'
+                    variant='contained'
+                >
+                    <ExpandMoreIcon size='medium' />
+                </Button>
                 <WorksheetDialogs
                     openedDialog={this.state.openedDialog}
                     closeDialog={() => {
@@ -2036,31 +2071,54 @@ class Worksheet extends React.Component {
                         {this.state.messagePopover.messageContent}
                     </div>
                 </Popover>
+                <ToastContainer
+                    newestOnTop={false}
+                    transition={Zoom}
+                    rtl={false}
+                    pauseOnVisibilityChange
+                />
             </React.Fragment>
         );
     }
 }
 
+const containerHeight = `calc(100vh - ${NAVBAR_HEIGHT}px - ${WORKSHEET_HEADER_HEIGHT}px - ${FOOTER_HEIGHT}px)`;
+
 const styles = (theme) => ({
-    worksheetDesktop: {
-        backgroundColor: theme.color.grey.lightest,
-        marginTop: NAVBAR_HEIGHT,
+    bundleContainer: {
+        height: containerHeight,
+        overflowY: 'scroll',
+        zIndex: 7, // in front of worksheet container
+        position: 'fixed',
+        backgroundColor: 'white',
+        width: '100%',
     },
-    worksheetOuter: {
-        minHeight: 600, // Worksheet height
-        margin: '32px auto', // Center page horizontally
-        backgroundColor: 'white', // Paper color
-        border: `2px solid ${theme.color.grey.light}`,
-    },
-    worksheetInner: {
-        padding: '0px 30px', // Horizonal padding, no vertical
-        height: '100%',
-        position: 'relative',
-        marginTop: -theme.spacing.large, // Offset DummyHeader height
+    worksheetContainer: {
+        height: containerHeight,
+        overflowY: 'scroll',
+        overflowX: 'hidden',
+        zIndex: 5,
+        backgroundColor: 'white',
+        margin: '0 auto',
     },
     worksheetDummyHeader: {
         backgroundColor: '#F1F8FE',
         height: theme.spacing.large,
+    },
+    rawDisplayContainer: {
+        height: containerHeight,
+        backgroundColor: 'white',
+        position: 'fixed',
+        zIndex: 7,
+        width: '100%',
+    },
+    scrollToBottom: {
+        zIndex: 6,
+        borderRadius: '400px',
+        position: 'fixed',
+        bottom: '50px',
+        right: '30px',
+        backgroundColor: '00BFFF',
     },
     uuid: {
         fontFamily: theme.typography.fontFamilyMonospace,
@@ -2088,7 +2146,10 @@ const styles = (theme) => ({
         marginRight: theme.spacing.large,
     },
     loaderContainer: {
-        marginTop: 35,
+        paddingTop: 35,
+    },
+    rawDisplayInfo: {
+        padding: 10,
     },
 });
 
