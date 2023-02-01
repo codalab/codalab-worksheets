@@ -375,7 +375,7 @@ through the worker manager.
 
 To create a service account:
 
-1. Run `kubectl create -f service-account.yaml --namespace default`
+1. Run `cd codalab-worksheets && kubectl create -f docs/gcp/service-account.yaml --namespace default`
 2. Then, run `kubectl get secrets --namespace default`
 3. Get the auth token by first finding the name of the first secret (in the form `codalab-token-<random string>`) and 
    then use the name to get the token by running: `kubectl describe secret/codalab-token-<random string>`.
