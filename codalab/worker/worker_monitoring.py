@@ -1,9 +1,25 @@
+import logging
+import os
 from typing import Dict, Optional
 
 import sentry_sdk
+from sentry_sdk.profiler import start_profiling
 
 from .worker_run_state import RunState
 
+logger = logging.getLogger(__name__)
+
+sentry_sdk.init(
+    dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+    environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+    traces_sample_rate=1.0,
+    _experiments={
+        "profiles_sample_rate": 1.0,
+    },
+    debug=True
+)
+sentry_sdk.client.DEFAULT_OPTIONS["_experiments"] = { "profiles_sample_rate": 1.0 }
+sentry_sdk.client.setup_profiler({})
 
 class WorkerMonitoring(object):
     def __init__(self):
@@ -13,6 +29,7 @@ class WorkerMonitoring(object):
         # Each Hub in this dictionary should have exactly one open transaction
         # and one open span.
         self._bundle_uuid_to_hub: Dict[str, sentry_sdk.Hub] = {}
+        self._bundle_uuid_to_profile = {}
 
     def notify_stage_transition(self, run_state: RunState, is_terminal: bool = False):
         bundle_uuid = run_state.bundle.uuid
@@ -27,20 +44,24 @@ class WorkerMonitoring(object):
                 {
                     "path": run_state.bundle_path,
                     "command": run_state.bundle.command,
-                    "uuid": run_state.bundle.uuid,
-                    'container_id': run_state.bundle.container_id,
-                    'docker_image': run_state.bundle.docker_image,
+                    "uuid": run_state.bundle.uuid
                 },
             )
             hub.scope.set_user({"id": run_state.bundle.owner_id})
             # TODO: Do hub.scope.set_tag here.
-            hub.start_transaction(op="queue.task", name="worker.run").__enter__()
+            tx = hub.start_transaction(op="queue.task", name=f"worker-{run_state.bundle.command.split()[0]}")
+            self._bundle_uuid_to_profile[bundle_uuid] = start_profiling(tx, hub)
+            tx.__enter__()
+            self._bundle_uuid_to_profile[bundle_uuid].__enter__()
         else:
             # The hub exists for this bundle and has a transaction for the bundle and
             # a child span for the previous stage.
             # Close the span for the previous stage.
-            assert hub.scope.span is not None
-            hub.scope.span.__exit__(None, None, None)
+            if hub.scope.span is None:
+                logger.error(f'hub.scope.span should not be None for bundle {uuid} on stage {run_stage.stage}')
+                logger.debug(f'bundle has run state {vars(run_state)}')
+            else:
+                hub.scope.span.__exit__(None, None, None)
         # At this point, the hub has a transaction for the bundle, but no child span for the stage.
         # Open the span for the current stage.
         hub.start_span(op="queue.task.stage", description=run_state.stage).__enter__()
@@ -49,5 +70,7 @@ class WorkerMonitoring(object):
             assert hub.scope.span is not None
             hub.scope.span.__exit__(None, None, None)
             # TODO: Do transaction.set_measurement here.
+            self._bundle_uuid_to_profile[bundle_uuid].__exit__(None, None, None)
             hub.scope.transaction.__exit__(None, None, None)
             del self._bundle_uuid_to_hub[bundle_uuid]
+            del self._bundle_uuid_to_profile[bundle_uuid]

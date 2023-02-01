@@ -135,7 +135,7 @@ if __name__ == '__main__':
         '--num-bundles',
         type=int,
         help='Number of bundles to add to the database.',
-        default=100#2e5
+        default=2e5
     )
     parser.add_argument(
         '--file-size-type',

@@ -30,19 +30,7 @@ from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 
 logger = logging.getLogger(__name__)
 
-sentry_sdk.init(
-    dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
-    environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
-    traces_sample_rate=1.0,
-    _experiments={
-        "profiles_sample_rate": 1.0,
-    },
-    debug = True
-)
-sentry_sdk.start_transaction(name='WORKER-TESTTTT')
-
 DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')

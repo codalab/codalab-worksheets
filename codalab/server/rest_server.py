@@ -60,8 +60,6 @@ sentry_sdk.init(
     },
     debug = True
 )
-sentry_sdk.Hub.current.scope.transaction = sentry_sdk.start_transaction(name="LET'S SEE")
-
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
