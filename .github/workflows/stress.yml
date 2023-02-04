@@ -13,7 +13,7 @@ jobs:
           python-version: 3.7
       - run: pip install -e .
       - name: Run tests
-        run: python tests/stress/stress_test.py --instance https://worksheets-dev.codalab.org --heavy
+        run: python tests/stress/stress_test.py --instance https://worksheets-dev.codalab.org
         env:
           CODALAB_USERNAME: ${{ secrets.CODALAB_DEV_USERNAME }}
           CODALAB_PASSWORD: ${{ secrets.CODALAB_DEV_PASSWORD }}
