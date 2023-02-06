@@ -1372,7 +1372,7 @@ def test_make(ctx):
     _run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
 
-    # test using make to replicate bundles between storages
+    # test using make to replicate bundles between bundle stores
     if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
         bundle_store_name = random_name()
         bundle_store_uuid = _run_command(
