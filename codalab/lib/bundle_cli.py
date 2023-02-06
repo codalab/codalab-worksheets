@@ -1719,8 +1719,8 @@ class BundleCLI(object):
             params={'worksheet': worksheet_uuid},
         )
 
-        # Add new bundle's location. If user specify the storage using `--store`, the bundle will be added to that storage.
-        # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
+        # Add new bundle's location. If the user specifies the bundle store using `--store`, the bundle will be added to that store.
+        # Otherwise, the new MakeBundle will be added to a default store set by the rest server.
         destination_bundle_store = metadata.get('store')
         if destination_bundle_store is not None:
             need_bypass = (
