@@ -230,7 +230,7 @@ class BundleManager(object):
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
-            # Here the path might be a blob storage or
+            # Here the path might be a blob storage url or local file system path
             path = normpath(bundle_location)
 
             deps = []
