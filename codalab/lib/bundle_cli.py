@@ -1723,7 +1723,9 @@ class BundleCLI(object):
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
         if destination_bundle_store is not None:
-            need_bypass = False
+            need_bypass = (
+                False  # The bundle was made by codalab manager, do not need to bypass server
+            )
             bundle_store_uuid = None
 
             # 1) Read destination store from --store if user has specified it
@@ -1736,11 +1738,8 @@ class BundleCLI(object):
                     },
                 )
                 bundle_store_uuid = storage_info['uuid']
-                if storage_info['storage_type'] in (StorageType.DISK_STORAGE.value,):
-                    need_bypass = False  # The user specify --store to upload to disk storage
 
-            # 2) Add bundle to destination bundle storage
-            params = {'need_bypass': need_bypass}  # is_dir: ???
+            params = {'need_bypass': need_bypass}
             client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
 
         print(new_bundle['uuid'], file=self.stdout)
