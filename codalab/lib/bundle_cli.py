@@ -1736,7 +1736,7 @@ class BundleCLI(object):
                 )
                 bundle_store_uuid = storage_info['uuid']
 
-            params = {'need_bypass': need_bypass }
+            params = {'need_bypass': need_bypass}
             client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
 
         print(new_bundle['uuid'], file=self.stdout)
