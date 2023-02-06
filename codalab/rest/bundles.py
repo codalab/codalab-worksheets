@@ -259,7 +259,6 @@ def _create_bundles():
         .load(request.json)
         .data
     )
-    logging.info("POST /Bundle is called....")
 
     # Check for all necessary permissions
     if not detached:

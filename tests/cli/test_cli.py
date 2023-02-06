@@ -1386,14 +1386,20 @@ def test_make(ctx):
                 'azfs://devstoreaccount1/bundles',
             ]
         )
-        # 1) blob storage -> local filesystem
-        # 2) local filesystem -> blob storage
-        # 3) blob storage -> blob storage
+
         parent_child_store = [
             # parent 1, parent 2, child
-            [['--store', bundle_store_name], ['--store', bundle_store_name], []],
-            [[], [], ['--store', bundle_store_name]],
-            [['--store', bundle_store_name], ['--store', bundle_store_name], []],
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 1) blob storage -> local filesystem
+            [[], [], ['--store', bundle_store_name]],  # 2) local filesystem -> blob storage
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 3) blob storage -> blob storage
         ]
         for store in parent_child_store:
             uuid1 = _run_command([cl, 'upload', test_path('a.txt')] + store[0])
