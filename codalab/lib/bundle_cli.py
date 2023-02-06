@@ -1720,7 +1720,7 @@ class BundleCLI(object):
         )
 
         # Add new bundle's location. If the user specifies the bundle store using `--store`, the bundle will be added to that store.
-        # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
+        # Otherwise, the new MakeBundle will be added to a default store set by the rest server.
         destination_bundle_store = metadata.get('store')
         if destination_bundle_store is not None:
             need_bypass = False
