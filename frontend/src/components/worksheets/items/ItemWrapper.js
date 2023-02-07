@@ -1,6 +1,7 @@
 // @flow
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import Dialog from '@material-ui/core/Dialog';
 import NewRun from '../NewRun';
 import TextEditorItem from './TextEditorItem';
 import SchemaItem from './SchemaItem';
@@ -26,8 +27,9 @@ class ItemWrapper extends React.Component {
         if (!item) {
             return null;
         }
+        const { isDummyItem, mode } = item;
+        const hoverClass = mode !== 'table_block' ? classes.mainHover : ''; // table blocks have unique hover style
 
-        const { isDummyItem } = item;
         return (
             <div
                 className={
@@ -39,17 +41,7 @@ class ItemWrapper extends React.Component {
                 }
                 id={id}
             >
-                {!isDummyItem && <div className={classes.main}>{children}</div>}
-                {showNewRun && (
-                    <div className={classes.insertBox}>
-                        <NewRun
-                            after_sort_key={after_sort_key}
-                            ws={this.props.ws}
-                            onSubmit={() => this.props.onHideNewRun()}
-                            reloadWorksheet={reloadWorksheet}
-                        />
-                    </div>
-                )}
+                {!isDummyItem && <div className={`${classes.main} ${hoverClass}`}>{children}</div>}
                 {showNewText && (
                     <TextEditorItem
                         ids={this.props.ids}
@@ -81,6 +73,15 @@ class ItemWrapper extends React.Component {
                         subFocusIndex={this.props.subFocusIndex}
                     />
                 )}
+                <Dialog open={showNewRun} onClose={this.props.onHideNewRun} maxWidth='lg'>
+                    <NewRun
+                        after_sort_key={after_sort_key}
+                        ws={this.props.ws}
+                        onError={this.props.onError}
+                        onSubmit={() => this.props.onHideNewRun()}
+                        reloadWorksheet={reloadWorksheet}
+                    />
+                </Dialog>
             </div>
         );
     }
@@ -100,6 +101,8 @@ const styles = (theme) => ({
     main: {
         zIndex: 10,
         border: `2px solid transparent`,
+    },
+    mainHover: {
         '&:hover': {
             backgroundColor: theme.color.grey.lightest,
             border: `2px solid ${theme.color.grey.base}`,

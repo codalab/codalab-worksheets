@@ -15,14 +15,17 @@ import psutil
 import requests
 
 from codalab.common import SingularityError
+from codalab.common import BundleRuntime
 from codalab.lib.formatting import parse_size
 from codalab.lib.telemetry_util import initialize_sentry, load_sentry_data, using_sentry
 from .bundle_service_client import BundleServiceClient, BundleAuthException
-from . import docker_utils
 from .worker import Worker
+from codalab.worker.docker_utils import DockerRuntime, DockerException
 from codalab.worker.dependency_manager import DependencyManager
 from codalab.worker.docker_image_manager import DockerImageManager
 from codalab.worker.singularity_image_manager import SingularityImageManager
+from codalab.worker.noop_image_manager import NoOpImageManager
+from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,12 @@ def parse_args():
         default='https://worksheets.codalab.org',
         help='URL of the CodaLab server, in the format '
         '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)',
+    )
+    parser.add_argument(
+        '--ws-server',
+        default=None,
+        help='URL of the CodaLab websocket server, in the format '
+        '<ws|wss>://<hostname>[:<port>] (e.g., wss://worksheets.codalab.org/ws)',
     )
     parser.add_argument(
         '--work-dir',
@@ -123,10 +132,14 @@ def parse_args():
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
     parser.add_argument(
-        '--container-runtime',
-        choices=['docker', 'singularity'],
-        default='docker',
-        help='The worker will run jobs on the specified backend. The options are docker (default) or singularity',
+        '--bundle-runtime',
+        choices=[
+            BundleRuntime.DOCKER.value,
+            BundleRuntime.KUBERNETES.value,
+            BundleRuntime.SINGULARITY.value,
+        ],
+        default=BundleRuntime.DOCKER.value,
+        help='The runtime through which the worker will run bundles. The options are docker (default), kubernetes, or singularity',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -193,6 +206,21 @@ def parse_args():
     )
     parser.add_argument(
         '--preemptible', action='store_true', help='Whether the worker is preemptible.',
+    )
+    parser.add_argument(
+        '--kubernetes-cluster-host',
+        type=str,
+        help='Host address of the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
+    )
+    parser.add_argument(
+        '--kubernetes-auth-token',
+        type=str,
+        help='Kubernetes cluster authorization token. Only applicable if --bundle-runtime is set to kubernetes.',
+    )
+    parser.add_argument(
+        '--kubernetes-cert-path',
+        type=str,
+        help='Path to the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
     )
     return parser.parse_args()
 
@@ -277,7 +305,7 @@ def main():
             args.download_dependencies_max_retries,
         )
 
-    if args.container_runtime == "singularity":
+    if args.bundle_runtime == BundleRuntime.SINGULARITY.value:
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
             logger.info(
@@ -288,6 +316,16 @@ def main():
             args.max_image_size, args.max_image_cache_size, singularity_folder,
         )
         # todo workers with singularity don't work because this is set to none -- handle this
+        bundle_runtime_class = None
+        docker_runtime = None
+    elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
+        image_manager = NoOpImageManager()
+        bundle_runtime_class = KubernetesRuntime(
+            args.work_dir,
+            args.kubernetes_auth_token,
+            args.kubernetes_cluster_host,
+            args.kubernetes_cert_path,
+        )
         docker_runtime = None
     else:
         image_manager = DockerImageManager(
@@ -295,7 +333,8 @@ def main():
             args.max_image_cache_size,
             args.max_image_size,
         )
-        docker_runtime = docker_utils.get_available_runtime()
+        bundle_runtime_class = DockerRuntime()
+        docker_runtime = bundle_runtime_class.get_available_runtime()
     # Set up local directories
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -303,6 +342,12 @@ def main():
     if local_bundles_dir and not os.path.exists(local_bundles_dir):
         logger.info('%s doesn\'t exist, creating.', local_bundles_dir)
         os.makedirs(local_bundles_dir, 0o770)
+
+    if not args.ws_server:
+        # Set default
+        args.ws_server = (
+            args.server.replace("https://", "wss://").replace("http://", "ws://") + "/ws"
+        )
 
     worker = Worker(
         image_manager,
@@ -323,8 +368,9 @@ def main():
         args.checkin_frequency_seconds,
         bundle_service,
         args.shared_file_system,
-        args.tag_exclusive,
+        args.tag_exclusive if args.tag else False,
         args.group,
+        ws_server=args.ws_server,
         docker_runtime=docker_runtime,
         docker_network_prefix=args.network_prefix,
         pass_down_termination=args.pass_down_termination,
@@ -332,6 +378,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
+        bundle_runtime=bundle_runtime_class,
     )
 
     # Register a signal handler to ensure safe shutdown.
@@ -383,9 +430,6 @@ def parse_gpuset_args(arg):
     """
     Parse given arg into a set of strings representing gpu UUIDs
     By default, we will try to start a Docker container with nvidia-smi to get the GPUs.
-    If we get an exception that the Docker socket does not exist, which will be the case
-    on Singularity workers, because they do not have root access, and therefore, access to
-    the Docker socket, we should try to get the GPUs with Singularity.
 
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
@@ -395,13 +439,13 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except docker_utils.DockerException:
+        all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except DockerException:
         all_gpus = {}
     # Docker socket can't be used
     except requests.exceptions.ConnectionError:
         try:
-            all_gpus = docker_utils.get_nvidia_devices(use_docker=False)
+            all_gpus = DockerRuntime().get_nvidia_devices(use_docker=False)
         except SingularityError:
             all_gpus = {}
 

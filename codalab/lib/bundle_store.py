@@ -48,7 +48,7 @@ class BundleStore(object):
     def get_bundle_location(self, uuid, bundle_store_uuid=None):
         raise NotImplementedError
 
-    def cleanup(self, uuid, dry_run):
+    def cleanup(self, bundle_location, dry_run):
         raise NotImplementedError
 
 
@@ -226,14 +226,14 @@ class _MultiDiskBundleStoreBase(BundleStore):
                 )
             )
 
-    def cleanup(self, uuid, dry_run):
+    def cleanup(self, bundle_location, dry_run):
         '''
         Remove the bundle with given UUID from on-disk storage.
         '''
-        absolute_path = self.get_bundle_location(uuid)
-        print("cleanup: data %s" % absolute_path, file=sys.stderr)
-        if not dry_run:
-            path_util.remove(absolute_path)
+        print("cleanup: data %s" % bundle_location, file=sys.stderr)
+        if dry_run:
+            return False
+        return path_util.remove(bundle_location)
 
     def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
         """
@@ -443,6 +443,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
         if bundle_store_uuid:
             assert len(bundle_locations) >= 1
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
+
         if len(bundle_locations) >= 1:
             # Use the BundleLocations stored with the bundle, along with some
             # precedence rules, to determine where the bundle is stored.

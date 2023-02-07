@@ -1,7 +1,5 @@
 // @flow
 import * as React from 'react';
-import classNames from 'classnames';
-
 import { withStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
 
@@ -24,9 +22,12 @@ class ConfigPanel extends React.Component<{
      * Renderer.
      */
     render() {
-        const { classes, children, sidebar, buttons } = this.props;
+        const { classes, children, sidebar, buttons, fullMinHeight } = this.props;
+        const style = {
+            minHeight: fullMinHeight ? '100%' : 0,
+        };
         return (
-            <Grid container direction='row' className={classes.container}>
+            <Grid className={classes.container} style={style} direction='row' container>
                 {/* Column 1: Main content area ================================================ */}
                 <Grid
                     item
@@ -72,31 +73,45 @@ class ConfigPanel extends React.Component<{
 const styles = (theme) => ({
     container: {
         flexGrow: 1,
-        height: '100%',
+        flexWrap: 'nowrap',
         maxWidth: '100%',
+        [theme.breakpoints.down('sm')]: {
+            flexDirection: 'column',
+        },
     },
     content: {
+        justifyContent: 'flex-start',
         backgroundColor: 'white',
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
         flexGrow: 1,
         maxWidth: '90%',
+        [theme.breakpoints.down('sm')]: {
+            order: 2,
+            maxWidth: 'none',
+            width: '100%',
+        },
     },
     sidebar: {
         backgroundColor: theme.color.grey.lighter,
         padding: theme.spacing.larger,
         maxHeight: '100%',
         overflow: 'auto',
-        maxWidth: '50%',
+        minWidth: '400px',
         flexGrow: 1,
+        [theme.breakpoints.down('sm')]: {
+            order: 1,
+            minWidth: 'none',
+            width: '100%',
+        },
     },
     buttons: {
         '& button': {
-            marginLeft: theme.spacing.larger,
+            marginLeft: 14,
         },
         paddingBottom: theme.spacing.large,
-        paddingTop: theme.spacing.larger,
+        paddingTop: 24,
         maxWidth: '90%',
     },
 });

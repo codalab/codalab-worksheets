@@ -32,7 +32,6 @@ from io import BytesIO
 from shlex import quote
 from typing import Dict
 import webbrowser
-
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
@@ -49,7 +48,6 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
-    DiskQuotaExceededError,
     parse_linked_bundle_url,
 )
 from codalab.lib import (
@@ -59,6 +57,7 @@ from codalab.lib import (
     path_util,
     spec_util,
     ui_actions,
+    upload_manager,
     worksheet_util,
     bundle_fuse,
 )
@@ -100,8 +99,6 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-from codalab.worker.file_util import get_path_size
-
 
 # Command groupings
 BUNDLE_COMMANDS = (
@@ -794,12 +791,7 @@ class BundleCLI(object):
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            try:
-                worksheet_uuid = self.resolve_worksheet_uuid(
-                    client, base_worksheet_uuid, parsed_spec
-                )
-            except ValueError:
-                raise UsageError('Invalid spec: "{}"'.format(spec))
+            worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, parsed_spec)
         return client, worksheet_uuid
 
     @staticmethod
@@ -1434,15 +1426,6 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
-            # Calculate size of sources
-            total_bundle_size = sum([get_path_size(source) for source in sources])
-            user = client.fetch('user')
-            disk_left = user['disk_quota'] - user['disk_used']
-            if disk_left - total_bundle_size <= 0:
-                raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
-                    % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
-                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -1471,25 +1454,20 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
+
             print(
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
-            progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
-            with closing(packed['fileobj']), progress:
-                client.upload_contents_blob(
-                    new_bundle['id'],
-                    fileobj=packed['fileobj'],
-                    params={
-                        'filename': packed['filename'],
-                        'unpack': packed['should_unpack'],
-                        'state_on_success': State.READY,
-                        'finalize_on_success': True,
-                        'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': metadata.get('store') or '',
-                    },
-                    progress_callback=progress.update,
-                )
+            uploader = upload_manager.ClientUploadManager(
+                client, stdout=self.stdout, stderr=self.stderr
+            )
+            uploader.upload_to_bundle_store(
+                bundle=new_bundle,
+                packed_source=packed,
+                use_azure_blob_beta=args.use_azure_blob_beta,
+                destination_bundle_store=metadata.get('store'),
+            )
 
         print(new_bundle['id'], file=self.stdout)
 

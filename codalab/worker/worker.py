@@ -1,25 +1,30 @@
+import asyncio
 import logging
 import os
 import shutil
 from subprocess import PIPE, Popen
 import threading
+from threading import RLock
 import time
 import traceback
 import socket
 import http.client
 import sys
 from typing import Optional, Set, Dict
+from types import SimpleNamespace
+import websockets
 
 import psutil
 
 import docker
+from codalab.common import BundleRuntime
 from codalab.lib.telemetry_util import capture_exception, using_sentry
-import codalab.worker.docker_utils as docker_utils
+from codalab.worker.runtime import Runtime
 import requests
 
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
-from .docker_utils import DEFAULT_DOCKER_TIMEOUT
+from .docker_utils import DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME
 from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
@@ -35,6 +40,8 @@ is syncing the job states with the server and passing on job-related commands fr
 to architecture-specific RunManagers that run the jobs. Workers are execution platform antagonistic
 but they expect the platform specific RunManagers they use to implement a common interface
 """
+
+NOOP = 'noop'
 
 
 class Worker:
@@ -70,7 +77,9 @@ class Worker:
         shared_file_system,  # type: bool
         tag_exclusive,  # type: bool
         group_name,  # type: str
-        docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
+        ws_server,  # type: str
+        bundle_runtime,  # type: Runtime
+        docker_runtime=DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
         # A flag indicating if all the existing running bundles will be killed along with the worker.
         pass_down_termination=False,  # type: bool
@@ -116,10 +125,15 @@ class Worker:
         self.pass_down_termination = pass_down_termination
         self.exit_on_exception = exit_on_exception
         self.preemptible = preemptible
+        self.bundle_runtime = bundle_runtime
 
         self.checkin_frequency_seconds = checkin_frequency_seconds
+        self.last_checkin = None
         self.last_checkin_successful = False
+        self.listen_thread = None
         self.last_time_ran = None  # type: Optional[bool]
+
+        self.ws_server = ws_server
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
@@ -135,12 +149,23 @@ class Worker:
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
             shared_file_system=self.shared_file_system,
             shared_memory_size_gb=shared_memory_size_gb,
+            bundle_runtime=bundle_runtime,
         )
+
+        # Lock ensures listening thread and main thread don't simultaneously
+        # access the runs dictionary, thereby causing race conditions.
+        self._lock = RLock()
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
         Set up docker networks for runs: one with external network access and one without
         """
+        if self.bundle_runtime.name != BundleRuntime.DOCKER.value:
+            # Don't create Docker networks if we're not using the Docker runtime. Return.
+            self.worker_docker_network = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            self.docker_network_external = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            self.docker_network_internal = SimpleNamespace(name=NOOP, connect=lambda _: _)
+            return
 
         def create_or_get_network(name, internal, verbose):
             try:
@@ -186,14 +211,15 @@ class Worker:
         )
 
     def save_state(self):
-        # Remove complex container objects from state before serializing, these can be retrieved
-        runs = {
-            uuid: state._replace(
-                container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
-            )
-            for uuid, state in self.runs.items()
-        }
-        self.state_committer.commit(runs)
+        with self._lock:
+            # Remove complex container objects from state before serializing, these can be retrieved
+            runs = {
+                uuid: state._replace(
+                    container=None, bundle=state.bundle.as_dict, resources=state.resources.as_dict,
+                )
+                for uuid, state in self.runs.items()
+            }
+            self.state_committer.commit(runs)
 
     def load_state(self):
         # If the state file doesn't exist yet, have the state committer return an empty state.
@@ -265,18 +291,54 @@ class Worker:
 
     def start(self):
         """Return whether we ran anything."""
+        logger.info(f"my id is: {self.id}")
         self.load_state()
         self.sync_state()
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
+
+        async def listen(self):
+            logger.warning("Started websocket listening thread")
+            while not self.terminate:
+                logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}")
+                async with websockets.connect(
+                    f"{self.ws_server}/worker/{self.id}", max_queue=1
+                ) as websocket:
+
+                    async def receive_msg():
+                        await websocket.send("a")
+                        data = await asyncio.wait_for(websocket.recv(), timeout=10)
+                        logger.warning(
+                            f"Got websocket message, got data: {data}, going to check in now."
+                        )
+                        self.checkin()
+                        self.last_checkin = time.time()
+
+                    while not self.terminate:
+                        try:
+                            await receive_msg()
+                        except asyncio.futures.TimeoutError:
+                            pass
+                        except websockets.exceptions.ConnectionClosed:
+                            logger.warning("Websocket connection closed, starting a new one...")
+                            break
+
+        def listen_thread_fn(self):
+            futures = [listen(self)]
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(asyncio.wait(futures))
+
+        self.listen_thread = threading.Thread(target=listen_thread_fn, args=[self])
+        self.listen_thread.start()
         while not self.terminate:
             try:
                 self.checkin()
-                last_checkin = time.time()
+                self.last_checkin = time.time()
                 # Process runs until it's time for the next checkin.
                 while not self.terminate and (
-                    time.time() - last_checkin <= self.checkin_frequency_seconds
+                    time.time() - self.last_checkin <= self.checkin_frequency_seconds
                 ):
                     self.check_termination()
                     self.save_state()
@@ -287,7 +349,6 @@ class Worker:
                     time.sleep(0.003)
                     self.save_state()
             except Exception:
-                self.last_checkin_successful = False
                 if using_sentry():
                     capture_exception()
                 traceback.print_exc()
@@ -330,6 +391,8 @@ class Worker:
         Blocks until cleanup is complete and it is safe to quit
         """
         logger.info("Stopping Worker")
+        if self.listen_thread:
+            self.listen_thread.join()
         self.image_manager.stop()
         if not self.shared_file_system:
             self.dependency_manager.stop()
@@ -337,12 +400,13 @@ class Worker:
         self.save_state()
         if self.delete_work_dir_on_exit:
             shutil.rmtree(self.work_dir)
-        try:
-            self.worker_docker_network.remove()
-            self.docker_network_internal.remove()
-            self.docker_network_external.remove()
-        except docker.errors.APIError as e:
-            logger.warning("Cannot clear docker networks: %s", str(e))
+        if self.worker_docker_network.name != NOOP:
+            try:
+                self.worker_docker_network.remove()
+                self.docker_network_internal.remove()
+                self.docker_network_external.remove()
+            except docker.errors.APIError as e:
+                logger.warning("Cannot clear docker networks: %s", str(e))
 
         logger.info("Stopped Worker. Exiting")
 
@@ -416,102 +480,109 @@ class Worker:
         This function must return fast to keep checkins frequent. Time consuming
         processes must be handled asynchronously.
         """
-        request = {
-            'tag': self.tag,
-            'group_name': self.group_name,
-            'cpus': len(self.cpuset),
-            'gpus': len(self.gpuset),
-            'memory_bytes': self.max_memory,
-            'free_disk_bytes': self.free_disk_bytes,
-            'dependencies': self.cached_dependencies,
-            'hostname': socket.gethostname(),
-            'runs': [run.as_dict for run in self.all_runs],
-            'shared_file_system': self.shared_file_system,
-            'tag_exclusive': self.tag_exclusive,
-            'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
-            'is_terminating': self.terminate or self.terminate_and_restage,
-            'preemptible': self.preemptible,
-        }
-        try:
-            response = self.bundle_service.checkin(self.id, request)
-            logger.info('Connected! Successful check in!')
-            self.last_checkin_successful = True
-        except BundleServiceException as ex:
-            logger.warning("Disconnected from server! Failed check in: %s", ex)
-            if not self.last_checkin_successful:
-                logger.info(
-                    "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
-                )
-                time.sleep(self.CHECKIN_COOLDOWN)
-            self.last_checkin_successful = False
-            response = None
-        # Stop processing any new runs received from server
-        if not response or self.terminate_and_restage or self.terminate:
-            return
-        action_type = response['type']
-        logger.debug('Received %s message: %s', action_type, response)
-        if action_type == 'run':
-            self.initialize_run(response['bundle'], response['resources'])
-        else:
-            uuid = response['uuid']
-            socket_id = response.get('socket_id', None)
-            if uuid not in self.runs:
-                if action_type in ['read', 'netcat']:
-                    self.read_run_missing(socket_id)
+        with self._lock:
+            request = {
+                'tag': self.tag,
+                'group_name': self.group_name,
+                'cpus': len(self.cpuset),
+                'gpus': len(self.gpuset),
+                'memory_bytes': self.max_memory,
+                'free_disk_bytes': self.free_disk_bytes,
+                'dependencies': self.cached_dependencies,
+                'hostname': socket.gethostname(),
+                'runs': [run.as_dict for run in self.all_runs],
+                'shared_file_system': self.shared_file_system,
+                'tag_exclusive': self.tag_exclusive,
+                'exit_after_num_runs': self.exit_after_num_runs - self.num_runs,
+                'is_terminating': self.terminate or self.terminate_and_restage,
+                'preemptible': self.preemptible,
+            }
+            try:
+                response = self.bundle_service.checkin(self.id, request)
+                logger.info('Connected! Successful check in!')
+                self.last_checkin_successful = True
+            except BundleServiceException as ex:
+                logger.warning("Disconnected from server! Failed check in: %s", ex)
+                if not self.last_checkin_successful:
+                    logger.info(
+                        "Checkin failed twice in a row, sleeping %d seconds", self.CHECKIN_COOLDOWN
+                    )
+                    time.sleep(self.CHECKIN_COOLDOWN)
+                self.last_checkin_successful = False
+                response = None
+            # Stop processing any new runs received from server
+            if not response or self.terminate_and_restage or self.terminate:
                 return
-            if action_type == 'kill':
-                self.kill(uuid)
-            elif action_type == 'mark_finalized':
-                self.mark_finalized(uuid)
-            elif action_type == 'read':
-                self.read(socket_id, uuid, response['path'], response['read_args'])
-            elif action_type == 'netcat':
-                self.netcat(socket_id, uuid, response['port'], response['message'])
-            elif action_type == 'write':
-                self.write(uuid, response['subpath'], response['string'])
-            else:
-                logger.warning("Unrecognized action type from server: %s", action_type)
+            if type(response) is not list:
+                response = [response]
+            for action in response:
+                if not action:
+                    continue
+                action_type = action['type']
+                logger.debug('Received %s message: %s', action_type, action)
+                if action_type == 'run':
+                    self.initialize_run(action['bundle'], action['resources'])
+                else:
+                    uuid = action['uuid']
+                    socket_id = action.get('socket_id', None)
+                    if uuid not in self.runs:
+                        if action_type in ['read', 'netcat']:
+                            self.read_run_missing(socket_id)
+                        return
+                    if action_type == 'kill':
+                        kill_message = 'Kill requested'
+                        if 'kill_message' in action:
+                            kill_message = action['kill_message']
+                        self.kill(uuid, kill_message)
+                    elif action_type == 'mark_finalized':
+                        self.mark_finalized(uuid)
+                    elif action_type == 'read':
+                        self.read(socket_id, uuid, action['path'], action['read_args'])
+                    elif action_type == 'netcat':
+                        self.netcat(socket_id, uuid, action['port'], action['message'])
+                    elif action_type == 'write':
+                        self.write(uuid, action['subpath'], action['string'])
+                    else:
+                        logger.warning("Unrecognized action type from server: %s", action_type)
+            self.process_runs()
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        # We (re-)initialize the Docker networks here, in case they've been removed.
-        # For any networks that exist, this is essentially a no-op.
-        self.init_docker_networks(self.docker_network_prefix, verbose=False)
-        # In case the docker networks have changed, we also update them in the RunStateMachine
-        self.run_state_manager.worker_docker_network = self.worker_docker_network
-        self.run_state_manager.docker_network_external = self.docker_network_external
-        self.run_state_manager.docker_network_internal = self.docker_network_internal
+        with self._lock:
+            # We (re-)initialize the Docker networks here, in case they've been removed.
+            # For any networks that exist, this is essentially a no-op.
+            self.init_docker_networks(self.docker_network_prefix, verbose=False)
+            # In case the docker networks have changed, we also update them in the RunStateMachine
+            self.run_state_manager.worker_docker_network = self.worker_docker_network
+            self.run_state_manager.docker_network_external = self.docker_network_external
+            self.run_state_manager.docker_network_internal = self.docker_network_internal
 
-        # 1. transition all runs
-        for uuid in self.runs:
-            prev_state = self.runs[uuid]
-            self.runs[uuid] = self.run_state_manager.transition(prev_state)
-            # Only start saving stats for a new stage when the run has actually transitioned to that stage.
-            if prev_state.stage != self.runs[uuid].stage:
-                self.end_stage_stats(uuid, prev_state.stage)
-                if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
-                    self.start_stage_stats(uuid, self.runs[uuid].stage)
+            # 1. transition all runs
+            for uuid in self.runs:
+                prev_state = self.runs[uuid]
+                self.runs[uuid] = self.run_state_manager.transition(prev_state)
+                # Only start saving stats for a new stage when the run has actually transitioned to that stage.
+                if prev_state.stage != self.runs[uuid].stage:
+                    self.end_stage_stats(uuid, prev_state.stage)
+                    if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                        self.start_stage_stats(uuid, self.runs[uuid].stage)
 
-        # 2. filter out finished runs and clean up containers
-        finished_container_ids = [
-            run.container
-            for run in self.runs.values()
-            if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
-            and run.container_id is not None
-        ]
-        for container_id in finished_container_ids:
-            try:
-                container = self.docker.containers.get(container_id)
-                container.remove(force=True)
-            except (docker.errors.NotFound, docker.errors.NullResource):
-                pass
+            # 2. filter out finished runs and clean up containers
+            finished_container_ids = [
+                run.container_id
+                for run in self.runs.values()
+                if (run.stage == RunStage.FINISHED or run.stage == RunStage.FINALIZING)
+                and run.container_id is not None
+            ]
+            for container_id in finished_container_ids:
+                self.bundle_runtime.remove(container_id)
 
-        # 3. reset runs for the current worker
-        self.runs = {
-            uuid: run_state
-            for uuid, run_state in self.runs.items()
-            if run_state.stage != RunStage.FINISHED
-        }
+            # 3. reset runs for the current worker
+            self.runs = {
+                uuid: run_state
+                for uuid, run_state in self.runs.items()
+                if run_state.stage != RunStage.FINISHED
+            }
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -681,11 +752,11 @@ class Worker:
                 file=sys.stdout,
             )
 
-    def kill(self, uuid):
+    def kill(self, uuid, kill_message='Kill requested'):
         """
         Marks the run as killed so that the next time its state is processed it is terminated.
         """
-        self.runs[uuid] = self.runs[uuid]._replace(kill_message='Kill requested', is_killed=True)
+        self.runs[uuid] = self.runs[uuid]._replace(kill_message=kill_message, is_killed=True)
 
     def restage_bundle(self, uuid):
         """
@@ -731,8 +802,8 @@ class Worker:
         def netcat_fn():
             try:
                 run_state = self.runs[uuid]
-                container_ip = docker_utils.get_container_ip(
-                    self.worker_docker_network.name, run_state.container
+                container_ip = self.bundle_runtime.get_container_ip(
+                    self.worker_docker_network.name, run_state.container_id
                 )
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((container_ip, port))

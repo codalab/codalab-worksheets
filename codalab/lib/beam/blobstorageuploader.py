@@ -6,6 +6,7 @@ from azure.storage.blob import (
 from apache_beam.io.azure.blobstorageio import parse_azfs_path
 import base64
 from codalab.worker.un_gzip_stream import BytesBuffer
+from concurrent.futures import ThreadPoolExecutor
 
 class BlobStorageUploader(Uploader):
   """An improved version of apache_beam.io.azure.blobstorageio.BlobStorageUploader
@@ -17,9 +18,12 @@ class BlobStorageUploader(Uploader):
   # size of 10 TiB to Blob Storage. To exceed that limit, we must either increase MIN_WRITE_SIZE
   # or modify the implementation of this class to call commit_block_list more often (and not
   # just at the end of the upload). 
-  MIN_WRITE_SIZE = 100 * 1024 * 1024
+  
+  # Set MIN_WRITE_SIZE to 20 MiB to prevent first put blob request timeout when uploading 
+  MIN_WRITE_SIZE = 20 * 1024 * 1024
   # Maximum block size is 4000 MiB (https://docs.microsoft.com/en-us/rest/api/storageservices/put-block#remarks).
-  MAX_WRITE_SIZE = 4000 * 1024 * 1024
+  # Set MAX_WRITE_SIZE to 50 MiB to prevent first put blob request timeout when uploading (https://github.com/Azure/azure-sdk-for-python/issues/12166)
+  MAX_WRITE_SIZE = 50 * 1024 * 1024
 
   def __init__(self, client, path, mime_type='application/octet-stream'):
     self._client = client
@@ -33,6 +37,8 @@ class BlobStorageUploader(Uploader):
     self.block_number = 1
     self.buffer = BytesBuffer()
     self.block_list = []
+    self.thread_pool = ThreadPoolExecutor(8)
+    self.all_tasks = []
 
   def put(self, data):
     self.buffer.write(data.tobytes())
@@ -45,12 +51,13 @@ class BlobStorageUploader(Uploader):
   def _write_to_blob(self, data):
     # block_id's have to be base-64 strings normalized to have the same length.
     block_id = base64.b64encode('{0:-32d}'.format(self.block_number).encode()).decode()
-    
-    self._blob_to_upload.stage_block(block_id, data)
+    # put the blob content to server in parallel, but blob is uncommitted
+    self.all_tasks.append(self.thread_pool.submit(self._blob_to_upload.stage_block, block_id, data))
     self.block_list.append(BlobBlock(block_id))
     self.block_number = self.block_number + 1
 
   def finish(self):
     # The buffer will have a size smaller than MIN_WRITE_SIZE, so its contents can fit into memory.
     self._write_to_blob(self.buffer.read())
+    self.thread_pool.shutdown(wait=True)
     self._blob_to_upload.commit_block_list(self.block_list, content_settings=self._content_settings)

@@ -12,27 +12,39 @@ from codalab.worker.bundle_state import State
 
 class UploadedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)  # type: List
-    # Don't format specs
-    # fmt: off
     METADATA_SPECS.append(
-        MetadataSpec('license', str, 'The license under which this program/dataset is released.')
+        MetadataSpec(
+            'license', str, 'The license under which this program/dataset is released (license).',
+        )
     )
     METADATA_SPECS.append(
-        MetadataSpec('source_url', str, 'URL corresponding to the original source of this bundle.')
+        MetadataSpec(
+            'source_url',
+            str,
+            'URL corresponding to the original source of this bundle (source_url).',
+        )
     )
-
     METADATA_SPECS.append(
-        MetadataSpec('link_url', str, 'Link URL of bundle.', optional=True)
+        MetadataSpec('link_url', str, 'Link URL of bundle (link_url).', optional=True,)
     )
     METADATA_SPECS.append(
-        MetadataSpec('link_format', str, 'Link format of bundle. Can be equal to'
-                                         '"raw" or "zip" (only "raw" is supported as of now).', optional=True)
+        MetadataSpec(
+            'link_format',
+            str,
+            'Link format of bundle (link_format). Can be equal to "raw" or "zip" (only "raw" is supported as of now).',
+            optional=True,
+        )
     )
-
-    METADATA_SPECS.append(MetadataSpec('store', str, 'The name of the bundle store where the bundle should be uploaded to. '
-                                                     'If unspecified, an optimal available bundle store will be chosen.', default=None, hidden=True, optional=True))
-
-    # fmt: on
+    METADATA_SPECS.append(
+        MetadataSpec(
+            'store',
+            str,
+            'The name of the bundle store where the bundle should be uploaded to (store). If unspecified, an optimal available bundle store will be chosen.',
+            default=None,
+            hidden=True,
+            optional=True,
+        )
+    )
 
     @classmethod
     def construct(cls, metadata, owner_id, uuid=None):

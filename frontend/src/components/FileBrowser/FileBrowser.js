@@ -13,6 +13,7 @@ import './FileBrowser.scss';
 import { useState, useEffect, useCallback } from 'react';
 import useSWR, { cache } from 'swr';
 import { apiWrapper } from '../../util/apiWrapper';
+import { formatDirectory } from './utils/formatDirectory';
 
 export class FileBrowser extends React.Component<
     {
@@ -464,7 +465,22 @@ class FileBrowserItemLite extends React.Component<{
     }
 }
 
-export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_name }) => {
+const breadcrumbStyle = {
+    padding: '5px 24px',
+    fontFamily: 'Roboto',
+    fontWeight: 500,
+    backgroundColor: '#F1F3F5', // grey.lighter
+    color: '#8895A7', // grey.darker
+    borderBottom: '1px solid rgba(224, 224, 224, 1)', // match table borders
+};
+
+export const FileBrowserLite = ({
+    uuid,
+    startCollapsed,
+    isRunningBundle,
+    bundle_name,
+    showBreadcrumbs,
+}) => {
     const [currentWorkingDirectory, setCurrentWorkingDirectory] = useState('');
     const [fileBrowserData, setFileBrowserData] = useState({});
     const [hidden, setHidden] = useState(true);
@@ -587,6 +603,9 @@ export const FileBrowserLite = ({ uuid, startCollapsed, isRunningBundle, bundle_
     return (
         hidden || (
             <Paper>
+                {showBreadcrumbs && currentWorkingDirectory && (
+                    <div style={breadcrumbStyle}>{formatDirectory(currentWorkingDirectory)}</div>
+                )}
                 <Table style={{ backgroundColor: 'white' }}>
                     <TableBody>{items}</TableBody>
                 </Table>

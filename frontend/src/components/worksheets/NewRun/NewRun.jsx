@@ -313,11 +313,17 @@ class NewRun extends React.Component<
     runCommand() {
         const cmd = this.getCommand();
         if (cmd) {
-            executeCommand(cmd, this.props.ws.info.uuid).then(() => {
-                const moveIndex = true;
-                const param = { moveIndex };
-                this.props.reloadWorksheet(undefined, undefined, param);
-            });
+            executeCommand(cmd, this.props.ws.info.uuid)
+                .then((resp) => {
+                    if (this.props.reloadWorksheet) {
+                        const moveIndex = true;
+                        this.props.reloadWorksheet(undefined, undefined, { moveIndex });
+                    }
+                    this.props.onSubmit(resp);
+                })
+                .catch((errorMessage) => {
+                    this.props.onError(errorMessage);
+                });
         }
     }
 
@@ -360,10 +366,7 @@ class NewRun extends React.Component<
                         <Button
                             variant='contained'
                             color='primary'
-                            onClick={() => {
-                                this.runCommand();
-                                this.props.onSubmit();
-                            }}
+                            onClick={() => this.runCommand()}
                         >
                             Confirm
                         </Button>
@@ -530,13 +533,14 @@ class NewRun extends React.Component<
                 }
             >
                 {/* Main Content ------------------------------------------------------- */}
-                <Typography variant='subtitle1' gutterBottom>
+                <Typography variant='h6' gutterBottom>
                     New Run
                 </Typography>
                 <ConfigLabel
                     label='Dependencies'
                     tooltip='Map an entire bundle or a file/directory inside to a name that
                     can be referenced in the terminal command.'
+                    hasMargin
                 />
                 <DependencyEditor
                     addDependency={(dep) => this.addDependency(dep)}
@@ -553,6 +557,7 @@ class NewRun extends React.Component<
                     tooltip='Terminal command to run within the Docker container. It can use
                     data from other bundles by referencing the aliases specified in the
                     dependencies section.'
+                    hasMargin
                 />
                 <ConfigCodeInput
                     value={this.state.command}

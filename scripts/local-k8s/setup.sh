@@ -1,5 +1,4 @@
-# Sets up a local kubernetes cluster using kind,
-# along with a web dashboard.
+# Sets up a local kubernetes cluster.
 
 set -e
 

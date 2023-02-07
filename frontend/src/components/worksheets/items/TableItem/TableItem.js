@@ -1,20 +1,24 @@
 // @flow
 import React, { useEffect } from 'react';
+import classNames from 'classnames';
 import { withStyles } from '@material-ui/core';
+import Checkbox from '@material-ui/core/Checkbox';
+import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@material-ui/icons/CheckBox';
 import Table from '@material-ui/core/Table';
 import TableHead from '@material-ui/core/TableHead';
 import TableCell from './TableCell';
 import TableRow from '@material-ui/core/TableRow';
-import BundleRow from './BundleRow';
-import { getIds } from '../../../../util/worksheet_utils';
-import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import IconButton from '@material-ui/core/IconButton';
 import SaveIcon from '@material-ui/icons/Save';
 import RestoreIcon from '@material-ui/icons/Restore';
 import TextField from '@material-ui/core/TextField';
 import Tooltip from '@material-ui/core/Tooltip';
-import classNames from 'classnames';
+import BundleRow from './BundleRow';
+import BundleStateTooltip from '../../../BundleStateTooltip';
+import { getIds } from '../../../../util/worksheet_utils';
+import { FETCH_STATUS_SCHEMA } from '../../../../constants';
 import { fetchAsyncBundleContents } from '../../../../util/apiWrapper';
 import * as Mousetrap from '../../../../util/ws_mousetrap_fork';
 
@@ -38,6 +42,7 @@ class TableItem extends React.Component<{
             indeterminateCheckState: false,
             curSchemaNames: this.props.item.using_schemas.join(' '),
             openSchemaTextBox: false,
+            tableIsSelected: false,
         };
         this.copyCheckedBundleRows = this.copyCheckedBundleRows.bind(this);
         this.showCheckedBundleRowsContents = this.showCheckedBundleRowsContents.bind(this);
@@ -56,6 +61,7 @@ class TableItem extends React.Component<{
             childrenCheckState: childrenStatus,
             indeterminateCheckState: false,
             checked: false,
+            tableIsSelected: false,
         });
     };
 
@@ -130,6 +136,26 @@ class TableItem extends React.Component<{
         });
     };
 
+    toggleTableSelect = () => {
+        const bundles = this.props.item.bundles_spec.bundle_infos;
+        const tableIsSelected = !this.state.tableIsSelected;
+
+        // update the table checkbox state
+        this.setState({ tableIsSelected });
+
+        // update the checkbox state for each bundle row
+        bundles.forEach((bundle, i) => {
+            const identifier = Math.random() * 10000; // see handleCheckBundle() for identifier implementation details
+            this.props.handleCheckBundle(
+                bundle.uuid,
+                identifier,
+                tableIsSelected,
+                this.refreshCheckBox,
+            );
+            this.childrenCheck(i, tableIsSelected);
+        });
+    };
+
     // BULK OPERATION RELATED CODE ABOVE
 
     updateRowIndex = (rowIndex) => {
@@ -153,6 +179,7 @@ class TableItem extends React.Component<{
         let bundleInfos = item.bundles_spec.bundle_infos;
         let headerItems = item.header;
         let headerHtml = headerItems.map((item, index) => {
+            const showStateTooltip = item === 'state';
             return (
                 <TableCell
                     onMouseEnter={(e) => this.setState({ hovered: true })}
@@ -167,28 +194,39 @@ class TableItem extends React.Component<{
                     style={
                         index === 0
                             ? {
-                                  paddingLeft: editPermission ? '30px' : '70px',
+                                  paddingLeft: editPermission ? '6px' : '70px',
                                   paddingBottom: 0,
                                   paddingTop: 0,
                               }
-                            : {}
+                            : {
+                                  paddingLeft: 4,
+                              }
                     }
                 >
                     {editPermission && index === 0 && (
-                        <Tooltip title={'Change the schemas of this table'}>
-                            <IconButton>
-                                <ViewListIcon
-                                    style={{ padding: '0px', height: 15 }}
+                        <>
+                            <Checkbox
+                                icon={<CheckBoxOutlineBlankIcon fontSize='small' />}
+                                checkedIcon={<CheckBoxIcon fontSize='small' />}
+                                classes={{ root: classes.tableCheckbox }}
+                                onChange={this.toggleTableSelect}
+                                checked={this.state.tableIsSelected}
+                            />
+                            <Tooltip title={'Change the schemas of this table'}>
+                                <IconButton
                                     onClick={() => {
                                         this.setState({
                                             openSchemaTextBox: !this.state.openSchemaTextBox,
                                         });
                                     }}
-                                />
-                            </IconButton>
-                        </Tooltip>
+                                >
+                                    <ViewListIcon style={{ padding: '0px', height: 15 }} />
+                                </IconButton>
+                            </Tooltip>
+                        </>
                     )}
                     {item}
+                    {showStateTooltip && <BundleStateTooltip />}
                 </TableCell>
             );
         });
@@ -214,10 +252,11 @@ class TableItem extends React.Component<{
                     worksheetUUID={worksheetUUID}
                     item={rowItem}
                     rowIndex={rowIndex}
-                    focused={rowFocused}
+                    focused={this.state.tableIsSelected || rowFocused}
                     focusIndex={this.props.focusIndex}
                     setFocus={setFocus}
                     showNewRerun={this.props.showNewRerun}
+                    openBundle={this.props.openBundle}
                     onHideNewRerun={this.props.onHideNewRerun}
                     url={url}
                     bundleInfo={bundleInfo}
@@ -252,6 +291,7 @@ class TableItem extends React.Component<{
                         this.props.showNewSchema &&
                         rowFocused
                     }
+                    onError={this.props.onError}
                     onHideNewRun={this.props.onHideNewRun}
                     onHideNewText={this.props.onHideNewText}
                     onHideNewSchema={this.props.onHideNewSchema}
@@ -363,7 +403,7 @@ class _TableContainer extends React.Component {
     }
 }
 
-const styles = () => ({
+const styles = (theme) => ({
     tableContainer: {
         position: 'relative',
     },
@@ -374,6 +414,13 @@ const styles = () => ({
         zIndex: 1,
         color: '#000000',
         height: 26,
+    },
+    tableCheckbox: {
+        paddingRight: 2,
+        color: theme.color.grey.dark,
+        '&:hover': {
+            color: theme.color.grey.darker,
+        },
     },
 });
 

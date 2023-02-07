@@ -1,14 +1,16 @@
 // Should match codalab/common.py#CODALAB_VERSION
-export const CODALAB_VERSION = '1.5.2';
+export const CODALAB_VERSION = '1.6.0';
 
 // Name Regex to match the backend in spec_utils.py
 export const NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_.-]*$/i;
 
-export const NAVBAR_HEIGHT = 60;
+export const NAVBAR_HEIGHT = 58;
 export const HEADER_HEIGHT = 170;
+export const WORKSHEET_HEADER_HEIGHT = 78;
+export const FOOTER_HEIGHT = 25;
 
 // Worksheet width
-export const EXPANDED_WORKSHEET_WIDTH = '99%';
+export const EXPANDED_WORKSHEET_WIDTH = '100%';
 export const NARROW_WORKSHEET_WIDTH = '65%';
 export const FILE_SIZE_LIMIT_GB = 2;
 export const FILE_SIZE_LIMIT_B = FILE_SIZE_LIMIT_GB * 1024 * 1024 * 1024;
@@ -54,6 +56,25 @@ export const BUNDLE_STATES: String[] = [
     'worker_offline',
 ];
 
+// All possible final bundle states
+export const FINAL_BUNDLE_STATES = ['ready', 'failed', 'killed'];
+
+export const RUN_BUNDLE_STATES = [
+    'created',
+    'staged',
+    'starting',
+    'preparing',
+    'running',
+    'finalizing',
+    'ready',
+];
+
+export const UPLOADED_BUNDLE_STATES = ['created', 'uploading', 'ready'];
+
+export const MAKE_BUNDLE_STATES = ['created', 'making', 'ready'];
+
+export const OFFLINE_STATE = 'worker_offline';
+
 // Autofill types for schemas.
 export const DEFAULT_POST_PROCESSOR = {
     time: 'duration',
@@ -96,3 +117,10 @@ export const DEFAULT_SCHEMA_ROWS = [
         from_schema_name: '',
     },
 ];
+
+// Documentation URLs (object structure matches mkdocs.yml)
+export const DOCS = {
+    concepts: {
+        bundleLifecycle: 'https://codalab-worksheets.readthedocs.io/en/latest/Bundle-Lifecycle',
+    },
+};

@@ -43,6 +43,7 @@ Docker Container | Docker Image Used            | Purpose
  frontend        | `codalab/frontend:<version>` | Website (serves static pages)
  rest-server     | `codalab/server:<version>`   | REST API endpoint (used by website and CLI)
  bundle-manager  | `codalab/server:<version>`   | Schedules bundles to workers in the background
+ ws-server     | `codalab/server:<version>`   | Websocket API endpoint (used by workers)
  nginx           | `nginx:1.12.0`               | Routes requests to frontend or rest-server
  mysql           | `mysql/mysql:5.53`           | Database for users/bundles/worksheets
  worker          | `codalab/worker:<version>`   | Runs bundle in a Docker container
@@ -51,6 +52,7 @@ If you run `docker ps`, you should see a list of Docker containers like this
 (by default, we have `--instance-name codalab`):
 
 * `codalab_rest-server_1`
+* `codalab_ws-server_1`
 * `codalab_bundle-manager_1`
 * `codalab_frontend_1`
 * `codalab_mysql_1`
@@ -72,19 +74,19 @@ restart all the CodaLab services.  Any ongoing runs should not be affected.
 
 # Protected Mode
 
-Starting a CodaLab instance in protected mode will place the instance on lockdown. Anyone can 
-still sign up for account, but only an admin can grant access to a user with an account. Users 
-without granted access will be denied access to all REST endpoints, except a few basic 
+Starting a CodaLab instance in protected mode will place the instance on lockdown. Anyone can
+still sign up for account, but only an admin can grant access to a user with an account. Users
+without granted access will be denied access to all REST endpoints, except a few basic
 account management endpoints.
 
 In order to run an instance in protected mode, start the CodaLab service as follows:
-    
+
     ./codalab_service.py start -p
-    
+
 As an admin, grant access to a user by running the following CLI command:
 
     cl uedit <username> --grant-access
-    
+
 Remove a user's access by running:
 
     cl uedit <username> --remove-access
@@ -103,8 +105,8 @@ Start the CodaLab service as follows:
 
     ./codalab_service.py start -bd
 
-If you modify the frontend, you can do so without restarting.  If you would
-like to modify the rest server, bundle manager, or worker, then you can edit
+If you modify the frontend or the rest server, you can do so without restarting.
+If you would like to modify the bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 
@@ -164,7 +166,7 @@ hour because lots of packages have to be installed):
 
 Run test-setup.sh first to set up required files and directories.
 
-    sh ./tests/test-setup.sh 
+    sh ./tests/test-setup.sh
 
 Since tests run against an existing instance, make sure you update your instance.
 
@@ -174,9 +176,16 @@ To run the tests against an instance that you've already set up:
 
     python test_runner.py default
 
-Or to run a specific test (e.g., basic):
+Or to run a specific test module by its name (e.g., basic), you can use one of the following methods:
+
+### Method 1
 
     docker exec codalab_rest-server_1 python3 tests/cli/test_cli.py basic
+
+### Method 2
+
+    docker exec -it codalab_rest-server_1 /bin/bash
+    python3 tests/cli/test_cli.py basic
 
 In sum, to start an instance and run tests on it:
 
@@ -186,36 +195,6 @@ In sum, to start an instance and run tests on it:
 
 These must pass before you submit a PR.
 
-### Manually test using GCS
-For now, GCS does not have end-to-end testing. If you need to test upload/download with GCS, you can follow these steps:
-
-Step 1: Create a test bucket using your GCS account, and make sure you have the credential to the test bucket.
-Set the environment variable:
-
-    export CODALAB_GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentail.json
-
-Step 2: Start the codalab server, and manually create a bundle store using GCS.
-
-    ./codalab_service start -bds default
-    cl work http:://localhost::   # make sure it works using local instance
-    cl store add --name {your_bundle_store_name} --url gs://{test_bucket_name}
-    cl store ls  # make sure you have successfully add the GCS store
-
-Step 3: Set the environment variable `CODALAB_DEFAULT_BUNDLE_STORE_NAME`. This environment variable will set the default bundle store used in test cases. The bundle store name should match the name in step3.
-
-    export CODALAB_DEFAULT_BUNDLE_STORE_NAME={your_bundle_store_name}
-
-Step 4: Restart the server and run the test cases. This script will run all the test cases in `test_cli.py`.
-    
-    ./codalab_service start -bds default
-    python test_runner.py default
-
-Or you could run a single test cases using the following command:
-
-    docker exec codalab_rest-server_1 python3 tests/cli/test_cli.py {test_name}
-
-Sidenote about testing result: the `default_bundle_store` test is expected to fail because it wants to create a new disk bundle storage that has the same name as our manually created one; the `upload2` test is expected to fail because it checks the response header (needs `Content-Encoding='identity'`), but the GCS response header does not contain `content-encoding`.
-    
 ## Pre-commit
 
 Before you commit, you should run the following script that makes automated
@@ -351,78 +330,9 @@ The image below shows where the file sharing pane is.
 ## Sending Slack notifications from the monitor.py service
 If you need to send Slack notifications from monitor.py service, you can configure your system by Slack Email App as follows:
 
-* Go to [Slack Email App](https://slack.com/apps/A0F81496D-email) 
+* Go to [Slack Email App](https://slack.com/apps/A0F81496D-email)
 * Sign in to install and follow instructions listed on the above web page to generate your special Slack email address.
-* Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 
+* Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special
    Slack email address which will show up in a designated Slack channel.
 * Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
-
-
-## Start a local Kubernetes Batch Worker Manager (with kind, for testing / development only)
-
-If you want to test or develop with kubernetes locally, follow these steps to do so:
-
-### Initial (one-time) setup
-
-```
-# First, start codalab without a worker:
-codalab-service start -bds default no-worker
-
-# Install initial dependencies
-wget https://go.dev/dl/go1.18.1.linux-amd64.tar.gz && rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.18.1.linux-amd64.tar.gz && rm go1.18.1.linux-amd64.tar.gz # Install go: instructions from https://go.dev/doc/install
-export PATH=$PATH:/usr/local/go/bin:~/go/bin # add to your bash profile
-go version # go should be installed
-go install sigs.k8s.io/kind@v0.12.0
-go install github.com/cloudflare/cfssl/cmd/...@latest
-kind version # kind should be installed
-cfssl version # cfssl should be installed
-
-# Set up local kind cluster.
-./scripts/local-k8s/setup.sh
-# Set up web dashboard.
-kubectl config use-context kind-codalab # makes sure kubectl is connected to local cluster
-kubectl -n kubernetes-dashboard get secret $(kubectl -n kubernetes-dashboard get sa/admin-user -o jsonpath="{.secrets[0].name}") -o go-template="{{.data.token | base64decode}}" # copy this token and use it for web ui auth in the next step
-# To view the dashboard, run \"kubectl proxy\" in a terminal and open up: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/workloads?namespace=default"
-```
-
-If all is successful, you should be able to log into your dashboard. You should have one node running (codalab-control-plane). After you follow the steps below, you should also be able to view each pod (which corresponds to each worker) and then check their logs by clicking on the icon in the top-right.
-
-![Local Kubernetes Dashboard](./images/local-k8s-dashboard.png)
-
-### Build worker docker image
-
-You should repeat this step each time you change the worker docker image and want the local kind cluster to load it:
-
-```bash
-codalab-service build -s worker
-```
-
-### Run codalab and worker managers
-
-Run:
-
-```
-export CODALAB_SERVER=http://nginx
-export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST=https://codalab-control-plane:6443
-export CODALAB_WORKER_MANAGER_TYPE=kubernetes
-export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH=/dev/null
-export CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN=/dev/null
-export CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1
-export CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=100
-export CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=0
-codalab-service start -bds default no-worker worker-manager-cpu
-```
-
-Or if you just want to run the worker manager and check its logs, run:
-```
-codalab-service start -bds worker-manager-cpu && docker logs codalab_kubernetes-worker-manager-cpu_1 --follow
-```
-
-### Teardown
-
-You can remove the kind cluster by running:
-
-```
-kind delete cluster --name codalab
-```
 
