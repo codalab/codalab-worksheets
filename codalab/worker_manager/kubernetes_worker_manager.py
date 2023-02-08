@@ -133,7 +133,7 @@ class KubernetesWorkerManager(WorkerManager):
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
-            'metadata': {'name': worker_name},
+            'metadata': {'name': worker_name, 'labels': {'type': 'cl-worker'}},
             'spec': {
                 'containers': [
                     {
@@ -153,6 +153,27 @@ class KubernetesWorkerManager(WorkerManager):
                         ],
                     }
                 ],
+                # Only one worker pod should be scheduled per node.
+                'affinity': {
+                    'podAntiAffinity': {
+                        'requiredDuringSchedulingIgnoredDuringExecution': [
+                            {
+                                'podAffinityTerm': {
+                                    'labelSelector': {
+                                        "matchExpressions": [
+                                            {
+                                                "key": "type",
+                                                "operator": "In",
+                                                "values": ["cl-worker"],
+                                            }
+                                        ]
+                                    },
+                                    'topologyKey': 'topology.kubernetes.io/zone',
+                                }
+                            }
+                        ]
+                    }
+                },
                 'volumes': [
                     {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
                     {
