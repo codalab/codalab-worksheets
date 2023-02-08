@@ -127,7 +127,7 @@ class KubernetesRuntime(Runtime):
                         ]
                         + [
                             {
-                                'name': 'workdir',
+                                'name': dep_path,
                                 'mountPath': mounted_dep_path,
                                 'subPath': removeprefix(dep_path, self.work_dir).lstrip("/"),
                             }
