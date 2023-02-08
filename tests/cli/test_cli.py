@@ -164,7 +164,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_states=set()):
+def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_states=False):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -173,14 +173,10 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
         uuid: UUID of bundle to check state for
         expected_state: Expected state of bundle
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
-        exclude_final_states: States that are normally FINAL and would cause the function to exit,
-                              but which we do not want to cause the function to exit in this case.
-                              This can happen in special circumstances when a bundle transitions again
-                              from one final state to another and we want to wait until it reaches that
-                              last final state.
+        exclude_final_states: If True, final states will be ignored and function will loop until
+            desired state is reached or timeout occurs.
     """
     start_time = time.time()
-    final_states = State.FINAL_STATES - exclude_final_states
     while True:
         if time.time() - start_time > timeout_seconds:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
@@ -189,7 +185,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif current_state in final_states:
+        elif not exclude_final_states and current_state in final_states:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
                     uuid, expected_state, current_state
@@ -1790,8 +1786,8 @@ def test_run(ctx):
         request_memory=None,
     )
     wait_until_state(
-        uuid, State.KILLED, timeout_seconds=500, exclude_final_states={State.FAILED}
-    )  # exclude State.FAILED because upon the initial upload attempt, the bundle state is set to FAILED
+        uuid, State.KILLED, timeout_seconds=500, exclude_final_states=True
+    )  # exclude final states because upon the initial upload attempt, the bundle state is set to FAILED
     check_contains(
         'Kill requested: User disk quota exceeded. To apply for more quota,'
         ' please visit the following link: '
