@@ -2791,11 +2791,6 @@ class BundleModel(object):
             or 0
         )
 
-    def get_user_disk_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        return user_info['disk_quota'] - user_info['disk_used']
-
     # ===========================================================================
     # OAuth-related methods follow!
     # ===========================================================================
@@ -3093,8 +3088,7 @@ class BundleModel(object):
                 )
             connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
-    # 
-    ======================================================================
+    # ======================================================================
     # Multiple bundle locations methods follow!
     # ===========================================================================
 
