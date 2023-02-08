@@ -1143,13 +1143,14 @@ class BundleModel(object):
         # TODO(Ashwin): make this non-fs specific
         data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
-        current_data_size = 0
         try:
             if 'data_size' in bundle.metadata.__dict__:
                 current_data_size = bundle.metadata.data_size
             else:
-                current_data_size = int(self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid])
-        except:
+                current_data_size = int(
+                    self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
+                )
+        except Exception:
             current_data_size = 0
         disk_increment = data_size - current_data_size
         if enforce_disk_quota:

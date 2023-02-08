@@ -267,12 +267,10 @@ def increment_user_disk_used():
         abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
 
     local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
-    data_size = 0
     try:
         data_size = int(local.model.get_bundle_metadata([bundle_uuid], 'data_size')[bundle_uuid])
-    except:
+    except Exception:
         data_size = 0
-    #import pdb; pdb.set_trace()
     new_data_size = data_size + disk_used_increment
     bundle = local.model.get_bundle(bundle_uuid)
     local.model.update_bundle(bundle, {'metadata': {'data_size': new_data_size}})

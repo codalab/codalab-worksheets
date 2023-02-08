@@ -1382,7 +1382,8 @@ def test_disk(ctx):
         file_size = path_util.get_size(test_path('dir1'))
     data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
     check_equals(
-        str(int(disk_used) + int(data_size)), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+        str(int(disk_used) + int(data_size)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
     )
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))

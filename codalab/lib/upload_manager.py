@@ -259,7 +259,8 @@ class BlobStorageUploader(Uploader):
                     # Update disk and check if client has gone over disk usage.
                     if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                         self._client.update(
-                            'user/increment_disk_used', {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid}
+                            'user/increment_disk_used',
+                            {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
                         )
                         user_info = self._client.fetch('user')
                         if user_info['disk_used'] >= user_info['disk_quota']:
@@ -516,7 +517,7 @@ class ClientUploadManager(object):
                     },
                     progress_callback=progress.update,
                     pass_self=True,
-                    bundle_uuid=bundle['id']
+                    bundle_uuid=bundle['id'],
                 )
 
     def upload_Azure_blob_storage(
