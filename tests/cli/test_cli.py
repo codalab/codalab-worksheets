@@ -30,6 +30,7 @@ from scripts.test_util import Colorizer, run_command
 
 import argparse
 import json
+import multiprocessing
 import os
 import random
 import re
@@ -807,23 +808,31 @@ def test_upload1(ctx):
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
         # Run the same tests when on a non root user
-        user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='2000')
-        switch_user(user_name)
-        # expect to fail when we upload something more than 2k bytes
-        check_contains(
-            "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
-            _run_command(
-                [cl, 'upload', test_path('codalab.png')] + suffix,
-                expected_exit_code=1,
-                # To return stderr, we need to include
-                # the following two arguments:
-                include_stderr=True,
-                force_subprocess=True,
-            ),
-        )
-        # Switch back to root user
-        switch_user('codalab')
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            # This test does not work when protected_mode is True.
+            user_name = 'non_root_user_' + random_name()
+            create_user(ctx, user_name, disk_quota='10')
+            # group_uuid = _run_command([cl, 'gnew', user_name])
+            switch_user(user_name)
+            worksheet_uuid = _run_command([cl, 'work', '-u'])
+            switch_user('codalab')
+            _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
+            switch_user(user_name)
+            _run_command([cl, 'work', worksheet_uuid])
+            # expect to fail when we upload something more than 2k bytes
+            check_contains(
+                'User disk quota exceeded',
+                _run_command(
+                    [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
+                    expected_exit_code=1,
+                    # To return stderr, we need to include
+                    # the following two arguments:
+                    include_stderr=True,
+                    force_subprocess=True,
+                ),
+            )
+            # Switch back to root user
+            switch_user('codalab')
 
 
 @TestModule.register('upload2')
@@ -1061,6 +1070,20 @@ def test_blob(ctx):
                 'Authorization': 'Bearer ' + ctx.client._get_access_token(),
             },
         )
+
+    # Uploads multiple archives at the same time and goes over disk quota on the second
+    # upload. Check to make sure the uploads fail.
+    # Note: In upload_manager, after being zipped, codalab.png has size 9482 bytes.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 15000}'])
+    pool = multiprocessing.Pool(processes=2)
+    # Set the expected exit code to be 1 for both processes.
+    args = [
+        [[cl, 'upload', test_path('codalab.png')], 1],
+        [[cl, 'upload', test_path('codalab.png')], 1],
+    ]
+    pool.starmap(_run_command, args)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
     for (uuid, target_type) in [

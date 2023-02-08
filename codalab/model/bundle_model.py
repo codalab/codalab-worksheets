@@ -1009,6 +1009,7 @@ class BundleModel(object):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
         if hasattr(bundle.metadata, 'data_size'):
+            # disk_increment is the change in data_size from the previous cycle to the current one
             disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
@@ -2726,7 +2727,7 @@ class BundleModel(object):
 
     def increment_user_disk_used(self, user_id: str, amount: int) -> None:
         """
-        Increment number of bytes of disk used by user by amount.
+        Increment disk_used (number of bytes of disk used) by user by amount.
         """
         user_info = self.get_user_info(user_id)
         user_info['disk_used'] += amount
@@ -2739,13 +2740,10 @@ class BundleModel(object):
         time_used = user_info['time_used']
         return time_quota - time_used
 
-    def get_user_disk_quota_left(self, user_id: str, user_info=None) -> int:
+    def get_user_disk_quota_left(self, user_id, user_info=None):
         if not user_info:
             user_info = self.get_user_info(user_id)
-        user_info_dict = user_info
-        disk_quota = user_info_dict['disk_quota']
-        disk_used = user_info_dict['disk_used']
-        return disk_quota - disk_used
+        return user_info['disk_quota'] - user_info['disk_used']
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:

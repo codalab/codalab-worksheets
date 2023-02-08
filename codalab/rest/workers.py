@@ -62,7 +62,7 @@ def checkin(worker_id):
                 )
                 messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
             elif local.model.get_user_disk_quota_left(bundle.owner_id) <= 0:
-                # Then, user has gone over their time quota and we kill the job.
+                # Then, user has gone over their disk quota and we kill the job.
                 kill_message = (
                     'Kill requested: User disk quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
