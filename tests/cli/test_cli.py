@@ -186,7 +186,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif not exclude_final_states and current_state in final_states:
+        elif not exclude_final_states and current_state in State.FINAL_STATES:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
                     uuid, expected_state, current_state
