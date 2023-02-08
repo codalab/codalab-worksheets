@@ -50,16 +50,25 @@ import codalab.rest.worksheets
 
 logger = logging.getLogger(__name__)
 
-sentry_sdk.init(
-    dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
-    environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
-    integrations=[BottleIntegration()],
-    traces_sample_rate=1.0,
-    _experiments={
-        "profiles_sample_rate": 1.0,
-    },
-    debug = True
-)
+# Only do profiling in dev and test environments
+# And sample a lower percentage of transactions.
+if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
+    sentry_sdk.init(
+        dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+        environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+        integrations=[BottleIntegration()],
+        traces_sample_rate=0.01
+    )
+else:
+    sentry_sdk.init(
+        dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+        environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+        integrations=[BottleIntegration()],
+        traces_sample_rate=0.05,
+        _experiments={
+            "profiles_sample_rate": 1.0,
+        }
+    )
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""

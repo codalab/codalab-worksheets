@@ -161,9 +161,8 @@ def get_uuid(line):
     return m.group(1)
 
 
-def get_info(uuid, key, timeout_seconds=None):
+def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
-
 
 class timeout:
     """
@@ -187,20 +186,6 @@ class timeout:
         signal.setitimer(signal.ITIMER_REAL, 0, 0)
     def __exit__(self, type, value, traceback):
         signal.alarm(0)
-
-def timeout_wrapper(timeout_seconds, fn, *args, **kwargs):
-    """
-    TODO!
-    """
-    start_time = time.time()
-    return_value = fn(*args, **kwargs)
-    duration = time.time() - start_time
-    if duration > timeout_seconds:
-        raise AssertionError(
-            f'Timeout while waiting for {fn.__name__} to run.',
-            f'Timeout was {timeout_seconds}, but true time taken was {duration}.'
-        )
-    return return_value
 
 def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     """
@@ -1938,12 +1923,8 @@ def test_run(ctx):
 def test_time(ctx):
     """ Basic tests. """
     # Uploading. Sweep file sizes.
-    # NOTE: check what timeout should be! Make it relatively tight.
-    #FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
-    #TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
-    """
-    FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6]
-    TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6]
+    FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
+    TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
     temp_file_path = temp_path(random_name())
     f = open(temp_file_path, 'w+')
     for i, size in enumerate(FILE_SIZES):
@@ -1956,7 +1937,6 @@ def test_time(ctx):
             duration = time.time() - start
             print(f"{duration}")
     _run_command(['rm', temp_file_path])
-    """
     
     # Run simple bundle.
     start = time.time()

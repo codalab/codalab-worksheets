@@ -152,7 +152,8 @@ class Worker:
             shared_memory_size_gb=shared_memory_size_gb,
             bundle_runtime=bundle_runtime,
         )
-        self.monitoring = WorkerMonitoring()
+        if using_sentry:
+            self.monitoring = WorkerMonitoring()
 
         # Lock ensures listening thread and main thread don't simultaneously
         # access the runs dictionary, thereby causing race conditions.
@@ -569,7 +570,8 @@ class Worker:
                     is_terminal = self.runs[uuid].stage in [RunStage.FINISHED, RunStage.RESTAGED]
                     if not is_terminal:
                         self.start_stage_stats(uuid, self.runs[uuid].stage)
-                    self.monitoring.notify_stage_transition(self.runs[uuid], is_terminal)
+                    if using_sentry:
+                        self.monitoring.notify_stage_transition(self.runs[uuid], is_terminal)
 
             # 2. filter out finished runs and clean up containers
             finished_container_ids = [
@@ -748,7 +750,8 @@ class Worker:
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
-            self.monitoring.notify_stage_transition(self.runs[bundle.uuid])
+            if using_sentry:
+                self.monitoring.notify_stage_transition(self.runs[bundle.uuid])
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:

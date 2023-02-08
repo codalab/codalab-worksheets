@@ -29,13 +29,18 @@ def initialize_sentry():
     Playing around with Sentry profiling
     """
     if sentry_sdk.Hub.current.client is None:
-        sentry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT,
-        traces_sample_rate=1.0,
-        _experiments={
-            "profiles_sample_rate": 1.0,
-        })
+        # Only do profiling in dev and test environments.
+        # And sample a higher percentage of transactions in dev environment.
+        if CODALAB_SENTRY_ENVIRONMENT == 'prod':
+            sentry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT,
+            traces_sample_rate=0.01)
+        else:
+            entry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT,
+            traces_sample_rate=0.05,
+            _experiments={
+                "profiles_sample_rate": 1.0,
+            })
         print_sentry_warning()
-
 
 def load_sentry_data(username=None, **kwargs):
     with sentry_sdk.configure_scope() as scope:
