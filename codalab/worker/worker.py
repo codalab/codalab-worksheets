@@ -318,7 +318,7 @@ class Worker:
                     while not self.terminate:
                         try:
                             await receive_msg()
-                        except asyncio.futures.TimeoutError:
+                        except asyncio.TimeoutError:
                             pass
                         except websockets.exceptions.ConnectionClosed:
                             logger.warning("Websocket connection closed, starting a new one...")
