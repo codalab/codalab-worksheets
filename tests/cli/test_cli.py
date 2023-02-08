@@ -1373,7 +1373,6 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('dir1')])
     wait_until_state(uuid, State.READY)
-
     # Directories are stored in their gzipped format when uploaded to Azure/GCS
     # but are stored in their full file size format on disk.
     if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
@@ -1381,8 +1380,9 @@ def test_disk(ctx):
         file_size = len(tarred_dir.read())
     else:
         file_size = path_util.get_size(test_path('dir1'))
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
     check_equals(
-        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+        str(int(disk_used) + int(data_size)), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     )
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
