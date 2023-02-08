@@ -1118,11 +1118,6 @@ class BundleModel(object):
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
-        worker = self.get_bundle_worker(bundle.uuid)
-
-        if worker['shared_file_system']:
-            self.update_disk_metadata(bundle, bundle_location)
-
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
         with self.engine.begin() as connection:
@@ -1135,7 +1130,9 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+    def update_disk_metadata(
+        self, bundle, bundle_location, enforce_disk_quota=False, no_increment=False
+    ):
         """
         Computes the disk use and data hash of the given bundle.
         Updates the database rows for the bundle and user with the new disk use
@@ -1163,15 +1160,18 @@ class BundleModel(object):
         disk_increment = data_size - current_data_size
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
-            if disk_increment > disk_left:
+            if no_increment:
+                check_data_size = path_util.get_size(bundle_location, dirs_and_files)
+            if check_data_size > disk_left:
                 raise UsageError(
                     "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
                     % (data_size, disk_left)
                 )
 
-        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
-        self.update_bundle(bundle, bundle_update)
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
+        if not no_increment:
+            bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+            self.update_bundle(bundle, bundle_update)
+            self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """

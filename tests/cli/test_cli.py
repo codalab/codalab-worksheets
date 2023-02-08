@@ -1873,9 +1873,6 @@ def test_search_time(ctx):
 
 @TestModule.register('run')
 def test_run(ctx):
-    # Test that bundle fails when run without sufficient disk quota
-    # This is only relevant when workers use shared file system, so check that first.
-
     # Test that bundle fails when run without sufficient time quota
     time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
     _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
