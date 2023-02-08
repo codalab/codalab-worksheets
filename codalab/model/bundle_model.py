@@ -1009,6 +1009,7 @@ class BundleModel(object):
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
         if hasattr(bundle.metadata, 'data_size'):
+            # disk_increment is the change in data_size from the previous cycle to the current one
             disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
