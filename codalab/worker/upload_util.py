@@ -15,6 +15,7 @@ def upload_with_chunked_encoding(
     need_response=False,
     url="",
     progress_callback=None,
+    bundle_uuid=None,
     json_api_client=None,
 ):
     """
@@ -76,7 +77,8 @@ def upload_with_chunked_encoding(
             # Update disk and check if client has gone over disk usage.
             if json_api_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                 json_api_client.update(
-                    'user/increment_disk_used', {'disk_used_increment': len(to_send)}
+                    'user/increment_disk_used',
+                    {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
                 )
                 user_info = json_api_client.fetch('user')
                 if user_info['disk_used'] >= user_info['disk_quota']:

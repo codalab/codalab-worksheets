@@ -1151,9 +1151,19 @@ class BundleModel(object):
         data_size = getattr(
             bundle.metadata, "data_size", path_util.get_size(bundle_location, dirs_and_files)
         )
+        try:
+            if 'data_size' in bundle.metadata.__dict__:
+                current_data_size = bundle.metadata.data_size
+            else:
+                current_data_size = int(
+                    self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
+                )
+        except Exception:
+            current_data_size = 0
+        disk_increment = data_size - current_data_size
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
-            if data_size > disk_left:
+            if disk_increment > disk_left:
                 raise UsageError(
                     "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
                     % (data_size, disk_left)
@@ -1161,7 +1171,7 @@ class BundleModel(object):
 
         bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
-        self.update_user_disk_used(bundle.owner_id)
+        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
@@ -2781,11 +2791,10 @@ class BundleModel(object):
             or 0
         )
 
-    def update_user_disk_used(self, user_id):
-        user_info = self.get_user_info(user_id)
-        # Compute from scratch for simplicity
-        user_info['disk_used'] = self._get_disk_used(user_id)
-        self.update_user_info(user_info)
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
+        return user_info['disk_quota'] - user_info['disk_used']
 
     # ===========================================================================
     # OAuth-related methods follow!
@@ -3084,7 +3093,8 @@ class BundleModel(object):
                 )
             connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
-    # ===========================================================================
+    # 
+    ======================================================================
     # Multiple bundle locations methods follow!
     # ===========================================================================
 
