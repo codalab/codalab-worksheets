@@ -2729,7 +2729,7 @@ class BundleModel(object):
 
     def increment_user_disk_used(self, user_id: str, amount: int) -> None:
         """
-        Increment number of bytes of disk used by user by amount.
+        Increment disk_used (number of bytes of disk used) by user by amount.
         """
         user_info = self.get_user_info(user_id)
         user_info['disk_used'] += amount
