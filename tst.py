@@ -164,52 +164,52 @@ def upload(
 
 
 file_path = 'dir1'
-upload(file_path, is_dir=True)
+# upload(file_path, is_dir=True)
 
 # import gzip
 
-# # file_path = 'requirements.txt'
-# file_path = 'test_10g'
+# file_path = 'requirements.txt'
+file_path = 'test_10g'
 
-# def test_indexed_gzip(file_path):
-#     """
-#     A simple test function only envolve SQLiteIndexedTar
-#     """
+def test_indexed_gzip(file_path):
+    """
+    A simple test function only envolve SQLiteIndexedTar
+    """
+    source_fileobj = open(file_path, 'rb')
+    # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work for GzipStream()
+    # output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
+    output_fileobj = GzipStream(source_fileobj)
+
+    # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
+    # output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))
+    # def new_seek(*args, **kwargs):
+    #     raise OSError("Seek ERROR")
+    # def new_tell(*args, **kwargs):
+    #     raise OSError("Tell() ERROR")
+    # old_seek = output_fileobj.seek
+    # old_tell = output_fileobj.tell
+    # output_fileobj.seekable = lambda: False
+    # output_fileobj.seek = new_seek
+    # output_fileobj.tell = new_tell
+
+    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+        SQLiteIndexedTar(
+            fileObject=output_fileobj,
+            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+            writeIndex=True,
+            clearIndexCache=True,
+            indexFilePath=tmp_index_file.name,
+            printDebug=3,
+        )
+
+test_indexed_gzip(file_path)  # filepath points to a large file.
+
+# file_path = 'requirements.txt'
+# def simple_test(file_path):
 #     source_fileobj = open(file_path, 'rb')
-#     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work for GzipStream()
-#     # output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
-#     output_fileobj = GzipStream(source_fileobj)
+#     # output_fileobj = GzipStream(source_fileobj)
+#     output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
+#     tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
+#     tar_file.build_full_index()
 
-#     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) works
-#     # output_fileobj = BytesIO(gzip.compress(source_fileobj.read()))
-#     # def new_seek(*args, **kwargs):
-#     #     raise OSError("Seek ERROR")
-#     # def new_tell(*args, **kwargs):
-#     #     raise OSError("Tell() ERROR")
-#     # old_seek = output_fileobj.seek
-#     # old_tell = output_fileobj.tell
-#     # output_fileobj.seekable = lambda: False
-#     # output_fileobj.seek = new_seek
-#     # output_fileobj.tell = new_tell
-
-#     with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-#         SQLiteIndexedTar(
-#             fileObject=output_fileobj,
-#             tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-#             writeIndex=True,
-#             clearIndexCache=True,
-#             indexFilePath=tmp_index_file.name,
-#             printDebug=3,
-#         )
-
-# test_indexed_gzip(file_path)  # filepath points to a large file.
-
-# # file_path = 'requirements.txt'
-# # def simple_test(file_path):
-# #     source_fileobj = open(file_path, 'rb')
-# #     # output_fileobj = GzipStream(source_fileobj)
-# #     output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
-# #     tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
-# #     tar_file.build_full_index()
-
-# # simple_test(file_path)
+# simple_test(file_path)

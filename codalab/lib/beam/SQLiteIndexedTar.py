@@ -270,7 +270,7 @@ class SQLiteIndexedTar(MountSource):
                     + str(possibleIndexFilePaths)
                 )
 
-        print("here: ", self.tarFileObject.tell())
+        # print("here: ", self.tarFileObject.tell())
         self._createIndex(self.tarFileObject)
         self._loadOrStoreCompressionOffsets()  # store
         if self.sqlConnection:
@@ -592,7 +592,7 @@ class SQLiteIndexedTar(MountSource):
 
         # 2. Open TAR file reader
         loadedTarFile: Any = []  # Feign an empty TAR file if anything goes wrong
-        if self.isTar:
+        if self.isTar: # Jiani: If the file is end with '.tar.gz', will go into this branch
             try:
                 # r: uses seeks to skip to the next file inside the TAR while r| doesn't do any seeks.
                 # r| might be slower but for compressed files we have to go over all the data once anyways.
@@ -740,7 +740,7 @@ class SQLiteIndexedTar(MountSource):
         # In that case add that itself to the file index. This won't work when called recursively,
         # so check stream offset.
         fileCount = self.sqlConnection.execute('SELECT COUNT(*) FROM "files";').fetchone()[0]
-        if fileCount == 0:
+        if fileCount == 0:  # Jiani: For Codalab, the bundle contains only 
             # This branch is not used.
             if self.printDebug >= 3:
                 print(f"Did not find any file in the given TAR: {self.tarFileName}. Assuming a compressed file.")
@@ -762,6 +762,8 @@ class SQLiteIndexedTar(MountSource):
             # io.SEEK_END even though it could as it has the index ...
            
             
+            
+            # Jiani: This branch will only be used when uploading a single file
             fileObject.build_full_index()
             # data = fileObject.read(1024 * 1024)
             # while len(data) > 0:
@@ -769,9 +771,9 @@ class SQLiteIndexedTar(MountSource):
             #     self._updateProgressBar(progressBar, fileObject)
             #     data = fileObject.read(1024 * 1024)
             
-            # print("after build full index")
+            # Jiani: Since build_full_index() does not read 
             fileSize = fileObject.tell()
-            print(f"File size is : {fileSize}")
+            print(f"New File size is : {fileSize}")
             # fileSize = 0
 
             # fmt: off
@@ -1461,7 +1463,8 @@ class SQLiteIndexedTar(MountSource):
             print(f"before build_full_index: {fileObject.tell()}")
             # Transparently force index to be built if not already done so. build_full_index was buggy for me.
             # Seeking from end not supported, so we have to read the whole data in in a loop
-            # Jiani: read the whole file to build index is buggy for me. 
+            # Jiani: The build_full_index() is moved to _createIndex() and only call build_full_index() for uploading a single file. 
+            # Because we can not read through the file again to build_full_index()
             # while fileObject.read(1024 * 1024):
             #     pass
             # fileObject.build_full_index()
