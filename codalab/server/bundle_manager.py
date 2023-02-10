@@ -286,7 +286,7 @@ class BundleManager(object):
                             with open(dependency_path, 'wb') as f:
                                 shutil.copyfileobj(fileobj, f)
 
-                    # If source is local file system and destination is blob storage:
+                    # If source is local file system and destination is blob storage,
                     # need to copy everything into a temp folder and upload together
                     elif parse_linked_bundle_url(path).uses_beam:
                         if dep.child_path != "":
