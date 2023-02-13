@@ -1169,7 +1169,10 @@ class BundleModel(object):
                     % (data_size, disk_left)
                 )
 
-        if not no_increment:
+        if no_increment:
+            bundle_update = {'data_hash': data_hash}
+            self.update_bundle(bundle, bundle_update)
+        else:
             bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
             self.update_bundle(bundle, bundle_update)
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
