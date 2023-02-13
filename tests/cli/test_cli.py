@@ -2103,6 +2103,9 @@ def test_write(ctx):
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 
+"""
+This we'll have ot think about how to migrate...
+"""
 @TestModule.register('mimic')
 def test_mimic(ctx):
     def data_hash(uuid):

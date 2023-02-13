@@ -2417,7 +2417,6 @@ class BundleCLI(object):
         for key in (
             'bundle_type',
             'uuid',
-            'data_hash',
             'state',
             'command',
             'frozen',
@@ -4369,18 +4368,6 @@ class BundleCLI(object):
                 help='Perform all garbage collection and database updates instead of just printing what would happen',
                 action='store_true',
             ),
-            Commands.Argument(
-                '-d',
-                '--data-hash',
-                help='Compute the digest for every bundle and compare against data_hash for consistency',
-                action='store_true',
-            ),
-            Commands.Argument(
-                '-r',
-                '--repair',
-                help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles',
-                action='store_true',
-            ),
         ),
     )
     def do_bs_health_check(self, args):
@@ -4388,7 +4375,7 @@ class BundleCLI(object):
         self._fail_if_not_local(args)
         print('Performing Health Check...', file=sys.stderr)
         self.manager.bundle_store().health_check(
-            self.manager.model(), args.force, args.data_hash, args.repair
+            self.manager.model(), args.force
         )
 
     def _fail_if_headless(self, args):

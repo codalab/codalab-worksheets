@@ -10,7 +10,6 @@ class BundleStateTest(unittest.TestCase):
             'bundle_type': 'bundle_type',
             'owner_id': 'owner_id',
             'command': 'command',
-            'data_hash': 'data_hash',
             'state': State.RUNNING,
             'frozen': None,
             'is_anonymous': False,

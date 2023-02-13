@@ -31,7 +31,6 @@ class UtilTest(unittest.TestCase):
             bundle_type='run',
             owner_id=None,
             command=None,
-            data_hash=None,
             state='created',
             frozen=None,
             is_anonymous=False,

@@ -513,8 +513,6 @@ Usage: `cl <command> <arguments>`
     Perform a health check on the bundle store, garbage collecting bad files in the store. Performs a dry run by default, use -f to force removal.
     Arguments:
       -f, --force      Perform all garbage collection and database updates instead of just printing what would happen
-      -d, --data-hash  Compute the digest for every bundle and compare against data_hash for consistency
-      -r, --repair     When used with --force and --data-hash, repairs incorrect data_hash in existing bundles
 
 
 ## Other commands

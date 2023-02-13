@@ -497,7 +497,7 @@ class BundleModel(object):
             elif key == '.format':
                 format_func = value
             # Bundle fields
-            elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
+            elif key in ('bundle_type', 'id', 'uuid', 'state', 'command', 'owner_id'):
                 conjunct = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
                 add_join(
@@ -1141,7 +1141,6 @@ class BundleModel(object):
             dirs_and_files = [], [bundle_location]
 
         # TODO(Ashwin): make this non-fs specific
-        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
@@ -1151,7 +1150,7 @@ class BundleModel(object):
                     % (data_size, disk_left)
                 )
 
-        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+        bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
 
@@ -1347,12 +1346,6 @@ class BundleModel(object):
             # In case something goes wrong, delete bundles that are currently running on workers.
             connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
-
-    def remove_data_hash_references(self, uuids):
-        with self.engine.begin() as connection:
-            connection.execute(
-                cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None})
-            )
 
     # ==========================================================================
     # Worksheet-related model methods follow!
@@ -2758,15 +2751,6 @@ class BundleModel(object):
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
-
-    def _get_disk_used(self, user_id):
-        # TODO(Ashwin): don't include linked bundles
-        return (
-            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
-                'result'
-            ]
-            or 0
-        )
 
     def get_user_disk_quota_left(self, user_id, user_info=None):
         if not user_info:
