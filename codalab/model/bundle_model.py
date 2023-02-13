@@ -1160,6 +1160,7 @@ class BundleModel(object):
         disk_increment = data_size - current_data_size
         if enforce_disk_quota:
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+            check_data_size = disk_increment
             if no_increment:
                 check_data_size = path_util.get_size(bundle_location, dirs_and_files)
             if check_data_size > disk_left:
