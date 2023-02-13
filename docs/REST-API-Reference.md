@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.5.13_
+_version 1.6.0_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -678,6 +678,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -685,6 +686,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -729,6 +731,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -736,6 +739,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -900,6 +904,21 @@ Provide secure services using OAuth2.
 Fetch authenticated user.
 ### `PATCH /user`
 Update one or multiple fields of the authenticated user.
+### `PATCH /user/increment_disk_used`
+
+Update the disk used for the user who makes the request to this endpoint.
+
+This is required because users who are bypassing the server to upload
+files straight to Azure will need their client to tell the server
+to increment their disk used as file chunks are uploaded. They cannot
+use the users/ PATCH endpoint since disk_used is in
+USER_READ_ONLY_FIELDS. We make this special function (which only allows
+positive disk increments so that users can't decrement their disk used) to ensure
+that we can safely increment user disk used without introducing a
+security flaw.
+
+The request body should look like: { 'disk_used_increment': len(to_send) }
+
 
 &uarr; [Back to Top](#table-of-contents)
 ## Users API
