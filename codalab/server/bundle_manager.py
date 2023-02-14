@@ -226,7 +226,6 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            # For linked bundles, the actual storage place will be in the link_url
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
@@ -289,10 +288,11 @@ class BundleManager(object):
                     # If source is local file system and destination is blob storage,
                     # need to copy everything into a temp folder and upload together
                     elif parse_linked_bundle_url(path).uses_beam:
-                        if dep.child_path != "":
-                            tempdir_dependency_path = os.path.join(tempdir, dep.child_path)
-                        else:
-                            tempdir_dependency_path = os.path.join(tempdir, dep.parent_uuid)
+                        tempdir_dependency_path = (
+                            os.path.join(tempdir, dep.child_path)
+                            if dep.child_path != ""
+                            else os.path.join(tempdir, dep.parent_uuid)
+                        )
                         path_util.copy(
                             dependency_path, tempdir_dependency_path, follow_symlinks=False
                         )
@@ -321,7 +321,6 @@ class BundleManager(object):
                         for dependency_path, child_path in deps:
                             path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})

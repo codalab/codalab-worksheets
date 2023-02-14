@@ -133,6 +133,7 @@ class Uploader:
             str: Bundle location.
         """
         if self.destination_bundle_store is not None:
+            # In this case, we are using the new BundleStore / BundleLocation model to track the bundle location.
             self._bundle_model.add_bundle_location(
                 bundle.uuid, self.destination_bundle_store["uuid"]
             )
