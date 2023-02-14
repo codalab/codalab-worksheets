@@ -2731,11 +2731,26 @@ class BundleModel(object):
 
     def increment_user_disk_used(self, user_id: str, amount: int):
         """
-        Increment disk_used for user by amount
+        Increment disk_used for user by amount.
+        Note: We have to use special syntax here to prevent deadlock.
+        In particular, we use with_for_update() and then commit() to ensure that
+        we lock the user table between the disk_used read and the increment write
+        because otherwise we might have the following interleaving between threads:
+        READ disk_used
+                            READ disk_used
+                            UPDATE disk_used + amount
+        UPDATE disk_used + amount
+        And this can actually lead to deadlock.
         """
-        user_info = self.get_user_info(user_id)
-        user_info['disk_used'] += amount
-        self.update_user_info(user_info)
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([cl_user.c.disk_used]).where(cl_user.c.user_id == user_id).with_for_update())
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            disk_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(disk_used=disk_used)
+            )
+            connection.commit()
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
