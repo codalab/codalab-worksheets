@@ -260,12 +260,20 @@ def increment_user_disk_used():
     # TODO(agaut): Potentially convert the below to use a Schema (like those in schemas.py)
     # (Although, that does have downsides in this case.)
     disk_used_increment = request.json['data'][0]['attributes']['disk_used_increment']
+    bundle_uuid = request.json['data'][0]['attributes']['bundle_uuid']
 
     # only allow positive disk increments so that users can't abuse this endpoint.
     if disk_used_increment <= 0:
         abort(http.client.BAD_REQUEST, "Only positive disk increments are allowed.")
 
     local.model.increment_user_disk_used(request.user.user_id, disk_used_increment)
+    try:
+        data_size = int(local.model.get_bundle_metadata([bundle_uuid], 'data_size')[bundle_uuid])
+    except Exception:
+        data_size = 0
+    new_data_size = data_size + disk_used_increment
+    bundle = local.model.get_bundle(bundle_uuid)
+    local.model.update_bundle(bundle, {'metadata': {'data_size': new_data_size}})
     return (
         AuthenticatedUserSchema(many=True).dump([local.model.get_user(request.user.user_id)]).data
     )

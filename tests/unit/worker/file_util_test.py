@@ -261,15 +261,15 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
     for files stored in Azure Blob Storage."""
 
     def test_get_file_size(self):
-        _, fname = self.create_file()
-        self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
+        _, fname, file_size = self.create_file()
+        self.assertEqual(get_file_size(fname), file_size)  # uncompressed size of entire bundle
 
         _, dirname = self.create_directory()
         self.assertEqual(get_file_size(dirname), 249)
         self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
 
     def test_read_file_section(self):
-        _, fname = self.create_file()
+        _, fname, _ = self.create_file()
         self.assertEqual(read_file_section(fname, 2, 4), b"llo ")
         self.assertEqual(read_file_section(fname, 100, 4), b"")
 
@@ -277,14 +277,14 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         self.assertEqual(read_file_section(f"{dirname}/README.md", 2, 4), b"llo ")
 
     def test_gzip_stream(self):
-        _, fname = self.create_file()
+        _, fname, _ = self.create_file()
         self.assertEqual(un_gzip_stream(gzip_file(fname)).read(), b'hello world')
 
         _, dirname = self.create_directory()
         self.assertEqual(un_gzip_stream(gzip_file(f"{dirname}/README.md")).read(), b'hello world')
 
     def test_open_file(self):
-        _, fname = self.create_file()
+        _, fname, _ = self.create_file()
 
         # Read single file (gzipped)
         with OpenFile(fname, gzipped=True) as f:

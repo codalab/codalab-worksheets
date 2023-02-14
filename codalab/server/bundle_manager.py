@@ -269,6 +269,7 @@ class BundleManager(object):
                             BundleTarget(dep.parent_uuid, dep.parent_path), 0
                         )
                         target = target_info['resolved_target']
+                        logging.info(f"target: {target}")
 
                         # Download the dependency to dependency_path (which is now in the temporary directory).
                         # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
@@ -278,8 +279,13 @@ class BundleManager(object):
                             un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
                             fileobj = self._download_manager.stream_file(target, gzipped=False)
+                            # logging.info(f"[make] HERE!!, fileobj: {fileobj.read()}")
+                            logging.info(f"child_path 1 : {os.path.getsize(dependency_path)}")
                             with open(dependency_path, 'wb') as f:
                                 shutil.copyfileobj(fileobj, f)
+                                # f.seek(0)
+                                # logging.info(f"[make] HERE!! f: {f.read()}")
+                                
 
                     deps.append((dependency_path, child_path))
 
@@ -289,8 +295,12 @@ class BundleManager(object):
                     path_util.copy(deps[0][0], path, follow_symlinks=False)
                 else:
                     os.mkdir(path)
+                    
                     for dependency_path, child_path in deps:
+                        logging.info(f"child_path : {child_path}")
                         path_util.copy(dependency_path, child_path, follow_symlinks=False)
+                        logging.info(f"child_path : {os.path.getsize(child_path)}")
+                        logging.info(f"child_path : {os.path.getsize(dependency_path)}")
 
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)

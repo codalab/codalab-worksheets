@@ -104,6 +104,7 @@ def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> Targe
             raise PathException(
                 "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
             )
+        logging.info(f"[here] calculate local file info {final_path}")
         info = _compute_target_info_local(final_path, depth)
 
     info['resolved_target'] = target

@@ -77,6 +77,7 @@ class Uploader:
         unpack_archive: bool,
         bundle_conn_str=None,
         index_conn_str=None,
+        bundle_uuid=None,
         progress_callback=None,
     ):
         """Writes fileobj indicated, unpacks if specified, and uploads it to the path at bundle_path.
@@ -197,6 +198,7 @@ class DiskStorageUploader(Uploader):
         unpack_archive: bool,
         bundle_conn_str=None,
         index_conn_str=None,
+        bundle_uuid=None,
         progress_callback=None,
     ):
         if unpack_archive:
@@ -229,6 +231,7 @@ class BlobStorageUploader(Uploader):
         unpack_archive: bool,
         bundle_conn_str=None,
         index_conn_str=None,
+        bundle_uuid=None,
         progress_callback=None,
     ):
         if unpack_archive:
@@ -265,8 +268,9 @@ class BlobStorageUploader(Uploader):
                         # Update disk and check if client has gone over disk usage.
                         if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                             self._client.update(
-                                'user/increment_disk_used', {'disk_used_increment': len(to_send)}
-                            )
+                            'user/increment_disk_used',
+                            {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
+                        )
                             user_info = self._client.fetch('user')
                             if user_info['disk_used'] >= user_info['disk_quota']:
                                 raise Exception(
@@ -390,10 +394,12 @@ class UploadManager(object):
         return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
-        self._bundle_store.cleanup(bundle.uuid, dry_run=False)
+        data_size = self._bundle_model.get_bundle_metadata(bundle.uuid, 'data_size')[bundle.uuid]
+        removed = self._bundle_store.cleanup(bundle.uuid, dry_run=False)
         bundle_update = {'data_hash': None, 'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
-        self._bundle_model.update_user_disk_used(bundle.owner_id)
+        if removed:
+            self._bundle_model.increment_user_disk_used(bundle.owner_id, -data_size)
 
     def get_bundle_sas_token(self, path, **kwargs):
         """
@@ -512,6 +518,7 @@ class ClientUploadManager(object):
                         source_ext=source_ext,
                         should_unpack=unpack_before_upload,
                         json_api_client=self._client,
+                        bundle_uuid=bundle['id'],
                         progress_callback=progress.update,
                     )
                 self._client.update_bundle_state(bundle['id'], params={'success': True})
@@ -521,8 +528,6 @@ class ClientUploadManager(object):
                     params={'success': False, 'error_msg': f'Bypass server upload error. {err}',},
                 )
                 raise err
-            else:
-                self._client.update_bundle_state(bundle['id'], params={'success': True})
         else:
             # 5) Otherwise, upload the bundle directly through the server.
             progress = FileTransferProgress('Sent ', packed_source['filesize'], f=self.stderr)
@@ -540,6 +545,7 @@ class ClientUploadManager(object):
                     },
                     progress_callback=progress.update,
                     pass_self=True,
+                    bundle_uuid=bundle['id'],
                 )
 
     def upload_Azure_blob_storage(
@@ -552,6 +558,7 @@ class ClientUploadManager(object):
         source_ext,
         should_unpack,
         json_api_client,
+        bundle_uuid,
         progress_callback=None,
     ):
         """
@@ -580,6 +587,7 @@ class ClientUploadManager(object):
             should_unpack,
             bundle_conn_str,
             index_conn_str,
+            bundle_uuid,
             progress_callback,
         )
 
@@ -593,6 +601,7 @@ class ClientUploadManager(object):
         source_ext,
         should_unpack,
         json_api_client,
+        bundle_uuid,
         progress_callback=None,
     ):
         from codalab.lib import zip_util
@@ -614,8 +623,9 @@ class ClientUploadManager(object):
                 headers={'Content-type': 'application/octet-stream'},
                 fileobj=file_reader,
                 query_params={},
-                progress_callback=progress_callback,
-                json_api_client=json_api_client,
+                progress_callback=None,
+                bundle_uuid=bundle_uuid,
+                json_api_client=self._client,
             )
 
         def create_upload_index():
