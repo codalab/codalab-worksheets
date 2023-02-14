@@ -1117,7 +1117,8 @@ class BundleModel(object):
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
-        
+
+        worker = self.get_bundle_worker(bundle.uuid)
         if worker['shared_file_system']:
             # TODO(Ashwin): fix for --link.
             self.update_disk_metadata(bundle, bundle_location, no_increment=True)
