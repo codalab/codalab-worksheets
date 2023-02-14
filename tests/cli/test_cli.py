@@ -268,15 +268,37 @@ def wait_until_substring(fp, substr):
         if substr in line:
             return
 
+
 """
 Hash helpers for mimic and copy
 """
+def recursive_ls(path):
+    """
+    Return a (list of directories, list of files) in the given directory and
+    all of its nested subdirectories. All paths returned are absolute.
+    Symlinks are returned in the list of files, even if they point to directories.
+    This makes it possible to distinguish between real and symlinked directories
+    when computing the hash of a directory. This function will NOT descend into
+    symlinked directories.
+    """
+    (directories, files) = ([], [])
+    for (root, _, file_names) in os.walk(path):
+        directories.append(root)
+        for file_name in file_names:
+            files.append(os.path.join(root, file_name))
+        # os.walk ignores symlinks to directories, but we should count them as files.
+        # However, we can't used the followlinks parameter, because a) we don't want
+        # to descend into directories and b) we could end up in an infinite loop if
+        # we were to pass that flag. Instead, we handle symlinks here:
+        for subpath in os.listdir(root):
+            full_subpath = os.path.join(root, subpath)
+            if os.path.islink(full_subpath) and os.path.isdir(full_subpath):
+                files.append(full_subpath)
+    return (directories, files)
 def data_hash(uuid, worksheet=None):
         """
         Temporarily download bundle contents.
         Return a hash of those contents.
-        Note: This assumes that the bundle itself consists of one or more files only
-        (and no directories). This is sufficient for our use case for tests.
         """
         path = temp_path(uuid)
         if not os.path.exists(path):
@@ -286,10 +308,7 @@ def data_hash(uuid, worksheet=None):
                 command += ['-w', worksheet]
             _run_command(command)
         sha1 = hashlib.sha1()
-        if os.path.isdir(path):
-            files = [os.path.join(path, f) for f in os.listdir(path)]
-        else:
-            files = [path]
+        files = recursive_ls(path)[1]
         for f in files:
             sha1.update(open(f, 'r').read().encode())
         return sha1.hexdigest()
