@@ -43,7 +43,6 @@ class BundleStateTest(unittest.TestCase):
             bundle_type=self.bundle_info_fields['bundle_type'],
             owner_id=self.bundle_info_fields['owner_id'],
             command=self.bundle_info_fields['command'],
-            data_hash=self.bundle_info_fields['data_hash'],
             state=self.bundle_info_fields['state'],
             frozen=self.bundle_info_fields['frozen'],
             is_anonymous=self.bundle_info_fields['is_anonymous'],

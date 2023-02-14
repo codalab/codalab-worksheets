@@ -30,6 +30,7 @@ from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
 import argparse
+import hashlib
 import json
 import multiprocessing
 import os
@@ -267,6 +268,31 @@ def wait_until_substring(fp, substr):
         if substr in line:
             return
 
+"""
+Hash helpers for mimic and copy
+"""
+def data_hash(uuid, worksheet=None):
+        """
+        Temporarily download bundle contents.
+        Return a hash of those contents.
+        Note: This assumes that the bundle itself consists of one or more files only
+        (and no directories). This is sufficient for our use case for tests.
+        """
+        path = temp_path(uuid)
+        if not os.path.exists(path):
+            # Download the bundle to that path.
+            command = [cl, 'download', uuid, '-o', path]
+            if worksheet is not None:
+                command += ['-w', worksheet]
+            _run_command(command)
+        sha1 = hashlib.sha1()
+        if os.path.isdir(path):
+            files = [os.path.join(path, f) for f in os.listdir(path)]
+        else:
+            files = [path]
+        for f in files:
+            sha1.update(open(f, 'r').read().encode())
+        return sha1.hexdigest()
 
 def _run_command(
     args,
@@ -2221,10 +2247,6 @@ This we'll have ot think about how to migrate...
 """
 @TestModule.register('mimic')
 def test_mimic(ctx):
-    def data_hash(uuid):
-        _run_command([cl, 'wait', uuid])
-        return get_info(uuid, 'data_hash')
-
     simple_name = random_name()
 
     input_uuid = _run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
@@ -2445,7 +2467,8 @@ def test_copy(ctx):
         _run_command([cl, 'work', source_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
-        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
+        check_equals(data_hash(uuid, source_worksheet), data_hash(uuid, remote_worksheet))
         # TODO: `cl cat` is not working even with the bundle available
         # compare_output_across_instances([cl, 'cat', uuid])
 
@@ -2453,7 +2476,8 @@ def test_copy(ctx):
         _run_command([cl, 'work', remote_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
-        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
+        check_equals(data_hash(uuid, source_worksheet), data_hash(uuid, remote_worksheet))
         # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)
