@@ -673,9 +673,7 @@ def test_basic(ctx):
 
     # rm
     _run_command([cl, 'rm', '--dry-run', uuid])
-    check_contains('0x', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', '--data-only', uuid])
-    check_equals('None', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', uuid])
 
 
@@ -1510,7 +1508,6 @@ def test_worksheet(ctx):
     _run_command([cl, 'add', 'text', '// comment'])
     _run_command([cl, 'add', 'text', '% schema foo'])
     _run_command([cl, 'add', 'text', '% add uuid'])
-    _run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     _run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     _run_command([cl, 'add', 'text', '% display table foo'])
     _run_command([cl, 'add', 'bundle', uuid])
@@ -1889,7 +1886,6 @@ def test_run(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
-    check_contains('0x', get_info(uuid, 'data_hash'))
     check_not_equals('0s', get_info(uuid, 'time_preparing'))
     check_not_equals('0s', get_info(uuid, 'time_running'))
     check_not_equals('0s', get_info(uuid, 'time_cleaning_up'))
