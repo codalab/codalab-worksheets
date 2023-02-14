@@ -512,7 +512,7 @@ Usage: `cl <command> <arguments>`
 ### bs-health-check
     Perform a health check on the bundle store, garbage collecting bad files in the store. Performs a dry run by default, use -f to force removal.
     Arguments:
-      -f, --force      Perform all garbage collection and database updates instead of just printing what would happen
+      -f, --force  Perform all garbage collection and database updates instead of just printing what would happen
 
 
 ## Other commands

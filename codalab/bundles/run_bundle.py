@@ -317,14 +317,10 @@ class RunBundle(DerivedBundle):
     )
 
     @classmethod
-    def construct(
-        cls, targets, command, metadata, owner_id, uuid=None, state=State.CREATED
-    ):
+    def construct(cls, targets, command, metadata, owner_id, uuid=None, state=State.CREATED):
         if not isinstance(command, str):
             raise UsageError('%r is not a valid command!' % (command,))
-        return super(RunBundle, cls).construct(
-            targets, command, metadata, owner_id, uuid, state
-        )
+        return super(RunBundle, cls).construct(targets, command, metadata, owner_id, uuid, state)
 
     def validate(self):
         super(RunBundle, self).validate()

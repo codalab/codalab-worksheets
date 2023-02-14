@@ -272,6 +272,8 @@ def wait_until_substring(fp, substr):
 """
 Hash helpers for mimic and copy
 """
+
+
 def recursive_ls(path):
     """
     Return a (list of directories, list of files) in the given directory and
@@ -295,23 +297,26 @@ def recursive_ls(path):
             if os.path.islink(full_subpath) and os.path.isdir(full_subpath):
                 files.append(full_subpath)
     return (directories, files)
+
+
 def data_hash(uuid, worksheet=None):
-        """
+    """
         Temporarily download bundle contents.
         Return a hash of those contents.
         """
-        path = temp_path(uuid)
-        if not os.path.exists(path):
-            # Download the bundle to that path.
-            command = [cl, 'download', uuid, '-o', path]
-            if worksheet is not None:
-                command += ['-w', worksheet]
-            _run_command(command)
-        sha1 = hashlib.sha1()
-        files = recursive_ls(path)[1]
-        for f in files:
-            sha1.update(open(f, 'r').read().encode())
-        return sha1.hexdigest()
+    path = temp_path(uuid)
+    if not os.path.exists(path):
+        # Download the bundle to that path.
+        command = [cl, 'download', uuid, '-o', path]
+        if worksheet is not None:
+            command += ['-w', worksheet]
+        _run_command(command)
+    sha1 = hashlib.sha1()
+    files = recursive_ls(path)[1]
+    for f in files:
+        sha1.update(open(f, 'r').read().encode())
+    return sha1.hexdigest()
+
 
 def _run_command(
     args,
@@ -2264,6 +2269,8 @@ def test_write(ctx):
 """
 This we'll have ot think about how to migrate...
 """
+
+
 @TestModule.register('mimic')
 def test_mimic(ctx):
     simple_name = random_name()
