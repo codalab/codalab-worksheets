@@ -25,6 +25,7 @@ from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.bundle_state import State, RunResources
 from codalab.worker.download_util import BundleTarget
+from codalab.worker.un_gzip_stream import UnGzipStream
 
 logger = logging.getLogger(__name__)
 
@@ -278,11 +279,12 @@ class BundleManager(object):
                             fileobj = self._download_manager.stream_tarred_gzipped_directory(target)
                             un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
-                            fileobj = self._download_manager.stream_file(target, gzipped=False)
+                            fileobj = self._download_manager.stream_file(target, gzipped=True)
                             # logging.info(f"[make] HERE!!, fileobj: {fileobj.read()}")
-                            logging.info(f"child_path 1 : {os.path.getsize(dependency_path)}")
+                            # logging.info(f"child_path 1 : {os.path.getsize(dependency_path)}")
+                            UnGzip_fileobj = UnGzipStream(fileobj)
                             with open(dependency_path, 'wb') as f:
-                                shutil.copyfileobj(fileobj, f)
+                                shutil.copyfileobj(UnGzip_fileobj, f)
                                 # f.seek(0)
                                 # logging.info(f"[make] HERE!! f: {f.read()}")
                                 
@@ -299,8 +301,8 @@ class BundleManager(object):
                     for dependency_path, child_path in deps:
                         logging.info(f"child_path : {child_path}")
                         path_util.copy(dependency_path, child_path, follow_symlinks=False)
-                        logging.info(f"child_path : {os.path.getsize(child_path)}")
-                        logging.info(f"child_path : {os.path.getsize(dependency_path)}")
+                        # logging.info(f"child_path : {os.path.getsize(child_path)}")
+                        # logging.info(f"child_path : {os.path.getsize(dependency_path)}")
 
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)

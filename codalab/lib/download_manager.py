@@ -203,6 +203,10 @@ class DownloadManager(object):
         """
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
+            logging.info(f"here1: {file_path}")
+            # if parse_linked_bundle_url(file_path).uses_beam:
+            #     if gzipped:
+
             if gzipped:
                 return self.file_util.gzip_file(file_path)
             else:
@@ -217,6 +221,7 @@ class DownloadManager(object):
                 read_args = {'type': 'stream_file'}
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 fileobj = self._get_read_response_stream(response_socket_id)
+                logging.info(f"here: {fileobj.read()}")
                 if not gzipped:
                     fileobj = un_gzip_stream(fileobj)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)

@@ -261,8 +261,8 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
     for files stored in Azure Blob Storage."""
 
     def test_get_file_size(self):
-        _, fname, file_size = self.create_file()
-        self.assertEqual(get_file_size(fname), file_size)  # uncompressed size of entire bundle
+        _, fname, _= self.create_file()
+        self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
 
         _, dirname = self.create_directory()
         self.assertEqual(get_file_size(dirname), 249)

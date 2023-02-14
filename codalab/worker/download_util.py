@@ -8,7 +8,7 @@ from typing_extensions import TypedDict
 
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
-from codalab.worker.file_util import OpenIndexedArchiveFile
+from codalab.worker.file_util import OpenIndexedArchiveFile, OpenFile
 from ratarmountcore import FileInfo
 
 
@@ -246,6 +246,8 @@ def _compute_target_info_blob(
                 result['link'] = readlink(finfo)
             elif isfile(finfo):
                 result['type'] = 'file'
+                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+                result['size'] = filesystem.size(linked_bundle_path.bundle_path)
             elif isdir(finfo):
                 result['type'] = 'directory'
                 if depth > 0:
