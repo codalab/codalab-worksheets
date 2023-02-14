@@ -118,12 +118,12 @@ class StressTestRunner:
         print('Running stress tests...')
         self._start_heartbeat()
 
-        self._test_large_bundle_result()
-        print('_test_large_bundle_result finished')
-        self.cleanup()
-
         self._test_large_bundle_upload()
         print('_test_large_bundle_upload finished')
+        self.cleanup()
+
+        self._test_large_bundle_result()
+        print('_test_large_bundle_result finished')
         self.cleanup()
 
         self._test_many_gpu_runs()
