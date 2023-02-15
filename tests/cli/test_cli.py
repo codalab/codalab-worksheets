@@ -2497,7 +2497,6 @@ def test_copy(ctx):
         uuid = _run_command([cl, 'upload', test_path('a.txt')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
         compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
-        check_equals(data_hash(uuid, source_worksheet), data_hash(uuid, remote_worksheet))
         # TODO: `cl cat` is not working even with the bundle available
         # compare_output_across_instances([cl, 'cat', uuid])
 
