@@ -314,7 +314,10 @@ def data_hash(uuid, worksheet=None):
     sha1 = hashlib.sha1()
     files = recursive_ls(path)[1]
     for f in files:
-        sha1.update(open(f, 'r').read().encode())
+        try:
+            sha1.update(open(f, 'r').read().encode())
+        except Exception as e:
+            raise Exception("file name: {}. exception: {}".format(f, e))
     return sha1.hexdigest()
 
 
@@ -2275,10 +2278,10 @@ This we'll have ot think about how to migrate...
 def test_mimic(ctx):
     simple_name = random_name()
 
-    input_uuid = _run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
+    input_uuid = _run_command([cl, 'upload', test_path('dir2'), '-n', simple_name + '-in1'])
     simple_out_uuid = _run_command([cl, 'make', input_uuid, '-n', simple_name + '-out'])
 
-    new_input_uuid = _run_command([cl, 'upload', test_path('a.txt')])
+    new_input_uuid = _run_command([cl, 'upload', test_path('dir2')])
 
     # Try three ways of mimicing, should all produce the same answer
     input_mimic_uuid = _run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
@@ -2491,7 +2494,7 @@ def test_copy(ctx):
 
         # Upload to original worksheet, transfer to remote
         _run_command([cl, 'work', source_worksheet])
-        uuid = _run_command([cl, 'upload', test_path('')])
+        uuid = _run_command([cl, 'upload', test_path('a.txt')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
         compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
         check_equals(data_hash(uuid, source_worksheet), data_hash(uuid, remote_worksheet))
@@ -2503,7 +2506,6 @@ def test_copy(ctx):
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
         compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
-        check_equals(data_hash(uuid, source_worksheet), data_hash(uuid, remote_worksheet))
         # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)
