@@ -65,7 +65,7 @@ def upload_with_chunked_encoding(
 
         # Use chunked transfer encoding to send the data through.
         bytes_uploaded = 0
-        ITERATIONS_PER_DISK_CHECK = 1
+        ITERATIONS_PER_DISK_CHECK = 100
         iteration = 0
         while True:
             to_send = fileobj.read(CHUNK_SIZE)
@@ -75,7 +75,6 @@ def upload_with_chunked_encoding(
             bytes_uploaded += len(to_send)
 
             # Update disk and check if client has gone over disk usage.
-            """
             if json_api_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                 json_api_client.update(
                     'user/increment_disk_used',
@@ -89,7 +88,6 @@ def upload_with_chunked_encoding(
                         'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
                         '#how-do-i-request-more-disk-quota-or-time-quota'
                     )
-            """
             if progress_callback is not None:
                 should_resume = progress_callback(bytes_uploaded)
                 if not should_resume:
