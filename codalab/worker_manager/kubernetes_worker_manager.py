@@ -111,7 +111,7 @@ class KubernetesWorkerManager(WorkerManager):
         command: List[str] = self.build_command(worker_id, work_dir)
 
         command.extend(
-            ['--bundle-runtime', BundleRuntime.KUBERNETES.value]
+            ['--bundle-runtime', BundleRuntime.DOCKER.value]
         )  # todo make configurable
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
