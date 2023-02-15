@@ -15,6 +15,8 @@ def upload_with_chunked_encoding(
     need_response=False,
     url="",
     progress_callback=None,
+    bundle_uuid=None,
+    json_api_client=None,
 ):
     """
         Uploads the fileobj to url using method with headers and query_params,
@@ -32,6 +34,8 @@ def upload_with_chunked_encoding(
         :param url: String. Location or sub url that indicating where the file object will be uploaded.
         :param need_response: Bool. Whether need to wait for the response.
         :param progress_callback: Function. Callback function indicating upload progress.
+        :param json_api_client: JsonApiClient. None when this function is run by the server.
+                                               Used to update disk usage from client.
         """
     CHUNK_SIZE = 16 * 1024
     TIMEOUT = 60
@@ -61,16 +65,34 @@ def upload_with_chunked_encoding(
 
         # Use chunked transfer encoding to send the data through.
         bytes_uploaded = 0
+        ITERATIONS_PER_DISK_CHECK = 1
+        iteration = 0
         while True:
             to_send = fileobj.read(CHUNK_SIZE)
             if not to_send:
                 break
             conn.send(b'%X\r\n%s\r\n' % (len(to_send), to_send))
             bytes_uploaded += len(to_send)
+
+            # Update disk and check if client has gone over disk usage.
+            if json_api_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                json_api_client.update(
+                    'user/increment_disk_used',
+                    {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
+                )
+                user_info = json_api_client.fetch('user')
+                if user_info['disk_used'] >= user_info['disk_quota']:
+                    raise Exception(
+                        'Upload aborted. User disk quota exceeded. '
+                        'To apply for more quota, please visit the following link: '
+                        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                        '#how-do-i-request-more-disk-quota-or-time-quota'
+                    )
             if progress_callback is not None:
                 should_resume = progress_callback(bytes_uploaded)
                 if not should_resume:
                     raise Exception('Upload aborted by client')
+            iteration += 1
         conn.send(b'0\r\n\r\n')
 
         if not need_response:

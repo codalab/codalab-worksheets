@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib import path_util
+from codalab.lib.zip_util import pack_files_for_upload
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
@@ -30,6 +31,7 @@ from scripts.test_util import Colorizer, run_command
 
 import argparse
 import json
+import multiprocessing
 import os
 import random
 import re
@@ -828,23 +830,31 @@ def test_upload1(ctx):
         _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
 
         # Run the same tests when on a non root user
-        user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='2000')
-        switch_user(user_name)
-        # expect to fail when we upload something more than 2k bytes
-        check_contains(
-            "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
-            _run_command(
-                [cl, 'upload', test_path('codalab.png')] + suffix,
-                expected_exit_code=1,
-                # To return stderr, we need to include
-                # the following two arguments:
-                include_stderr=True,
-                force_subprocess=True,
-            ),
-        )
-        # Switch back to root user
-        switch_user('codalab')
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            # This test does not work when protected_mode is True.
+            user_name = 'non_root_user_' + random_name()
+            create_user(ctx, user_name, disk_quota='10')
+            # group_uuid = _run_command([cl, 'gnew', user_name])
+            switch_user(user_name)
+            worksheet_uuid = _run_command([cl, 'work', '-u'])
+            switch_user('codalab')
+            _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
+            switch_user(user_name)
+            _run_command([cl, 'work', worksheet_uuid])
+            # expect to fail when we upload something more than 2k bytes
+            check_contains(
+                'User disk quota exceeded',
+                _run_command(
+                    [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
+                    expected_exit_code=1,
+                    # To return stderr, we need to include
+                    # the following two arguments:
+                    include_stderr=True,
+                    force_subprocess=True,
+                ),
+            )
+            # Switch back to root user
+            switch_user('codalab')
 
 
 @TestModule.register('upload2')
@@ -1082,6 +1092,20 @@ def test_blob(ctx):
                 'Authorization': 'Bearer ' + ctx.client._get_access_token(),
             },
         )
+
+    # Uploads multiple archives at the same time and goes over disk quota on the second
+    # upload. Check to make sure the uploads fail.
+    # Note: In upload_manager, after being zipped, codalab.png has size 9482 bytes.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 15000}'])
+    pool = multiprocessing.Pool(processes=2)
+    # Set the expected exit code to be 1 for both processes.
+    args = [
+        [[cl, 'upload', test_path('codalab.png')], 1],
+        [[cl, 'upload', test_path('codalab.png')], 1],
+    ]
+    pool.starmap(_run_command, args)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
     for (uuid, target_type) in [
@@ -1354,7 +1378,40 @@ def test_rm(ctx):
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
-    # Make sure disk quota is adjusted correctly when --data-only is used.
+
+@TestModule.register('disk')
+def test_disk(ctx):
+    # Basic test.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with directory upload
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('dir1')])
+    wait_until_state(uuid, State.READY)
+    # Directories are stored in their gzipped format when uploaded to Azure/GCS
+    # but are stored in their full file size format on disk.
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        tarred_dir = pack_files_for_upload([test_path('dir1')], True, False)['fileobj']
+        file_size = len(tarred_dir.read())
+    else:
+        file_size = path_util.get_size(test_path('dir1'))
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test rm --data-only.
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt')])
     wait_until_state(uuid, State.READY)
@@ -1367,7 +1424,7 @@ def test_rm(ctx):
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
-    # Make sure disk quota is adjusted correctly for symlinks is used.
+    # Test with symlinks
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
     wait_until_state(uuid, State.READY)
@@ -1375,6 +1432,66 @@ def test_rm(ctx):
     _run_command([cl, 'rm', '-d', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
     _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with running bundle
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'run', 'head -c 50 /dev/zero > test.txt'])
+    wait_until_state(uuid, State.READY)
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(
+        str(int(data_size) + int(disk_used)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with archive upload
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    archive_paths = [temp_path(''), temp_path('')]
+    archive_exts = [p + '.tar.gz' for p in archive_paths]
+    contents_paths = [test_path('dir1'), test_path('a.txt')]
+    for (archive, content) in zip(archive_exts, contents_paths):
+        _run_command(
+            ['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)]
+        )
+    uuid = _run_command([cl, 'upload'] + archive_exts)
+    wait_until_state(uuid, State.READY)
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with make.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
+    uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
+    uploaded_files_size = path_util.get_size(test_path('a.txt')) + path_util.get_size(
+        test_path('b.txt')
+    )
+    uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2])
+    wait_until_state(uuid3, State.READY)
+    data_size = _run_command([cl, 'info', uuid3, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size) + uploaded_files_size),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid3])
+    _run_command([cl, 'rm', uuid2])
+    _run_command([cl, 'rm', uuid1])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test cleanup_existing_contents.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
+    uuid = _run_command(
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory=None,
+    )
+    wait_until_state(uuid, State.FAILED)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
 
