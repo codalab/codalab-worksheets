@@ -114,7 +114,14 @@ class RestClient(object):
                     raise RestClientException('Invalid JSON: ' + response_data, False)
 
     def _upload_with_chunked_encoding(
-        self, method, url, query_params, fileobj, progress_callback=None
+        self,
+        method,
+        url,
+        query_params,
+        fileobj,
+        pass_self=False,
+        bundle_uuid=None,
+        progress_callback=None,
     ):
         """
         Uploads the fileobj to url using method with query_params,
@@ -123,6 +130,11 @@ class RestClient(object):
         the optional progress_callback should return a boolean which interrupts the
         download if False and resumes it if True. If i's not specified the download
         runs to completion
+
+        passs_self indicates whether or not this json_api_client should pass itself into
+        the called upload_with_chunked_encoding function, since we need to do that
+        if we want to check the user's disk quota by sending requests to the
+        /user/increment_disk_used endpoint.
         """
 
         headers = {
@@ -132,6 +144,7 @@ class RestClient(object):
         }
         headers.update(self._extra_headers)
 
+        json_api_client = self if pass_self else None
         upload_with_chunked_encoding(
             method=method,
             base_url=self._base_url,
@@ -141,4 +154,6 @@ class RestClient(object):
             need_response=True,
             url=url,
             progress_callback=progress_callback,
+            json_api_client=json_api_client,
+            bundle_uuid=bundle_uuid,
         )
