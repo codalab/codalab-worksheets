@@ -257,6 +257,7 @@ class BlobStorageUploader(Uploader):
                     out.write(to_send)
 
                     # Update disk and check if client has gone over disk usage.
+                    """
                     if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                         self._client.update(
                             'user/increment_disk_used',
@@ -270,6 +271,7 @@ class BlobStorageUploader(Uploader):
                                 'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
                                 '#how-do-i-request-more-disk-quota-or-time-quota'
                             )
+                    """
 
                     bytes_uploaded += len(to_send)
                     if progress_callback is not None:
