@@ -246,8 +246,9 @@ def _compute_target_info_blob(
                 result['link'] = readlink(finfo)
             elif isfile(finfo):
                 result['type'] = 'file'
+                # Modify the file size to actual 
                 filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-                result['size'] = filesystem.size(linked_bundle_path.bundle_path)
+                result['size'] = filesystem.size(linked_bundle_path.bundle_path) 
             elif isdir(finfo):
                 result['type'] = 'directory'
                 if depth > 0:

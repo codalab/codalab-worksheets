@@ -289,7 +289,6 @@ class OpenFile(object):
                         raise IOError("Directories must be gzipped.")
                     return GzipStream(TarSubdirStream(self.path))
                 else:
-                    # HERE is the problem!! TarFileStream Need correct original file size to generate 
                     # Stream a single file from within the archive
                     # filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
                     # finfo.size = filesystem.size(linked_bundle_path.bundle_path)
