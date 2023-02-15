@@ -513,11 +513,13 @@ class Worker:
             # Stop processing any new runs received from server
             if not response or self.terminate_and_restage or self.terminate:
                 return
+            logger.debug(f"received message {response}")
             if type(response) is not list:
                 response = [response]
             for action in response:
                 if not action:
                     continue
+                logger.debug(f"received action {action}")
                 action_type = action['type']
                 logger.debug('Received %s message: %s', action_type, action)
                 if action_type == 'run':
