@@ -444,4 +444,5 @@ class SlurmBatchWorkerManager(WorkerManager):
         slurm_args['time'] = self.args.time
         slurm_args['open-mode'] = 'append'
         slurm_args['output'] = str(Path(slurm_worker_dir, slurm_args['job-name'] + '.out'))
+        slurm_args['error'] = str(Path(slurm_worker_dir, slurm_args['job-name'] + '.err'))
         return slurm_args
