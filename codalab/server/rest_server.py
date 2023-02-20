@@ -57,7 +57,7 @@ if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
         dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
         environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
         integrations=[BottleIntegration()],
-        traces_sample_rate=0.01
+        traces_sample_rate=0.01,
     )
 else:
     sentry_sdk.init(
@@ -65,10 +65,9 @@ else:
         environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
         integrations=[BottleIntegration()],
         traces_sample_rate=0.05,
-        _experiments={
-            "profiles_sample_rate": 1.0,
-        }
+        _experiments={"profiles_sample_rate": 1.0,},
     )
+
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""

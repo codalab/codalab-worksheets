@@ -13,13 +13,12 @@ sentry_sdk.init(
     dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
     environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
     traces_sample_rate=1.0,
-    _experiments={
-        "profiles_sample_rate": 1.0,
-    },
-    debug=True
+    _experiments={"profiles_sample_rate": 1.0,},
+    debug=True,
 )
-sentry_sdk.client.DEFAULT_OPTIONS["_experiments"] = { "profiles_sample_rate": 1.0 }
+sentry_sdk.client.DEFAULT_OPTIONS["_experiments"] = {"profiles_sample_rate": 1.0}
 sentry_sdk.client.setup_profiler({})
+
 
 class WorkerMonitoring(object):
     def __init__(self):
@@ -44,12 +43,14 @@ class WorkerMonitoring(object):
                 {
                     "path": run_state.bundle_path,
                     "command": run_state.bundle.command,
-                    "uuid": run_state.bundle.uuid
+                    "uuid": run_state.bundle.uuid,
                 },
             )
             hub.scope.set_user({"id": run_state.bundle.owner_id})
             # TODO: Do hub.scope.set_tag here.
-            tx = hub.start_transaction(op="queue.task", name=f"worker-{run_state.bundle.command.split()[0]}")
+            tx = hub.start_transaction(
+                op="queue.task", name=f"worker-{run_state.bundle.command.split()[0]}"
+            )
             self._bundle_uuid_to_profile[bundle_uuid] = start_profiling(tx, hub)
             tx.__enter__()
             self._bundle_uuid_to_profile[bundle_uuid].__enter__()
@@ -58,7 +59,12 @@ class WorkerMonitoring(object):
             # a child span for the previous stage.
             # Close the span for the previous stage.
             if hub.scope.span is None:
-                logger.error(f'hub.scope.span should not be None for bundle {uuid} on stage {run_stage.stage}')
+                logger.error(
+                    f'hub.scope.span should not be None for bundle {bundle_uuid} on stage {run_state.stage}'
+                )
+                raise Exception(
+                    f'hub.scope.span should not be None for bundle {bundle_uuid} on stage {run_state.stage}'
+                )
                 logger.debug(f'bundle has run state {vars(run_state)}')
             else:
                 hub.scope.span.__exit__(None, None, None)

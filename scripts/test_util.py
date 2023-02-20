@@ -2,6 +2,7 @@ import io
 import signal
 import subprocess
 import sys
+import time
 import traceback
 
 global cl
@@ -189,6 +190,7 @@ class timer:
     Can also be used to time how long functions take within its context manager.
     Used for the timing tests.
     """
+
     def __init__(self, timeout_seconds=1, handle_timeouts=True, uuid=None):
         """
         A class that can be used as a context manager to ensure that code within that context manager times out
@@ -201,20 +203,23 @@ class timer:
         """
         self.timeout_seconds = timeout_seconds
         self.uuid = None
+
     def handle_timeout(self, signum, frame):
         timeout_message = "Timeout ocurred"
         if self.uuid:
-            timeout_message += " while waiting for %s to run" % uuid
+            timeout_message += " while waiting for %s to run" % self.uuid
         raise TimeoutError(timeout_message)
+
     def __enter__(self):
         self.start_time = time.time()
-        if handle_timeouts:
+        if self.handle_timeouts:
             signal.signal(signal.SIGALRM, self.handle_timeout)
             signal.setitimer(signal.ITIMER_REAL, self.timeout_seconds, self.timeout_seconds)
-            
+
             # now, reset itimer.
             signal.setitimer(signal.ITIMER_REAL, 0, 0)
+
     def __exit__(self, type, value, traceback):
         self.time_elapsed = self.start_time - time.time()
-        if handle_timeouts:
+        if self.handle_timeouts:
             signal.alarm(0)

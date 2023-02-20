@@ -46,7 +46,7 @@ class TestFile:
 
     def _make_random_file(self):
         with open(self._file_name, 'wb') as file:
-            file.seek(int(self._size_mb * 1024 * 1024)) # Seek takes in file size in terms of bytes
+            file.seek(int(self._size_mb * 1024 * 1024))  # Seek takes in file size in terms of bytes
             file.write(b'0')
         print('Created file {} of size {} MB.'.format(self._file_name, self._size_mb))
 
@@ -349,8 +349,8 @@ class StressTestRunner:
         cleanup(self._cl, self._TAG, not self._args.bypass_wait)
 
     @staticmethod
-    def _simple_run(cl):
-        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % self._TAG])
+    def _simple_run(cl, tag='codalab-stress-test'):
+        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % tag])
 
     @staticmethod
     def _heartbeat_cl_commands(cl):

@@ -166,6 +166,7 @@ def get_uuid(line):
 def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
+
 def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
@@ -2026,12 +2027,12 @@ def test_time(ctx, timeout=True):
         subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
         with timer(TIMEOUTS[i]):
             start = time.time()
-            uuid =  _run_command([cl, 'upload', temp_file_path])
+            uuid = _run_command([cl, 'upload', temp_file_path])
             wait_until_state(uuid, State.READY, timeout_seconds=1)
             duration = time.time() - start
             print(f"{duration}")
     _run_command(['rm', temp_file_path])
-    
+
     # Run simple bundle.
     start = time.time()
     uuid = _run_command([cl, 'run', 'echo hello'])

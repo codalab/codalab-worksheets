@@ -7,7 +7,6 @@ import argparse
 import getpass
 import os
 import logging
-import sentry_sdk
 import signal
 import socket
 import stat
@@ -31,6 +30,7 @@ from codalab.worker.runtime.kubernetes_runtime import KubernetesRuntime
 logger = logging.getLogger(__name__)
 
 DEFAULT_EXIT_AFTER_NUM_RUNS = 999999999
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
