@@ -27,7 +27,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, run_command
+from scripts.test_util import Colorizer, timer, run_command
 
 import argparse
 import json
@@ -165,29 +165,6 @@ def get_uuid(line):
 
 def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
-
-class timeout:
-    """
-    Class that uses signal to interrupt functions while they're running
-    if they run for longer than timeout_seconds.
-    Used for the timing tests.
-    """
-    def __init__(self, timeout_seconds=1, uuid=None):
-        self.timeout_seconds = timeout_seconds
-        self.uuid = None
-    def handle_timeout(self, signum, frame):
-        timeout_message = "Timeout ocurred"
-        if self.uuid:
-            timeout_message += " while waiting for %s to run" % uuid
-        raise TimeoutError(timeout_message)
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.setitimer(signal.ITIMER_REAL, self.timeout_seconds, self.timeout_seconds)
-        
-        # now, reset itimer.
-        signal.setitimer(signal.ITIMER_REAL, 0, 0)
-    def __exit__(self, type, value, traceback):
-        signal.alarm(0)
 
 def wait_until_state(uuid, expected_state, timeout_seconds=1000):
     """
@@ -2037,7 +2014,7 @@ def test_run(ctx):
 
 
 @TestModule.register('time')
-def test_time(ctx):
+def test_time(ctx, timeout=True):
     """ Basic tests. """
     # Uploading. Sweep file sizes.
     FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
@@ -2047,7 +2024,7 @@ def test_time(ctx):
     for i, size in enumerate(FILE_SIZES):
         # Have to use subprocess because redirection is impossible with _run_command.
         subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
-        with timeout(TIMEOUTS[i]):
+        with timer(TIMEOUTS[i]):
             start = time.time()
             uuid =  _run_command([cl, 'upload', temp_file_path])
             wait_until_state(uuid, State.READY, timeout_seconds=1)
@@ -2063,31 +2040,31 @@ def test_time(ctx):
     print(f"{duration}")
 
     # Loading bundle info
-    with timeout(0.1):
+    with timer(0.1):
         start = time.time()
         get_info(uuid, 'name')
         duration = time.time() - start
         print(f"{duration}")
 
     # Loading a worksheet and getting worksheet info
-    with timeout(0.1):
+    with timer(0.1):
         start = time.time()
         _run_command([cl, 'new', 'test-worksheet'])
         duration = time.time() - start
         print(f"{duration}")
-    with timeout(0.3):
+    with timer(0.3):
         start = time.time()
         _run_command([cl, 'work', 'test-worksheet'])
         duration = time.time() - start
         print(f"{duration}")
-    with timeout(0.2):
+    with timer(0.2):
         start = time.time()
         _run_command([cl, 'wrm', 'test-worksheet'])
         duration = time.time() - start
         print(f"{duration}")
 
     # Removing a bundle
-    with timeout(0.2):
+    with timer(0.2):
         start = time.time()
         _run_command([cl, 'rm', uuid])
         duration = time.time() - start

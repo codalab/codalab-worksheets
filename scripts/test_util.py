@@ -1,4 +1,5 @@
 import io
+import signal
 import subprocess
 import sys
 import traceback
@@ -179,3 +180,41 @@ def cleanup(cl, tag, should_wait=True):
             run_command([cl, 'wrm', uuid, '--force'])
             worksheets_removed += 1
     print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
+
+
+class timer:
+    """
+    Class that uses signal to interrupt functions while they're running
+    if they run for longer than timeout_seconds.
+    Can also be used to time how long functions take within its context manager.
+    Used for the timing tests.
+    """
+    def __init__(self, timeout_seconds=1, handle_timeouts=True, uuid=None):
+        """
+        A class that can be used as a context manager to ensure that code within that context manager times out
+        after timeout_seconds time and which times the execution of code within the context manager.
+
+        Parameters:
+            timeout_seconds (float): Amount of time before execution in context manager is interrupted for timeout
+            handle_timeouts (bool): If True, do not timeout, only return the time taken for execution in context manager.
+            uuid (str): Uuid of bundles running within context manager.
+        """
+        self.timeout_seconds = timeout_seconds
+        self.uuid = None
+    def handle_timeout(self, signum, frame):
+        timeout_message = "Timeout ocurred"
+        if self.uuid:
+            timeout_message += " while waiting for %s to run" % uuid
+        raise TimeoutError(timeout_message)
+    def __enter__(self):
+        self.start_time = time.time()
+        if handle_timeouts:
+            signal.signal(signal.SIGALRM, self.handle_timeout)
+            signal.setitimer(signal.ITIMER_REAL, self.timeout_seconds, self.timeout_seconds)
+            
+            # now, reset itimer.
+            signal.setitimer(signal.ITIMER_REAL, 0, 0)
+    def __exit__(self, type, value, traceback):
+        self.time_elapsed = self.start_time - time.time()
+        if handle_timeouts:
+            signal.alarm(0)
