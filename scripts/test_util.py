@@ -201,6 +201,7 @@ class timer:
             handle_timeouts (bool): If True, do not timeout, only return the time taken for execution in context manager.
             uuid (str): Uuid of bundles running within context manager.
         """
+        self.handle_timeouts = handle_timeouts
         self.timeout_seconds = timeout_seconds
         self.uuid = None
 
@@ -220,6 +221,6 @@ class timer:
             signal.setitimer(signal.ITIMER_REAL, 0, 0)
 
     def __exit__(self, type, value, traceback):
-        self.time_elapsed = self.start_time - time.time()
+        self.time_elapsed = time.time() - start.time()
         if self.handle_timeouts:
             signal.alarm(0)
