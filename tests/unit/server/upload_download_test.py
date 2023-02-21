@@ -157,7 +157,7 @@ class BaseUploadDownloadBundleTest(TestBase):
 
         info = self.download_manager.get_target_info(target, 0)
         self.assertEqual(info["name"], bundle.uuid)
-        self.assertEqual(info["size"], 31)  # got 0 here
+        self.assertEqual(info["size"], 11)  # got 0 here
         self.assertEqual(info["perm"], self.DEFAULT_PERM_FILE)
         self.assertEqual(info["type"], "file")
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:")
@@ -193,7 +193,7 @@ class BaseUploadDownloadBundleTest(TestBase):
                         'contents': [
                             {
                                 'name': 'item2.txt',
-                                'size': 198,  # compressed size of the file 
+                                'size': 11,
                                 'perm': self.DEFAULT_PERM_FILE,
                                 'type': 'file',
                             }

@@ -246,9 +246,6 @@ def _compute_target_info_blob(
                 result['link'] = readlink(finfo)
             elif isfile(finfo):
                 result['type'] = 'file'
-                # Modify the file size to actual 
-                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-                result['size'] = filesystem.size(linked_bundle_path.bundle_path) 
             elif isdir(finfo):
                 result['type'] = 'directory'
                 if depth > 0:
@@ -264,7 +261,7 @@ def _compute_target_info_blob(
             # The entry returned by ratarmount for a single .gz file is not technically part of a tar archive
             # and has a name hardcoded as "contents," so we modify the type, name, and permissions of
             # the output accordingly.
-            return cast(
+            result = cast(
                 TargetInfo,
                 dict(
                     _get_info("/contents", depth),
@@ -273,6 +270,15 @@ def _compute_target_info_blob(
                     perm=0o755,
                 ),
             )
+            if result['type'] == 'file':
+                # only if the bundle is a single file, we need to modify s
+                # filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
+                # result['size'] = filesystem.size(linked_bundle_path.bundle_path) 
+                with OpenFile(linked_bundle_path.bundle_path, 'rb', gzipped=False) as fileobj:
+                    fileobj.seek(0, os.SEEK_END)
+                    result['size'] = fileobj.tell()
+            return result
+        
         if linked_bundle_path.archive_subpath:
             # Return the contents of a subpath within a directory.
             return _get_info(linked_bundle_path.archive_subpath, depth)

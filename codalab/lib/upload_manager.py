@@ -97,7 +97,6 @@ class Uploader:
         Given arguments are the same as UploadManager.upload_to_bundle_store().
         Used when uploading from rest server."""
         try:
-            # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
             if is_url:
                 assert isinstance(source, str)

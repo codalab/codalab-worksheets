@@ -292,7 +292,7 @@ class OpenFile(object):
                     # Stream a single file from within the archive
                     # filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
                     # finfo.size = filesystem.size(linked_bundle_path.bundle_path)
-                    # logging.info(f"[Should Not be here, File size is: {finfo.size}")
+                    logging.info(f"[Should Not be here, File size is: {finfo.size}")
                     fs = TarFileStream(tf, finfo)
                     return GzipStream(fs) if self.gzipped else fs
         else:

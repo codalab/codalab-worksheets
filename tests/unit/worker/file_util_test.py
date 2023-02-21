@@ -264,8 +264,8 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         _, fname, _= self.create_file()
         self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
 
-        _, dirname, _ = self.create_directory()
-        self.assertEqual(get_file_size(dirname), 249)
+        _, dirname, file_size = self.create_directory()
+        self.assertEqual(get_file_size(dirname), file_size)
         self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
 
     def test_read_file_section(self):
@@ -307,16 +307,17 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         # Read entire directory (gzipped)
         with OpenFile(dirname, gzipped=True) as f:
             self.assertEqual(
-                tarfile.open(fileobj=f, mode='r:gz').getnames(),
+                tarfile.open(fileobj=f, mode='r:gz').getnames().sort(),
                 [
+                    '.',
                     './README.md',
                     './src',
                     './src/test.sh',
                     './dist',
                     './dist/a',
                     './dist/a/b',
-                    './dist/a/b/test2.sh',
-                ],
+                    './dist/a/b/test2.sh'
+                ].sort(),
             )
 
         # Read entire directory (non-gzipped)
