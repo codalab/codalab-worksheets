@@ -293,6 +293,13 @@ CODALAB_ARGUMENTS = [
         ),
         frontend=True,
     ),
+    CodalabArg(
+        name='sentry_transaction_rate',
+        help=(
+            'Percentage of transactions we want to have Sentry sample and profile. Only used if sentry_ingest_url and sentry_environment are provided.'
+        ),
+        default=0,
+    ),
     # Bundle Manager
     CodalabArg(
         name='bundle_manager_worker_timeout_seconds',

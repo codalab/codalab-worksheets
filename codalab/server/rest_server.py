@@ -71,6 +71,9 @@ else:
         _experiments={"profiles_sample_rate": 1.0,},
     )
 
+logger.info(f"\n1093840184192384-02384-0184-01984-019283-04810-23984. TRANSACTION SAMPLING RATE: {transaction_sample_rate}")
+logger.debug(f"1093840184192384-02384-0184-01984-019283-04810-23984. TRANSACTION SAMPLING RATE: {transaction_sample_rate}")
+logger.error(f"1093840184192384-02384-0184-01984-019283-04810-23984. TRANSACTION SAMPLING RATE: {transaction_sample_rate}\n")
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
