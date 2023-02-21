@@ -221,6 +221,6 @@ class timer:
             signal.setitimer(signal.ITIMER_REAL, 0, 0)
 
     def __exit__(self, type, value, traceback):
-        self.time_elapsed = time.time() - start.time()
+        self.time_elapsed = time.time() - self.start_time()
         if self.handle_timeouts:
             signal.alarm(0)
