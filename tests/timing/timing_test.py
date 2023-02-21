@@ -91,6 +91,11 @@ class TimingTestRunner(StressTestRunner):
     def run_basic_bundle(self):
         uuid = self._run_bundle([self._cl, 'run', 'echo hello'])
         run_command([cl, 'wait', uuid])
+    
+    def kill_bundle(self):
+        uuid = self._run_bundle([self._cl, 'run', 'sleep 1000000000;'])
+        self._run_bundle()([self._cl, 'kill', uuid])
+        run_command([cl, 'wait', uuid])
 
     def run_bundle_with_wide_dependencies(self, dependency_uuids):
         """
@@ -119,26 +124,29 @@ def main(args):
 
     # Try basic uploads. Sweep file sizes.
     for file_size in test_runner._args.upload_test_file_sizes:
-        test = TimingTest(num_repeats, test_runner.upload_bundle, file_size)
-        result = test.run_test()
-        results.append(test.results())
+        result = TimingTest(num_repeats, test_runner.upload_bundle, file_size).run_test()
+        results.append(result)
 
     # Bundle info
     recent_uuids = run_command([cl, 'search', '.mine', '--uuid-only']).split('\n')
     sample_uuids = random.sample(recent_uuids, args.num_random_samples)
     for uuid in sample_uuids:
-        test = TimingTest(num_repeats, test_runner.get_info, uuid).run_test()
-        results.append(test)
+        result = TimingTest(num_repeats, test_runner.get_info, uuid).run_test()
+        results.append(result)
 
     # Removing bundle
     timing_test_uuids = run_command([cl, 'search', '.mine', 'tags=%s' % test_runner._TAG, '--uuid-only']).split('\n')
     for uuid in timing_test_uuids:
-        test = TimingTest(1, test_runner.rm, uuid).run_test() # only delete once.
-        results.append(test)
+        result = TimingTest(1, test_runner.rm, uuid).run_test() # only delete once.
+        results.append(result)
     
     # Running a basic bundle
-    test = TimingTest(num_repeats, test_runner.run_basic_bundle).run_test()
-    results.append(test)
+    result = TimingTest(num_repeats, test_runner.run_basic_bundle).run_test()
+    results.append(result)
+
+    # Kill bundle
+    result = TimingTest(num_repeats, test_runner.kill_bundle).run_test()
+    results.append(result)
 
     # Worksheet stuff goes down here.
 
