@@ -168,19 +168,19 @@ if __name__ == '__main__':
         type=float,
         nargs='*',
         help='File size in MB to sweep when doing upload timing test.',
-        default=map(int, [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 1e2, 1e3, 1e4])
+        default=map(int, [1e-2, 1e-1, 1, 1e2, 1e3, 1e4, 1e5])
     )
     parser.add_argument(
         '--num-random-samples',
         type=int,
         help='Number of uuids to randomly sample when performing tests on already existing uuids',
-        default=10
+        default=3
     )
     parser.add_argument(
         '--num-repeats',
         type=int,
         help='Number of times to repeat timing test',
-        default=10
+        default=3
     )
     parser.add_argument(
         '--results-dir',
