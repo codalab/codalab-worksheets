@@ -69,7 +69,7 @@ class UnGzipStream(GenericUncompressStream):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-        self.seekable = False
+        self.seekable = lambda: False
 
 
 class UnBz2Stream(GenericUncompressStream):

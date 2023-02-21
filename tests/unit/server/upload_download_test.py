@@ -72,8 +72,8 @@ class BaseUploadDownloadBundleTest(TestBase):
     def check_file_target_contents(self, target):
         """Checks to make sure that the specified file has the contents 'hello world'."""
         # This can not be checked, Since 
-        # with self.download_manager.stream_file(target, gzipped=False) as f:
-        #     self.assertEqual(f.read(), b"hello world")
+        with self.download_manager.stream_file(target, gzipped=False) as f:
+            self.assertEqual(f.read(), b"hello world")
 
         with gzip.GzipFile(fileobj=self.download_manager.stream_file(target, gzipped=True)) as f:
             self.assertEqual(f.read(), b"hello world")
@@ -223,7 +223,7 @@ class BaseUploadDownloadBundleTest(TestBase):
         self.assertEqual(str(info["resolved_target"]), f"{bundle.uuid}:src")
         self.assertEqual(
             info["contents"],
-            [{'name': 'item2.txt', 'size': 197, 'perm': self.DEFAULT_PERM_FILE, 'type': 'file'}],
+            [{'name': 'item2.txt', 'size': 11, 'perm': self.DEFAULT_PERM_FILE, 'type': 'file'}],
         )
         self.check_folder_target_contents(target, expected_members=['.', './item2.txt'])
 
