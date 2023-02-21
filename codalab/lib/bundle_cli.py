@@ -48,7 +48,6 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
-    DiskQuotaExceededError,
     parse_linked_bundle_url,
 )
 from codalab.lib import (
@@ -100,8 +99,6 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-from codalab.worker.file_util import get_path_size
-
 
 # Command groupings
 BUNDLE_COMMANDS = (
@@ -1429,15 +1426,6 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
-            # Calculate size of sources
-            total_bundle_size = sum([get_path_size(source) for source in sources])
-            user = client.fetch('user')
-            disk_left = user['disk_quota'] - user['disk_used']
-            if disk_left - total_bundle_size <= 0:
-                raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
-                    % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
-                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -2439,7 +2427,6 @@ class BundleCLI(object):
         for key in (
             'bundle_type',
             'uuid',
-            'data_hash',
             'state',
             'command',
             'frozen',
@@ -4391,27 +4378,13 @@ class BundleCLI(object):
                 help='Perform all garbage collection and database updates instead of just printing what would happen',
                 action='store_true',
             ),
-            Commands.Argument(
-                '-d',
-                '--data-hash',
-                help='Compute the digest for every bundle and compare against data_hash for consistency',
-                action='store_true',
-            ),
-            Commands.Argument(
-                '-r',
-                '--repair',
-                help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles',
-                action='store_true',
-            ),
         ),
     )
     def do_bs_health_check(self, args):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         print('Performing Health Check...', file=sys.stderr)
-        self.manager.bundle_store().health_check(
-            self.manager.model(), args.force, args.data_hash, args.repair
-        )
+        self.manager.bundle_store().health_check(self.manager.model(), args.force)
 
     def _fail_if_headless(self, args):
         if self.headless:

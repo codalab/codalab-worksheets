@@ -23,7 +23,6 @@ class Bundle(ORMObject):
         'uuid',
         'bundle_type',
         'command',
-        'data_hash',
         'state',
         'owner_id',
         'frozen',
@@ -41,7 +40,6 @@ class Bundle(ORMObject):
     uuid: str
     bundle_type: str
     command: str
-    data_hash: str
     state: str
     owner_id: str
     frozen: bool
