@@ -11,6 +11,12 @@ from threading import Thread
 
 from scripts.test_util import cleanup, run_command
 
+import os
+
+def temp_path(file_name):
+    root = '/tmp'
+    return os.path.join(root, file_name)
+
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
 - Large bundle upload
@@ -38,6 +44,7 @@ class TestFile:
 
     def __init__(self, file_name, size_mb=1, content=None):
         self._file_name = file_name
+        self._file_path = temp_path(file_name)
         if content is None:
             self._size_mb = size_mb
             self._make_random_file()
@@ -45,27 +52,30 @@ class TestFile:
             self._write_content(content)
 
     def _make_random_file(self):
-        with open(self._file_name, 'wb') as file:
+        with open(self._file_path, 'wb') as file:
             file.seek(int(self._size_mb * 1024 * 1024))  # Seek takes in file size in terms of bytes
             file.write(b'0')
-        print('Created file {} of size {} MB.'.format(self._file_name, self._size_mb))
+        print('Created file {} of size {} MB.'.format(self._file_path, self._size_mb))
 
     def _write_content(self, content):
-        with open(self._file_name, 'w') as file:
+        with open(self._file_path, 'w') as file:
             file.write(content)
 
     def name(self):
         return self._file_name
+    
+    def path(self):
+        return self._file_path
 
     def delete(self):
         '''
         Removes the file.
         '''
-        if os.path.exists(self._file_name):
-            os.remove(self._file_name)
-            print('Deleted file {}.'.format(self._file_name))
+        if os.path.exists(self._file_path):
+            os.remove(self._file_path)
+            print('Deleted file {}.'.format(self._file_path))
         else:
-            print('File {} has already been deleted.'.format(self._file_name))
+            print('File {} has already been deleted.'.format(self._file_path))
 
 
 class StressTestRunner:
@@ -194,7 +204,7 @@ class StressTestRunner:
 
         self._set_worksheet('large_bundle_result')
         file: TestFile = create_large_file_in_bundle(self._args.large_dependency_size_gb)
-        self._run_bundle([self._cl, 'upload', file.name()])
+        self._run_bundle([self._cl, 'upload', file.path()])
         file.delete()
 
         dependency_uuid: str = self._run_bundle(
@@ -214,7 +224,7 @@ class StressTestRunner:
     def _test_large_bundle_upload(self) -> None:
         self._set_worksheet('large_bundle_upload')
         large_file: TestFile = TestFile('large_file', self._args.large_file_size_gb * 1000)
-        dependency_uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
+        dependency_uuid: str = self._run_bundle([self._cl, 'upload', large_file.path()])
         large_file.delete()
         uuid: str = self._run_bundle(
             [
@@ -241,7 +251,7 @@ class StressTestRunner:
         self._set_worksheet('many_bundle_uploads')
         file = TestFile('small_file', 1)
         for _ in range(self._args.bundle_upload_count):
-            self._run_bundle([self._cl, 'upload', file.name()])
+            self._run_bundle([self._cl, 'upload', file.path()])
         file.delete()
 
     def _test_many_worksheet_copies(self):
@@ -249,7 +259,7 @@ class StressTestRunner:
         worksheet_uuid = self._set_worksheet('many_worksheet_copies')
         file = TestFile('copy_file', 1)
         for _ in range(10):
-            self._run_bundle([self._cl, 'upload', file.name()])
+            self._run_bundle([self._cl, 'upload', file.path()])
         file.delete()
 
         # Create many worksheets with current worksheet's content copied over
@@ -284,7 +294,7 @@ class StressTestRunner:
             return
         self._set_worksheet('infinite_memory')
         file = self._create_infinite_memory_script()
-        self._run_bundle([self._cl, 'upload', file.name()])
+        self._run_bundle([self._cl, 'upload', file.path()])
         self._run_bundle(
             [self._cl, 'run', ':' + file.name(), 'python ' + file.name()], expected_exit_code=1
         )
@@ -299,7 +309,7 @@ class StressTestRunner:
             return
         self._set_worksheet('infinite_gpu')
         file = self._create_infinite_memory_script()
-        self._run_bundle([self._cl, 'upload', file.name()])
+        self._run_bundle([self._cl, 'upload', file.path()])
         for _ in range(self._args.infinite_gpu_runs_count):
             self._run_bundle(
                 [self._cl, 'run', ':' + file.name(), 'python ' + file.name(), '--request-gpus=1'],
