@@ -52,19 +52,22 @@ logger = logging.getLogger(__name__)
 
 # Only do profiling in dev and test environments
 # And sample a lower percentage of transactions.
+transaction_sample_rate = 0
+if os.getenv('CODALAB_SENTRY_TRANSACTION_RATE'):
+    transaction_sample_rate = os.getenv('CODALAB_SENTRY_TRANSACTION_RATE')
 if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
     sentry_sdk.init(
         dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
         environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
         integrations=[BottleIntegration()],
-        traces_sample_rate=0.01,
+        traces_sample_rate=transaction_sample_rate,
     )
 else:
     sentry_sdk.init(
         dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
         environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
         integrations=[BottleIntegration()],
-        traces_sample_rate=0.05,
+        traces_sample_rate=transaction_sample_rate,
         _experiments={"profiles_sample_rate": 1.0,},
     )
 
