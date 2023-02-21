@@ -264,7 +264,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         _, fname, _= self.create_file()
         self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
 
-        _, dirname = self.create_directory()
+        _, dirname, _ = self.create_directory()
         self.assertEqual(get_file_size(dirname), 249)
         self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
 
@@ -273,14 +273,14 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         self.assertEqual(read_file_section(fname, 2, 4), b"llo ")
         self.assertEqual(read_file_section(fname, 100, 4), b"")
 
-        _, dirname = self.create_directory()
+        _, dirname, _ = self.create_directory()
         self.assertEqual(read_file_section(f"{dirname}/README.md", 2, 4), b"llo ")
 
     def test_gzip_stream(self):
         _, fname, _ = self.create_file()
         self.assertEqual(un_gzip_stream(gzip_file(fname)).read(), b'hello world')
 
-        _, dirname = self.create_directory()
+        _, dirname, _ = self.create_directory()
         self.assertEqual(un_gzip_stream(gzip_file(f"{dirname}/README.md")).read(), b'hello world')
 
     def test_open_file(self):
@@ -294,7 +294,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         with OpenFile(fname) as f:
             self.assertEqual(f.read(), b"hello world")
 
-        _, dirname = self.create_directory()
+        _, dirname, _ = self.create_directory()
 
         # Read single file from directory (gzipped):
         with OpenFile(f"{dirname}/README.md", gzipped=True) as f:

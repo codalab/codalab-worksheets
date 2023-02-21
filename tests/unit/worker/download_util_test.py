@@ -104,8 +104,9 @@ class AzureBlobTestBase:
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
-
-        return bundle_uuid, bundle_path
+        
+        file_size = 420
+        return bundle_uuid, bundle_path, file_size
 
 
 class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
@@ -127,7 +128,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
 
     def test_nested_directories(self):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
-        bundle_uuid, bundle_path = self.create_directory()
+        bundle_uuid, bundle_path, file_size = self.create_directory()
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
@@ -210,7 +211,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
 
     def test_nested_directories_get_descendants_flat(self):
         """Test the compute_target_info_blob_descendants_flat function with nested directories."""
-        bundle_uuid, bundle_path = self.create_directory()
+        bundle_uuid, bundle_path, file_size = self.create_directory()
 
         # Entire directory
         results = compute_target_info_blob_descendants_flat(bundle_path)
