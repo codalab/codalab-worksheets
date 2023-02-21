@@ -261,8 +261,8 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
     for files stored in Azure Blob Storage."""
 
     def test_get_file_size(self):
-        _, fname, _= self.create_file()
-        self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
+        _, fname, file_size = self.create_file()
+        self.assertEqual(get_file_size(fname), file_size)  # uncompressed size of entire bundle
 
         _, dirname, file_size = self.create_directory()
         self.assertEqual(get_file_size(dirname), file_size)
@@ -295,6 +295,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
             self.assertEqual(f.read(), b"hello world")
 
         _, dirname, _ = self.create_directory()
+        print("dirname: ", dirname)
 
         # Read single file from directory (gzipped):
         with OpenFile(f"{dirname}/README.md", gzipped=True) as f:

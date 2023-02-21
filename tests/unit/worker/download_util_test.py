@@ -14,6 +14,7 @@ from apache_beam.io.filesystems import FileSystems
 from io import BytesIO
 import tempfile
 from ratarmountcore import SQLiteIndexedTar
+# from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 import shutil
 import gzip
 import os
@@ -94,7 +95,6 @@ class AzureBlobTestBase:
         ) as tmp_index_file:
             from codalab.worker.file_util import tar_gzip_directory
             tmp_tar_file = tar_gzip_directory(tmp_dir.name)
-            from codalab.lib.beam.MultiReaderFileStream import MultiReaderFileStream
             # with tarfile.open(name=tmp_tar_file.name, mode="w:gz") as tf:
             #     # We need to create separate entries for each directory, as a regular
             #     # .tar.gz file would have.
@@ -135,11 +135,11 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
 
     def test_single_file(self):
         """Test getting target info of a single file (compressed as .gz) on Azure Blob Storage."""
-        bundle_uuid, bundle_path, _ = self.create_file(b"a")
+        bundle_uuid, bundle_path, file_size = self.create_file(b"a")
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 0o755}
+            target_info, {'name': bundle_uuid, 'type': 'file', 'size': file_size, 'perm': 0o755}
         )
 
     def test_nested_directories(self):

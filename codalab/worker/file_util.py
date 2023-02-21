@@ -281,6 +281,7 @@ class OpenFile(object):
                     else "/contents"
                 )
                 finfo = cast(FileInfo, tf.getFileInfo(fpath))
+                print("Finfo in file_util: ", finfo)
                 if finfo is None:
                     raise FileNotFoundError(fpath)
                 if isdir(finfo):
@@ -292,9 +293,16 @@ class OpenFile(object):
                     # Stream a single file from within the archive
                     # filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
                     # finfo.size = filesystem.size(linked_bundle_path.bundle_path)
-                    logging.info(f"[Should Not be here, File size is: {finfo.size}")
-                    fs = TarFileStream(tf, finfo)
-                    return GzipStream(fs) if self.gzipped else fs
+                    
+                    if not linked_bundle_path.is_archive_dir:
+                        fs = FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
+                        return UnGzipStream(fs) if not self.gzipped else fs
+                    else:  
+                        # # TarFileStream MUST need the original size of the file
+                        # logging.info(f"[Should Not be here, File size is: {finfo.size}")
+                        fs = TarFileStream(tf, finfo)
+                        return GzipStream(fs) if self.gzipped else fs 
+
         else:
             # Stream a directory or file from disk storage.
             if os.path.isdir(self.path):
@@ -424,13 +432,15 @@ def get_file_size(file_path):
         # If no archive subpath is specified for a .tar.gz or .gz file, get the uncompressed size of the entire file,
         # or the compressed size of the entire directory.
         if not linked_bundle_path.archive_subpath:
-            if linked_bundle_path.is_archive_dir:
+            if not linked_bundle_path.is_archive_dir:
                 filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
                 return filesystem.size(linked_bundle_path.bundle_path)
             else:
+                #TODO: check how to get file size for a folder
                 with OpenFile(linked_bundle_path.bundle_path, 'rb', gzipped=False) as fileobj:
                     fileobj.seek(0, os.SEEK_END)
                     return fileobj.tell()
+
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
@@ -453,11 +463,18 @@ def read_file_section(file_path, offset, length):
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
-    if offset >= get_file_size(file_path):
-        return b''
+    print("file_path: ", file_path)
+    
+    if not parse_linked_bundle_url(file_path).uses_beam:
+        if offset >= get_file_size(file_path):
+            return b''
     with OpenFile(file_path, 'rb') as fileobj:
-        fileobj.seek(offset, os.SEEK_SET)
-        return fileobj.read(length)
+        if fileobj.seekable:
+            fileobj.seek(offset, os.SEEK_SET)
+            return fileobj.read(length)
+        else:  # the file might not be seekable, just stream the file to read 
+            fileobj.read(offset)
+            return fileobj.read(length)
 
 
 def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text):

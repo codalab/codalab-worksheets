@@ -121,7 +121,9 @@ class DownloadManager(object):
                 target.bundle_uuid
             )
             try:
-                return download_util.get_target_info(bundle_path, target, depth)
+                info = download_util.get_target_info(bundle_path, target, depth)
+                print("[HERE] IN THIS BRANCH , ", info)
+                return info
             except download_util.PathException as err:
                 raise NotFoundError(str(err))
         else:
@@ -242,6 +244,7 @@ class DownloadManager(object):
                 bytestring = self.file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
+            print("Hereherehere")
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']
