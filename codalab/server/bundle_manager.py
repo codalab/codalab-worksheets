@@ -321,6 +321,8 @@ class BundleManager(object):
                         for dependency_path, child_path in deps:
                             path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
+            # update the bundle location since we already change is_dir field
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
