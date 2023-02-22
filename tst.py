@@ -163,19 +163,20 @@ def upload(
             print(info)  # here info is none
 
 
-file_path = 'dir1'
+# file_path = 'dir1'
 # upload(file_path, is_dir=True)
 
 # import gzip
 
-# file_path = 'requirements.txt'
-file_path = 'test_10g'
+file_path = 'requirements.txt'
+# file_path = 'test_1.5g'
 
 def test_indexed_gzip(file_path):
     """
     A simple test function only envolve SQLiteIndexedTar
     """
     source_fileobj = open(file_path, 'rb')
+
     # # build_full_index() at line 1447 (in SQLiteIndexedTar.py) does not work for GzipStream()
     # output_fileobj = GzipStream(BytesIO(source_fileobj.read()))
     output_fileobj = GzipStream(source_fileobj)
@@ -192,15 +193,36 @@ def test_indexed_gzip(file_path):
     # output_fileobj.seek = new_seek
     # output_fileobj.tell = new_tell
 
-    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-        SQLiteIndexedTar(
-            fileObject=output_fileobj,
-            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-            writeIndex=True,
-            clearIndexCache=True,
-            indexFilePath=tmp_index_file.name,
-            printDebug=3,
-        )
+
+    ## Test reading large file.
+
+    source = open(file_path, 'rb')
+    source.seek(0, os.SEEK_END)
+    file_size =  source.tell()
+    print("original file size is: ", file_size)
+    source.close()
+
+    tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
+
+    while 1:  
+        data = tar_file.read()
+        if(len(data) == 0):
+            print(tar_file.fileobj().tell())
+            break
+        else:
+            print(tar_file.fileobj().tell())
+            
+    assert tar_file.tell() == file_size
+
+    # with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+    #     SQLiteIndexedTar(
+    #         fileObject=output_fileobj,
+    #         tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+    #         writeIndex=True,
+    #         clearIndexCache=True,
+    #         indexFilePath=tmp_index_file.name,
+    #         printDebug=3,
+    #     )
 
 test_indexed_gzip(file_path)  # filepath points to a large file.
 

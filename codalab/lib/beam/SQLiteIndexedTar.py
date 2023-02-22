@@ -270,7 +270,6 @@ class SQLiteIndexedTar(MountSource):
                     + str(possibleIndexFilePaths)
                 )
 
-        # print("here: ", self.tarFileObject.tell())
         self._createIndex(self.tarFileObject)
         self._loadOrStoreCompressionOffsets()  # store
         if self.sqlConnection:
@@ -561,12 +560,11 @@ class SQLiteIndexedTar(MountSource):
             elif hasattr(fileobj, 'tell_compressed'):
                 progressBar.update(fileobj.tell_compressed())
             elif hasattr(fileobj, 'fileobj'):
-                print("branch 3 in _updateProgressBar")
+                print("IN this branch 3")
                 progressBar.update(fileobj.fileobj().tell())
             elif self.rawFileObject and hasattr(self.rawFileObject, 'tell'):
                 progressBar.update(self.rawFileObject.tell())
             else:
-                print("branch 5 in _updateProgressBar")
                 progressBar.update(fileobj.tell())
         except Exception:
             pass
@@ -762,14 +760,13 @@ class SQLiteIndexedTar(MountSource):
             # io.SEEK_END even though it could as it has the index ...
            
             
-            
-            # Jiani: This branch will only be used when uploading a single file
-            fileObject.build_full_index()
-            # data = fileObject.read(1024 * 1024)
-            # while len(data) > 0:
-            #     print("In read loop, data size: ", len(data))
-            #     self._updateProgressBar(progressBar, fileObject)
-            #     data = fileObject.read(1024 * 1024)
+            # Jiani: This branch will only be used when uploading a single file (not a directory)
+            # Jiani: We can not read throught the whole file because read throught large files are buggy ()
+            # fileObject.build_full_index()
+            print(type(fileObject), fileObject.fileobj().tell())
+            while len(fileObject.read(1024 * 1024)) > 0:
+                print("In read loop, data size: ", fileObject.fileobj().tell())
+                # self._updateProgressBar(progressBar, fileObject)
             
             # Jiani: Since build_full_index() does not read 
             fileSize = fileObject.tell()
