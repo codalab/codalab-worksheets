@@ -2,6 +2,7 @@
 import logging
 import argparse
 import os
+import tarfile
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import (
     StorageType,
@@ -19,6 +20,10 @@ from codalab.worker.download_util import BundleTarget
 from codalab.server.bundle_manager import BundleManager
 from codalab.lib.upload_manager import BlobStorageUploader
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.worker.file_util import (
+    OpenFile,
+    read_file_section,
+)
 
 
 # Steps:
@@ -93,7 +98,7 @@ class Migration:
 
         return info
 
-    def upload_to_Azure(self, bundle_uuid, bundle_location, is_dir=False):
+    def upload_to_azure_blob(self, bundle_uuid, bundle_location, is_dir=False):
         # generate target bundle path
         file_name = "contents.tar.gz" if is_dir else "contents.gz"
         target_location = f"{self.target_store_url}/{bundle_uuid}/{file_name}"
@@ -151,10 +156,41 @@ class Migration:
             },
         )
 
+    def sanity_check(self, bundle_uuid, bundle_location, bundle_info, is_dir):
+        new_location = self.get_bundle_location(bundle_uuid)
+        if is_dir:
+            # For dirs, check the folder contains same files
+            with OpenFile(new_location, gzipped=True) as f:
+                new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
+                new_file_list.sort()
+
+            (files, dirs) = path_util.recursive_ls(bundle_location)
+            old_file_list = files + dirs
+            old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
+            old_file_list.sort()
+
+            assert old_file_list == new_file_list
+        else:
+            # For files, check the file has same contents
+            old_content = read_file_section(bundle_location, 5, 10)
+            new_content = read_file_section(new_location, 5, 10)
+            assert old_content == new_content
+
     def delete_origin_bundle(self, bundle_uuid, bundle_location):
         # Delete data from orginal bundle store
         if os.path.exists(bundle_location):
+            deleted_size = path_util.get_path_size(bundle_location)
+            bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
+                bundle_uuid
+            ]
             path_util.remove(bundle_location)
+            # update user's disk usage: reduce original bundle size
+            user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
+            assert user_info['disk_used'] >= deleted_size
+            new_disk_used = user_info['disk_used'] - deleted_size
+            self.bundle_manager._model.update_user_info(
+                {'user_id': bundle_user_id, 'disk_used': new_disk_used}
+            )
 
 
 if __name__ == '__main__':
@@ -211,6 +247,7 @@ if __name__ == '__main__':
         bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
 
         is_dir = bundle_info['type'] == 'directory'
-        migration.upload_to_Azure(bundle_uuid, bundle_location, is_dir)
+        migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
         migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
+        migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
         migration.delete_origin_bundle(bundle_uuid, bundle_location)
