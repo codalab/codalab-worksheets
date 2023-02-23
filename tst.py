@@ -20,6 +20,7 @@ from codalab.worker.un_gzip_stream import BytesBuffer
 
 import indexed_gzip
 from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
+from ratarmountcore import FileInfo
 
 
 class FileStream(BytesIO):
@@ -196,33 +197,46 @@ def test_indexed_gzip(file_path):
 
     ## Test reading large file.
 
-    source = open(file_path, 'rb')
-    source.seek(0, os.SEEK_END)
-    file_size =  source.tell()
-    print("original file size is: ", file_size)
-    source.close()
+    # source = open(file_path, 'rb')
+    # source.seek(0, os.SEEK_END)
+    # file_size =  source.tell()
+    # print("original file size is: ", file_size)
+    # source.close()
 
-    tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
+    # tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
 
-    while 1:  
-        data = tar_file.read()
-        if(len(data) == 0):
-            print(tar_file.fileobj().tell())
-            break
-        else:
-            print(tar_file.fileobj().tell())
+    # while 1:  
+    #     data = tar_file.read()
+    #     if(len(data) == 0):
+    #         print(tar_file.fileobj().tell())
+    #         break
+    #     else:
+    #         print(tar_file.fileobj().tell())
             
-    assert tar_file.tell() == file_size
+    # assert tar_file.tell() == file_size
 
-    # with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-    #     SQLiteIndexedTar(
-    #         fileObject=output_fileobj,
-    #         tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
-    #         writeIndex=True,
-    #         clearIndexCache=True,
-    #         indexFilePath=tmp_index_file.name,
-    #         printDebug=3,
-    #     )
+    with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+        tf = SQLiteIndexedTar(
+            fileObject=output_fileobj,
+            tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+            writeIndex=True,
+            clearIndexCache=True,
+            indexFilePath=tmp_index_file.name,
+            printDebug=3,
+        )
+        print("File obj.tell() : ", output_fileobj.fileobj().tell())
+        
+        finfo = tf._getFileInfoRow('/contents')
+        finfo = dict(finfo)
+        print(finfo)  # get the result of a fi
+        finfo['size'] = output_fileobj.fileobj().tell()
+        new_info = tuple([value for _, value in finfo.items()])
+        print(new_info)
+        
+        
+        tf._setFileInfo(new_info)
+        print("New info: ", tf.getFileInfo('/contents'))  # get the result of a fi
+
 
 test_indexed_gzip(file_path)  # filepath points to a large file.
 

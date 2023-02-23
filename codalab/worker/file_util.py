@@ -362,6 +362,9 @@ class GzipStream(BytesIO):
     def tell(self):
         print("In GzipStream, tell() is called")
         return self.__size
+    
+    def fileobj(self):
+        return self.__input
 
 
 def gzip_file(file_path: str) -> IO[bytes]:

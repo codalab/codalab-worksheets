@@ -318,6 +318,8 @@ class BlobStorageUploader(Uploader):
                         #     should_resume = progress_callback(bytes_uploaded)
                         #     if not should_resume:
                         #         raise Exception('Upload aborted by client')
+                
+                # create an API to update the indexed file size
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 

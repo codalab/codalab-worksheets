@@ -533,7 +533,7 @@ class SQLiteIndexedTar(MountSource):
             return
 
         self.sqlConnection.close()
-        self.sqlConnection = SQLiteIndexedTar._openSqlDb(f"file:{self.indexFilePath}?mode=ro", uri=True)
+        self.sqlConnection = SQLiteIndexedTar._openSqlDb(f"file:{self.indexFilePath}?mode=rw", uri=True)
 
     @staticmethod
     def _tarInfoFullMode(tarInfo: tarfile.TarInfo) -> int:
@@ -762,15 +762,16 @@ class SQLiteIndexedTar(MountSource):
             
             # Jiani: This branch will only be used when uploading a single file (not a directory)
             # Jiani: We can not read throught the whole file because read throught large files are buggy ()
-            # fileObject.build_full_index()
-            print(type(fileObject), fileObject.fileobj().tell())
-            while len(fileObject.read(1024 * 1024)) > 0:
-                print("In read loop, data size: ", fileObject.fileobj().tell())
-                # self._updateProgressBar(progressBar, fileObject)
+            fileObject.build_full_index()
+            # print(type(fileObject), fileObject.fileobj().tell())
+            # while len(fileObject.read(1024 * 1024)) > 0:
+            #     print("In read loop, data size: ", fileObject.fileobj().tell())
+            #     # self._updateProgressBar(progressBar, fileObject)
             
-            # Jiani: Since build_full_index() does not read 
+            # # Jiani: Since build_full_index() does not read 
             fileSize = fileObject.tell()
             print(f"New File size is : {fileSize}")
+            print(f"New File size is : {fileObject.fileobj().tell()}")
             # fileSize = 0
 
             # fmt: off
@@ -942,6 +943,64 @@ class SQLiteIndexedTar(MountSource):
             (path, name, 0 if fileVersion is None else fileVersion - 1 if fileVersion > 0 else -fileVersion),
         ).fetchone()
         return self._rowToFileInfo(row) if row else None
+    
+    def _getFileInfoRow(
+        self,
+        # fmt: off
+        fullPath     : str,
+        listDir      : bool = False,
+        listVersions : bool = False,
+        fileVersion  : int  = 0
+        # fmt: on
+    ) -> Optional[Union[FileInfo, Dict[str, FileInfo]]]:
+        """
+        This file returns a fileInfo as database rows.
+        """
+        # TODO cache last listDir as most often a stat over all entries will soon follow
+
+        if not isinstance(fileVersion, int):
+            raise TypeError("The specified file version must be an integer!")
+        if not self.sqlConnection:
+            raise IndexNotOpenError("This method can not be called without an opened index database!")
+
+        # also strips trailing '/' except for a single '/' and leading '/'
+        fullPath = '/' + os.path.normpath(fullPath).lstrip('/')
+
+        if listVersions:
+            path, name = fullPath.rsplit('/', 1)
+            rows = self.sqlConnection.execute(
+                'SELECT * FROM "files" WHERE "path" == (?) AND "name" == (?) ORDER BY "offsetheader" ASC', (path, name)
+            )
+            result = {str(version + 1): self._rowToFileInfo(row) for version, row in enumerate(rows)}
+            return result
+
+        if listDir:
+            # For listing directory entries the file version can't be applied meaningfully at this abstraction layer.
+            # E.g., should it affect the file version of the directory to list, or should it work on the listed files
+            # instead and if so how exactly if there aren't the same versions for all files available, ...?
+            # Or, are folders assumed to be overwritten by a new folder entry in a TAR or should they be union mounted?
+            # If they should be union mounted, like is the case now, then the folder version only makes sense for
+            # its attributes.
+            rows = self.sqlConnection.execute('SELECT * FROM "files" WHERE "path" == (?)', (fullPath.rstrip('/'),))
+            directory = {}
+            gotResults = False
+            for row in rows:
+                gotResults = True
+                if row['name']:
+                    directory[row['name']] = self._rowToFileInfo(row)
+            return directory if gotResults else None
+
+        path, name = fullPath.rsplit('/', 1)
+        row = self.sqlConnection.execute(
+            f"""
+            SELECT * FROM "files"
+            WHERE "path" == (?) AND "name" == (?)
+            ORDER BY "offsetheader" {'DESC' if fileVersion is None or fileVersion <= 0 else 'ASC'}
+            LIMIT 1 OFFSET (?);
+            """,
+            (path, name, 0 if fileVersion is None else fileVersion - 1 if fileVersion > 0 else -fileVersion),
+        ).fetchone()
+        return row
 
     def isDir(self, path: str) -> bool:
         """Return true if path exists and is a folder."""
