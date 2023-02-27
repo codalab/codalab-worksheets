@@ -244,7 +244,7 @@ class BlobStorageUploader(Uploader):
         try:
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
-            ITERATIONS_PER_DISK_CHECK = 100
+            ITERATIONS_PER_DISK_CHECK = 5000
             iteration = 0
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
