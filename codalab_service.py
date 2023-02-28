@@ -296,7 +296,14 @@ CODALAB_ARGUMENTS = [
     CodalabArg(
         name='sentry_transaction_rate',
         help=(
-            'Percentage of transactions we want to have Sentry sample and profile. Only used if sentry_ingest_url and sentry_environment are provided.'
+            'Percentage of transactions we want to have Sentry sample. Only used if sentry_ingest_url and sentry_environment are provided.'
+        ),
+        default=0,
+    ),
+    CodalabArg(
+        name='sentry_profiles_rate',
+        help=(
+            'Percentage of transactions we want to have Sentry profile. Only used if sentry_ingest_url and sentry_environment are provided.'
         ),
         default=0,
     ),
