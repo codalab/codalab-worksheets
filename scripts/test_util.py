@@ -182,6 +182,7 @@ def cleanup(cl, tag, should_wait=True):
             worksheets_removed += 1
     print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
 
+
 class timer:
     """
     Class that uses signal to interrupt functions while they're running
@@ -208,8 +209,8 @@ class timer:
         if self.uuid:
             timeout_message += " while waiting for %s to run" % self.uuid
         raise TimeoutError(timeout_message)
-    
-    def time_elapsed():
+
+    def time_elapsed(self):
         return time.time() - self.start_time
 
     def __enter__(self):

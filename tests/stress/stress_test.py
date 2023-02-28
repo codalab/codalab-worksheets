@@ -13,9 +13,11 @@ from threading import Thread
 
 from scripts.test_util import cleanup, run_command, timer
 
+
 def temp_path(file_name):
     root = '/tmp'
     return os.path.join(root, file_name)
+
 
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
@@ -121,7 +123,7 @@ class StressTestRunner:
         # Connect to the instance the stress tests will run on
         print('Connecting to instance %s...' % args.instance)
         subprocess.call([self._cl, 'work', '%s::' % args.instance])
-    
+
     def time_function(self, fn):
         t = timer(handle_timeouts=False)
         with t:
@@ -129,7 +131,7 @@ class StressTestRunner:
             self.cleanup()
         print(f'{fn.__name__} finished in {t.time_elapsed}')
         self._runs[fn.__name__].append(t.time_elapsed)
-    
+
     def test_function(self, fn):
         try:
             self.time_function(fn)
@@ -156,7 +158,7 @@ class StressTestRunner:
             self._test_infinite_memory,
             self._test_infinite_gpu,
             self._test_infinite_disk,
-            self._test_many_disk_writes
+            self._test_many_disk_writes,
         ]
 
         for fn in functions:
