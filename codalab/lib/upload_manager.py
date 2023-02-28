@@ -319,7 +319,11 @@ class BlobStorageUploader(Uploader):
                         #     if not should_resume:
                         #         raise Exception('Upload aborted by client')
                 
-                # create an API to update the indexed file size
+                # call API to update the indexed file size
+                self._client.update(
+                    'bundles/%s/contents/filesize/' % bundle_uuid,
+                    {'filesize': output_fileobj.fileobj().tell()},
+                )
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
