@@ -22,6 +22,7 @@ sentry_sdk.init(
     _experiments={"profiles_sample_rate": profiles_sample_rate,},
 )
 
+
 class WorkerMonitoring(object):
     def __init__(self):
         # Each Hub can only have one open transaction at one time.
