@@ -147,8 +147,8 @@ class StressTestRunner:
         self._start_heartbeat()
 
         functions = [
-            # self._test_large_bundle_upload,
-            # self._test_large_bundle_result,
+            self._test_large_bundle_upload,
+            self._test_large_bundle_result,
             self._test_many_gpu_runs,
             self._test_multiple_cpus_runs_count,
             self._test_many_bundle_uploads,

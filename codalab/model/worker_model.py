@@ -407,8 +407,8 @@ class WorkerModel(object):
                         success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                     else:
                         success = True
-                except socket.error:
-                    logging.error("socket error when calling send_json_message")
+                except socket.error as e:
+                    logging.error(f"socket error when calling send_json_message: {e}")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -430,7 +430,7 @@ class WorkerModel(object):
 
                 sock.sendall(json.dumps(message).encode())
                 return True
-        logging.error("Socket message timeout.")
+        logging.info("Socket message timeout.")
         return False
 
     def has_reply_permission(self, user_id, worker_id, socket_id):
