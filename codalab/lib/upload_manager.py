@@ -371,7 +371,7 @@ class UploadManager(object):
         )
         bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
         removed = self._bundle_store.cleanup(bundle_location, dry_run=False)
-        bundle_update = {'data_hash': None, 'metadata': {'data_size': 0}}
+        bundle_update = {'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
         if removed:
             self._bundle_model.increment_user_disk_used(bundle.owner_id, -data_size)

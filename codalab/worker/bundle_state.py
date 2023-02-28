@@ -65,7 +65,6 @@ class BundleInfo(object):
         bundle_type,  # type: str
         owner_id,  # type: str
         command,  # type: str
-        data_hash,  # type: str
         state,  # type: State
         frozen,  # type: Optional[str]
         is_anonymous,  # type: bool
@@ -78,7 +77,6 @@ class BundleInfo(object):
         self.bundle_type = bundle_type
         self.owner_id = owner_id
         self.command = command
-        self.data_hash = data_hash
         self.state = state
         self.frozen = frozen
         self.is_anonymous = is_anonymous
@@ -114,7 +112,6 @@ class BundleInfo(object):
             bundle_type=dct["bundle_type"],
             owner_id=dct["owner_id"],
             command=dct["command"],
-            data_hash=dct["data_hash"],
             state=dct["state"],
             frozen=dct.get("frozen"),
             is_anonymous=dct["is_anonymous"],
