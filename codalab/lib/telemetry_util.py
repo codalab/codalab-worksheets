@@ -31,22 +31,22 @@ def initialize_sentry():
     if sentry_sdk.Hub.current.client is None:
         # Only do profiling in dev and test environments.
         # And sample a higher percentage of transactions in dev environment.
-        transaction_sample_rate = 0
-        if os.getenv('CODALAB_SENTRY_TRANSACTION_RATE'):
-            transaction_sample_rate = os.getenv('CODALAB_SENTRY_TRANSACTION_RATE')
-        if CODALAB_SENTRY_ENVIRONMENT == 'prod':
+        transaction_sample_rate = float(os.getenv('CODALAB_SENTRY_TRANSACTION_RATE', 0))
+        if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
             sentry_sdk.init(
-                dsn=CODALAB_SENTRY_INGEST,
-                environment=CODALAB_SENTRY_ENVIRONMENT,
+                dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+                environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
                 traces_sample_rate=transaction_sample_rate,
             )
-        else:
+        elif os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'dev' or os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'test':
             sentry_sdk.init(
-                dsn=CODALAB_SENTRY_INGEST,
-                environment=CODALAB_SENTRY_ENVIRONMENT,
-                traces_sample_rate=0.05,
-                _experiments={"profiles_sample_rate": transaction_sample_rate,},
+                dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+                environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+                traces_sample_rate=transaction_sample_rate,
+                _experiments={"profiles_sample_rate": 1.0,},
             )
+        logger.info(f"\n1093840184192384-02384-0184-01984-019283-04810-23984. TRANSACTION SAMPLING RATE: {transaction_sample_rate}")
+
         print_sentry_warning()
 
 

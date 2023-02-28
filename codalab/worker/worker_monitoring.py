@@ -9,17 +9,24 @@ from .worker_run_state import RunState
 
 logger = logging.getLogger(__name__)
 
-transaction_sample_rate = 0
-if os.getenv('CODALAB_SENTRY_TRANSACTION_RATE'):
-    transaction_sample_rate = os.getenv('CODALAB_SENTRY_TRANSACTION_RATE')
-sentry_sdk.init(
-    dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
-    environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
-    traces_sample_rate=transaction_sample_rate,
-    _experiments={"profiles_sample_rate":1.0,},
-    debug=True,
-)
-
+# Only do profiling in dev and test environments
+# And sample a lower percentage of transactions.
+transaction_sample_rate = float(os.getenv('CODALAB_SENTRY_TRANSACTION_RATE', 0))
+assert 0 <= transaction_sample_rate <= 1
+if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
+    sentry_sdk.init(
+        dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+        environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+        traces_sample_rate=transaction_sample_rate,
+    )
+elif os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'dev' or os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'test':
+    sentry_sdk.init(
+        dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+        environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+        debug=True,
+        traces_sample_rate=transaction_sample_rate,
+        _experiments={"profiles_sample_rate": 1.0,},
+    )
 
 class WorkerMonitoring(object):
     def __init__(self):
