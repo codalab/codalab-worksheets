@@ -408,7 +408,7 @@ class WorkerModel(object):
                     else:
                         success = True
                 except socket.error:
-                    logging.debug("socket error when calling send_json_message")
+                    logging.error("socket error when calling send_json_message")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -430,7 +430,7 @@ class WorkerModel(object):
 
                 sock.sendall(json.dumps(message).encode())
                 return True
-
+        logging.error("Socket message timeout.")
         return False
 
     def has_reply_permission(self, user_id, worker_id, socket_id):
