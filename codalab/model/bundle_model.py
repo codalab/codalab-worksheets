@@ -213,7 +213,7 @@ class BundleModel(object):
         """
         return self.get_bundle_metadata(uuids, "name")
 
-    def get_bundle_metadata(self, uuids, metadata_key):
+    def get_bundle_metadata(self, uuids, metadata_key, with_for_update=False):
         """
         Fetch a single metadata value from the bundles referenced
         by the given uuids.
@@ -222,16 +222,17 @@ class BundleModel(object):
         if len(uuids) == 0:
             return []
         with self.engine.begin() as connection:
-            rows = connection.execute(
-                select(
+            query = select(
                     [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
                 ).where(
                     and_(
                         cl_bundle_metadata.c.metadata_key == metadata_key,
                         cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                     )
-                )
-            ).fetchall()
+            )
+            if with_for_update:
+                query = query.with_for_update()
+            rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
     def get_owner_ids(self, table, uuids):
