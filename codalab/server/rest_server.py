@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 # Only do profiling in dev and test environments
 # And sample a lower percentage of transactions.
-transaction_sample_rate = float(os.getenv('CODALAB_SENTRY_TRANSACTION_RATE', 0))
+transaction_sample_rate = float(os.getenv('CODALAB_SENTRY_TRANSACTION_RATE') or 0)
 assert 0 <= transaction_sample_rate <= 1
 if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
     sentry_sdk.init(
@@ -61,17 +61,18 @@ if os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'prod':
         integrations=[BottleIntegration()],
         traces_sample_rate=transaction_sample_rate,
     )
-elif os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'dev' or os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'test':
+elif (
+    os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'dev'
+    or os.getenv('CODALAB_SENTRY_ENVIRONMENT') == 'test'
+):
     sentry_sdk.init(
         dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
         environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
         integrations=[BottleIntegration()],
-        debug=True,
         traces_sample_rate=transaction_sample_rate,
         _experiments={"profiles_sample_rate": 1.0,},
     )
 
-logger.info(f"\n1093840184192384-02384-0184-01984-019283-04810-23984. TRANSACTION SAMPLING RATE: {transaction_sample_rate}")
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""

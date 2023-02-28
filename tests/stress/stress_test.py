@@ -11,11 +11,11 @@ from threading import Thread
 
 from scripts.test_util import cleanup, run_command
 
-import os
 
 def temp_path(file_name):
     root = '/tmp'
     return os.path.join(root, file_name)
+
 
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
@@ -63,7 +63,7 @@ class TestFile:
 
     def name(self):
         return self._file_name
-    
+
     def path(self):
         return self._file_path
 

@@ -9,8 +9,6 @@ import time
 from io import BytesIO
 from http.client import HTTPResponse
 
-import sentry_sdk
-
 from bottle import abort, get, post, put, delete, local, redirect, request, response
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.uploaded_bundle import UploadedBundle
