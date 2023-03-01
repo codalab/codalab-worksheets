@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
-import ArrowBack from '@material-ui/icons/ArrowBack';
 import RunIcon from '@material-ui/icons/PlayCircleOutline';
 import UploadIcon from '@material-ui/icons/CloudUploadOutlined';
 import AddIcon from '@material-ui/icons/AddBoxOutlined';
@@ -64,15 +63,6 @@ class ActionButtons extends React.Component<{
                     ev.stopPropagation();
                 }}
             >
-                <Button
-                    size='small'
-                    color='inherit'
-                    aria-label='Go back to previous view.'
-                    onClick={onBackButtonClick}
-                >
-                    <ArrowBack className={classes.buttonIcon} />
-                    Back
-                </Button>
                 {!showBundleOperationButtons ? (
                     <Button
                         size='small'
