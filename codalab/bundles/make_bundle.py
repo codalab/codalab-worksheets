@@ -22,9 +22,5 @@ class MakeBundle(DerivedBundle):
     )
 
     @classmethod
-    def construct(
-        cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED
-    ):
-        return super(MakeBundle, cls).construct(
-            targets, command, metadata, owner_id, uuid, data_hash, state
-        )
+    def construct(cls, targets, command, metadata, owner_id, uuid=None, state=State.CREATED):
+        return super(MakeBundle, cls).construct(targets, command, metadata, owner_id, uuid, state)
