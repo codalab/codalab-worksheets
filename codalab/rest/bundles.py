@@ -916,6 +916,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Disposition: inline; filename=<bundle name or target filename>`
     - `Content-Type: <guess of mimetype based on file extension>`
     - `Content-Encoding: [gzip|identity]`
+    - `Access-Control-Allow-Origin: *`
     - `Target-Type: file`
     - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -923,6 +924,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
     - `Content-Type: application/gzip`
     - `Content-Encoding: identity`
+    - `Access-Control-Allow-Origin: *`
     - `Target-Type: directory`
     - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -1038,6 +1040,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         response.set_header('Content-Disposition', 'inline; filename="%s"' % filename)
     else:
         response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
+    response.set_header('Access-Control-Allow-Origin', '*')
     response.set_header('Target-Type', target_info['type'])
     if target_info['type'] == 'file':
         size = target_info['size']
@@ -1316,11 +1319,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
     # Delete the actual bundle
     if not dry_run:
-        if data_only:
-            # Just remove references to the data hashes
-            local.model.remove_data_hash_references(relevant_uuids)
-        else:
-            # Actually delete the bundle
+        if not data_only:
+            # Delete bundle metadata.
             local.model.delete_bundles(relevant_uuids)
 
     # Delete the data.
