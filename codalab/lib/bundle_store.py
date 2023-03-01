@@ -235,7 +235,7 @@ class _MultiDiskBundleStoreBase(BundleStore):
             return False
         return path_util.remove(bundle_location)
 
-    def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
+    def health_check(self, model, force=False):
         """
         MultiDiskBundleStore.health_check(): In the MultiDiskBundleStore, bundle contents are stored on disk, and
         occasionally the disk gets out of sync with the database, in which case we make repairs in the following ways:
@@ -247,8 +247,7 @@ class _MultiDiskBundleStoreBase(BundleStore):
             5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
                should not exist.
         |force|: Perform any destructive operations on the bundle store the health check determines are necessary. False by default
-        |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's consistent with what's in
-                             the database. False by default.
+
         """
         UUID_REGEX = re.compile(r'^(%s)' % spec_util.UUID_STR)
 
@@ -345,52 +344,11 @@ class _MultiDiskBundleStoreBase(BundleStore):
                 trash_count += 1
                 _delete_path(to_delete)
 
-            # Check for each bundle if we need to compute its data_hash
-            data_hash_recomputed = 0
-
-            print('Checking data_hash of bundles in partition %s...' % partition, file=sys.stderr)
-            for bundle_path in bundle_paths:
-                uuid = _get_uuid(bundle_path)
-                bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle is None:
-                    continue
-                if compute_data_hash or bundle.data_hash is None:
-                    dirs_and_files = (
-                        path_util.recursive_ls(bundle_path)
-                        if os.path.isdir(bundle_path)
-                        else ([], [bundle_path])
-                    )
-                    data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
-                    if bundle.data_hash is None:
-                        data_hash_recomputed += 1
-                        print(
-                            'Giving bundle %s data_hash %s' % (bundle_path, data_hash),
-                            file=sys.stderr,
-                        )
-                        if force:
-                            db_update = dict(data_hash=data_hash)
-                            model.update_bundle(bundle, db_update)
-                    elif compute_data_hash and data_hash != bundle.data_hash:
-                        data_hash_recomputed += 1
-                        print(
-                            'Bundle %s should have data_hash %s, actual digest is %s'
-                            % (bundle_path, bundle.data_hash, data_hash),
-                            file=sys.stderr,
-                        )
-                        if repair_hashes and force:
-                            db_update = dict(data_hash=data_hash)
-                            model.update_bundle(bundle, db_update)
-
         if force:
             print('\tDeleted %d objects from the bundle store' % trash_count, file=sys.stderr)
-            print('\tRecomputed data_hash for %d bundles' % data_hash_recomputed, file=sys.stderr)
         else:
             print('Dry-Run Statistics, re-run with --force to perform updates:', file=sys.stderr)
             print('\tObjects marked for deletion: %d' % trash_count, file=sys.stderr)
-            print(
-                '\tBundles that need data_hash recompute: %d' % data_hash_recomputed,
-                file=sys.stderr,
-            )
 
 
 BundleLocation = TypedDict(
