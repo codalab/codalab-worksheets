@@ -7,7 +7,7 @@ import { withStyles } from '@material-ui/core';
 import { apiWrapper } from '../../util/apiWrapper';
 
 const TERMINAL_MINIMIZE_HEIGHT = 30;
-let TERMINAL_DRAGHEIGHT = 350;
+const TERMINAL_DRAGHEIGHT = 350;
 class WorksheetTerminal extends React.Component {
     /** Constructor. */
 
