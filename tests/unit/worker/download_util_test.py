@@ -14,10 +14,8 @@ from apache_beam.io.filesystems import FileSystems
 from io import BytesIO
 import tempfile
 from ratarmountcore import SQLiteIndexedTar
-# from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 import shutil
 import gzip
-import os
 
 
 class AzureBlobTestBase:
@@ -54,10 +52,7 @@ class AzureBlobTestBase:
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
-        
-        filesystem = FileSystems.get_filesystem(bundle_path)
-        file_size = filesystem.size(bundle_path)
-        return bundle_uuid, bundle_path, file_size
+        return bundle_uuid, bundle_path
 
     def create_directory(self):
         """Creates a directory (stored as a .tar.gz with an index.sqlite index file) and returns its path."""
@@ -68,61 +63,46 @@ class AzureBlobTestBase:
             tinfo = tarfile.TarInfo(name)
             tinfo.size = len(contents)
             tf.addfile(tinfo, BytesIO(contents.encode()))
-        
-        def writefile(tmp_dir, name, contents):
-            with open(os.path.join(tmp_dir, name), 'wb') as fp:
-                fp.write(contents)
 
         def writedir(tf, name):
             tinfo = tarfile.TarInfo(name)
             tinfo.type = tarfile.DIRTYPE
             tf.addfile(tinfo, BytesIO())
 
-        tmp_dir = tempfile.TemporaryDirectory()
-        writefile(tmp_dir.name, "README.md", b"hello world")
-        os.mkdir(os.path.join(tmp_dir.name, "src"))
-        writefile(tmp_dir.name, "src/test.sh", b"echo hi")
-        os.mkdir(os.path.join(tmp_dir.name, "dist"))
-        os.mkdir(os.path.join(tmp_dir.name, "dist/a"))
-        os.mkdir(os.path.join(tmp_dir.name, "dist/a/b"))
-        writefile(tmp_dir.name, "dist/a/b/test2.sh", b"echo two")
-
         # TODO: Unify this code with code in UploadManager.upload_to_bundle_store().
         with FileSystems.create(
             bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
         ) as out, tempfile.NamedTemporaryFile(
+            suffix=".tar.gz"
+        ) as tmp_tar_file, tempfile.NamedTemporaryFile(
             suffix=".sqlite"
         ) as tmp_index_file:
-            from codalab.worker.file_util import tar_gzip_directory
-            tmp_tar_file = tar_gzip_directory(tmp_dir.name)
-            # with tarfile.open(name=tmp_tar_file.name, mode="w:gz") as tf:
-            #     # We need to create separate entries for each directory, as a regular
-            #     # .tar.gz file would have.
-            #     writestr(tf, "./README.md", "hello world")
-            #     writedir(tf, "./src")
-            #     writestr(tf, "./src/test.sh", "echo hi")
-            #     writedir(tf, "./dist")
-            #     writedir(tf, "./dist/a")
-            #     writedir(tf, "./dist/a/b")
-            #     writestr(tf, "./dist/a/b/test2.sh", "echo two")
+            with tarfile.open(name=tmp_tar_file.name, mode="w:gz") as tf:
+                # We need to create separate entries for each directory, as a regular
+                # .tar.gz file would have.
+                writestr(tf, "./README.md", "hello world")
+                writedir(tf, "./src")
+                writestr(tf, "./src/test.sh", "echo hi")
+                writedir(tf, "./dist")
+                writedir(tf, "./dist/a")
+                writedir(tf, "./dist/a/b")
+                writestr(tf, "./dist/a/b/test2.sh", "echo two")
             shutil.copyfileobj(tmp_tar_file, out)
-        with FileSystems.open(bundle_path, compression_type=CompressionTypes.UNCOMPRESSED) as ttf:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
+            with open(tmp_tar_file.name, "rb") as ttf:
+                SQLiteIndexedTar(
+                    fileObject=ttf,
+                    tarFileName="contents",
+                    writeIndex=True,
+                    clearIndexCache=True,
+                    indexFilePath=tmp_index_file.name,
+                )
             with FileSystems.create(
                 parse_linked_bundle_url(bundle_path).index_path,
                 compression_type=CompressionTypes.UNCOMPRESSED,
             ) as out_index_file, open(tmp_index_file.name, "rb") as tif:
                 shutil.copyfileobj(tif, out_index_file)
-        
-        filesystem = FileSystems.get_filesystem(bundle_path)
-        file_size = filesystem.size(bundle_path)
-        return bundle_uuid, bundle_path, file_size
+
+        return bundle_uuid, bundle_path
 
 
 class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
@@ -135,50 +115,36 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
 
     def test_single_file(self):
         """Test getting target info of a single file (compressed as .gz) on Azure Blob Storage."""
-        bundle_uuid, bundle_path, file_size = self.create_file(b"a")
+        bundle_uuid, bundle_path = self.create_file(b"a")
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'file', 'size': file_size, 'perm': 0o755}
+            target_info, {'name': bundle_uuid, 'type': 'file', 'size': 1, 'perm': 0o755}
         )
 
     def test_nested_directories(self):
         """Test getting target info of different files within a bundle that consists of nested directories, on Azure Blob Storage."""
-        bundle_uuid, bundle_path, file_size = self.create_directory()
+        bundle_uuid, bundle_path = self.create_directory()
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': file_size, 'perm': 0o755}
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 249, 'perm': 0o755}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
         target_info.pop("resolved_target")
-        import logging
-        logging.info(target_info)
-        print(target_info, file_size)
-        print({
-                'name': bundle_uuid,
-                'type': 'directory',
-                'size': file_size,
-                'perm': 0o755,
-                'contents': [
-                    {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 0o644},
-                    {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 0o755},
-                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 0o755},
-                ],
-            })
         self.assertEqual(
             target_info,
             {
                 'name': bundle_uuid,
                 'type': 'directory',
-                'size': file_size,
+                'size': 249,
                 'perm': 0o755,
                 'contents': [
                     {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 0o644},
-                    {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 0o755},
-                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 0o755},
+                    {'name': 'dist', 'type': 'directory', 'size': 0, 'perm': 0o644},
+                    {'name': 'src', 'type': 'directory', 'size': 0, 'perm': 0o644},
                 ],
             },
         )
@@ -209,7 +175,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
                 'name': 'src',
                 'type': 'directory',
                 'size': 0,
-                'perm': 0o755,
+                'perm': 0o644,
                 'contents': [{'name': 'test.sh', 'type': 'file', 'size': 7, 'perm': 0o644}],
             },
         )
@@ -223,13 +189,13 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
             {
                 'name': 'a',
                 'size': 0,
-                'perm': 0o755,
+                'perm': 0o644,
                 'type': 'directory',
                 'contents': [
                     {
                         'name': 'b',
                         'size': 0,
-                        'perm': 0o755,
+                        'perm': 0o644,
                         'type': 'directory',
                         'contents': [
                             {'name': 'test2.sh', 'size': 8, 'perm': 0o644, 'type': 'file'}
@@ -241,21 +207,21 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
 
     def test_nested_directories_get_descendants_flat(self):
         """Test the compute_target_info_blob_descendants_flat function with nested directories."""
-        bundle_uuid, bundle_path, file_size = self.create_directory()
+        bundle_uuid, bundle_path = self.create_directory()
 
         # Entire directory
         results = compute_target_info_blob_descendants_flat(bundle_path)
         self.assertEqual(
             list(results),
             [
-                {'name': '', 'type': 'directory', 'size': file_size, 'perm': 0o755, 'contents': None},
+                {'name': '', 'type': 'directory', 'size': 249, 'perm': 0o755, 'contents': None},
                 {'name': 'README.md', 'size': 11, 'perm': 0o644, 'type': 'file', 'contents': None,},
-                {'name': 'dist', 'size': 0, 'perm': 0o755, 'type': 'directory', 'contents': None,},
-                {'name': 'dist/a', 'size': 0, 'perm': 0o755, 'type': 'directory', 'contents': None},
+                {'name': 'dist', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
+                {'name': 'dist/a', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None},
                 {
                     'name': 'dist/a/b',
                     'size': 0,
-                    'perm': 0o755,
+                    'perm': 0o644,
                     'type': 'directory',
                     'contents': None,
                 },
@@ -266,7 +232,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
                     'type': 'file',
                     'contents': None,
                 },
-                {'name': 'src', 'size': 0, 'perm': 0o755, 'type': 'directory', 'contents': None,},
+                {'name': 'src', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
                 {'name': 'src/test.sh', 'size': 7, 'perm': 0o644, 'type': 'file', 'contents': None},
             ],
         )
@@ -276,9 +242,9 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
         self.assertEqual(
             list(results),
             [
-                {'name': '', 'type': 'directory', 'size': 0, 'perm': 0o755, 'contents': None},
-                {'name': 'a', 'size': 0, 'perm': 0o755, 'type': 'directory', 'contents': None},
-                {'name': 'a/b', 'size': 0, 'perm': 0o755, 'type': 'directory', 'contents': None},
+                {'name': '', 'type': 'directory', 'size': 0, 'perm': 0o644, 'contents': None},
+                {'name': 'a', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None},
+                {'name': 'a/b', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None},
                 {
                     'name': 'a/b/test2.sh',
                     'size': 8,

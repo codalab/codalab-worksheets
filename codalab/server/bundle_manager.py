@@ -279,12 +279,10 @@ class BundleManager(object):
                             fileobj = self._download_manager.stream_tarred_gzipped_directory(target)
                             un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
-                            fileobj = self._download_manager.stream_file(target, gzipped=True)
-                            # logging.info(f"[make] HERE!!, fileobj: {fileobj.read()}")
-                            # logging.info(f"child_path 1 : {os.path.getsize(dependency_path)}")
-                            UnGzip_fileobj = UnGzipStream(fileobj)
+                            fileobj = self._download_manager.stream_file(target, gzipped=False)
+
                             with open(dependency_path, 'wb') as f:
-                                shutil.copyfileobj(UnGzip_fileobj, f)
+                                shutil.copyfileobj(fileobj, f)
                                 # f.seek(0)
                                 # logging.info(f"[make] HERE!! f: {f.read()}")
                                 

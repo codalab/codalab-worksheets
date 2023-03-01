@@ -290,21 +290,8 @@ class OpenFile(object):
                         raise IOError("Directories must be gzipped.")
                     return GzipStream(TarSubdirStream(self.path))
                 else:
-                    # Stream a single file from within the archive
-                    # filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-                    # finfo.size = filesystem.size(linked_bundle_path.bundle_path)
-                    
-                    if not linked_bundle_path.is_archive_dir and finfo.size == 0:
-                        fs = FileSystems.open(self.path, compression_type=CompressionTypes.UNCOMPRESSED)
-                        print("return here")
-                        return UnGzipStream(fs) if not self.gzipped else fs
-                    else:  
-                        # # TarFileStream MUST need the original size of the file
-                        # logging.info(f"[Should Not be here, File size is: {finfo.size}")
-                        fs = TarFileStream(tf, finfo)
-                        print("return here2")
-                        return GzipStream(fs) if self.gzipped else fs 
-                    
+                    fs = TarFileStream(tf, finfo)
+                    return GzipStream(fs) if self.gzipped else fs 
 
         else:
             # Stream a directory or file from disk storage.
@@ -360,7 +347,6 @@ class GzipStream(BytesIO):
         return self.__buffer.peek(num_bytes)
 
     def tell(self):
-        print("In GzipStream, tell() is called")
         return self.__size
     
     def fileobj(self):
@@ -442,12 +428,11 @@ def get_file_size(file_path):
                 filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
                 return filesystem.size(linked_bundle_path.bundle_path)
             else:
-                 # If it's a single file, use the compressed size as total size
-                # with OpenFile(linked_bundle_path.bundle_path, 'rb', gzipped=True) as fileobj:
-                #     fileobj.seek(0, os.SEEK_END)
-                #     return fileobj.tell()
-                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-                return filesystem.size(linked_bundle_path.bundle_path)
+                # If it's a single file, use the compressed size as total size
+                with OpenFile(linked_bundle_path.bundle_path, 'rb', gzipped=True) as fileobj:
+                    fileobj.seek(0, os.SEEK_END)
+                    return fileobj.tell()
+                
 
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
@@ -471,19 +456,12 @@ def read_file_section(file_path, offset, length):
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
-    print("file_path: ", file_path)
-    
-    if not parse_linked_bundle_url(file_path).uses_beam:
-        if offset >= get_file_size(file_path):
-            return b''
+   
+    if offset >= get_file_size(file_path):
+        return b''
     with OpenFile(file_path, 'rb') as fileobj:
-        # The fileobj might be a UnGzipStream type. This type is not seekable.
-        if fileobj.seekable():
-            fileobj.seek(offset, os.SEEK_SET)
-            return fileobj.read(length)
-        else:  # the file might not be seekable, just stream the file to read 
-            fileobj.read(offset)
-            return fileobj.read(length)
+        fileobj.seek(offset, os.SEEK_SET)
+        return fileobj.read(length)
 
 
 def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text):
@@ -528,9 +506,9 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 # character is not a new line, then the first line, had we not
                 # read the extra character, would not be a whole line. Thus, it
                 # should also be dropped.
-                # fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
+                fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
                 try:
-                    tail_lines = fileobj.read().splitlines(True)[
+                    tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[
                         1:
                     ][-num_tail_lines:]
                 except UnicodeDecodeError:

@@ -270,19 +270,6 @@ def _compute_target_info_blob(
                     perm=0o755,
                 ),
             )
-            if result['type'] == 'file':
-                # only if the bundle is a single file, we need to modify s
-                 
-                print("path is: ", linked_bundle_path.bundle_path, linked_bundle_path.is_archive_dir)
-                
-                # Jiani: If we use ratarmount's SQLiteTar, we could get the true size using Openfile, 
-                # However, it does not work for modifed SQLiteTar
-                # with OpenFile(linked_bundle_path.bundle_path, 'rb', gzipped=False) as fileobj:
-                #     fileobj.seek(0, os.SEEK_END)
-                #     result['size'] = fileobj.tell()
-                
-                filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
-                result['size'] = filesystem.size(linked_bundle_path.bundle_path)
             return result
         
         if linked_bundle_path.archive_subpath:

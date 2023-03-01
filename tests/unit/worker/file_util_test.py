@@ -97,37 +97,36 @@ class FileUtilTest(unittest.TestCase):
                 "aaa\nbbb\n",
             )
             # Should not recognize a line if max_line_length is smaller than the actual line length (4)
-            # Jiani: This test does not works any more, since we need to read the whole file.
-            # self.assertEqual(
-            #     summarize_file(
-            #         f.name,
-            #         num_head_lines=1,
-            #         num_tail_lines=0,
-            #         max_line_length=3,
-            #         truncation_text="....",
-            #     ),
-            #     "",
-            # )
-            # self.assertEqual(
-            #     summarize_file(
-            #         f.name,
-            #         num_head_lines=0,
-            #         num_tail_lines=1,
-            #         max_line_length=3,
-            #         truncation_text="....",
-            #     ),
-            #     "",
-            # )
-            # self.assertEqual(
-            #     summarize_file(
-            #         f.name,
-            #         num_head_lines=1,
-            #         num_tail_lines=1,
-            #         max_line_length=3,
-            #         truncation_text="....",
-            #     ),
-            #     "....",
-            # )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=0,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "",
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=0,
+                    num_tail_lines=1,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "",
+            )
+            self.assertEqual(
+                summarize_file(
+                    f.name,
+                    num_head_lines=1,
+                    num_tail_lines=1,
+                    max_line_length=3,
+                    truncation_text="....",
+                ),
+                "....",
+            )
 
     def test_gzip_stream(self):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -262,30 +261,30 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
     for files stored in Azure Blob Storage."""
 
     def test_get_file_size(self):
-        _, fname, file_size = self.create_file()
-        self.assertEqual(get_file_size(fname), file_size)  # uncompressed size of entire bundle
+        _, fname = self.create_file()
+        self.assertEqual(get_file_size(fname), 11)  # uncompressed size of entire bundle
 
-        _, dirname, file_size = self.create_directory()
-        self.assertEqual(get_file_size(dirname), file_size)
+        _, dirname = self.create_directory()
+        self.assertEqual(get_file_size(dirname), 249)
         self.assertEqual(get_file_size(f"{dirname}/README.md"), 11)
 
     def test_read_file_section(self):
-        _, fname, _ = self.create_file()
+        _, fname = self.create_file()
         self.assertEqual(read_file_section(fname, 2, 4), b"llo ")
         self.assertEqual(read_file_section(fname, 100, 4), b"")
 
-        _, dirname, _ = self.create_directory()
+        _, dirname = self.create_directory()
         self.assertEqual(read_file_section(f"{dirname}/README.md", 2, 4), b"llo ")
 
     def test_gzip_stream(self):
-        _, fname, _ = self.create_file()
+        _, fname = self.create_file()
         self.assertEqual(un_gzip_stream(gzip_file(fname)).read(), b'hello world')
 
-        _, dirname, _ = self.create_directory()
+        _, dirname = self.create_directory()
         self.assertEqual(un_gzip_stream(gzip_file(f"{dirname}/README.md")).read(), b'hello world')
 
     def test_open_file(self):
-        _, fname, _ = self.create_file()
+        _, fname = self.create_file()
 
         # Read single file (gzipped)
         with OpenFile(fname, gzipped=True) as f:
@@ -295,8 +294,7 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         with OpenFile(fname) as f:
             self.assertEqual(f.read(), b"hello world")
 
-        _, dirname, _ = self.create_directory()
-        print("dirname: ", dirname)
+        _, dirname = self.create_directory()
 
         # Read single file from directory (gzipped):
         with OpenFile(f"{dirname}/README.md", gzipped=True) as f:
@@ -309,17 +307,16 @@ class FileUtilTestAzureBlob(AzureBlobTestBase, unittest.TestCase):
         # Read entire directory (gzipped)
         with OpenFile(dirname, gzipped=True) as f:
             self.assertEqual(
-                tarfile.open(fileobj=f, mode='r:gz').getnames().sort(),
+                tarfile.open(fileobj=f, mode='r:gz').getnames(),
                 [
-                    '.',
                     './README.md',
                     './src',
                     './src/test.sh',
                     './dist',
                     './dist/a',
                     './dist/a/b',
-                    './dist/a/b/test2.sh'
-                ].sort(),
+                    './dist/a/b/test2.sh',
+                ],
             )
 
         # Read entire directory (non-gzipped)
