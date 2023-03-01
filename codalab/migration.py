@@ -176,7 +176,7 @@ class Migration:
             new_content = read_file_section(new_location, 5, 10)
             assert old_content == new_content
 
-    def delete_origin_bundle(self, bundle_uuid, bundle_location):
+    def delete_original_bundle(self, bundle_uuid, bundle_location):
         # Delete data from orginal bundle store
         if os.path.exists(bundle_location):
             deleted_size = path_util.get_path_size(bundle_location)
@@ -250,4 +250,4 @@ if __name__ == '__main__':
         migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
         migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
         migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
-        migration.delete_origin_bundle(bundle_uuid, bundle_location)
+        migration.delete_original_bundle(bundle_uuid, bundle_location)
