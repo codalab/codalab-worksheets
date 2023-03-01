@@ -201,7 +201,6 @@ class BundleSchema(Schema):
         validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES})
     )
     command = fields.String(allow_none=True, validate=validate_ascii)
-    data_hash = fields.String()
     state = fields.String()
     state_details = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
@@ -270,7 +269,6 @@ class BundleLocationListSchema(Schema):
 # restrictions differ depending on the action
 
 BUNDLE_CREATE_RESTRICTED_FIELDS = (
-    'data_hash',
     'state',
     'owner',
     'children',
@@ -284,7 +282,6 @@ BUNDLE_CREATE_RESTRICTED_FIELDS = (
 
 BUNDLE_UPDATE_RESTRICTED_FIELDS = (
     'command',
-    'data_hash',
     'state',
     'dependencies',
     'children',
