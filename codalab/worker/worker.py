@@ -146,6 +146,8 @@ class Worker:
             docker_network_external=self.docker_network_external,
             docker_runtime=docker_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
+            cpuset=self.cpuset,
+            gpuset=self.gpuset,
             shared_file_system=self.shared_file_system,
             shared_memory_size_gb=shared_memory_size_gb,
             bundle_runtime=bundle_runtime,
