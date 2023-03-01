@@ -51,7 +51,6 @@ class UploadedBundle(NamedBundle):
         row = {
             'bundle_type': cls.BUNDLE_TYPE,
             'command': None,
-            'data_hash': None,
             'state': State.READY,
             'metadata': metadata,
             'dependencies': [],
