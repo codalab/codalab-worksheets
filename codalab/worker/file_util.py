@@ -429,7 +429,7 @@ def get_file_size(file_path):
                 return filesystem.size(linked_bundle_path.bundle_path)
             else:
                 # If it's a single file, use the compressed size as total size
-                with OpenFile(linked_bundle_path.bundle_path, 'rb', gzipped=True) as fileobj:
+                with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
                     fileobj.seek(0, os.SEEK_END)
                     return fileobj.tell()
                 
