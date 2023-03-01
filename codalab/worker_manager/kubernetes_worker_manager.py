@@ -30,6 +30,12 @@ class KubernetesWorkerManager(WorkerManager):
     def add_arguments_to_subparser(subparser: ArgumentParser) -> None:
         # Kubernetes arguments
         subparser.add_argument(
+            '--bundle-runtime',
+            choices=[BundleRuntime.DOCKER.value, BundleRuntime.KUBERNETES.value,],
+            default=BundleRuntime.DOCKER.value,
+            help='The runtime through which the worker will run bundles. The options are docker (default) or kubernetes.',
+        )
+        subparser.add_argument(
             '--cluster-host', type=str, help='Host address of the Kubernetes cluster', required=True
         )
         subparser.add_argument(
@@ -66,6 +72,7 @@ class KubernetesWorkerManager(WorkerManager):
                 'Valid credentials need to be set as environment variables: CODALAB_USERNAME and CODALAB_PASSWORD'
             )
 
+        self.bundle_runtime = args.bundle_runtime
         self.auth_token = args.auth_token
         self.cluster_host = args.cluster_host
         self.cert_path = args.cert_path
@@ -110,9 +117,7 @@ class KubernetesWorkerManager(WorkerManager):
         work_dir: str = os.path.join(work_dir_prefix, 'codalab-worker-scratch')
         command: List[str] = self.build_command(worker_id, work_dir)
 
-        command.extend(
-            ['--bundle-runtime', BundleRuntime.DOCKER.value]
-        )  # todo make configurable
+        command.extend(['--bundle-runtime', self.bundle_runtime])
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
         command.extend(['--kubernetes-cert-path', self.cert_path])

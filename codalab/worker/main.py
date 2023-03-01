@@ -133,13 +133,9 @@ def parse_args():
     )
     parser.add_argument(
         '--bundle-runtime',
-        choices=[
-            BundleRuntime.DOCKER.value,
-            BundleRuntime.KUBERNETES.value,
-            BundleRuntime.SINGULARITY.value,
-        ],
+        choices=[BundleRuntime.DOCKER.value, BundleRuntime.KUBERNETES.value,],
         default=BundleRuntime.DOCKER.value,
-        help='The runtime through which the worker will run bundles. The options are docker (default), kubernetes, or singularity',
+        help='The runtime through which the worker will run bundles. The options are docker (default) or kubernetes.',
     )
     parser.add_argument(
         '--idle-seconds',
@@ -305,6 +301,7 @@ def main():
             args.download_dependencies_max_retries,
         )
 
+    # TODO: Remove Singularity code (https://github.com/codalab/codalab-worksheets/issues/4408).
     if args.bundle_runtime == BundleRuntime.SINGULARITY.value:
         singularity_folder = os.path.join(args.work_dir, 'codalab_singularity_images')
         if not os.path.exists(singularity_folder):
