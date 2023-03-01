@@ -1319,11 +1319,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
     # Delete the actual bundle
     if not dry_run:
-        if data_only:
-            # Just remove references to the data hashes
-            local.model.remove_data_hash_references(relevant_uuids)
-        else:
-            # Actually delete the bundle
+        if not data_only:
+            # Delete bundle metadata.
             local.model.delete_bundles(relevant_uuids)
 
     # Delete the data.

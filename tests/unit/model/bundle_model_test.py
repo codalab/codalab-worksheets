@@ -66,7 +66,6 @@ class MockBundle(object):
     _fields = {
         'uuid': 'my_uuid',
         'bundle_type': 'my_bundle_type',
-        'data_hash': 'my_data_hash',
         'state': 'my_state',
         'metadata': {'key_1': 'value_1', 'key_2': 'value_2'},
         'dependencies': [MockDependency().to_dict()],
