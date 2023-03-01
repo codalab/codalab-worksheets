@@ -497,6 +497,17 @@ class Worker:
                 'is_terminating': self.terminate or self.terminate_and_restage,
                 'preemptible': self.preemptible,
             }
+            if self.bundle_runtime.name == BundleRuntime.KUBERNETES.value:
+                stats = self.bundle_runtime.get_node_availability_stats()
+                request = dict(
+                    request,
+                    **{
+                        'cpus': stats['cpus'],
+                        'gpus': stats['gpus'],
+                        'memory_bytes': stats['memory_bytes'],
+                        'free_disk_bytes': stats['free_disk_bytes'],
+                    },
+                )
             try:
                 response = self.bundle_service.checkin(self.id, request)
                 logger.info('Connected! Successful check in!')
