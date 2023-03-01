@@ -26,7 +26,6 @@ def bundle_to_bundle_info(model, bundle):
         bundle.bundle_type,
         bundle.owner_id,
         bundle.command,
-        bundle.data_hash,
         bundle.state,
         bundle.frozen,
         bundle.is_anonymous,

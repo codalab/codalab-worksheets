@@ -30,7 +30,6 @@ class BundleTest(unittest.TestCase):
 
     bundle_type = MockBundle.BUNDLE_TYPE
     command = 'my_command'
-    data_hash = 'my_data_hash'
     state = 'my_state'
     # worker_command = None
 
@@ -42,7 +41,6 @@ class BundleTest(unittest.TestCase):
         }
         return MockBundle.construct(
             command=self.command,
-            data_hash=self.data_hash,
             state=self.state,
             metadata=metadata,
             dependencies=[],
