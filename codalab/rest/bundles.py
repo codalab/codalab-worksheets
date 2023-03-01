@@ -819,6 +819,7 @@ def _update_bundle_file_size(uuid):
     # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
     # right after being created.
     bundles = [bundles_dict[uuid]]
+    logging.info(f"before return: {bundles}")
     return BundleSchema(many=True).dump(bundles).data
 
 

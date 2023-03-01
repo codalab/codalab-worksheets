@@ -42,6 +42,7 @@ class Uploader:
         bundle_store=None,
         destination_bundle_store=None,
         json_api_client=None,
+        is_client=False
     ):
         """
         params:
@@ -50,7 +51,9 @@ class Uploader:
         destination_bundle_store: Indicate destination for bundle storage.
         json_api_client: A json API client. Only set if uploader is used on client side; if the uploader is used on the server side, it is set to None.
         """
-        if not json_api_client:
+        # if not json_api_client:
+        self.is_client = is_client
+        if not self.is_client:
             self._bundle_model = bundle_model
             self._bundle_store = bundle_store
             self.destination_bundle_store = destination_bundle_store
@@ -114,11 +117,11 @@ class Uploader:
                     bundle_path = self._update_and_get_bundle_location(
                         bundle, is_directory=source_ext in ARCHIVE_EXTS_DIR
                     )
-                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
+                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True, bundle_uuid=bundle.uuid)
                 else:
                     bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
                     self.write_fileobj(
-                        source_ext, source_fileobj, bundle_path, unpack_archive=False
+                        source_ext, source_fileobj, bundle_path, unpack_archive=False,  bundle_uuid=bundle.uuid
                     )
 
         except UsageError:
@@ -265,7 +268,7 @@ class BlobStorageUploader(Uploader):
                         out.write(to_send)
 
                         # Update disk and check if client has gone over disk usage.
-                        if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                        if self.is_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                             self._client.update(
                             'user/increment_disk_used',
                             {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
@@ -320,11 +323,13 @@ class BlobStorageUploader(Uploader):
                         #         raise Exception('Upload aborted by client')
                 
                 # call API to update the indexed file size
-                if self._client:
+                if not parse_linked_bundle_url(bundle_path).is_archive_dir:
                     self._client.update(
                         'bundles/%s/contents/filesize/' % bundle_uuid,
-                        {'filesize': output_fileobj.fileobj().tell()},
+                        {'filesize': output_fileobj.fileobj().tell() if hasattr(output_fileobj, "fileobj") else output_fileobj.tell()},
                     )
+                else:
+                    print("Here in else branch of is_archive_dir")
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
@@ -349,7 +354,8 @@ class UploadManager(object):
     the associated bundle metadata in the database.
     """
 
-    def __init__(self, bundle_model, bundle_store):
+    def __init__(self, bundle_model, bundle_store, json_api_client=None):
+        self._client = json_api_client
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
 
@@ -392,7 +398,8 @@ class UploadManager(object):
             bundle_model=self._bundle_model,
             bundle_store=self._bundle_store,
             destination_bundle_store=destination_bundle_store,
-            json_api_client=None,
+            json_api_client=self._client,
+            is_client=False,
         ).upload_to_bundle_store(bundle, source, git, unpack)
 
     def has_contents(self, bundle):
@@ -586,6 +593,7 @@ class ClientUploadManager(object):
             bundle_store=None,
             destination_bundle_store=None,
             json_api_client=json_api_client,
+            is_client=True,
         ).write_fileobj(
             source_ext,
             fileobj,

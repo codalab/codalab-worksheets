@@ -384,7 +384,7 @@ class CodaLabManager(object):
 
     @cached
     def upload_manager(self):
-        return UploadManager(self.model(), self.bundle_store())
+        return UploadManager(self.model(), self.bundle_store(), self.current_client())
 
     @cached
     def download_manager(self):

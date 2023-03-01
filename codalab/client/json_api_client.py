@@ -492,9 +492,9 @@ class JsonApiClient(RestClient):
         result = self._unpack_document(
             res
         )
-        # print("Result is : ", result)
+        print(f"result is: {result}, data is: {data}")
         # Return list iff original data was list
-        return result if isinstance(data, list) else result[0]
+        return result if isinstance(data, list) or result is None else result[0]
 
     @wrap_exception('Unable to delete {1}')
     def delete(self, resource_type, resource_ids, params=None):
