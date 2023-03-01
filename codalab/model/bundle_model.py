@@ -736,6 +736,12 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
+    def get_all_bundle_uuids(self, max_results):
+        clause = and_(true(), cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+        query = select([cl_bundle.c.uuid]).where(clause)
+        query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+        return self._execute_query(query)
+
     def get_memoized_bundles(self, user_id, command, dependencies):
         """
         Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
