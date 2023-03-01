@@ -67,9 +67,7 @@ class Migration:
 
     def get_bundle_uuids(self, worksheet_uuid, max_result=100):
         if worksheet_uuid is None:
-            bundle_uuids = self.bundle_manager._model.get_all_bundle_uuids(
-                max_results=max_result
-            )
+            bundle_uuids = self.bundle_manager._model.get_all_bundle_uuids(max_results=max_result)
         else:
             bundle_uuids = self.bundle_manager._model.get_bundle_uuids(
                 {'name': None, 'worksheet_uuid': worksheet_uuid, 'user_id': self.root_user_id},
@@ -197,12 +195,15 @@ class Migration:
                 {'user_id': bundle_user_id, 'disk_used': new_disk_used}
             )
 
+
 if __name__ == '__main__':
     # Command line parser, parse the worksheet id
     parser = argparse.ArgumentParser(
         description='Manages your local CodaLab Worksheets service deployment'
     )
-    parser.add_argument('-w', '--worksheet', type=str, help='The worksheet uuid that needs migration')
+    parser.add_argument(
+        '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
+    )
     parser.add_argument('--target_store_name', type=str, help='The destination bundle store name')
     parser.add_argument(
         '-d',
@@ -231,7 +232,7 @@ if __name__ == '__main__':
 
     for bundle_uuid in bundle_uuids:
         logging.info(bundle_uuid)
-        print(bundle_uuid)
+
         bundle = migration.get_bundle(bundle_uuid)
         if bundle.bundle_type != 'dataset' or bundle.state != 'ready':
             # only migrate uploaded bundle, and the bundle state needs to be ready
@@ -254,7 +255,7 @@ if __name__ == '__main__':
 
         is_dir = bundle_info['type'] == 'directory'
         migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
-        
+
         if not args.dry_run:  # If dry_run, only upload to new bundle location
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
