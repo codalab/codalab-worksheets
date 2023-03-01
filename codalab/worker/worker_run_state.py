@@ -167,6 +167,8 @@ class RunStateMachine(StateTransitioner):
         docker_network_external,  # Docker network to add internet connected bundles to
         docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
         upload_bundle_callback,  # Function to call to upload bundle results to the server
+        cpuset,
+        gpuset,
         shared_file_system,  # If True, bundle mount is shared with server
         shared_memory_size_gb,  # Shared memory size for the run container (in GB)
         bundle_runtime,  # Runtime used to run bundles (docker or kubernetes)
@@ -235,6 +237,7 @@ class RunStateMachine(StateTransitioner):
             )
             return run_state._replace(stage=RunStage.CLEANING_UP)
 
+        cpuset, gpuset = self.cpuset, self.gpuset
         dependencies_ready = True
         status_messages = []
         dependency_keys_to_paths: Dict[DependencyKey, str] = dict()
