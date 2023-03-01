@@ -413,8 +413,9 @@ class WorkerModel(object):
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
+                    logging.error("Sleeping for 0.1 seconds.")
                     time.sleep(
-                        0.3
+                        0.1
                     )  # changed from 0.003 to keep from rate-limiting due to dead workers
                     continue
 
