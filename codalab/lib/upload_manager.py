@@ -298,7 +298,7 @@ class BlobStorageUploader(Uploader):
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
-                    printDebug=3,
+                    printDebug=1,
                 )
 
             def upload_index():

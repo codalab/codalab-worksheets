@@ -216,26 +216,25 @@ def test_indexed_gzip(file_path):
     # assert tar_file.tell() == file_size
 
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
-        tf = SQLiteIndexedTar(
+        with SQLiteIndexedTar(
             fileObject=output_fileobj,
             tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
             writeIndex=True,
             clearIndexCache=True,
             indexFilePath=tmp_index_file.name,
             printDebug=3,
-        )
-        print("File obj.tell() : ", output_fileobj.fileobj().tell())
-        
-        finfo = tf._getFileInfoRow('/contents')
-        finfo = dict(finfo)
-        print(finfo)  # get the result of a fi
-        finfo['size'] = output_fileobj.fileobj().tell()
-        new_info = tuple([value for _, value in finfo.items()])
-        print(new_info)
-        
-        
-        tf._setFileInfo(new_info)
-        print("New info: ", tf.getFileInfo('/contents'))  # get the result of a fi
+        ) as tf:
+            print("File obj.tell() : ", output_fileobj.fileobj().tell())
+            
+            finfo = tf._getFileInfoRow('/contents')
+            finfo = dict(finfo)
+            print(finfo)  # get the result of a fi
+            finfo['size'] = output_fileobj.fileobj().tell()
+            new_info = tuple([value for _, value in finfo.items()])
+            print(new_info)
+            
+            tf._setFileInfo(new_info)
+            print("New info: ", tf.getFileInfo('/contents'))  # get the result of a fi
 
 
 test_indexed_gzip(file_path)  # filepath points to a large file.

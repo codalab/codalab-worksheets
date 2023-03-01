@@ -238,6 +238,7 @@ class SQLiteIndexedTar(MountSource):
                 self.indexFilePath = indexPath
                 break
         if self.indexIsLoaded() and self.sqlConnection:
+            print("In the self.sqlConnection branch")
             try:
                 indexVersion = self.sqlConnection.execute(
                     "SELECT major,minor FROM versions WHERE name == 'index';"
@@ -1150,7 +1151,7 @@ class SQLiteIndexedTar(MountSource):
             print()
 
         self._tryAddParentFolders(row[0], row[2], row[3])
-
+    
     def indexIsLoaded(self) -> bool:
         """Returns true if the SQLite database has been opened for reading and a "files" table exists."""
         if not self.sqlConnection:

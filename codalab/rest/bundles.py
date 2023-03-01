@@ -55,6 +55,8 @@ from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
 from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
+from apache_beam.io.filesystem import CompressionTypes
+from apache_beam.io.filesystems import FileSystems
 
 logger = logging.getLogger(__name__)
 
@@ -782,21 +784,42 @@ def _update_bundle_file_size(uuid):
     """
 
     bundle_path = local.bundle_store.get_bundle_location(uuid)
-    file_size = query_get_type(int, 'filesize', default=0)
+    file_size = request.json['data'][0]['attributes']['filesize']
+    logging.info(f"File_size is : {file_size} {bundle_path}")
 
     if parse_linked_bundle_url(bundle_path).uses_beam and not parse_linked_bundle_url(bundle_path).is_archive_dir:
         with OpenIndexedArchiveFile(bundle_path) as tf:
+            # tf is a SQLiteTar file, which is a copy of original index file
             finfo = tf._getFileInfoRow('/contents')
             finfo = dict(finfo)
-            print(finfo)  # get the result of a fi
             finfo['size'] = file_size
             new_info = tuple([value for _, value in finfo.items()])
+            logging.info(finfo) # get the result of a fi
             tf._setFileInfo(new_info)
-  
-        # TODO: check wether the info is saved to index.sqlite
+            tf.sqlConnection.commit()  # need to mannually commit here
+            logging.info(f"tf.index_file_name: {tf.indexFilePath}")
+
+            # Update the index file stored in blob storage
+            FileSystems.delete([parse_linked_bundle_url(bundle_path).index_path])
+            with FileSystems.create(parse_linked_bundle_url(bundle_path).index_path, compression_type=CompressionTypes.UNCOMPRESSED) as f, open(tf.indexFilePath, "rb") as tif:
+                while True:
+                    CHUNK_SIZE = 16 * 1024
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    f.write(to_send)
+
+        # check wether the info is saved to index.sqlite
         with OpenIndexedArchiveFile(bundle_path) as tf:
-            logging.info("Modify file size in index.sqlit. New info is: ", tf.getFileInfo('/contents'))  # get the result of a fi
-    # save to file 
+            logging.info(f"Modify file size in index.sqlit. New info is: {tf.getFileInfo('/contents')}")  # get the result of a fi
+
+    bundles_dict = get_bundle_infos([uuid])
+
+    # Return bundles in original order
+    # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
+    # right after being created.
+    bundles = [bundles_dict[uuid]]
+    return BundleSchema(many=True).dump(bundles).data
 
 
 @put(
