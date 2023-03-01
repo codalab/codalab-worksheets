@@ -6,6 +6,8 @@ import 'jquery.terminal';
 import { withStyles } from '@material-ui/core';
 import { apiWrapper } from '../../util/apiWrapper';
 
+const TERMINAL_MINIMIZE_HEIGHT = 30;
+let TERMINAL_DRAGHEIGHT = 350;
 class WorksheetTerminal extends React.Component {
     /** Constructor. */
 
@@ -16,6 +18,7 @@ class WorksheetTerminal extends React.Component {
 
     componentDidMount() {
         var self = this;
+
         // really hacky way of making it so that the mousemove listener gets removed on mouseup
         $(document).mouseup(function(e) {
             $(document).unbind('mousemove');
@@ -60,6 +63,7 @@ class WorksheetTerminal extends React.Component {
                 greetings:
                     "Click here to enter commands (e.g., help, run '<bash command>', rm <bundle>, kill <bundle>, etc.).",
                 name: 'command_line',
+                height: TERMINAL_MINIMIZE_HEIGHT,
                 prompt: 'CodaLab> ',
                 history: true,
                 keydown: function(event, terminal) {
@@ -80,11 +84,16 @@ class WorksheetTerminal extends React.Component {
                         self.props.handleFocus();
                         return false;
                     }
-                    if (term.enabled()) {
-                        self.props.handleBlur();
-                    }
+                    // TODO: Allow clicking outside Web CLI to close it (https://github.com/codalab/codalab-worksheets/issues/4378).
+                    // if (term.enabled()) {
+                    //     term.resize(term.width(), TERMINAL_MINIMIZE_HEIGHT);
+                    //     self.props.handleBlur();
+                    // }
                 },
                 onFocus: function(term) {
+                    if (!term.data('resizing')) {
+                        term.resize(term.width(), TERMINAL_DRAGHEIGHT);
+                    }
                     self.props.handleFocus();
                 },
                 completion: async function(lastToken, callback) {
@@ -183,7 +192,6 @@ class WorksheetTerminal extends React.Component {
     }
     componentWillUnmount() {}
     componentDidUpdate() {}
-
     render() {
         const { classes, hidden } = this.props;
         const activeClass = !hidden ? classes.terminalActive : '';
