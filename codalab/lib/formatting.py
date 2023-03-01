@@ -102,7 +102,7 @@ def ratio_str(to_str, a, b):
     """
     Example: to_str = duration_str, a = 60, b = 120 => "1m / 2m (50%)"
     """
-    return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b)
+    return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b if b != 0 else 100.0)
 
 
 def parse_size(s):

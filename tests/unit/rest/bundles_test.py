@@ -53,7 +53,6 @@ class BundlesTest(BaseTestCase):
                     "type": "bundles",
                     "attributes": {
                         "permission": 2,
-                        "data_hash": None,
                         "uuid": bundle_id,
                         "args": "run \"echo TEST\" --request-cpus 1 --request-docker-image codalab/default-cpu:latest --request-memory 4g",
                         "metadata": {
