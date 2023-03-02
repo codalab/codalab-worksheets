@@ -22,7 +22,6 @@ class PrivateBundle(Bundle):
                 'bundle_type': cls.BUNDLE_TYPE,
                 'owner_id': None,
                 'command': None,
-                'data_hash': None,
                 'state': None,
                 'frozen': None,
                 'is_anonymous': None,

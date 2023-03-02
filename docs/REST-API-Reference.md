@@ -240,7 +240,6 @@ Name | Type
 `uuid` | String
 `bundle_type` | String
 `command` | String
-`data_hash` | String
 `state` | String
 `state_details` | String
 `owner` | Relationship([users](#users))
