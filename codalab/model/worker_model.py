@@ -385,8 +385,8 @@ class WorkerModel(object):
         Note, only the worker should call this method with autoretry set to
         False. See comments below.
         """
-        start_time = time.time()
         self._ping_worker_ws(worker_id)
+        start_time = time.time()
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
@@ -407,15 +407,14 @@ class WorkerModel(object):
                         success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                     else:
                         success = True
-                except socket.error:
-                    logging.debug("socket error when calling send_json_message")
+                except socket.error as e:
+                    logging.error(f"socket error when calling send_json_message: {e}")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
-                    time.sleep(
-                        0.3
-                    )  # changed from 0.003 to keep from rate-limiting due to dead workers
+                    logging.error("Sleeping for 0.1 seconds.")
+                    time.sleep(0.3)
                     continue
 
                 if not autoretry:
@@ -430,7 +429,7 @@ class WorkerModel(object):
 
                 sock.sendall(json.dumps(message).encode())
                 return True
-
+        logging.info("Socket message timeout.")
         return False
 
     def has_reply_permission(self, user_id, worker_id, socket_id):
