@@ -2719,16 +2719,7 @@ class BundleModel(object):
         Increment disk_used for user by amount.
         When incrementing values, we have to use a special query to ensure that we avoid
         race conditions or deadlock arising from multiple threads calling functions
-        concurrently.
-        In particular, we use with_for_update() and then commit() to ensure that
-        we lock the user table between the disk_used read and the increment write
-        because otherwise we might have the following interleaving between threads:
-        READ disk_used
-                            READ disk_used
-                            UPDATE disk_used + amount
-        UPDATE disk_used + amount
-        And this can actually lead to deadlock or to the second thread writing the
-        incorrect disk usage to the user table.
+        concurrently. We do this using with_for_update() and commit().
         """
         with self.engine.begin() as connection:
             rows = connection.execute(

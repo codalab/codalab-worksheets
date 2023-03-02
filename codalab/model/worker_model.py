@@ -385,8 +385,8 @@ class WorkerModel(object):
         Note, only the worker should call this method with autoretry set to
         False. See comments below.
         """
-        start_time = time.time()
         self._ping_worker_ws(worker_id)
+        start_time = time.time()
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
@@ -414,9 +414,7 @@ class WorkerModel(object):
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
                     logging.error("Sleeping for 0.1 seconds.")
-                    time.sleep(
-                        0.1
-                    )  # changed from 0.003 to keep from rate-limiting due to dead workers
+                    time.sleep(0.3)
                     continue
 
                 if not autoretry:

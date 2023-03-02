@@ -183,7 +183,7 @@ def cleanup(cl, tag, should_wait=True):
     print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
 
 
-class timer:
+class Timer:
     """
     Class that uses signal to interrupt functions while they're running
     if they run for longer than timeout_seconds.

@@ -11,7 +11,7 @@ import time
 from multiprocessing import cpu_count, Pool
 from threading import Thread
 
-from scripts.test_util import cleanup, run_command, timer
+from scripts.test_util import cleanup, run_command, Timer
 
 
 def temp_path(file_name):
@@ -125,7 +125,7 @@ class StressTestRunner:
         subprocess.call([self._cl, 'work', '%s::' % args.instance])
 
     def time_function(self, fn):
-        t = timer(handle_timeouts=False)
+        t = Timer(handle_timeouts=False)
         with t:
             fn()
             self.cleanup()
@@ -141,7 +141,7 @@ class StressTestRunner:
 
     def run(self):
         print('Cleaning up stress test files from other runs...')
-        cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
+        cleanup(self._cl, StressTestRunner._TAG, should_wait=True)
 
         print('Running stress tests...')
         self._start_heartbeat()
