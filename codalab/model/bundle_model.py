@@ -497,7 +497,7 @@ class BundleModel(object):
             elif key == '.format':
                 format_func = value
             # Bundle fields
-            elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
+            elif key in ('bundle_type', 'id', 'uuid', 'state', 'command', 'owner_id'):
                 conjunct = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
                 add_join(
@@ -1141,7 +1141,6 @@ class BundleModel(object):
             dirs_and_files = [], [bundle_location]
 
         # TODO(Ashwin): make this non-fs specific
-        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
         data_size = path_util.get_size(bundle_location, dirs_and_files)
         try:
             if 'data_size' in bundle.metadata.__dict__:
@@ -1161,7 +1160,7 @@ class BundleModel(object):
                     % (data_size, disk_left)
                 )
 
-        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+        bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
@@ -1357,12 +1356,6 @@ class BundleModel(object):
             # In case something goes wrong, delete bundles that are currently running on workers.
             connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
-
-    def remove_data_hash_references(self, uuids):
-        with self.engine.begin() as connection:
-            connection.execute(
-                cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None})
-            )
 
     # ==========================================================================
     # Worksheet-related model methods follow!
@@ -2721,21 +2714,41 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
-        """
-        User used some time.
-        """
-        user_info = self.get_user_info(user_id)
-        user_info['time_used'] += amount
-        self.update_user_info(user_info)
-
     def increment_user_disk_used(self, user_id: str, amount: int):
         """
-        Increment disk_used for user by amount
+        Increment disk_used for user by amount.
+        When incrementing values, we have to use a special query to ensure that we avoid
+        race conditions or deadlock arising from multiple threads calling functions
+        concurrently. We do this using with_for_update() and commit().
         """
-        user_info = self.get_user_info(user_id)
-        user_info['disk_used'] += amount
-        self.update_user_info(user_info)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.disk_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            disk_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(disk_used=disk_used)
+            )
+            connection.commit()
+
+    def increment_user_time_used(self, user_id: str, amount: int):
+        """
+        User used some time.
+        See comment for increment_user_disk_used.
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.time_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            time_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(time_used=time_used)
+            )
+            connection.commit()
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
@@ -2768,15 +2781,6 @@ class BundleModel(object):
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
-
-    def _get_disk_used(self, user_id):
-        # TODO(Ashwin): don't include linked bundles
-        return (
-            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
-                'result'
-            ]
-            or 0
-        )
 
     def get_user_disk_quota_left(self, user_id, user_info=None):
         if not user_info:

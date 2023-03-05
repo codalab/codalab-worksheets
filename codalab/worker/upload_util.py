@@ -65,7 +65,7 @@ def upload_with_chunked_encoding(
 
         # Use chunked transfer encoding to send the data through.
         bytes_uploaded = 0
-        ITERATIONS_PER_DISK_CHECK = 1
+        ITERATIONS_PER_DISK_CHECK = 2000
         iteration = 0
         while True:
             to_send = fileobj.read(CHUNK_SIZE)
