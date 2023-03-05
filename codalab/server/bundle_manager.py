@@ -355,7 +355,7 @@ class BundleManager(object):
                 worker['socket_id'],
                 worker['worker_id'],
                 {'type': 'mark_finalized', 'uuid': bundle.uuid},
-                0.2,
+                1,
             ):
                 logger.info(
                     'Acknowledged finalization of run bundle {} on worker {}'.format(
