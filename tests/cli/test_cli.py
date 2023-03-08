@@ -30,6 +30,7 @@ from scripts.create_sample_worksheet import SampleWorksheet
 from scripts.test_util import Colorizer, run_command
 
 import argparse
+import hashlib
 import json
 import multiprocessing
 import os
@@ -266,6 +267,58 @@ def wait_until_substring(fp, substr):
         line = fp.readline()
         if substr in line:
             return
+
+
+"""
+Hash helpers for mimic and copy
+"""
+
+
+def recursive_ls(path):
+    """
+    Return a (list of directories, list of files) in the given directory and
+    all of its nested subdirectories. All paths returned are absolute.
+    Symlinks are returned in the list of files, even if they point to directories.
+    This makes it possible to distinguish between real and symlinked directories
+    when computing the hash of a directory. This function will NOT descend into
+    symlinked directories.
+    """
+    (directories, files) = ([], [])
+    for (root, _, file_names) in os.walk(path):
+        directories.append(root)
+        for file_name in file_names:
+            files.append(os.path.join(root, file_name))
+        # os.walk ignores symlinks to directories, but we should count them as files.
+        # However, we can't used the followlinks parameter, because a) we don't want
+        # to descend into directories and b) we could end up in an infinite loop if
+        # we were to pass that flag. Instead, we handle symlinks here:
+        for subpath in os.listdir(root):
+            full_subpath = os.path.join(root, subpath)
+            if os.path.islink(full_subpath) and os.path.isdir(full_subpath):
+                files.append(full_subpath)
+    return (directories, files)
+
+
+def data_hash(uuid, worksheet=None):
+    """
+        Temporarily download bundle contents.
+        Return a hash of those contents.
+        """
+    path = temp_path(uuid)
+    if not os.path.exists(path):
+        # Download the bundle to that path.
+        command = [cl, 'download', uuid, '-o', path]
+        if worksheet is not None:
+            command += ['-w', worksheet]
+        _run_command(command)
+    sha1 = hashlib.sha1()
+    files = recursive_ls(path)[1]
+    for f in files:
+        try:
+            sha1.update(open(f, 'r').read().encode())
+        except Exception as e:
+            raise Exception("file name: {}. exception: {}".format(f, e))
+    return sha1.hexdigest()
 
 
 def _run_command(
@@ -673,9 +726,7 @@ def test_basic(ctx):
 
     # rm
     _run_command([cl, 'rm', '--dry-run', uuid])
-    check_contains('0x', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', '--data-only', uuid])
-    check_equals('None', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', uuid])
 
 
@@ -1510,7 +1561,6 @@ def test_worksheet(ctx):
     _run_command([cl, 'add', 'text', '// comment'])
     _run_command([cl, 'add', 'text', '% schema foo'])
     _run_command([cl, 'add', 'text', '% add uuid'])
-    _run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     _run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     _run_command([cl, 'add', 'text', '% display table foo'])
     _run_command([cl, 'add', 'bundle', uuid])
@@ -1889,7 +1939,6 @@ def test_run(ctx):
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
-    check_contains('0x', get_info(uuid, 'data_hash'))
     check_not_equals('0s', get_info(uuid, 'time_preparing'))
     check_not_equals('0s', get_info(uuid, 'time_running'))
     check_not_equals('0s', get_info(uuid, 'time_cleaning_up'))
@@ -2220,18 +2269,19 @@ def test_write(ctx):
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 
+"""
+This we'll have ot think about how to migrate...
+"""
+
+
 @TestModule.register('mimic')
 def test_mimic(ctx):
-    def data_hash(uuid):
-        _run_command([cl, 'wait', uuid])
-        return get_info(uuid, 'data_hash')
-
     simple_name = random_name()
 
-    input_uuid = _run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
+    input_uuid = _run_command([cl, 'upload', test_path('dir2'), '-n', simple_name + '-in1'])
     simple_out_uuid = _run_command([cl, 'make', input_uuid, '-n', simple_name + '-out'])
 
-    new_input_uuid = _run_command([cl, 'upload', test_path('a.txt')])
+    new_input_uuid = _run_command([cl, 'upload', test_path('dir2')])
 
     # Try three ways of mimicing, should all produce the same answer
     input_mimic_uuid = _run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
@@ -2444,9 +2494,9 @@ def test_copy(ctx):
 
         # Upload to original worksheet, transfer to remote
         _run_command([cl, 'work', source_worksheet])
-        uuid = _run_command([cl, 'upload', test_path('')])
+        uuid = _run_command([cl, 'upload', test_path('a.txt')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
-        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
         # TODO: `cl cat` is not working even with the bundle available
         # compare_output_across_instances([cl, 'cat', uuid])
 
@@ -2454,7 +2504,7 @@ def test_copy(ctx):
         _run_command([cl, 'work', remote_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
-        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
         # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)

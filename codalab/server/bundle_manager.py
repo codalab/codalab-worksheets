@@ -364,7 +364,7 @@ class BundleManager(object):
                 worker['socket_id'],
                 worker['worker_id'],
                 {'type': 'mark_finalized', 'uuid': bundle.uuid},
-                0.2,
+                1,
             ):
                 logger.info(
                     'Acknowledged finalization of run bundle {} on worker {}'.format(
@@ -721,7 +721,7 @@ class BundleManager(object):
             worker['socket_id'],
             worker['worker_id'],
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
-            0.2,
+            1,
         ):
             logger.info(
                 'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])

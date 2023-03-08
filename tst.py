@@ -172,6 +172,7 @@ def upload(
 file_path = 'requirements.txt'
 # file_path = 'test_1.5g'
 
+
 def test_indexed_gzip(file_path):
     """
     A simple test function only envolve SQLiteIndexedTar
@@ -194,7 +195,6 @@ def test_indexed_gzip(file_path):
     # output_fileobj.seek = new_seek
     # output_fileobj.tell = new_tell
 
-
     ## Test reading large file.
 
     # source = open(file_path, 'rb')
@@ -205,14 +205,14 @@ def test_indexed_gzip(file_path):
 
     # tar_file = indexed_gzip.IndexedGzipFile(fileobj=output_fileobj, drop_handles=False, spacing=4194304)
 
-    # while 1:  
+    # while 1:
     #     data = tar_file.read()
     #     if(len(data) == 0):
     #         print(tar_file.fileobj().tell())
     #         break
     #     else:
     #         print(tar_file.fileobj().tell())
-            
+
     # assert tar_file.tell() == file_size
 
     with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -225,14 +225,14 @@ def test_indexed_gzip(file_path):
             printDebug=3,
         ) as tf:
             print("File obj.tell() : ", output_fileobj.fileobj().tell())
-            
+
             finfo = tf._getFileInfoRow('/contents')
             finfo = dict(finfo)
             print(finfo)  # get the result of a fi
             finfo['size'] = output_fileobj.fileobj().tell()
             new_info = tuple([value for _, value in finfo.items()])
             print(new_info)
-            
+
             tf._setFileInfo(new_info)
             print("New info: ", tf.getFileInfo('/contents'))  # get the result of a fi
 
