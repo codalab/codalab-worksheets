@@ -311,7 +311,6 @@ class BlobStorageUploader(Uploader):
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
-                    printDebug=1,
                 )
 
             def upload_index():
@@ -334,10 +333,12 @@ class BlobStorageUploader(Uploader):
 
                 # call API to update the indexed file size
 
-                if not parse_linked_bundle_url(bundle_path).is_archive_dir:
+                if not parse_linked_bundle_url(bundle_path).is_archive_dir and hasattr(output_fileobj, "tell"):
+                    import logging
+                    logging.info(f"the problem is {type(output_fileobj)} {type(source_fileobj)}")
                     file_size = (
-                        output_fileobj.fileobj().tell()
-                        if hasattr(output_fileobj, "fileobj")
+                        output_fileobj.input_file_tell()
+                        if hasattr(output_fileobj, "input_file_tell")
                         else output_fileobj.tell()
                     )
                     if self.is_client:

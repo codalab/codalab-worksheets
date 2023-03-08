@@ -158,7 +158,6 @@ class SQLiteIndexedTar(MountSource):
                 self.tarFileName = os.path.abspath(tarFileName)
             else:
                 raise ValueError("At least one of tarFileName and fileObject arguments should be set!")
-        # print("here4: ", fileObject.tell())
         # If no fileObject given, then self.tarFileName is the path to the archive to open.
         if not fileObject:
             fileObject = open(self.tarFileName, 'rb')
@@ -168,7 +167,7 @@ class SQLiteIndexedTar(MountSource):
             fileObject.seek(0, io.SEEK_END)
             fileSize = fileObject.tell()
             fileObject.seek(0)  # Even if not interested in the file size, seeking to the start might be useful.
-        # print("here5: ", fileObject.tell())
+
         # rawFileObject : Only set when opening a compressed file and only kept to keep the
         #                 compressed file handle from being closed by the garbage collector.
         # tarFileObject : File object to the uncompressed (or decompressed) TAR file to read actual data out of.
@@ -177,7 +176,7 @@ class SQLiteIndexedTar(MountSource):
         self.tarFileObject, self.rawFileObject, self.compression, self.isTar = SQLiteIndexedTar._openCompressedFile(
             fileObject, gzipSeekPointSpacing, encoding, self.parallelization, printDebug=self.printDebug, filename=self.tarFileName
         )
-        print("here3: ", self.tarFileObject.tell())
+
         if not self.isTar and not self.rawFileObject:
             raise RatarmountError("File object (" + str(fileObject) + ") could not be opened as a TAR file!" + str(self.isTar) + str(self.rawFileObject))
 
