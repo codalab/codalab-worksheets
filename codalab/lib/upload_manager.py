@@ -19,7 +19,7 @@ from codalab.common import (
     parse_linked_bundle_url,
     httpopen_with_retry,
 )
-from codalab.worker.file_util import tar_gzip_directory, GzipStream
+from codalab.worker.file_util import tar_gzip_directory, GzipStream, update_file_size
 from codalab.worker.bundle_state import State
 from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
@@ -323,11 +323,18 @@ class BlobStorageUploader(Uploader):
                         #         raise Exception('Upload aborted by client')
                 
                 # call API to update the indexed file size
+                
+                print(f"Before update file size, self._client is: {self._client}")
                 if not parse_linked_bundle_url(bundle_path).is_archive_dir:
-                    self._client.update(
-                        'bundles/%s/contents/filesize/' % bundle_uuid,
-                        {'filesize': output_fileobj.fileobj().tell() if hasattr(output_fileobj, "fileobj") else output_fileobj.tell()},
-                    )
+                    file_size = output_fileobj.fileobj().tell() if hasattr(output_fileobj, "fileobj") else output_fileobj.tell()
+                    if self.is_client:
+                        self._client.update(
+                            'bundles/%s/contents/filesize/' % bundle_uuid,
+                            {'filesize': file_size},
+                        )
+                    else:  # directly update on server side
+                        update_file_size(bundle_path, file_size)
+
                 else:
                     print("Here in else branch of is_archive_dir")
 

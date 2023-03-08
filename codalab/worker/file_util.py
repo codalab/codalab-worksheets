@@ -637,3 +637,31 @@ def sha256(file: str) -> str:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
+
+
+def update_file_size(bundle_path, file_size):
+    """
+    This function is used to update the file size in index.sqlite.
+    Should only be used to update a single file's size.
+    """
+    if parse_linked_bundle_url(bundle_path).uses_beam and not parse_linked_bundle_url(bundle_path).is_archive_dir:
+        with OpenIndexedArchiveFile(bundle_path) as tf:
+            # tf is a SQLiteTar file, which is a copy of original index file
+            finfo = tf._getFileInfoRow('/contents')
+            finfo = dict(finfo)
+            finfo['size'] = file_size
+            new_info = tuple([value for _, value in finfo.items()])
+            logging.info(finfo) # get the result of a fi
+            tf._setFileInfo(new_info)
+            tf.sqlConnection.commit()  # need to mannually commit here
+            logging.info(f"tf.index_file_name: {tf.indexFilePath}")
+
+            # Update the index file stored in blob storage
+            FileSystems.delete([parse_linked_bundle_url(bundle_path).index_path])
+            with FileSystems.create(parse_linked_bundle_url(bundle_path).index_path, compression_type=CompressionTypes.UNCOMPRESSED) as f, open(tf.indexFilePath, "rb") as tif:
+                while True:
+                    CHUNK_SIZE = 16 * 1024
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    f.write(to_send)
