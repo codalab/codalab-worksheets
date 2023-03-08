@@ -481,17 +481,15 @@ class JsonApiClient(RestClient):
         :param params: dict of query parameters
         :return: the updated object(s)
         """
-        data=self._pack_document(data if isinstance(data, list) else [data], resource_type)
+        data = self._pack_document(data if isinstance(data, list) else [data], resource_type)
         res = self._make_request(
-                method='PATCH',
-                path=self._get_resource_path(resource_type),
-                query_params=self._pack_params(params),
-                data=data,
-            )
-
-        result = self._unpack_document(
-            res
+            method='PATCH',
+            path=self._get_resource_path(resource_type),
+            query_params=self._pack_params(params),
+            data=data,
         )
+
+        result = self._unpack_document(res)
         print(f"result is: {result}, data is: {data}")
         # Return list iff original data was list
         return result if isinstance(data, list) or result is None else result[0]

@@ -231,14 +231,12 @@ class SQLiteIndexedTar(MountSource):
                 if os.path.isfile(indexPath):
                     os.remove(indexPath)
 
-        print("here 2: ", self.tarFileObject.tell())
         # Try to find an already existing index
         for indexPath in possibleIndexFilePaths:
             if self._tryLoadIndex(indexPath):
                 self.indexFilePath = indexPath
                 break
         if self.indexIsLoaded() and self.sqlConnection:
-            print("In the self.sqlConnection branch")
             try:
                 indexVersion = self.sqlConnection.execute(
                     "SELECT major,minor FROM versions WHERE name == 'index';"
@@ -255,7 +253,6 @@ class SQLiteIndexedTar(MountSource):
             self._reloadIndexReadOnly()
             return
 
-        print("here2: ", self.tarFileObject.tell())
         # Find a suitable (writable) location for the index database
         if writeIndex and indexFilePath != ':memory:':
             for indexPath in possibleIndexFilePaths:
@@ -561,7 +558,6 @@ class SQLiteIndexedTar(MountSource):
             elif hasattr(fileobj, 'tell_compressed'):
                 progressBar.update(fileobj.tell_compressed())
             elif hasattr(fileobj, 'fileobj'):
-                print("IN this branch 3")
                 progressBar.update(fileobj.fileobj().tell())
             elif self.rawFileObject and hasattr(self.rawFileObject, 'tell'):
                 progressBar.update(self.rawFileObject.tell())
@@ -618,7 +614,6 @@ class SQLiteIndexedTar(MountSource):
         # 3. Iterate over files inside TAR and add them to the database
         try:
             filesToMountRecursively = []
-            print(f"[info] Loaded file is {loadedTarFile}")
             for tarInfo in loadedTarFile:
                 loadedTarFile.members = []  # Clear this in order to limit memory usage by tarfile
                 self._updateProgressBar(progressBar, fileObject)
@@ -771,8 +766,6 @@ class SQLiteIndexedTar(MountSource):
             
             # # Jiani: Since build_full_index() does not read 
             fileSize = fileObject.tell()
-            print(f"New File size is : {fileSize}")
-            print(f"New File size is : {fileObject.fileobj().tell()}")
             # fileSize = 0
 
             # fmt: off
@@ -1325,7 +1318,6 @@ class SQLiteIndexedTar(MountSource):
 
         oldOffset = fileobj.tell()
         for compressionId, compression in supportedCompressions.items():
-            print(compressionId)
             # The header check is a necessary condition not a sufficient condition.
             # Especially for gzip, which only has 2 magic bytes, false positives might happen.
             # Therefore, only use the magic bytes based check if the module could not be found
@@ -1384,7 +1376,6 @@ class SQLiteIndexedTar(MountSource):
         raw_file_obj will be none if compression is None.
         """
         compression = SQLiteIndexedTar._detectCompression(fileobj, printDebug=printDebug)
-        print(f"[Info] Detected compression {compression} for file object: {fileobj} position {fileobj.tell()}")
 
         if compression not in supportedCompressions:
             return fileobj, None, compression, SQLiteIndexedTar._detectTar(fileobj, encoding, printDebug=printDebug)
@@ -1396,7 +1387,6 @@ class SQLiteIndexedTar(MountSource):
             )
 
         if compression == 'gz':
-            print(f"before indexed_gzip.IndexedGzipFile(), gzipSeekPointSpacing: {gzipSeekPointSpacing}")
             # drop_handles keeps a file handle opening as is required to call tell() during decoding
             tar_file = indexed_gzip.IndexedGzipFile(fileobj=fileobj, drop_handles=False, spacing=gzipSeekPointSpacing)
         elif compression == 'bz2':
@@ -1469,7 +1459,6 @@ class SQLiteIndexedTar(MountSource):
             and self.compression == 'gz'
             # fmt: on
         ):
-            print(f"in _loadOrStore, this branch")
             tables = [x[0] for x in db.execute('SELECT name FROM sqlite_master WHERE type="table"')]
 
             # indexed_gzip index only has a file based API, so we need to write all the index data from the SQL
@@ -1517,7 +1506,6 @@ class SQLiteIndexedTar(MountSource):
             if self.printDebug >= 2:
                 print("[Info] Could not load GZip Block offset data. Will create it from scratch.")
             
-            print(f"before build_full_index: {fileObject.tell()}")
             # Transparently force index to be built if not already done so. build_full_index was buggy for me.
             # Seeking from end not supported, so we have to read the whole data in in a loop
             # Jiani: The build_full_index() is moved to _createIndex() and only call build_full_index() for uploading a single file. 

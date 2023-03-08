@@ -285,7 +285,6 @@ class BundleManager(object):
                                 shutil.copyfileobj(fileobj, f)
                                 # f.seek(0)
                                 # logging.info(f"[make] HERE!! f: {f.read()}")
-                                
 
                     deps.append((dependency_path, child_path))
 
@@ -295,7 +294,7 @@ class BundleManager(object):
                     path_util.copy(deps[0][0], path, follow_symlinks=False)
                 else:
                     os.mkdir(path)
-                    
+
                     for dependency_path, child_path in deps:
                         logging.info(f"child_path : {child_path}")
                         path_util.copy(dependency_path, child_path, follow_symlinks=False)

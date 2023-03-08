@@ -291,7 +291,7 @@ class OpenFile(object):
                     return GzipStream(TarSubdirStream(self.path))
                 else:
                     fs = TarFileStream(tf, finfo)
-                    return GzipStream(fs) if self.gzipped else fs 
+                    return GzipStream(fs) if self.gzipped else fs
 
         else:
             # Stream a directory or file from disk storage.
@@ -337,7 +337,8 @@ class GzipStream(BytesIO):
             self.__size += len(data)
             return data
         except Exception as e:
-            print("Error in GzipStream read() ", repr(e))
+            logging.info("Error in GzipStream read() ", repr(e))
+            return
 
     def close(self):
         self.__input.close()
@@ -348,7 +349,7 @@ class GzipStream(BytesIO):
 
     def tell(self):
         return self.__size
-    
+
     def fileobj(self):
         return self.__input
 
@@ -432,12 +433,11 @@ def get_file_size(file_path):
                 with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
                     fileobj.seek(0, os.SEEK_END)
                     return fileobj.tell()
-                
 
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-            
+
             assert linked_bundle_path.is_archive_dir
             fpath = "/" + linked_bundle_path.archive_subpath
             finfo = tf.getFileInfo(fpath)
@@ -456,7 +456,7 @@ def read_file_section(file_path, offset, length):
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
-   
+
     if offset >= get_file_size(file_path):
         return b''
     with OpenFile(file_path, 'rb') as fileobj:
@@ -644,21 +644,27 @@ def update_file_size(bundle_path, file_size):
     This function is used to update the file size in index.sqlite.
     Should only be used to update a single file's size.
     """
-    if parse_linked_bundle_url(bundle_path).uses_beam and not parse_linked_bundle_url(bundle_path).is_archive_dir:
+    if (
+        parse_linked_bundle_url(bundle_path).uses_beam
+        and not parse_linked_bundle_url(bundle_path).is_archive_dir
+    ):
         with OpenIndexedArchiveFile(bundle_path) as tf:
             # tf is a SQLiteTar file, which is a copy of original index file
             finfo = tf._getFileInfoRow('/contents')
             finfo = dict(finfo)
             finfo['size'] = file_size
             new_info = tuple([value for _, value in finfo.items()])
-            logging.info(finfo) # get the result of a fi
+            logging.info(finfo)  # get the result of a fi
             tf._setFileInfo(new_info)
             tf.sqlConnection.commit()  # need to mannually commit here
             logging.info(f"tf.index_file_name: {tf.indexFilePath}")
 
             # Update the index file stored in blob storage
             FileSystems.delete([parse_linked_bundle_url(bundle_path).index_path])
-            with FileSystems.create(parse_linked_bundle_url(bundle_path).index_path, compression_type=CompressionTypes.UNCOMPRESSED) as f, open(tf.indexFilePath, "rb") as tif:
+            with FileSystems.create(
+                parse_linked_bundle_url(bundle_path).index_path,
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as f, open(tf.indexFilePath, "rb") as tif:
                 while True:
                     CHUNK_SIZE = 16 * 1024
                     to_send = tif.read(CHUNK_SIZE)

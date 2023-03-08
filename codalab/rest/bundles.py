@@ -19,7 +19,7 @@ from codalab.common import (
     precondition,
     UsageError,
     NotFoundError,
-    parse_linked_bundle_url
+    parse_linked_bundle_url,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_azure_bypass_conn_str
@@ -776,7 +776,9 @@ def _fetch_bundle_contents_info(uuid, path=''):
     return {'data': info}
 
 
-@patch('/bundles/<uuid:re:%s>/contents/filesize/' % spec_util.UUID_STR, name='update_bundle_file_size')
+@patch(
+    '/bundles/<uuid:re:%s>/contents/filesize/' % spec_util.UUID_STR, name='update_bundle_file_size'
+)
 def _update_bundle_file_size(uuid):
     """
     This function is used to fix the file size field in the index.sqlite file.
@@ -786,13 +788,18 @@ def _update_bundle_file_size(uuid):
     bundle_path = local.bundle_store.get_bundle_location(uuid)
     file_size = request.json['data'][0]['attributes']['filesize']
     logging.info(f"File_size is : {file_size} {bundle_path} {uuid}")
-    
+
     update_file_size(bundle_path, file_size)
-    
-    if parse_linked_bundle_url(bundle_path).uses_beam and not parse_linked_bundle_url(bundle_path).is_archive_dir:
-    # check wether the info is saved to index.sqlite
+
+    if (
+        parse_linked_bundle_url(bundle_path).uses_beam
+        and not parse_linked_bundle_url(bundle_path).is_archive_dir
+    ):
+        # check wether the info is saved to index.sqlite
         with OpenIndexedArchiveFile(bundle_path) as tf:
-            logging.info(f"Modify file size in index.sqlit. New info is: {tf.getFileInfo('/contents')}")  # get the result of a fi
+            logging.info(
+                f"Modify file size in index.sqlit. New info is: {tf.getFileInfo('/contents')}"
+            )  # get the result of a fi
 
     bundles_dict = get_bundle_infos([uuid])
 

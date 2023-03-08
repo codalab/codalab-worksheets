@@ -71,7 +71,7 @@ class BaseUploadDownloadBundleTest(TestBase):
 
     def check_file_target_contents(self, target):
         """Checks to make sure that the specified file has the contents 'hello world'."""
-        # This can not be checked, Since 
+        # This can not be checked, Since
         with self.download_manager.stream_file(target, gzipped=False) as f:
             self.assertEqual(f.read(), b"hello world")
 

@@ -42,7 +42,7 @@ class Uploader:
         bundle_store=None,
         destination_bundle_store=None,
         json_api_client=None,
-        is_client=False
+        is_client=False,
     ):
         """
         params:
@@ -117,11 +117,21 @@ class Uploader:
                     bundle_path = self._update_and_get_bundle_location(
                         bundle, is_directory=source_ext in ARCHIVE_EXTS_DIR
                     )
-                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True, bundle_uuid=bundle.uuid)
+                    self.write_fileobj(
+                        source_ext,
+                        source_fileobj,
+                        bundle_path,
+                        unpack_archive=True,
+                        bundle_uuid=bundle.uuid,
+                    )
                 else:
                     bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
                     self.write_fileobj(
-                        source_ext, source_fileobj, bundle_path, unpack_archive=False,  bundle_uuid=bundle.uuid
+                        source_ext,
+                        source_fileobj,
+                        bundle_path,
+                        unpack_archive=False,
+                        bundle_uuid=bundle.uuid,
                     )
 
         except UsageError:
@@ -270,9 +280,9 @@ class BlobStorageUploader(Uploader):
                         # Update disk and check if client has gone over disk usage.
                         if self.is_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                             self._client.update(
-                            'user/increment_disk_used',
-                            {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
-                        )
+                                'user/increment_disk_used',
+                                {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
+                            )
                             user_info = self._client.fetch('user')
                             if user_info['disk_used'] >= user_info['disk_quota']:
                                 raise Exception(
@@ -321,22 +331,21 @@ class BlobStorageUploader(Uploader):
                         #     should_resume = progress_callback(bytes_uploaded)
                         #     if not should_resume:
                         #         raise Exception('Upload aborted by client')
-                
+
                 # call API to update the indexed file size
-                
-                print(f"Before update file size, self._client is: {self._client}")
+
                 if not parse_linked_bundle_url(bundle_path).is_archive_dir:
-                    file_size = output_fileobj.fileobj().tell() if hasattr(output_fileobj, "fileobj") else output_fileobj.tell()
+                    file_size = (
+                        output_fileobj.fileobj().tell()
+                        if hasattr(output_fileobj, "fileobj")
+                        else output_fileobj.tell()
+                    )
                     if self.is_client:
                         self._client.update(
-                            'bundles/%s/contents/filesize/' % bundle_uuid,
-                            {'filesize': file_size},
+                            'bundles/%s/contents/filesize/' % bundle_uuid, {'filesize': file_size},
                         )
                     else:  # directly update on server side
                         update_file_size(bundle_path, file_size)
-
-                else:
-                    print("Here in else branch of is_archive_dir")
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
