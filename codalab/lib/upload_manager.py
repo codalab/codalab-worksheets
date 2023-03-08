@@ -244,13 +244,12 @@ class BlobStorageUploader(Uploader):
         try:
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
-            ITERATIONS_PER_DISK_CHECK = 1
+            ITERATIONS_PER_DISK_CHECK = 2000
             iteration = 0
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
                 while True:
-                    iteration += 1
                     to_send = output_fileobj.read(CHUNK_SIZE)
                     if not to_send:
                         break
@@ -276,6 +275,7 @@ class BlobStorageUploader(Uploader):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
+                    iteration += 1
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
