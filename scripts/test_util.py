@@ -183,7 +183,7 @@ def cleanup(cl, tag, should_wait=True):
     print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
 
 
-class timer:
+class Timer:
     """
     Class that uses signal to interrupt functions while they're running
     if they run for longer than timeout_seconds.
@@ -195,7 +195,6 @@ class timer:
         """
         A class that can be used as a context manager to ensure that code within that context manager times out
         after timeout_seconds time and which times the execution of code within the context manager.
-
         Parameters:
             timeout_seconds (float): Amount of time before execution in context manager is interrupted for timeout
             handle_timeouts (bool): If True, do not timeout, only return the time taken for execution in context manager.
@@ -210,6 +209,9 @@ class timer:
         if self.uuid:
             timeout_message += " while waiting for %s to run" % self.uuid
         raise TimeoutError(timeout_message)
+
+    def time_elapsed(self):
+        return time.time() - self.start_time
 
     def __enter__(self):
         self.start_time = time.time()

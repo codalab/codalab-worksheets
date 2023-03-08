@@ -38,8 +38,8 @@ logger = logging.getLogger(__name__)
 Codalab Worker
 Workers handle communications with the Codalab server. Their main role in Codalab execution
 is syncing the job states with the server and passing on job-related commands from the server
-to architecture-specific RunManagers that run the jobs. Workers are execution platform antagonistic
-but they expect the platform specific RunManagers they use to implement a common interface
+to architecture-specific BundleRuntimes that run the jobs. Workers are execution platform agnostic
+but they expect the platform specific BundleRuntimes they use to implement a common interface
 """
 
 NOOP = 'noop'
@@ -321,7 +321,7 @@ class Worker:
                     while not self.terminate:
                         try:
                             await receive_msg()
-                        except asyncio.futures.TimeoutError:
+                        except asyncio.TimeoutError:
                             pass
                         except websockets.exceptions.ConnectionClosed:
                             logger.warning("Websocket connection closed, starting a new one...")
@@ -631,7 +631,7 @@ class Worker:
     @property
     def all_runs(self):
         """
-        Returns a list of all the runs managed by this RunManager
+        Returns a list of all the runs managed by this worker
         """
         return [
             BundleCheckinState(
@@ -656,7 +656,7 @@ class Worker:
     @property
     def free_disk_bytes(self):
         """
-        Available disk space by bytes of this RunManager.
+        Available disk space by bytes of this worker.
         """
         error_msg = "Failed to run command {}".format("df -k" + self.work_dir)
         try:
@@ -687,7 +687,7 @@ class Worker:
         If not, returns immediately.
         Then, checks in with the bundle service and sees if the bundle is still assigned to this worker.
         If not, returns immediately.
-        Otherwise, tell RunManager to create the run.
+        Otherwise, creates the run.
         """
         if self.exit_after_num_runs == self.num_runs:
             print(
