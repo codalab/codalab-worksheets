@@ -1710,11 +1710,10 @@ class BundleCLI(object):
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
         if destination_bundle_store is not None:
-            need_bypass = False
             bundle_store_uuid = None
 
             # 1) Read destination store from --store if user has specified it
-            if destination_bundle_store is not None and destination_bundle_store != '':
+            if destination_bundle_store:
                 storage_info = client.fetch_one(
                     'bundle_stores',
                     params={
@@ -1724,7 +1723,8 @@ class BundleCLI(object):
                 )
                 bundle_store_uuid = storage_info['uuid']
 
-            params = {'need_bypass': need_bypass}
+            # Do not need to bypass server for MakeBundle. Directly make bundle on server.
+            params = {'need_bypass': False}
             client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
 
         print(new_bundle['uuid'], file=self.stdout)
