@@ -27,7 +27,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, timer, run_command
+from scripts.test_util import Colorizer, Timer, run_command
 
 import argparse
 import hashlib
@@ -2073,7 +2073,7 @@ def test_time(ctx, timeout=True):
     for i, size in enumerate(FILE_SIZES):
         # Have to use subprocess because redirection is impossible with _run_command.
         subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
-        with timer(TIMEOUTS[i]):
+        with Timer(TIMEOUTS[i]):
             start = time.time()
             uuid = _run_command([cl, 'upload', temp_file_path])
             wait_until_state(uuid, State.READY, timeout_seconds=1)
@@ -2089,31 +2089,31 @@ def test_time(ctx, timeout=True):
     print(f"{duration}")
 
     # Loading bundle info
-    with timer(0.1):
+    with Timer(0.1):
         start = time.time()
         get_info(uuid, 'name')
         duration = time.time() - start
         print(f"{duration}")
 
     # Loading a worksheet and getting worksheet info
-    with timer(0.1):
+    with Timer(0.1):
         start = time.time()
         _run_command([cl, 'new', 'test-worksheet'])
         duration = time.time() - start
         print(f"{duration}")
-    with timer(0.3):
+    with Timer(0.3):
         start = time.time()
         _run_command([cl, 'work', 'test-worksheet'])
         duration = time.time() - start
         print(f"{duration}")
-    with timer(0.2):
+    with Timer(0.2):
         start = time.time()
         _run_command([cl, 'wrm', 'test-worksheet'])
         duration = time.time() - start
         print(f"{duration}")
 
     # Removing a bundle
-    with timer(0.2):
+    with Timer(0.2):
         start = time.time()
         _run_command([cl, 'rm', uuid])
         duration = time.time() - start
