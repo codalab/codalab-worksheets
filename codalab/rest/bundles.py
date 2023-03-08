@@ -1347,7 +1347,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
-
     return relevant_uuids
 
 
