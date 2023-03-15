@@ -247,9 +247,12 @@ class BlobStorageUploader(Uploader):
         progress_callback=None,
     ):
         if unpack_archive:
+            
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
+            print(f"Need to unpack, {source_ext} {type(output_fileobj)}")
         else:
             output_fileobj = GzipStream(source_fileobj)
+            print(f"Not Need to unpack,{type(output_fileobj)}")
 
         stream_file = MultiReaderFileStream(output_fileobj)
         file_reader = stream_file.readers[0]
@@ -332,21 +335,23 @@ class BlobStorageUploader(Uploader):
                         #         raise Exception('Upload aborted by client')
 
                 # call API to update the indexed file size
-
+                
                 if not parse_linked_bundle_url(bundle_path).is_archive_dir and hasattr(output_fileobj, "tell"):
-                    import logging
-                    logging.info(f"the problem is {type(output_fileobj)} {type(source_fileobj)}")
-                    file_size = (
-                        output_fileobj.input_file_tell()
-                        if hasattr(output_fileobj, "input_file_tell")
-                        else output_fileobj.tell()
-                    )
-                    if self.is_client:
-                        self._client.update(
-                            'bundles/%s/contents/filesize/' % bundle_uuid, {'filesize': file_size},
+                    try:
+                        file_size = (
+                            output_fileobj.input_file_tell()
+                            if hasattr(output_fileobj, "input_file_tell")
+                            else output_fileobj.tell()
                         )
-                    else:  # directly update on server side
-                        update_file_size(bundle_path, file_size)
+                        if self.is_client:
+                            self._client.update(
+                                'bundles/%s/contents/filesize/' % bundle_uuid, {'filesize': file_size},
+                            )
+                        else:  # directly update on server side
+                            update_file_size(bundle_path, file_size)
+                    except Exception as e:
+                        print("Do nothing here")
+                    
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
