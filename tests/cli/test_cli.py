@@ -2213,6 +2213,7 @@ def test_read(ctx):
         # Cat has everything.
         cat_output = _run_command([cl, 'cat', uuid + '/stdout'])
         check_contains('5\n6\n7', cat_output)  # HERE failed
+        print(cat_output)
         check_contains('This is a simple text file for CodaLab.', cat_output)
 
         # Read a non-existant file.
