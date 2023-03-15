@@ -19,7 +19,7 @@ from codalab.objects.permission import (
     check_bundle_have_run_permission,
 )
 from codalab.common import NotFoundError, PermissionError, parse_linked_bundle_url
-from codalab.lib import bundle_util, formatting, path_util
+from codalab.lib import bundle_util, formatting, path_util, zip_util
 from codalab.server.worker_info_accessor import WorkerInfoAccessor
 from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
@@ -230,6 +230,7 @@ class BundleManager(object):
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
+            # Here the path might be a blob storage url or local file system path
             path = normpath(bundle_location)
 
             deps = []
@@ -264,7 +265,10 @@ class BundleManager(object):
 
                     # If source path is on Azure Blob Storage, we should download it to a temporary local directory first.
                     if parse_linked_bundle_url(dependency_path).uses_beam:
-                        dependency_path = os.path.join(tempdir, dep.parent_uuid)
+                        if dep.child_path != "":
+                            dependency_path = os.path.join(tempdir, dep.child_path)
+                        else:
+                            dependency_path = os.path.join(tempdir, dep.parent_uuid)
 
                         target_info = self._download_manager.get_target_info(
                             BundleTarget(dep.parent_uuid, dep.parent_path), 0
@@ -286,20 +290,45 @@ class BundleManager(object):
                                 # f.seek(0)
                                 # logging.info(f"[make] HERE!! f: {f.read()}")
 
+                    # If source is local file system and destination is blob storage,
+                    # need to copy everything into a temp folder and upload together
+                    elif parse_linked_bundle_url(path).uses_beam:
+                        tempdir_dependency_path = (
+                            os.path.join(tempdir, dep.child_path)
+                            if dep.child_path != ""
+                            else os.path.join(tempdir, dep.parent_uuid)
+                        )
+                        path_util.copy(
+                            dependency_path, tempdir_dependency_path, follow_symlinks=False
+                        )
+                        dependency_path = tempdir_dependency_path
                     deps.append((dependency_path, child_path))
 
-                remove_path(path)
+                remove_path(path)  # delete the original bundle path
 
-                if len(deps) == 1 and deps[0][1] == path:
-                    path_util.copy(deps[0][0], path, follow_symlinks=False)
-                else:
-                    os.mkdir(path)
+                # Upload to destination bundle storage
+                if parse_linked_bundle_url(path).uses_beam:  # The destination is using blob storage
+                    source_fileobj = zip_util.tar_gzip_directory(
+                        tempdir
+                    )  # pack all the files in temp folder to a fileobj
+                    source_filename = "MakeBundle.tar.gz"  # TODO(Jiani): Use the original filename
+                    self._upload_manager.upload_to_bundle_store(
+                        bundle,
+                        source=tuple((source_filename, source_fileobj)),
+                        git=False,
+                        unpack=True,
+                        use_azure_blob_beta=True,
+                    )
+                else:  # The destination is using local filesystem
+                    if len(deps) == 1 and deps[0][1] == path:
+                        path_util.copy(deps[0][0], path, follow_symlinks=False)
+                    else:
+                        os.mkdir(path)
+                        for dependency_path, child_path in deps:
+                            path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-                    for dependency_path, child_path in deps:
-                        logging.info(f"child_path : {child_path}")
-                        path_util.copy(dependency_path, child_path, follow_symlinks=False)
-                        # logging.info(f"child_path : {os.path.getsize(child_path)}")
-                        # logging.info(f"child_path : {os.path.getsize(dependency_path)}")
+            # update the bundle location since we already change is_dir field
+            bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
             self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
