@@ -25,7 +25,7 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    WAIT_TIME_SECS = 3.0
+    WAIT_TIME_SECS = 5.0
 
     # Old workers might not have all the fields, so allow subsets to be missing.
     socket_id = local.worker_model.worker_checkin(
