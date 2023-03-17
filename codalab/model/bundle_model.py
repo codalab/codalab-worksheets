@@ -10,6 +10,8 @@ import time
 import logging
 import json
 
+from sqlalchemy.sql import text
+
 from dataclasses import dataclass
 from dateutil import parser
 from uuid import uuid4
@@ -680,6 +682,7 @@ class BundleModel(object):
         if count:
             query = alias(query).count()
 
+        import pdb; pdb.set_trace()
         result = self._execute_query(query)
         if count or sum_key[0] is not None:  # Just returning a single number
             result = worksheet_util.apply_func(format_func, result[0])

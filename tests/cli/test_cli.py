@@ -1834,9 +1834,15 @@ def test_perm(ctx):
     check_contains('read', _run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', _run_command([cl, 'perm', uuid, 'public', 'a']))
 
-
 @TestModule.register('search')
 def test_search(ctx):
+    """Search bundles on private worksheets"""
+    new_wuuid = _run_command([cl, 'new', random_name()])
+    _run_command([cl, 'wperm', new_wuuid, 'public', 'n']) # make worksheet private
+    uuid = _run_command([cl, 'upload', test_path('a.txt'), '-n', name, -w, new_wuuid])
+    check_equals(uuid,  _run_command([cl, 'search', uuid, '-u', f'host_worksheet={new_wuuid}']))
+
+    """Basic Search and info"""
     name = random_name()
     uuid1 = _run_command([cl, 'upload', test_path('a.txt'), '-n', name])
     uuid2 = _run_command([cl, 'upload', test_path('b.txt'), '-n', name])
@@ -1865,15 +1871,15 @@ def test_search(ctx):
     check_equals(
         size1 + size2, float(_run_command([cl, 'search', 'name=' + name, 'data_size=.sum']))
     )
-    # Check floating
+
+    """Search for floating bundles"""
     check_equals('', _run_command([cl, 'search', '.floating', '-u']))
     uuid3 = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'detach', uuid3], 0)
     check_equals(uuid3, _run_command([cl, 'search', '.floating', '-u']))
     _run_command([cl, 'rm', uuid3])  # need to remove since not on main worksheet
-    # Check search when groups empty
-    check_equals('', _run_command([cl, 'search', '.shared']))
-    # Check search with non-root user.
+
+    """Search with non-root user"""
     if not os.getenv('CODALAB_PROTECTED_MODE'):
         # This test does not work when protected_mode is True.
         _, current_user_name = current_user()
@@ -1891,7 +1897,10 @@ def test_search(ctx):
         check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '%', '-u']))
         check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, 'name=' + name, '-u']))
         switch_user(current_user_name)
-    # Check search by group
+
+    """Search with groups"""
+    # Empty group
+    check_equals('', _run_command([cl, 'search', '.shared']))
     group_bname = random_name()
     group_buuid = _run_command([cl, 'run', 'echo hello', '-n', group_bname])
     wait(group_buuid)
@@ -1906,7 +1915,6 @@ def test_search(ctx):
     check_contains(group_buuid[:8], _run_command([cl, 'search', '.shared']))
     check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_uuid)]))
     check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)]))
-
 
 @TestModule.register('search_time')
 def test_search_time(ctx):
