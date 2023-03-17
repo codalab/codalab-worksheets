@@ -1540,6 +1540,52 @@ def test_make(ctx):
     _run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
 
+    # test using make to replicate bundles between bundle stores
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        bundle_store_name = random_name()
+        bundle_store_uuid = _run_command(
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--url',
+                'azfs://devstoreaccount1/bundles',
+            ]
+        )
+
+        parent_child_store = [
+            # parent 1, parent 2, child
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 1) blob storage -> local filesystem
+            [[], [], ['--store', bundle_store_name]],  # 2) local filesystem -> blob storage
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 3) blob storage -> blob storage
+        ]
+        for store in parent_child_store:
+            uuid1 = _run_command([cl, 'upload', test_path('a.txt')] + store[0])
+            uuid2 = _run_command([cl, 'upload', test_path('b.txt')] + store[1])
+            # make
+            uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2] + store[2])
+            wait(uuid3)
+            check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
+            uuid4 = _run_command([cl, 'make', 'dep:' + uuid1] + store[2])
+            wait(uuid4)
+            check_equals(
+                test_path_contents('a.txt'), _run_command([cl, 'cat', uuid4 + '/dep']),
+            )
+            # clean up
+            _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+            _run_command([cl, 'rm', '-r', uuid2])
+        _run_command([cl, 'store', 'rm', bundle_store_uuid])
+
 
 @TestModule.register('worksheet')
 def test_worksheet(ctx):
