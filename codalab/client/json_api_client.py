@@ -490,7 +490,6 @@ class JsonApiClient(RestClient):
         )
 
         result = self._unpack_document(res)
-        print(f"result is: {result}, data is: {data}")
         # Return list iff original data was list
         return result if isinstance(data, list) or result is None else result[0]
 
