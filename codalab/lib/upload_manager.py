@@ -352,17 +352,13 @@ class BlobStorageUploader(Uploader):
                         print("Do nothing here")
                     
 
-            # threads = [Thread(target=upload_file_content), Thread(target=create_index)]
+            threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
-            # for thread in threads:
-            #     thread.start()
+            for thread in threads:
+                thread.start()
 
-            # for thread in threads:
-            #     thread.join()
-
-            # TODO: revert this
-            upload_file_content()
-            create_index()
+            for thread in threads:
+                thread.join()
 
             upload_index()
 
