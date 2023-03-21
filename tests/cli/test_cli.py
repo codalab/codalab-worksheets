@@ -871,7 +871,7 @@ def test_upload1(ctx):
             _run_command([cl, 'work', worksheet_uuid])
             # expect to fail when we upload something more than 2k bytes
             check_contains(
-                'User disk quota exceeded',
+                'disk quota exceeded',
                 _run_command(
                     [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
                     expected_exit_code=1,
