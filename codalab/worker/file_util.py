@@ -356,6 +356,7 @@ class GzipStream(BytesIO):
         return self.__input
 
     def input_file_tell(self):
+        """Gives the location at the original uncompressed file."""
         if hasattr(self.__input, "tell"):
             return self.__input.tell()
         else:
