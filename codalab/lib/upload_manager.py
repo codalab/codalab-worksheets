@@ -9,7 +9,7 @@ from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
 from codalab.lib.beam.MultiReaderFileStream import MultiReaderFileStream
 from contextlib import closing
 from codalab.worker.upload_util import upload_with_chunked_encoding
-from threading import Lock, Thread
+from threading import Thread
 
 from codalab.common import (
     StorageURLScheme,
@@ -17,7 +17,6 @@ from codalab.common import (
     StorageType,
     urlopen_with_retry,
     parse_linked_bundle_url,
-    httpopen_with_retry,
 )
 from codalab.worker.file_util import tar_gzip_directory, GzipStream, update_file_size
 from codalab.worker.bundle_state import State
@@ -323,8 +322,10 @@ class BlobStorageUploader(Uploader):
                         out_index_file.write(to_send)
 
                 # call API to update the indexed file size
-                
-                if not parse_linked_bundle_url(bundle_path).is_archive_dir and hasattr(output_fileobj, "tell"):
+
+                if not parse_linked_bundle_url(bundle_path).is_archive_dir and hasattr(
+                    output_fileobj, "tell"
+                ):
                     try:
                         file_size = (
                             output_fileobj.input_file_tell()
@@ -333,12 +334,13 @@ class BlobStorageUploader(Uploader):
                         )
                         if self._client:
                             self._client.update(
-                                'bundles/%s/contents/filesize/' % bundle_uuid, {'filesize': file_size},
+                                'bundles/%s/contents/filesize/' % bundle_uuid,
+                                {'filesize': file_size},
                             )
                         else:  # directly update on server side
                             update_file_size(bundle_path, file_size)
                     except Exception as e:
-                        print(f"Skip update this type of data. The bundle path is: {bundle_path}")
+                        print(f"Skip update this type of data. The bundle path is: {bundle_path}. Exception: {repr(e)}")
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 

@@ -25,7 +25,6 @@ from codalab.worker.file_util import remove_path
 from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.bundle_state import State, RunResources
 from codalab.worker.download_util import BundleTarget
-from codalab.worker.un_gzip_stream import UnGzipStream
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +273,6 @@ class BundleManager(object):
                             BundleTarget(dep.parent_uuid, dep.parent_path), 0
                         )
                         target = target_info['resolved_target']
-                        logging.info(f"target: {target}")
 
                         # Download the dependency to dependency_path (which is now in the temporary directory).
                         # TODO (Ashwin): Unify some of the logic here with the code in DependencyManager._store_dependency()
@@ -287,8 +285,6 @@ class BundleManager(object):
 
                             with open(dependency_path, 'wb') as f:
                                 shutil.copyfileobj(fileobj, f)
-                                # f.seek(0)
-                                # logging.info(f"[make] HERE!! f: {f.read()}")
 
                     # If source is local file system and destination is blob storage,
                     # need to copy everything into a temp folder and upload together
@@ -303,7 +299,6 @@ class BundleManager(object):
                         )
                         dependency_path = tempdir_dependency_path
                     deps.append((dependency_path, child_path))
-
                 remove_path(path)  # delete the original bundle path
 
                 # Upload to destination bundle storage

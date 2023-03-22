@@ -55,8 +55,6 @@ from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_
 from codalab.server.authenticated_plugin import AuthenticatedProtectedPlugin, ProtectedPlugin
 from codalab.worker.bundle_state import State
 from codalab.worker.download_util import BundleTarget
-from apache_beam.io.filesystem import CompressionTypes
-from apache_beam.io.filesystems import FileSystems
 
 logger = logging.getLogger(__name__)
 
@@ -782,7 +780,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
 def _update_bundle_file_size(uuid):
     """
     This function is used to fix the file size field in the index.sqlite file.
-    This only allows user to increase the file size for a single file. 
+    This only allows user to increase the file size for a single file.
     """
 
     bundle_path = local.bundle_store.get_bundle_location(uuid)

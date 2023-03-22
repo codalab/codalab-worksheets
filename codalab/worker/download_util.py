@@ -8,7 +8,7 @@ from typing_extensions import TypedDict
 
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import parse_linked_bundle_url
-from codalab.worker.file_util import OpenIndexedArchiveFile, OpenFile
+from codalab.worker.file_util import OpenIndexedArchiveFile
 from ratarmountcore import FileInfo
 
 
@@ -104,7 +104,6 @@ def get_target_info(bundle_path: str, target: BundleTarget, depth: int) -> Targe
             raise PathException(
                 "Path '{}' in bundle {} not found".format(target.subpath, target.bundle_uuid)
             )
-        logging.info(f"[here] calculate local file info {final_path}")
         info = _compute_target_info_local(final_path, depth)
 
     info['resolved_target'] = target
@@ -261,7 +260,7 @@ def _compute_target_info_blob(
             # The entry returned by ratarmount for a single .gz file is not technically part of a tar archive
             # and has a name hardcoded as "contents," so we modify the type, name, and permissions of
             # the output accordingly.
-            result = cast(
+            return cast(
                 TargetInfo,
                 dict(
                     _get_info("/contents", depth),
@@ -270,7 +269,6 @@ def _compute_target_info_blob(
                     perm=0o755,
                 ),
             )
-            return result
 
         if linked_bundle_path.archive_subpath:
             # Return the contents of a subpath within a directory.

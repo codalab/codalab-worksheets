@@ -9,22 +9,23 @@ class MultiReaderFileStream(BytesIO):
     FileStream that support multiple readers
     """
     NUM_READERS = 2
+
     def __init__(self, fileobj):
         self._bufs = [BytesBuffer() for _ in range(0, self.NUM_READERS)]
         self._pos = [0 for _ in range(0, self.NUM_READERS)]
         self._fileobj = fileobj
         self._lock = Lock()  # lock to ensure one does not concurrently read self._fileobj / write to the buffers.
-        
+
         class FileStreamReader(BytesIO):
             def __init__(s, index):
                 s._index = index
-            
+
             def read(s, num_bytes=None):
                 return self.read(s._index, num_bytes)
-            
+
             def peek(s, num_bytes):
                 return self.peek(s._index, num_bytes)
-        
+
         self.readers = [FileStreamReader(i) for i in range(0, self.NUM_READERS)]
 
     def _fill_buf_bytes(self, index: int, num_bytes=None):

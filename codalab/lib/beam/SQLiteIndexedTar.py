@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# flake8: noqa
 
 import io
 import json
@@ -48,6 +49,7 @@ supportedCompressions = {
         lambda x: indexed_gzip.IndexedGzipFile(fileobj=x),
     )
 }
+
 
 @dataclass
 class SQLiteIndexedTarUserData:
@@ -1504,7 +1506,7 @@ class SQLiteIndexedTar(MountSource):
             # Store the offsets into a temporary file and then into the SQLite database
             if self.printDebug >= 2:
                 print("[Info] Could not load GZip Block offset data. Will create it from scratch.")
-            
+
             # Transparently force index to be built if not already done so. build_full_index was buggy for me.
             # Seeking from end not supported, so we have to read the whole data in in a loop
             # Jiani: The build_full_index() is moved to _createIndex() and only call build_full_index() for uploading a single file. 

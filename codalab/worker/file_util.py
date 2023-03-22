@@ -281,7 +281,6 @@ class OpenFile(object):
                     else "/contents"
                 )
                 finfo = cast(FileInfo, tf.getFileInfo(fpath))
-                print("Finfo in file_util: ", finfo)
                 if finfo is None:
                     raise FileNotFoundError(fpath)
                 if isdir(finfo):
@@ -324,18 +323,15 @@ class GzipStream(BytesIO):
         while num_bytes is None or len(self.__buffer) < num_bytes:
             s = self.__input.read(num_bytes)
             self.__input_read_size += len(s)
-            # print(f"In GzipStream _fill_buf_bytes, num_bytes = {num_bytes}, read in length = {len(s)}, length of buffer = {len(self.__buffer)}")
             if not s:
-                self.__gzip.close()  # write some end
+                self.__gzip.close()
                 break
             self.__gzip.write(s)  # gzip the current file
 
     def read(self, num_bytes=None) -> bytes:
         try:
             self._fill_buf_bytes(num_bytes)
-            # print(f"length of buffer = {len(self.__buffer)}")
             data = self.__buffer.read(num_bytes)
-            # print(f"In GzipStream read(). num_bytes = {num_bytes}, length of buffer = {len(self.__buffer)}, read out data from GzipStream length = {len(data)}")
             self.__size += len(data)
             return data
         except Exception as e:
@@ -361,7 +357,6 @@ class GzipStream(BytesIO):
             return self.__input.tell()
         else:
             return self.__input_read_size
-
 
 
 def gzip_file(file_path: str) -> IO[bytes]:
@@ -430,7 +425,6 @@ def get_file_size(file_path):
     FileNotFoundError.
     """
     linked_bundle_path = parse_linked_bundle_url(file_path)
-    logging.info(f"Linked_bundle_path: {linked_bundle_path}")
     if linked_bundle_path.uses_beam and linked_bundle_path.is_archive:
         # If no archive subpath is specified for a .tar.gz or .gz file, get the uncompressed size of the entire file,
         # or the compressed size of the entire directory.
@@ -439,7 +433,6 @@ def get_file_size(file_path):
                 filesystem = FileSystems.get_filesystem(linked_bundle_path.bundle_path)
                 return filesystem.size(linked_bundle_path.bundle_path)
             else:
-                # If it's a single file, use the compressed size as total size
                 with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
                     fileobj.seek(0, os.SEEK_END)
                     return fileobj.tell()
@@ -447,13 +440,11 @@ def get_file_size(file_path):
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-
             assert linked_bundle_path.is_archive_dir
             fpath = "/" + linked_bundle_path.archive_subpath
             finfo = tf.getFileInfo(fpath)
             if finfo is None:
                 raise FileNotFoundError(fpath)
-            logging.info(f"In this branch2, return size is: {finfo.size}")
             return finfo.size
     if not get_path_exists(file_path):
         raise FileNotFoundError(file_path)
