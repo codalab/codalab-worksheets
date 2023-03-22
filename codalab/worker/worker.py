@@ -29,6 +29,7 @@ from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
+from .worker_monitoring import WorkerMonitoring
 from .worker_run_state import RunStateMachine, RunStage, RunState
 from .reader import Reader
 
@@ -151,6 +152,8 @@ class Worker:
             shared_memory_size_gb=shared_memory_size_gb,
             bundle_runtime=bundle_runtime,
         )
+        if using_sentry:
+            self.monitoring = WorkerMonitoring()
 
         # Lock ensures listening thread and main thread don't simultaneously
         # access the runs dictionary, thereby causing race conditions.
@@ -564,8 +567,11 @@ class Worker:
                 # Only start saving stats for a new stage when the run has actually transitioned to that stage.
                 if prev_state.stage != self.runs[uuid].stage:
                     self.end_stage_stats(uuid, prev_state.stage)
-                    if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                    is_terminal = self.runs[uuid].stage in [RunStage.FINISHED, RunStage.RESTAGED]
+                    if not is_terminal:
                         self.start_stage_stats(uuid, self.runs[uuid].stage)
+                    if using_sentry:
+                        self.monitoring.notify_stage_transition(self.runs[uuid], is_terminal)
 
             # 2. filter out finished runs and clean up containers
             finished_container_ids = [
@@ -744,6 +750,8 @@ class Worker:
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
+            if using_sentry:
+                self.monitoring.notify_stage_transition(self.runs[bundle.uuid])
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:

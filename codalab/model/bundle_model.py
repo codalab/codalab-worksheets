@@ -2714,21 +2714,41 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
-        """
-        User used some time.
-        """
-        user_info = self.get_user_info(user_id)
-        user_info['time_used'] += amount
-        self.update_user_info(user_info)
-
     def increment_user_disk_used(self, user_id: str, amount: int):
         """
-        Increment disk_used for user by amount
+        Increment disk_used for user by amount.
+        When incrementing values, we have to use a special query to ensure that we avoid
+        race conditions or deadlock arising from multiple threads calling functions
+        concurrently. We do this using with_for_update() and commit().
         """
-        user_info = self.get_user_info(user_id)
-        user_info['disk_used'] += amount
-        self.update_user_info(user_info)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.disk_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            disk_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(disk_used=disk_used)
+            )
+            connection.commit()
+
+    def increment_user_time_used(self, user_id: str, amount: int):
+        """
+        User used some time.
+        See comment for increment_user_disk_used.
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.time_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            time_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(time_used=time_used)
+            )
+            connection.commit()
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
