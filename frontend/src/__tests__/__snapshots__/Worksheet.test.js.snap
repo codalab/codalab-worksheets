@@ -512,7 +512,7 @@ Object {
         <div
           class="terminal"
           id="command_line"
-          style="--terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
+          style="height: 30px; --terminal-height: 30; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
         >
           <div
             class="terminal-wrapper"
@@ -1352,7 +1352,7 @@ Object {
       <div
         class="terminal"
         id="command_line"
-        style="--terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-height: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
+        style="height: 30px; --terminal-height: 30; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0; --terminal-x: 0; --terminal-y: 0; --terminal-scroll: 0;"
       >
         <div
           class="terminal-wrapper"
