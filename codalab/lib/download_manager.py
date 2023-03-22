@@ -121,9 +121,7 @@ class DownloadManager(object):
                 target.bundle_uuid
             )
             try:
-                info = download_util.get_target_info(bundle_path, target, depth)
-                print("[HERE] IN THIS BRANCH , ", info)
-                return info
+                return download_util.get_target_info(bundle_path, target, depth)
             except download_util.PathException as err:
                 raise NotFoundError(str(err))
         else:
@@ -205,10 +203,6 @@ class DownloadManager(object):
         """
         if self._is_available_locally(target):
             file_path = self._get_target_path(target)
-            logging.info(f"here1: {file_path}")
-            # if parse_linked_bundle_url(file_path).uses_beam:
-            #     if gzipped:
-
             if gzipped:
                 return self.file_util.gzip_file(file_path)
             else:
@@ -243,7 +237,6 @@ class DownloadManager(object):
                 bytestring = self.file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            print("Hereherehere")
             worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
             response_socket_id = self._worker_model.allocate_socket(
                 worker['user_id'], worker['worker_id']

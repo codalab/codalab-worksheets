@@ -246,12 +246,9 @@ class BlobStorageUploader(Uploader):
         progress_callback=None,
     ):
         if unpack_archive:
-            
             output_fileobj = zip_util.unpack_to_archive(source_ext, source_fileobj)
-            print(f"Need to unpack, {source_ext} {type(output_fileobj)}")
         else:
             output_fileobj = GzipStream(source_fileobj)
-            print(f"Not Need to unpack,{type(output_fileobj)}")
 
         stream_file = MultiReaderFileStream(output_fileobj)
         file_reader = stream_file.readers[0]
