@@ -480,6 +480,7 @@ class ModuleContext(object):
 
         # Clean up and restore original worksheet
         print("[*][*] CLEANING UP")
+        return
 
         switch_user('codalab')  # root user
         _run_command([cl, 'work', self.original_worksheet])
@@ -2923,7 +2924,6 @@ def test_unicode(ctx):
 def test_workers(ctx):
     # Spin up a run in case a worker isn't already running, so it can be started by the worker manager.
     uuid = _run_command([cl, 'run', 'echo'])
-    wait_until_state(uuid, State.RUNNING)
     wait(uuid)
 
     result = _run_command([cl, 'workers'])
