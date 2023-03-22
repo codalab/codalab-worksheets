@@ -50,10 +50,16 @@ import codalab.rest.worksheets
 
 logger = logging.getLogger(__name__)
 
+transaction_sample_rate = float(os.getenv('CODALAB_SENTRY_TRANSACTION_RATE') or 0)
+profiles_sample_rate = float(os.getenv('CODALAB_SENTRY_PROFILES_RATE') or 0)
+assert 0 <= transaction_sample_rate <= 1
+assert 0 <= profiles_sample_rate <= 1
 sentry_sdk.init(
     dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
     environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
     integrations=[BottleIntegration()],
+    traces_sample_rate=transaction_sample_rate,
+    _experiments={"profiles_sample_rate": profiles_sample_rate,},
 )
 
 
