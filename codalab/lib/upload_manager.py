@@ -324,11 +324,6 @@ class BlobStorageUploader(Uploader):
                         if not to_send:
                             break
                         out_index_file.write(to_send)
-                        # bytes_uploaded += len(to_send)
-                        # if progress_callback is not None:
-                        #     should_resume = progress_callback(bytes_uploaded)
-                        #     if not should_resume:
-                        #         raise Exception('Upload aborted by client')
 
                 # call API to update the indexed file size
                 
@@ -346,7 +341,7 @@ class BlobStorageUploader(Uploader):
                         else:  # directly update on server side
                             update_file_size(bundle_path, file_size)
                     except Exception as e:
-                        print("Do nothing here")
+                        print(f"Skip update this type of data. The bundle path is: {bundle_path}")
                     
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
