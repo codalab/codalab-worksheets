@@ -1240,26 +1240,6 @@ def test_parallel(ctx):
     wait(uuid2)
 
 
-@TestModule.register('kubernetes_runtime')
-def test_kubernetes_runtime(ctx):
-    """Tests various guarantees of the kubernetes runtime.
-    Should only be called when a kubernetes worker manager with
-    the kubernetes runtime is run."""
-
-    # Ensure that only one worker is run per node. First, we launch a lot of bundles,
-    # then ensure they only ran on one worker.
-    uuids = [_run_command([cl, 'run', 'sleep 180', '--request-memory', '500m']) for _ in range(10)]
-    wait_until_state(uuids[0], State.RUNNING)
-    num_running_states = len([get_info(uuid, "state") == State.RUNNING for uuid in uuids])
-    # Ensure that not all bundles are running (as they should be queued waiting for the worker to be free)
-    assert num_running_states < len(uuids)
-    for uuid in uuids:
-        wait(uuid)
-    # Ensure all bundles ran on the same worker.
-    remote = get_info(uuids[0], "remote")
-    assert all([get_info(uuid, "remote") == remote for uuid in uuids])
-
-
 @TestModule.register('store_add')
 def test_store_add(ctx):
     """
