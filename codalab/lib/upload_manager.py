@@ -42,7 +42,6 @@ class Uploader:
         bundle_store=None,
         destination_bundle_store=None,
         json_api_client=None,
-        is_client=False,
     ):
         """
         params:
@@ -51,9 +50,7 @@ class Uploader:
         destination_bundle_store: Indicate destination for bundle storage.
         json_api_client: A json API client. Only set if uploader is used on client side; if the uploader is used on the server side, it is set to None.
         """
-        # if not json_api_client:
-        self.is_client = is_client
-        if not self.is_client:
+        if not json_api_client:
             self._bundle_model = bundle_model
             self._bundle_store = bundle_store
             self.destination_bundle_store = destination_bundle_store
@@ -277,7 +274,7 @@ class BlobStorageUploader(Uploader):
                         out.write(to_send)
 
                         # Update disk and check if client has gone over disk usage.
-                        if self.is_client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                        if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
                             self._client.update(
                                 'user/increment_disk_used',
                                 {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
@@ -334,7 +331,7 @@ class BlobStorageUploader(Uploader):
                             if hasattr(output_fileobj, "input_file_tell")
                             else output_fileobj.tell()
                         )
-                        if self.is_client:
+                        if self._client:
                             self._client.update(
                                 'bundles/%s/contents/filesize/' % bundle_uuid, {'filesize': file_size},
                             )
@@ -342,7 +339,6 @@ class BlobStorageUploader(Uploader):
                             update_file_size(bundle_path, file_size)
                     except Exception as e:
                         print(f"Skip update this type of data. The bundle path is: {bundle_path}")
-                    
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 
@@ -411,8 +407,7 @@ class UploadManager(object):
             bundle_model=self._bundle_model,
             bundle_store=self._bundle_store,
             destination_bundle_store=destination_bundle_store,
-            json_api_client=self._client,
-            is_client=False,
+            json_api_client=None,
         ).upload_to_bundle_store(bundle, source, git, unpack)
 
     def has_contents(self, bundle):
@@ -606,7 +601,6 @@ class ClientUploadManager(object):
             bundle_store=None,
             destination_bundle_store=None,
             json_api_client=json_api_client,
-            is_client=True,
         ).write_fileobj(
             source_ext,
             fileobj,
