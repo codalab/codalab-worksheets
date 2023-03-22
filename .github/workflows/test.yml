@@ -119,14 +119,11 @@ jobs:
           - edit
           - open wopen
           - store_add parallel
-          - kubernetes_runtime
         runtime: [docker, kubernetes]
         exclude:
           # netcat / netcurl not supported for kubernetes.
           - test: netcat netcurl
             runtime: kubernetes
-          - test: kubernetes_runtime
-            runtime: docker
     steps:
       - name: Clear free space
         run: |
