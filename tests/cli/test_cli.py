@@ -27,7 +27,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, run_command
+from scripts.test_util import Colorizer, Timer, run_command
 
 import argparse
 import hashlib
@@ -1572,6 +1572,52 @@ def test_make(ctx):
     _run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
 
+    # test using make to replicate bundles between bundle stores
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        bundle_store_name = random_name()
+        bundle_store_uuid = _run_command(
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--url',
+                'azfs://devstoreaccount1/bundles',
+            ]
+        )
+
+        parent_child_store = [
+            # parent 1, parent 2, child
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 1) blob storage -> local filesystem
+            [[], [], ['--store', bundle_store_name]],  # 2) local filesystem -> blob storage
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 3) blob storage -> blob storage
+        ]
+        for store in parent_child_store:
+            uuid1 = _run_command([cl, 'upload', test_path('a.txt')] + store[0])
+            uuid2 = _run_command([cl, 'upload', test_path('b.txt')] + store[1])
+            # make
+            uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2] + store[2])
+            wait(uuid3)
+            check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
+            uuid4 = _run_command([cl, 'make', 'dep:' + uuid1] + store[2])
+            wait(uuid4)
+            check_equals(
+                test_path_contents('a.txt'), _run_command([cl, 'cat', uuid4 + '/dep']),
+            )
+            # clean up
+            _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+            _run_command([cl, 'rm', '-r', uuid2])
+        _run_command([cl, 'store', 'rm', bundle_store_uuid])
+
 
 @TestModule.register('worksheet')
 def test_worksheet(ctx):
@@ -2095,13 +2141,61 @@ def test_run(ctx):
 
 
 @TestModule.register('time')
-def test_time(ctx):
-    """Various tests that ensure the timing of runs is still fast."""
+def test_time(ctx, timeout=True):
+    """ Basic tests. """
+    # Uploading. Sweep file sizes.
+    FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
+    TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
+    temp_file_path = temp_path(random_name())
+    f = open(temp_file_path, 'w+')
+    for i, size in enumerate(FILE_SIZES):
+        # Have to use subprocess because redirection is impossible with _run_command.
+        subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
+        with Timer(TIMEOUTS[i]):
+            start = time.time()
+            uuid = _run_command([cl, 'upload', temp_file_path])
+            wait_until_state(uuid, State.READY, timeout_seconds=1)
+            duration = time.time() - start
+            print(f"{duration}")
+    _run_command(['rm', temp_file_path])
+
+    # Run simple bundle.
+    start = time.time()
     uuid = _run_command([cl, 'run', 'echo hello'])
     wait_until_state(uuid, State.READY, timeout_seconds=20)
+    duration = time.time() - start
+    print(f"{duration}")
 
-    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
-    wait_until_state(uuid, State.READY, timeout_seconds=20)
+    # Loading bundle info
+    with Timer(0.1):
+        start = time.time()
+        get_info(uuid, 'name')
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Loading a worksheet and getting worksheet info
+    with Timer(0.1):
+        start = time.time()
+        _run_command([cl, 'new', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with Timer(0.3):
+        start = time.time()
+        _run_command([cl, 'work', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with Timer(0.2):
+        start = time.time()
+        _run_command([cl, 'wrm', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Removing a bundle
+    with Timer(0.2):
+        start = time.time()
+        _run_command([cl, 'rm', uuid])
+        duration = time.time() - start
+        print(f"{duration}")
 
 
 @TestModule.register('link')

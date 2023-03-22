@@ -293,6 +293,20 @@ CODALAB_ARGUMENTS = [
         ),
         frontend=True,
     ),
+    CodalabArg(
+        name='sentry_transaction_rate',
+        help=(
+            'Percentage of transactions we want to have Sentry sample. Only used if sentry-ingest-url and sentry-environment are provided.'
+        ),
+        default=0,
+    ),
+    CodalabArg(
+        name='sentry_profiles_rate',
+        help=(
+            'Percentage of transactions we want to have Sentry profile. Only used if sentry-ingest-url and sentry-environment are provided.'
+        ),
+        default=0,
+    ),
     # Bundle Manager
     CodalabArg(
         name='bundle_manager_worker_timeout_seconds',
@@ -492,6 +506,11 @@ for worker_manager_type in ['cpu', 'gpu']:
             help=f'Number of seconds to wait between launching two {worker_manager_type} workers',
             type=int,
             default=60,
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_bundle_runtime',
+            type=str,
+            help='The runtime through which the worker manager\'s workers will run bundles. The options are docker (default) or kubernetes.',
         ),
         CodalabArg(
             name=f'worker_manager_{worker_manager_type}_kubernetes_cluster_host',
