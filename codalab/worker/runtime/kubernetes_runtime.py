@@ -236,12 +236,13 @@ class KubernetesRuntime(Runtime):
 
     def get_node_availability_stats(self) -> dict:
         node_name = os.getenv("CODALAB_KUBERNETES_NODE_NAME")
+        assert node_name, node_name
         node = self.k8_api.read_node(name=node_name)
         allocatable = node.status.allocatable
 
         return {
             'cpus': int(allocatable.get('cpu')),
             'gpus': int(allocatable.get('nvidia.com/gpu') or '0'),
-            'memory_bytes': allocatable.get('ephemeral-storage'),
-            'free_disk_bytes': allocatable.get('memory'),
+            'memory_bytes': allocatable.get('memory'),
+            'free_disk_bytes': allocatable.get('ephemeral-storage'),
         }
