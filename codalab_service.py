@@ -508,6 +508,11 @@ for worker_manager_type in ['cpu', 'gpu']:
             default=60,
         ),
         CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_bundle_runtime',
+            type=str,
+            help='The runtime through which the worker manager\'s workers will run bundles. The options are docker (default) or kubernetes.',
+        ),
+        CodalabArg(
             name=f'worker_manager_{worker_manager_type}_kubernetes_cluster_host',
             type=str,
             help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
