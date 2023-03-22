@@ -2973,8 +2973,8 @@ def test_workers(ctx):
             '--request-gpus',
             str(gpus_total - gpus_used),
         ],
-        request_memory=free_memory_original,
-        request_disk=free_disk_original,
+        request_memory=free_memory_original - 1024,
+        request_disk=free_disk_original - 1024,
     )
     wait_until_state(uuid, State.RUNNING)
     result = _run_command([cl, 'workers'])
