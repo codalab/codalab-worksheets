@@ -243,6 +243,6 @@ class KubernetesRuntime(Runtime):
             'cpus': int(allocatable.get('cpu')),
             'gpus': int(allocatable.get('nvidia.com/gpu') or '0'),
             # Units are in KiBs
-            'memory_bytes': allocatable.get('memory') * 1024,
-            'free_disk_bytes': allocatable.get('ephemeral-storage') * 1024,
+            'memory_bytes': int(allocatable.get('memory')) * 1024,
+            'free_disk_bytes': int(allocatable.get('ephemeral-storage')) * 1024,
         }
