@@ -242,7 +242,7 @@ class KubernetesRuntime(Runtime):
         return {
             'cpus': int(allocatable.get('cpu')),
             'gpus': int(allocatable.get('nvidia.com/gpu') or '0'),
-            # Units are in KiBs
+            # Units are in KiBs. See https://github.com/golang/build/blob/e9fe3dc8933d29df76a8b52bac5e62c41b42ab6d/kubernetes/api/quantity.go#L46
             'memory_bytes': int(allocatable.get('memory')) * 1024,
             'free_disk_bytes': int(allocatable.get('ephemeral-storage')) * 1024,
         }
