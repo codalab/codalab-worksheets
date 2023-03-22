@@ -27,7 +27,17 @@ def initialize_sentry():
     Initialize the Sentry SDK if it hasn't already been initialized.
     """
     if sentry_sdk.Hub.current.client is None:
-        sentry_sdk.init(dsn=CODALAB_SENTRY_INGEST, environment=CODALAB_SENTRY_ENVIRONMENT)
+        transaction_sample_rate = float(os.getenv('CODALAB_SENTRY_TRANSACTION_RATE') or 0)
+        profiles_sample_rate = float(os.getenv('CODALAB_SENTRY_PROFILES_RATE') or 0)
+        assert 0 <= transaction_sample_rate <= 1
+        assert 0 <= profiles_sample_rate <= 1
+        sentry_sdk.init(
+            dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
+            environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
+            traces_sample_rate=transaction_sample_rate,
+            _experiments={"profiles_sample_rate": profiles_sample_rate,},
+        )
+
         print_sentry_warning()
 
 
