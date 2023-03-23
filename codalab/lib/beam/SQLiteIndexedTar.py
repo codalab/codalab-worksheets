@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # flake8: noqa
+# type: ignore
 
 import io
 import json

@@ -37,7 +37,7 @@ class MultiReaderFileStream(BytesIO):
                 for i in range(0, self.NUM_READERS):
                     self._bufs[i].write(s)
 
-    def read(self, index: int, num_bytes=None):
+    def read(self, index: int, num_bytes=None):  # type: ignore
         """Read the specified number of bytes from the associated file.
         index: index that specifies which reader is reading.
         """
@@ -48,7 +48,7 @@ class MultiReaderFileStream(BytesIO):
         self._pos[index] += len(s)
         return s
 
-    def peek(self, index: int, num_bytes):
+    def peek(self, index: int, num_bytes):   # type: ignore
         self._fill_buf_bytes(index, num_bytes)
         s = self._bufs[index].peek(num_bytes)
         return s

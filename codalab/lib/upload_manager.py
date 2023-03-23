@@ -5,7 +5,7 @@ import tempfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
-from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
 from codalab.lib.beam.MultiReaderFileStream import MultiReaderFileStream
 from contextlib import closing
 from codalab.worker.upload_util import upload_with_chunked_encoding
@@ -340,7 +340,9 @@ class BlobStorageUploader(Uploader):
                         else:  # directly update on server side
                             update_file_size(bundle_path, file_size)
                     except Exception as e:
-                        print(f"Skip update this type of data. The bundle path is: {bundle_path}. Exception: {repr(e)}")
+                        print(
+                            f"Skip update this type of data. The bundle path is: {bundle_path}. Exception: {repr(e)}"
+                        )
 
             threads = [Thread(target=upload_file_content), Thread(target=create_index)]
 

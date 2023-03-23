@@ -14,14 +14,13 @@ from codalab.common import parse_linked_bundle_url
 from codalab.worker.un_gzip_stream import BytesBuffer
 from codalab.worker.tar_subdir_stream import TarSubdirStream
 from codalab.worker.tar_file_stream import TarFileStream
-from codalab.worker.un_gzip_stream import UnGzipStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
 
 # from ratarmountcore import SQLiteIndexedTar, FileInfo
 from ratarmountcore import FileInfo
-from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -328,7 +327,7 @@ class GzipStream(BytesIO):
                 break
             self.__gzip.write(s)  # gzip the current file
 
-    def read(self, num_bytes=None) -> bytes:
+    def read(self, num_bytes=None):
         try:
             self._fill_buf_bytes(num_bytes)
             data = self.__buffer.read(num_bytes)
@@ -336,7 +335,7 @@ class GzipStream(BytesIO):
             return data
         except Exception as e:
             logging.info("Error in GzipStream read() ", repr(e))
-            return
+            return None
 
     def close(self):
         self.__input.close()
