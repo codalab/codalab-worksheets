@@ -610,6 +610,11 @@ Response format:
 }
 ```
 
+### `PATCH /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/filesize/`
+
+This function is used to fix the file size field in the index.sqlite file.
+This only allows user to increase the file size for a single file.
+
 ### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>/`
 
 Send a raw bytestring into the specified port of the running bundle with uuid.
