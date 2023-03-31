@@ -1150,14 +1150,7 @@ class BundleModel(object):
             dirs_and_files = [], [bundle_location]
 
         # TODO(Ashwin): make this non-fs specific
-<<<<<<< HEAD
-        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
-        data_size = getattr(
-            bundle.metadata, "data_size", path_util.get_size(bundle_location, dirs_and_files)
-        )
-=======
         data_size = path_util.get_size(bundle_location, dirs_and_files)
->>>>>>> d33626f22cf957cae297942e8e98bae6d39840d2
         try:
             if 'data_size' in bundle.metadata.__dict__:
                 current_data_size = bundle.metadata.data_size
@@ -1179,19 +1172,10 @@ class BundleModel(object):
                     % (data_size, disk_left)
                 )
 
-<<<<<<< HEAD
-        if no_increment:
-            bundle_update = {'data_hash': data_hash}
-            self.update_bundle(bundle, bundle_update)
-        else:
-            bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+        if not no_increment:
+            bundle_update = {'metadata': {'data_size': data_size}}
             self.update_bundle(bundle, bundle_update)
             self.increment_user_disk_used(bundle.owner_id, disk_increment)
-=======
-        bundle_update = {'metadata': {'data_size': data_size}}
-        self.update_bundle(bundle, bundle_update)
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
->>>>>>> d33626f22cf957cae297942e8e98bae6d39840d2
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
@@ -2743,21 +2727,41 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
+    def increment_user_disk_used(self, user_id: str, amount: int):
+        """
+        Increment disk_used for user by amount.
+        When incrementing values, we have to use a special query to ensure that we avoid
+        race conditions or deadlock arising from multiple threads calling functions
+        concurrently. We do this using with_for_update() and commit().
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.disk_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            disk_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(disk_used=disk_used)
+            )
+            connection.commit()
+
+    def increment_user_time_used(self, user_id: str, amount: int):
         """
         User used some time.
+        See comment for increment_user_disk_used.
         """
-        user_info = self.get_user_info(user_id)
-        user_info['time_used'] += amount
-        self.update_user_info(user_info)
-
-    def increment_user_disk_used(self, user_id: str, amount: int) -> None:
-        """
-        Increment disk_used (number of bytes of disk used) by user by amount.
-        """
-        user_info = self.get_user_info(user_id)
-        user_info['disk_used'] += amount
-        self.update_user_info(user_info)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.time_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            time_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(time_used=time_used)
+            )
+            connection.commit()
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:

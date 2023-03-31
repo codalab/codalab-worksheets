@@ -29,6 +29,7 @@ from .image_manager import ImageManager
 from .download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from .state_committer import JsonStateCommitter
 from .bundle_state import BundleInfo, RunResources, BundleCheckinState
+from .worker_monitoring import WorkerMonitoring
 from .worker_run_state import RunStateMachine, RunStage, RunState
 from .reader import Reader
 
@@ -37,8 +38,8 @@ logger = logging.getLogger(__name__)
 Codalab Worker
 Workers handle communications with the Codalab server. Their main role in Codalab execution
 is syncing the job states with the server and passing on job-related commands from the server
-to architecture-specific RunManagers that run the jobs. Workers are execution platform antagonistic
-but they expect the platform specific RunManagers they use to implement a common interface
+to architecture-specific BundleRuntimes that run the jobs. Workers are execution platform agnostic
+but they expect the platform specific BundleRuntimes they use to implement a common interface
 """
 
 NOOP = 'noop'
@@ -151,6 +152,8 @@ class Worker:
             shared_memory_size_gb=shared_memory_size_gb,
             bundle_runtime=bundle_runtime,
         )
+        if using_sentry:
+            self.monitoring = WorkerMonitoring()
 
         # Lock ensures listening thread and main thread don't simultaneously
         # access the runs dictionary, thereby causing race conditions.
@@ -318,7 +321,7 @@ class Worker:
                     while not self.terminate:
                         try:
                             await receive_msg()
-                        except asyncio.futures.TimeoutError:
+                        except asyncio.TimeoutError:
                             pass
                         except websockets.exceptions.ConnectionClosed:
                             logger.warning("Websocket connection closed, starting a new one...")
@@ -564,8 +567,11 @@ class Worker:
                 # Only start saving stats for a new stage when the run has actually transitioned to that stage.
                 if prev_state.stage != self.runs[uuid].stage:
                     self.end_stage_stats(uuid, prev_state.stage)
-                    if self.runs[uuid].stage not in [RunStage.FINISHED, RunStage.RESTAGED]:
+                    is_terminal = self.runs[uuid].stage in [RunStage.FINISHED, RunStage.RESTAGED]
+                    if not is_terminal:
                         self.start_stage_stats(uuid, self.runs[uuid].stage)
+                    if using_sentry:
+                        self.monitoring.notify_stage_transition(self.runs[uuid], is_terminal)
 
             # 2. filter out finished runs and clean up containers
             finished_container_ids = [
@@ -625,7 +631,7 @@ class Worker:
     @property
     def all_runs(self):
         """
-        Returns a list of all the runs managed by this RunManager
+        Returns a list of all the runs managed by this worker
         """
         return [
             BundleCheckinState(
@@ -651,7 +657,7 @@ class Worker:
     @property
     def free_disk_bytes(self):
         """
-        Available disk space by bytes of this RunManager.
+        Available disk space by bytes of this worker.
         """
         error_msg = "Failed to run command {}".format("df -k" + self.work_dir)
         try:
@@ -682,7 +688,7 @@ class Worker:
         If not, returns immediately.
         Then, checks in with the bundle service and sees if the bundle is still assigned to this worker.
         If not, returns immediately.
-        Otherwise, tell RunManager to create the run.
+        Otherwise, creates the run.
         """
         if self.exit_after_num_runs == self.num_runs:
             print(
@@ -745,6 +751,8 @@ class Worker:
             )
             # Start measuring bundle stats for the initial bundle state.
             self.start_stage_stats(bundle.uuid, RunStage.PREPARING)
+            if using_sentry:
+                self.monitoring.notify_stage_transition(self.runs[bundle.uuid])
             # Increment the number of runs that have been successfully started on this worker
             self.num_runs += 1
         else:
