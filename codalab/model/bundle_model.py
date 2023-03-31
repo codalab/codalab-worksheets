@@ -636,20 +636,22 @@ class BundleModel(object):
 
         if user_id != self.root_user_id:
             # Restrict to the bundles that we have access to.
+            aliased_group_bundle_permission = aliased(cl_group_bundle_permission)
             add_join(
-                cl_group_bundle_permission,
-                cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                aliased_group_bundle_permission,
+                cl_bundle.c.uuid == aliased_group_bundle_permission.c.object_uuid,
                 left_outer_join=True
             )
-            add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join=True)
+            aliased_cl_user_group = aliased(cl_user_group)
+            add_join(aliased_cl_user_group, aliased_cl_user_group.c.user_id == user_id, left_outer_join=True)
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                 or_(  # Join constraint (group)
-                    cl_group_bundle_permission.c.group_uuid
+                    aliased_group_bundle_permission.c.group_uuid
                     == self.public_group_uuid,  # Public group
-                    cl_user_group.c.user_id == user_id,
+                    aliased_cl_user_group.c.user_id == user_id,
                 ),
-                cl_group_bundle_permission.c.permission
+                aliased_group_bundle_permission.c.permission
                 >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
             )
 
@@ -658,6 +660,7 @@ class BundleModel(object):
         # Join the cl_bundle table with other tables in joins.
         table = cl_bundle
         for join_table in joins:
+            # Note: we use aliased to make sure we can join on the same table twice if necessary.
             table = table.join(
                 join_table.table, join_table.condition, isouter=join_table.left_outer_join
             )
