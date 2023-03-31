@@ -10,8 +10,6 @@ import time
 import logging
 import json
 
-from sqlalchemy.sql import text
-
 from dataclasses import dataclass
 from dateutil import parser
 from uuid import uuid4
@@ -640,10 +638,14 @@ class BundleModel(object):
             add_join(
                 aliased_group_bundle_permission,
                 cl_bundle.c.uuid == aliased_group_bundle_permission.c.object_uuid,
-                left_outer_join=True
+                left_outer_join=True,
             )
             aliased_cl_user_group = aliased(cl_user_group)
-            add_join(aliased_cl_user_group, aliased_cl_user_group.c.user_id == user_id, left_outer_join=True)
+            add_join(
+                aliased_cl_user_group,
+                aliased_cl_user_group.c.user_id == user_id,
+                left_outer_join=True,
+            )
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                 or_(  # Join constraint (group)

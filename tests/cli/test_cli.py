@@ -1834,6 +1834,7 @@ def test_perm(ctx):
     check_contains('read', _run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', _run_command([cl, 'perm', uuid, 'public', 'a']))
 
+
 @TestModule.register('search')
 def test_search(ctx):
     def test_search_helper(ctx):
@@ -1880,7 +1881,7 @@ def test_search(ctx):
         _run_command([cl, 'wperm', new_wuuid, 'public', 'n'])  # make worksheet private
         _run_command([cl, 'work', new_wuuid])  # switch to worksheet
         uuid = _run_command([cl, 'upload', test_path('a.txt')])
-        check_equals(uuid,  _run_command([cl, 'search', uuid, '-u']))
+        check_equals(uuid, _run_command([cl, 'search', uuid, '-u']))
         _run_command([cl, 'work', wuuid])
 
         """Search with groups"""
@@ -1899,7 +1900,7 @@ def test_search(ctx):
         check_contains(group_buuid[:8], _run_command([cl, 'search', '.shared']))
         check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_uuid)]))
         check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)]))
-    
+
     # Test with root user.
     test_search_helper(ctx)
 
@@ -1914,7 +1915,6 @@ def test_search(ctx):
         _run_command([cl, 'work', new_wuuid])
         test_search_helper(ctx)
         switch_user(current_user_name)
-
 
 
 @TestModule.register('search_time')
