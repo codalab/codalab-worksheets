@@ -662,7 +662,6 @@ class BundleModel(object):
         # Join the cl_bundle table with other tables in joins.
         table = cl_bundle
         for join_table in joins:
-            # Note: we use aliased to make sure we can join on the same table twice if necessary.
             table = table.join(
                 join_table.table, join_table.condition, isouter=join_table.left_outer_join
             )
