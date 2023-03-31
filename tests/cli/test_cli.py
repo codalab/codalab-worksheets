@@ -1875,11 +1875,13 @@ def test_search(ctx):
         _run_command([cl, 'rm', uuid3])  # need to remove since not on main worksheet
 
         """Search bundles on private worksheets"""
+        wuuid = _run_command([cl, 'work', '-u'])
         new_wuuid = _run_command([cl, 'new', random_name()])
         _run_command([cl, 'wperm', new_wuuid, 'public', 'n'])  # make worksheet private
         _run_command([cl, 'work', new_wuuid])  # switch to worksheet
         uuid = _run_command([cl, 'upload', test_path('a.txt')])
         check_equals(uuid,  _run_command([cl, 'search', uuid, '-u']))
+        _run_command([cl, 'work', wuuid])
 
         """Search with groups"""
         # Empty group
@@ -1899,18 +1901,20 @@ def test_search(ctx):
         check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_uuid)]))
         check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)]))
     
+    # Test with root user.
+    test_search_helper(ctx)
+
     # Test with non-root user.
     if not os.getenv('CODALAB_PROTECTED_MODE'):
         # This test does not work when protected_mode is True.
         _, current_user_name = current_user()
         user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='1000000000000000')
+        create_user(ctx, user_name, disk_quota='100000')
         switch_user(user_name)
+        new_wuuid = _run_command([cl, 'new', random_name()])
+        _run_command([cl, 'work', new_wuuid])
         test_search_helper(ctx)
         switch_user(current_user_name)
-
-    # Test with root user.
-    test_search_helper(ctx)
 
 
 
