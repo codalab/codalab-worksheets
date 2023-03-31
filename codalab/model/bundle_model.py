@@ -639,6 +639,7 @@ class BundleModel(object):
             add_join(
                 cl_group_bundle_permission,
                 cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                left_outer_join=True
             )
             add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join=True)
             access_via_owner = cl_bundle.c.owner_id == user_id
@@ -682,7 +683,6 @@ class BundleModel(object):
         if count:
             query = alias(query).count()
 
-        import pdb; pdb.set_trace()
         result = self._execute_query(query)
         if count or sum_key[0] is not None:  # Just returning a single number
             result = worksheet_util.apply_func(format_func, result[0])
