@@ -230,7 +230,7 @@ class BundleModel(object):
                         cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                     )
             )
-            if with_for_update:
+            if with_for_update and True:
                 query = query.with_for_update()
             rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
