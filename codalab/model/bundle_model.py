@@ -1006,14 +1006,18 @@ class BundleModel(object):
         }
 
         # Increment user time and disk as we go to ensure user doesn't go over quota.
-        time_increment = worker_run.container_time_total
-        if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
-            time_increment = worker_run.container_time_total - bundle.metadata.time
-        self.increment_user_time_used(bundle.owner_id, time_increment)
+        if user_id == self.root_user_id:
+            time_increment = worker_run.container_time_total
+            if hasattr(bundle.metadata, 'time'):
+                time_increment -= (
+                    bundle.metadata.time
+                )  # Make sure we don't double count time already added to user time_used
+            self.increment_user_time_used(bundle.owner_id, time_increment)
+
         disk_increment = worker_run.disk_utilization
         if hasattr(bundle.metadata, 'data_size'):
             # disk_increment is the change in data_size from the previous cycle to the current one
-            disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
+            disk_increment -= bundle.metadata.data_size
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         if worker_run.docker_image is not None:
@@ -2801,11 +2805,6 @@ class BundleModel(object):
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
-
-    def get_user_disk_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        return user_info['disk_quota'] - user_info['disk_used']
 
     # ===========================================================================
     # OAuth-related methods follow!
