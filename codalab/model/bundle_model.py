@@ -223,14 +223,14 @@ class BundleModel(object):
             return []
         with self.engine.begin() as connection:
             query = select(
-                    [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
-                ).where(
-                    and_(
-                        cl_bundle_metadata.c.metadata_key == metadata_key,
-                        cl_bundle_metadata.c.bundle_uuid.in_(uuids),
-                    )
+                [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
+            ).where(
+                and_(
+                    cl_bundle_metadata.c.metadata_key == metadata_key,
+                    cl_bundle_metadata.c.bundle_uuid.in_(uuids),
+                )
             )
-            if with_for_update and True:
+            if with_for_update:
                 query = query.with_for_update()
             rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
@@ -3104,7 +3104,7 @@ class BundleModel(object):
                 )
             connection.execute(cl_bundle_store.delete().where(cl_bundle_store.c.uuid == uuid))
 
-    # ======================================================================
+    # ===========================================================================
     # Multiple bundle locations methods follow!
     # ===========================================================================
 
