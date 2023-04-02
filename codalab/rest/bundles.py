@@ -593,7 +593,7 @@ def _update_bundle_state(bundle_uuid: str):
     logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
 
     if success:
-        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+        local.model.enforce_disk_quota(bundle, bundle_location)
         local.model.update_bundle(
             bundle, {'state': state_on_success},
         )
@@ -1165,9 +1165,7 @@ def _update_bundle_contents_blob(uuid):
             )
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
-            local.model.update_disk_metadata(
-                bundle, bundle_location, enforce_disk_quota=True, no_increment=True
-            )
+            local.model.enforce_disk_quota(bundle, bundle_location)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
