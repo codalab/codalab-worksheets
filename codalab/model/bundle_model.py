@@ -213,7 +213,7 @@ class BundleModel(object):
         """
         return self.get_bundle_metadata(uuids, "name")
 
-    def get_bundle_metadata(self, uuids, metadata_key, with_for_update=False):
+    def get_bundle_metadata(self, uuids, metadata_key):
         """
         Fetch a single metadata value from the bundles referenced
         by the given uuids.
@@ -230,8 +230,6 @@ class BundleModel(object):
                     cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                 )
             )
-            if with_for_update:
-                query = query.with_for_update()
             rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
