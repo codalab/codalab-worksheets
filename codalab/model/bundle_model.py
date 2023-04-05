@@ -1156,7 +1156,7 @@ class BundleModel(object):
             disk_left = self.get_user_disk_quota_left(bundle.owner_id)
             if disk_increment > disk_left:
                 raise UsageError(
-                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                    "Can't save bundle, user disk quota exceeded. Bundle size %s greater than user's disk quota left: %s"
                     % (data_size, disk_left)
                 )
 
