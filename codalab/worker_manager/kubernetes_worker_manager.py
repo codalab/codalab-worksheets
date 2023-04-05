@@ -155,6 +155,10 @@ class KubernetesWorkerManager(WorkerManager):
                         'env': [
                             {'name': 'CODALAB_USERNAME', 'value': self.codalab_username},
                             {'name': 'CODALAB_PASSWORD', 'value': self.codalab_password},
+                            {
+                                'name': 'CODALAB_KUBERNETES_NODE_NAME',
+                                'valueFrom': {'fieldRef': {'fieldPath': 'spec.nodeName'}},
+                            },
                         ],
                         'resources': {'limits': limits, 'requests': requests},
                         'volumeMounts': [

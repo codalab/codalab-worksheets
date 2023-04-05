@@ -75,3 +75,6 @@ class Runtime:
 
     def remove(self, container_id: str):
         raise NotImplementedError
+
+    def get_node_availability_stats(self) -> dict:
+        raise NotImplementedError
