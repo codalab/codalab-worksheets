@@ -167,7 +167,6 @@ class RunStateMachine(StateTransitioner):
         docker_network_external,  # Docker network to add internet connected bundles to
         docker_runtime,  # Docker runtime to use for containers (nvidia or runc)
         upload_bundle_callback,  # Function to call to upload bundle results to the server
-        assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
         shared_memory_size_gb,  # Shared memory size for the run container (in GB)
         bundle_runtime,  # Runtime used to run bundles (docker or kubernetes)
@@ -195,7 +194,6 @@ class RunStateMachine(StateTransitioner):
             fields={'disk_utilization': 0, 'running': True, 'lock': None}
         )
         self.upload_bundle_callback = upload_bundle_callback
-        self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
         self.shared_file_system = shared_file_system
         self.shared_memory_size_gb = shared_memory_size_gb
 
@@ -236,19 +234,6 @@ class RunStateMachine(StateTransitioner):
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
             return run_state._replace(stage=RunStage.CLEANING_UP)
-
-        # Check CPU and GPU availability
-        try:
-            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
-                run_state.resources.cpus, run_state.resources.gpus
-            )
-        except Exception as e:
-            message = "Unexpectedly unable to assign enough resources to bundle {}: {}".format(
-                run_state.bundle.uuid, str(e)
-            )
-            logger.error(message)
-            logger.error(traceback.format_exc())
-            return run_state._replace(run_status=message)
 
         dependencies_ready = True
         status_messages = []
