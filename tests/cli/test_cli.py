@@ -2963,6 +2963,8 @@ def test_workers(ctx):
     cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
     cpus_used, cpus_total = (int(i) for i in cpus_original.split("/"))
     gpus_used, gpus_total = (int(i) for i in gpus_original.split("/"))
+    free_memory_original = int(free_memory_original)
+    free_disk_original = int(free_disk_original)
     uuid = _run_command(
         [
             cl,
