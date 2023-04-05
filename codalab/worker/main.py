@@ -13,6 +13,7 @@ import stat
 import sys
 import psutil
 import requests
+import tempfile
 
 from codalab.common import SingularityError
 from codalab.common import BundleRuntime
@@ -217,6 +218,11 @@ def parse_args():
         type=str,
         help='Path to the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
     )
+    parser.add_argument(
+        '--kubernetes-cert',
+        type=str,
+        help='Contents of the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
+    )
     return parser.parse_args()
 
 
@@ -316,11 +322,18 @@ def main():
         docker_runtime = None
     elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
         image_manager = NoOpImageManager()
+        if args.kubernetes_cert_path == "/dev/null":
+            # Create temp file
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write(args.kubernetes_cert)
+                kubernetes_cert_path = f.name
+        else:
+            kubernetes_cert_path = args.kubernetes_cert_path
         bundle_runtime_class = KubernetesRuntime(
             args.work_dir,
             args.kubernetes_auth_token,
             args.kubernetes_cluster_host,
-            args.kubernetes_cert_path,
+            kubernetes_cert_path,
         )
         docker_runtime = None
     else:

@@ -48,6 +48,12 @@ class KubernetesWorkerManager(WorkerManager):
             required=True,
         )
         subparser.add_argument(
+            '--cert',
+            type=str,
+            help='Contents of the SSL cert for the Kubernetes cluster',
+            required=True,
+        )
+        subparser.add_argument(
             '--nfs-volume-name', type=str, help='Name of the persistent volume for the NFS server.',
         )
 
@@ -121,6 +127,7 @@ class KubernetesWorkerManager(WorkerManager):
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
         command.extend(['--kubernetes-cert-path', self.cert_path])
+        command.extend(['--kubernetes-cert', self.cert])
 
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
