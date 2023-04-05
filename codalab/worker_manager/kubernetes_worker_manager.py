@@ -126,8 +126,8 @@ class KubernetesWorkerManager(WorkerManager):
         command.extend(['--bundle-runtime', self.bundle_runtime])
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
-        command.extend(['--kubernetes-cert-path', self.cert_path])
-        command.extend(['--kubernetes-cert', self.cert])
+        command.extend(['--kubernetes-cert-path', '/dev/null'])
+        command.extend(['--kubernetes-cert', open(self.cert_path).read()])
 
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
@@ -191,7 +191,7 @@ class KubernetesWorkerManager(WorkerManager):
                     }
                 },
                 'volumes': [
-                    {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
+                    # {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
                     {
                         "name": self.nfs_volume_name,
                         # When attaching a volume over NFS, use a persistent volume claim
