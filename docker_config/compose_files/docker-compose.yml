@@ -310,7 +310,7 @@ services:
     <<: *codalab-server
     volumes:
       - "${CODALAB_HOME}:${CODALAB_HOME}"
-      - ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH-/dev/null}:${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH-/dev/null}:ro
+      - ${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH:-/dev/null}:${CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH:-/dev/null}:ro
     networks:
       - rest-server
 
