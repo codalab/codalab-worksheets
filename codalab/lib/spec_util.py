@@ -23,6 +23,7 @@ HISTORY_RANGE_REGEX = re.compile(
 )  # Allow ranges foo^1-3 => foo^1 foo^2 foo^3
 BASIC_EMAIL_REGEX = re.compile(r'^[^@]+@[^@]+\.[^@]+$')
 SUB_PATH_REGEX = re.compile('^[a-zA-Z0-9_\-.]*\Z')
+EDU_USER_SUFFIX = [".edu", "edu.cn"]
 
 
 def expand_specs(specs):
@@ -106,3 +107,10 @@ def is_dashboard(name):
 
 def is_public_home(name):
     return name == 'home'
+
+
+def is_academic_email(email):
+    for s in EDU_USER_SUFFIX:
+        if email.endswith(s):
+            return True
+    return False
