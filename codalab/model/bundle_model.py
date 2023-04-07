@@ -2481,12 +2481,12 @@ class BundleModel(object):
 
             time_quota = (
                 self.default_user_info['edu_time_quota']
-                if email.endswith(".edu")
+                if email.endswith(".edu") or email.endswith(".edu.cn")
                 else self.default_user_info['time_quota']
             )
             disk_quota = (
                 self.default_user_info['edu_disk_quota']
-                if email.endswith(".edu")
+                if email.endswith(".edu") or email.endswith(".edu.cn")
                 else self.default_user_info['disk_quota']
             )
 
