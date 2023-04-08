@@ -81,6 +81,15 @@ def str_key_dict(row):
     return dict((str(k), v) for k, v in row.items())
 
 
+def is_academic_email(email):
+    """
+    This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
+    Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
+    """
+    email_suffix = EDU_USER_REGEXS.findall(email.lower())
+    return len(email_suffix) > 0
+
+
 @dataclass
 class Join:
     """
@@ -2476,14 +2485,6 @@ class BundleModel(object):
         :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
-
-        def is_academic_email(email):
-            """
-            This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
-            Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
-            """
-            email_suffix = EDU_USER_REGEXS.findall(email.lower())
-            return len(email_suffix) > 0
 
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
