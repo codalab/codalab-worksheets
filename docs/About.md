@@ -14,9 +14,11 @@ provided by Microsoft Azure.
 
 - Percy Liang
 - Ashwin Ramaswami
+- Jiani Wang
+- Andrew Gaut
+- Yifan Mai
 - Tony Lee
 - Pranav Jain
-- Jiani Wang
 - Leilenah Mamea
 
 ## Former Developers
