@@ -736,7 +736,7 @@ class SQLiteIndexedTar(MountSource):
         # In that case add that itself to the file index. This won't work when called recursively,
         # so check stream offset.
         fileCount = self.sqlConnection.execute('SELECT COUNT(*) FROM "files";').fetchone()[0]
-        if fileCount == 0:  # Jiani: For Codalab, the bundle contains only 
+        if fileCount == 0: # Jiani: For Codalab, the bundle contains only single files
             # This branch is not used.
             if self.printDebug >= 3:
                 print(f"Did not find any file in the given TAR: {self.tarFileName}. Assuming a compressed file.")
