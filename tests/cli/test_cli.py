@@ -1838,7 +1838,7 @@ def test_perm(ctx):
 @TestModule.register('search')
 def test_search(ctx):
     def test_search_helper(ctx):
-        """Basic Search and info"""
+        # Basic Search and info
         name = random_name()
         uuid1 = _run_command([cl, 'upload', test_path('a.txt'), '-n', name])
         uuid2 = _run_command([cl, 'upload', test_path('b.txt'), '-n', name])
@@ -1868,14 +1868,14 @@ def test_search(ctx):
             size1 + size2, float(_run_command([cl, 'search', 'name=' + name, 'data_size=.sum']))
         )
 
-        """Search for floating bundles"""
+        # Search for floating bundles
         check_equals('', _run_command([cl, 'search', '.floating', '-u']))
         uuid3 = _run_command([cl, 'upload', test_path('a.txt')])
         _run_command([cl, 'detach', uuid3], 0)
         check_equals(uuid3, _run_command([cl, 'search', '.floating', '-u']))
         _run_command([cl, 'rm', uuid3])  # need to remove since not on main worksheet
 
-        """Search bundles on private worksheets"""
+        # Search bundles on private worksheets
         wuuid = _run_command([cl, 'work', '-u'])
         new_wuuid = _run_command([cl, 'new', random_name()])
         _run_command([cl, 'wperm', new_wuuid, 'public', 'n'])  # make worksheet private
@@ -1884,7 +1884,7 @@ def test_search(ctx):
         check_equals(uuid, _run_command([cl, 'search', uuid, '-u']))
         _run_command([cl, 'work', wuuid])
 
-        """Search with groups"""
+        # Search with groups
         # Empty group
         check_equals('', _run_command([cl, 'search', '.shared']))
         group_bname = random_name()

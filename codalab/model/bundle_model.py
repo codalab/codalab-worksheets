@@ -651,7 +651,8 @@ class BundleModel(object):
                 or_(  # Join constraint (group)
                     aliased_group_bundle_permission.c.group_uuid
                     == self.public_group_uuid,  # Public group
-                    aliased_cl_user_group.c.user_id == user_id,
+                    aliased_group_bundle_permission.c.group_id
+                    == aliased_cl_user_group.c.group_id,  # Private group
                 ),
                 aliased_group_bundle_permission.c.permission
                 >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
