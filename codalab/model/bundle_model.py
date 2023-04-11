@@ -222,16 +222,15 @@ class BundleModel(object):
         if len(uuids) == 0:
             return []
         with self.engine.begin() as connection:
-            rows = connection.execute(
-                select(
-                    [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
-                ).where(
-                    and_(
-                        cl_bundle_metadata.c.metadata_key == metadata_key,
-                        cl_bundle_metadata.c.bundle_uuid.in_(uuids),
-                    )
+            query = select(
+                [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
+            ).where(
+                and_(
+                    cl_bundle_metadata.c.metadata_key == metadata_key,
+                    cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                 )
-            ).fetchall()
+            )
+            rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
     def get_owner_ids(self, table, uuids):
@@ -1009,12 +1008,21 @@ class BundleModel(object):
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
             'memory_usage': memory_usage,
+            'data_size': worker_run.disk_utilization,
         }
 
-        # Increment user time as we go to ensure user doesn't go over time quota.
-        if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
-            time_increment = worker_run.container_time_total - bundle.metadata.time
+        # Increment user time and disk as we go to ensure user doesn't go over quota.
+        # time increment is the change in running time for this bundle since the last checkin.
+        # disk increment is the change in disk quota used for this bundle since the last checkin.
+        if user_id == self.root_user_id:
+            time_increment = worker_run.container_time_total
+            if hasattr(bundle.metadata, 'time'):
+                time_increment -= bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
+        disk_increment = worker_run.disk_utilization
+        if hasattr(bundle.metadata, 'data_size'):
+            disk_increment -= bundle.metadata.data_size
+        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
@@ -1093,6 +1101,8 @@ class BundleModel(object):
         if user_id == self.root_user_id:
             time_increment = worker_run.container_time_total - bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
+        disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
+        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         # Build metadata
         metadata = {}
@@ -1119,12 +1129,6 @@ class BundleModel(object):
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
-        worker = self.get_bundle_worker(bundle.uuid)
-
-        if worker['shared_file_system']:
-            # TODO(Ashwin): fix for --link.
-            self.update_disk_metadata(bundle, bundle_location)
-
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
         with self.engine.begin() as connection:
@@ -1137,10 +1141,9 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+    def get_data_size(self, bundle_location):
         """
-        Computes the disk use and data hash of the given bundle.
-        Updates the database rows for the bundle and user with the new disk use
+        Returns data_size (in bytes) of bundle at bundle_location
         """
         dirs_and_files = None
         if os.path.isdir(bundle_location):
@@ -1149,7 +1152,27 @@ class BundleModel(object):
             dirs_and_files = [], [bundle_location]
 
         # TODO(Ashwin): make this non-fs specific
-        data_size = path_util.get_size(bundle_location, dirs_and_files)
+        return path_util.get_size(bundle_location, dirs_and_files)
+
+    def enforce_disk_quota(self, bundle, bundle_location):
+        """
+        Throws an error if saving bundle will cause user to go over disk quota left.
+        """
+        data_size = self.get_data_size(bundle_location)
+        disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+        if data_size > disk_left:
+            raise UsageError(
+                "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                % (data_size, disk_left)
+            )
+
+    def update_disk_metadata(self, bundle, bundle_location):
+        """
+        Update user's disk used with the size of the new bundle.
+
+        Only used by bundle_manager when creating make bundles.
+        """
+        data_size = self.get_data_size(bundle_location)
         try:
             if 'data_size' in bundle.metadata.__dict__:
                 current_data_size = bundle.metadata.data_size
@@ -1160,14 +1183,6 @@ class BundleModel(object):
         except Exception:
             current_data_size = 0
         disk_increment = data_size - current_data_size
-        if enforce_disk_quota:
-            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
-            if disk_increment > disk_left:
-                raise UsageError(
-                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (data_size, disk_left)
-                )
-
         bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
@@ -2765,6 +2780,11 @@ class BundleModel(object):
         time_used = user_info['time_used']
         return time_quota - time_used
 
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
+        return user_info['disk_quota'] - user_info['disk_used']
+
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:
             user_info = self.get_user_info(user_id)
@@ -2789,11 +2809,6 @@ class BundleModel(object):
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
-
-    def get_user_disk_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        return user_info['disk_quota'] - user_info['disk_used']
 
     # ===========================================================================
     # OAuth-related methods follow!
