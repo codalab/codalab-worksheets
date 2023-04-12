@@ -140,7 +140,6 @@ class Uploader:
         """
         if self.destination_bundle_store is not None:
             # In this case, we are using the new BundleStore / BundleLocation model to track the bundle location.
-            # Create the appropriate bundle location.
             self._bundle_model.add_bundle_location(
                 bundle.uuid, self.destination_bundle_store["uuid"]
             )
@@ -244,13 +243,12 @@ class BlobStorageUploader(Uploader):
         try:
             bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
-            ITERATIONS_PER_DISK_CHECK = 1
+            ITERATIONS_PER_DISK_CHECK = 2000
             iteration = 0
             with FileSystems.create(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as out:
                 while True:
-                    iteration += 1
                     to_send = output_fileobj.read(CHUNK_SIZE)
                     if not to_send:
                         break
@@ -276,6 +274,7 @@ class BlobStorageUploader(Uploader):
                         should_resume = progress_callback(bytes_uploaded)
                         if not should_resume:
                             raise Exception('Upload aborted by client')
+                    iteration += 1
             with FileSystems.open(
                 bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
             ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
@@ -366,8 +365,11 @@ class UploadManager(object):
         return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
 
     def cleanup_existing_contents(self, bundle):
-        data_size = self._bundle_model.get_bundle_metadata(bundle.uuid, 'data_size')[bundle.uuid]
-        removed = self._bundle_store.cleanup(bundle.uuid, dry_run=False)
+        data_size = int(
+            self._bundle_model.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
+        )
+        bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+        removed = self._bundle_store.cleanup(bundle_location, dry_run=False)
         bundle_update = {'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
         if removed:

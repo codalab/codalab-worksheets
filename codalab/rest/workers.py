@@ -25,7 +25,7 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    WAIT_TIME_SECS = 3.0
+    WAIT_TIME_SECS = 5.0
 
     # Old workers might not have all the fields, so allow subsets to be missing.
     socket_id = local.worker_model.worker_checkin(
@@ -50,12 +50,21 @@ def checkin(worker_id):
         try:
             worker_run = BundleCheckinState.from_dict(run)
             bundle = local.model.get_bundle(worker_run.uuid)
-            local.model.bundle_checkin(bundle, worker_run, request.user.user_id, worker_id)
+            local.model.bundle_checkin(
+                bundle, worker_run, request.user.user_id, worker_id,
+            )
 
             if local.model.get_user_time_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their time quota and we kill the job.
                 kill_message = (
                     'Kill requested: User time quota exceeded. To apply for more quota, please visit the following link: '
+                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
+                )
+                messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
+            elif local.model.get_user_disk_quota_left(bundle.owner_id) <= 0:
+                # Then, user has gone over their disk quota and we kill the job.
+                kill_message = (
+                    'Kill requested: User disk quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
                 messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})

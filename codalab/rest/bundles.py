@@ -467,12 +467,12 @@ def _add_bundle_location(bundle_uuid: str):
     """
     check_bundles_have_all_permission(local.model, request.user, [bundle_uuid])
     need_bypass = query_get_bool('need_bypass', default=False)
-    is_dir = query_get_bool('is_dir', default=False)
+    is_dir = query_get_bool('is_dir', default=None)
 
     bundle = local.model.get_bundle(bundle_uuid)
     new_location = BundleLocationSchema(many=True).load(request.json).data[0]
     logging.info(
-        f"Try to bypass server upload, need_bypass: {need_bypass}, is_dir: {is_dir}, new_location: {new_location}"
+        f"Try to add bundle location, need_bypass: {need_bypass}, is_dir: {is_dir}, new_location: {new_location}"
     )
     # Scenario 1: User does not specify destination store, but rest-server set default storage name.
     # Should bypass server and upload to default Azure store.
@@ -516,7 +516,7 @@ def _add_bundle_location(bundle_uuid: str):
         )
         bundle_url = local.bundle_store.get_bundle_location(bundle_uuid)
     data = BundleLocationSchema(many=True).dump([new_location]).data
-    logging.info(f"Bypass server upload, the URL is {bundle_url}")
+    logging.info(f"When adding bundle location, the URL is {bundle_url}")
     if need_bypass:
         if bundle_url is None:
             # Not support bypass server upload: user specifies neeed_bypass, but the server does not set default storage as Azure or GCS
@@ -593,7 +593,7 @@ def _update_bundle_state(bundle_uuid: str):
     logging.info(f"_update_bundle_location, bundle_location is {bundle_location}")
 
     if success:
-        local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+        local.model.enforce_disk_quota(bundle, bundle_location)
         local.model.update_bundle(
             bundle, {'state': state_on_success},
         )
@@ -1165,7 +1165,7 @@ def _update_bundle_contents_blob(uuid):
             )
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
-            local.model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+            local.model.enforce_disk_quota(bundle, bundle_location)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
@@ -1347,7 +1347,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                 local.model.increment_user_disk_used(
                     request.user.user_id, -int(bundle_data_sizes[uuid])
                 )
-
     return relevant_uuids
 
 
