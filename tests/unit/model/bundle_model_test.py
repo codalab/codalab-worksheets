@@ -31,6 +31,9 @@ class BundleModelTest(TestBase, unittest.TestCase):
             "abc@xyz.edu.sg": True,
             "abc.edu.cn@xyz.mail": False,
             "abc@xyz.edu.xyz": False,
+            "abc@xyz.ac.cn": True,
+            "abc@xyz.ac.sg": True,
+            "abc@xyz.ac.xyz": False,
         }
         for key, value in test_cases.items():
             self.assertEqual(is_academic_email(key), value)

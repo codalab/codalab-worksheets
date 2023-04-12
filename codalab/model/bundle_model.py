@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
-EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2})$')
+EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2}}|ac\.[a-z]{2})$')
 
 
 def str_key_dict(row):
