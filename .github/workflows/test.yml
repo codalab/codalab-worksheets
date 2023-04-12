@@ -171,17 +171,17 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Save kubernetes logs
-        if: !success() && matrix.runtime == 'kubernetes'
+        if: (failed() || cancelled()) && matrix.runtime == 'kubernetes'
         run: |
           kubectl config use-context kind-codalab
           kubectl cluster-info dump --output-directory /tmp/logs
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.runtime }}-${{ matrix.test }}
@@ -230,7 +230,7 @@ jobs:
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
@@ -275,12 +275,12 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-sharedfs-${{ matrix.test }}
@@ -330,12 +330,12 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-protectedmode-${{ matrix.test }}
@@ -379,12 +379,12 @@ jobs:
           TEST: ${{ matrix.test }}
           VERSION: ${{ github.head_ref || 'master' }}
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
@@ -433,12 +433,12 @@ jobs:
           CODALAB_USERNAME: codalab
           CODALAB_PASSWORD: codalab
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
@@ -488,12 +488,12 @@ jobs:
           CODALAB_USERNAME: codalab
           CODALAB_PASSWORD: codalab
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
@@ -551,12 +551,12 @@ jobs:
           CODALAB_LINK_MOUNTS: /tmp
           CODALAB_ALWAYS_USE_AZURE_BLOB_BETA: 1
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-azblob-${{ matrix.test }}
@@ -606,12 +606,12 @@ jobs:
           name: screenshots-test-${{ matrix.test }}
           path: tests/ui
       - name: Save logs
-        if: !success()
+        if: (failed() || cancelled())
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: !success()
+        if: (failed() || cancelled())
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-${{ matrix.test }}
