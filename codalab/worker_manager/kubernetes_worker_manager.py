@@ -82,6 +82,7 @@ class KubernetesWorkerManager(WorkerManager):
         self.auth_token = args.auth_token
         self.cluster_host = args.cluster_host
         self.cert_path = args.cert_path
+        self.cert = args.cert
 
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
