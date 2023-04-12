@@ -128,7 +128,9 @@ class KubernetesRuntime(Runtime):
                         ]
                         + [
                             {
-                                'name': re.sub(r'\W+', '', dep_path),  # remove all non-alphanumeric characters
+                                'name': re.sub(
+                                    r'\W+', '', dep_path
+                                ),  # remove all non-alphanumeric characters
                                 'mountPath': mounted_dep_path,
                                 'subPath': removeprefix(dep_path, self.work_dir).lstrip("/"),
                             }
