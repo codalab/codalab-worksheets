@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import logging
 from dateutil import tz
 from typing import Any, Dict, Optional, Tuple
@@ -127,7 +128,7 @@ class KubernetesRuntime(Runtime):
                         ]
                         + [
                             {
-                                'name': 'workdir',
+                                'name': hashlib.md5(dep_path).hexdigest(),
                                 'mountPath': mounted_dep_path,
                                 'subPath': removeprefix(dep_path, self.work_dir).lstrip("/"),
                             }
