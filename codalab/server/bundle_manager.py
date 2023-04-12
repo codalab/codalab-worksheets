@@ -325,7 +325,8 @@ class BundleManager(object):
             # update the bundle location since we already change is_dir field
             bundle_location = bundle_link_url or self._bundle_store.get_bundle_location(bundle.uuid)
 
-            self._model.update_disk_metadata(bundle, bundle_location, enforce_disk_quota=True)
+            self._model.enforce_disk_quota(bundle, bundle_location)
+            self._model.update_disk_metadata(bundle, bundle_location)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:

@@ -623,6 +623,7 @@ class Worker:
                 bundle_profile_stats=run_state.bundle_profile_stats,
                 cpu_usage=run_state.cpu_usage,
                 memory_usage=run_state.memory_usage,
+                disk_utilization=run_state.disk_utilization,
             )
             for run_state in self.runs.values()
         ]
