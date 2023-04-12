@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
-EDU_USER_REGEXS = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2})$')
+EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2})$')
 
 
 def str_key_dict(row):
@@ -86,7 +86,7 @@ def is_academic_email(email):
     This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
     Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
     """
-    email_suffix = EDU_USER_REGEXS.findall(email.lower())
+    email_suffix = EDU_USER_REGEXES.findall(email.lower())
     return len(email_suffix) > 0
 
 
