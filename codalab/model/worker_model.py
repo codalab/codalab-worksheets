@@ -7,6 +7,7 @@ import os
 import socket
 import time
 import websockets
+from websockets.sync.client import connect
 
 from sqlalchemy import and_, select
 
@@ -243,195 +244,6 @@ class WorkerModel(object):
                     .values(update)
                 )
 
-    def allocate_socket(self, user_id, worker_id, conn=None):
-        """
-        Allocates a unique socket ID.
-        """
-
-        def do(conn):
-            socket_row = {'user_id': user_id, 'worker_id': worker_id}
-            return conn.execute(cl_worker_socket.insert().values(socket_row)).inserted_primary_key[
-                0
-            ]
-
-        if conn is None:
-            with self._engine.begin() as conn:
-                return do(conn)
-        else:
-            return do(conn)
-
-    def deallocate_socket(self, socket_id):
-        """
-        Cleans up the socket, removing the associated file in the socket
-        directory.
-        """
-        self._cleanup_socket(socket_id)
-        with self._engine.begin() as conn:
-            conn.execute(cl_worker_socket.delete().where(cl_worker_socket.c.socket_id == socket_id))
-
-    def _socket_path(self, socket_id):
-        return os.path.join(self._socket_dir, str(socket_id))
-
-    def _cleanup_socket(self, socket_id):
-        try:
-            os.remove(self._socket_path(socket_id))
-        except OSError:
-            pass
-
-    def start_listening(self, socket_id):
-        """
-        Returns a Python socket object that can be used to accept connections on
-        the socket with the given ID. This object should be passed to the
-        get_ methods below. as in:
-
-            with closing(worker_model.start_listening(socket_id)) as sock:
-                message = worker_model.get_json_message(sock, timeout_secs)
-        """
-        self._cleanup_socket(socket_id)
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind(self._socket_path(socket_id))
-        sock.listen(0)
-        return sock
-
-    ACK = b'a'
-
-    def get_stream(self, sock, timeout_secs):
-        """
-        Receives a single message on the given socket and returns a file-like
-        object that can be used for streaming the message data.
-
-        If no messages are received within timeout_secs seconds, returns None.
-        """
-        sock.settimeout(timeout_secs)
-        try:
-            conn, _ = sock.accept()
-            # Send Ack. This helps protect from messages to the worker being
-            # lost due to spuriously accepted connections when the socket
-            # file is deleted.
-            conn.sendall(WorkerModel.ACK)
-            conn.settimeout(None)  # Need to remove timeout before makefile.
-            fileobj = conn.makefile('rb')
-            conn.close()
-            return fileobj
-        except socket.timeout:
-            return None
-
-    def get_json_message(self, sock, timeout_secs):
-        """
-        Receives a single message on the given socket and returns the message
-        data parsed as JSON.
-
-        If no messages are received within timeout_secs seconds, returns None.
-        """
-        fileobj = self.get_stream(sock, timeout_secs)
-
-        if fileobj is None:
-            return None
-
-        with closing(fileobj):
-            return json.loads(fileobj.read().decode())
-
-    def send_stream(self, socket_id, fileobj, timeout_secs):
-        """
-        Streams the given file-like object to the given socket.
-
-        If nothing accepts a connection on the socket for more than timeout_secs,
-        return False. Otherwise, returns True.
-        """
-        start_time = time.time()
-        while time.time() - start_time < timeout_secs:
-            with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
-                sock.settimeout(timeout_secs)
-
-                success = False
-                try:
-                    sock.connect(self._socket_path(socket_id))
-                    success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
-                except socket.error:
-                    logging.debug("socket error when calling send_stream")
-
-                if not success:
-                    # Shouldn't be too expensive just to keep retrying.
-                    time.sleep(0.003)
-                    continue
-
-                while True:
-                    data = fileobj.read(4096)
-                    if not data:
-                        return True
-                    sock.sendall(data)
-
-        return False
-
-    def _ping_worker_ws(self, worker_id):
-        async def ping_ws():
-            async with websockets.connect(f"{self._ws_server}/main") as websocket:
-                await websocket.send(worker_id)
-
-        futures = [ping_ws()]
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(asyncio.wait(futures))
-        logging.warn(f"Pinged worker through websockets, worker id: {worker_id}")
-
-    def send_json_message(self, socket_id, worker_id, message, timeout_secs, autoretry=True):
-        """
-        Sends a JSON message to the given socket, retrying until it is received
-        correctly.
-
-        If the message is not sent successfully after timeout_secs, return
-        False. Otherwise, returns True.
-
-        Note, only the worker should call this method with autoretry set to
-        False. See comments below.
-        """
-        self._ping_worker_ws(worker_id)
-        start_time = time.time()
-        while time.time() - start_time < timeout_secs:
-            with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
-                sock.settimeout(timeout_secs)
-
-                success = False
-                try:
-                    sock.connect(self._socket_path(socket_id))
-                    if autoretry:
-                        # This auto retry mechanisms helps ensure that messages
-                        # sent to a worker are received more reliably. The
-                        # socket API isn't particularly robust to our usage
-                        # where we continuously start and stop listening on a
-                        # socket, like the worker checkin mechanism does. In
-                        # fact, it seems to spuriously accept connections
-                        # just when a socket object is in the process of being
-                        # destroyed. On the sending end, such a scenario results
-                        # in a "Broken pipe" exception, which we catch here.
-                        success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
-                    else:
-                        success = True
-                except socket.error as e:
-                    logging.error(f"socket error when calling send_json_message: {e}")
-
-                if not success:
-                    # Shouldn't be too expensive just to keep retrying.
-                    # TODO: maybe exponential backoff
-                    logging.error("Sleeping for 0.1 seconds.")
-                    time.sleep(0.3)
-                    continue
-
-                if not autoretry:
-                    # When messages are being sent from the worker, we don't
-                    # have the problem with "Broken pipe" as above, since
-                    # code waiting for a reply shouldn't just abruptly stop
-                    # listening.
-                    precondition(
-                        sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK,
-                        'Received invalid ack on socket.',
-                    )
-
-                sock.sendall(json.dumps(message).encode())
-                return True
-        logging.info("Socket message timeout.")
-        return False
-
     def has_reply_permission(self, user_id, worker_id, socket_id):
         """
         Checks whether the given user running a worker with the given ID can
@@ -451,3 +263,87 @@ class WorkerModel(object):
             if row:
                 return True
             return False
+    
+    def _connect(self, worker_id, timeout_secs):
+        with connect(f"{WS_SERVER_PATH}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            try:
+                socket_id = websocket.recv()
+            except:
+                socket_id = None
+        return socket_id
+
+    def connect_to_ws(self, worker_id, timeout_secs):
+        """
+        Loop until connection achieved.
+        """
+        socket_id = None
+        start_time = time.time()
+        while time.time() - start_time < timeout_secs:
+            socket_id = self._connect(worker_id, timeout_secs)
+            if socket_id: 
+                break
+            else:
+                logging.error(f"No sockets available for worker {worker_id}; retrying")
+                time.sleep(0.5)
+        if not socket_id: logging.error("No connection reached")
+        return socket_id
+
+    def disconnect(self, worker_id, socket_id, timeout_secs):
+        with connect(f"{WS_SERVER_PATH}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            pass  # Just disconnect it.
+    
+    def send(self, data, worker_id, socket_id, timeout_secs, is_json=True):
+        """
+        Send data to the worker.
+
+        :param socket_id: The ID of the socket through which we send data to the worker.
+        :param worker_id: The ID of the worker to send data to
+        :param data: Data to send to worker. Could be a file or a json message.
+        :param timeout_secs: Seconds until timeout. The actual data sending could take
+                                2 times this value (although this is quite unlikely) since
+                                both open_timeout and close_timeout are set to timeout_secs 
+        :param is_json: True if data should be json encoded before being sent.
+                        Otherwise, data is sent in
+        
+        :return True if data was sent properly, False otherwise.
+        """
+        CHUNK_SIZE = 4096  # TODO: Make this a variable set in Codalab environment.
+        with connect(f"{WS_SERVER_PATH}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            if is_json:
+                websocket.send(json.dumps(data).encode())
+                return True
+            else:
+                while True:
+                    chunk = data.read(CHUNK_SIZE)
+                    if not chunk: break
+                    websocket.send(chunk)
+            return True
+        logging.warning(f"Socket timeout sending data to worker {worker_id} at socket {socket_id}.")
+        return False
+
+    def recv(self, worker_id, socket_id, timeout_secs, is_json=True):
+        """
+        Receive data from the worker.
+
+        :param socket_id: The ID of the socket through which we send data to the worker.
+        :param worker_id: The ID of the worker to send data to
+        :param timeout_secs: Seconds until timeout. The actual data sending could take
+                                2 times this value (although this is quite unlikely) since
+                                both open_timeout and close_timeout are set to timeout_secs 
+        :param is_json: True if received data should be json decoded.
+                        Otherwise, we assume we are receiving a stream and the function is used as a generator,
+                          yielding bytes chunk by chunk.
+
+        :return A dictionary if is_json is True. A generator otherwise.
+        """
+        with connect(f"{WS_SERVER_PATH}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            if is_json:
+                data = websocket.recv()
+                return json.loads(data.decode())
+            else:
+                try:
+                    chunk = websocket.recv()
+                    if not chunk: break
+                    yield chunk
+                except websockets.exceptions.ConnectionClosed: break
+        logging.warning(f"Socket timeout receiving data from worker {worker_id} at socket {socket_id}.")

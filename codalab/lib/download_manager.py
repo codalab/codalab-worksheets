@@ -129,15 +129,13 @@ class DownloadManager(object):
             # system since 1) due to NFS caching the worker has more up to date
             # information on directory contents, and 2) the logic of hiding
             # the dependency paths doesn't need to be re-implemented here.
-            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
-            response_socket_id = self._worker_model.allocate_socket(
-                worker['user_id'], worker['worker_id']
-            )
+            worker_id = self._bundle_model.get_bundle_worker(target.bundle_uuid)['worker_id']
             try:
                 read_args = {'type': 'get_target_info', 'depth': depth}
-                self._send_read_message(worker, response_socket_id, target, read_args)
-                with closing(self._worker_model.start_listening(response_socket_id)) as sock:
-                    result = self._worker_model.get_json_message(sock, 60)
+                socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
+                self._send_read_message(worker_id, socket_id, target, read_args)
+                result = self._worker_model.recv(worker_id, socket_id, timeout_secs=30, is_json=True)
+                self._worker_model.disconnect(worker_id, socket_id, timeout_secs=5)
                 if result is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
                     raise NotFoundError(
@@ -182,15 +180,12 @@ class DownloadManager(object):
             #   information on directory contents
             # 2) the logic of hiding
             #   the dependency paths doesn't need to be re-implemented here.
-            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
-            response_socket_id = self._worker_model.allocate_socket(
-                worker['user_id'], worker['worker_id']
-            )
+            worker_id = self._bundle_model.get_bundle_worker(target.bundle_uuid)['worker_id']
             try:
                 read_args = {'type': 'stream_directory'}
-                self._send_read_message(worker, response_socket_id, target, read_args)
-                fileobj = self._get_read_response_stream(response_socket_id)
-                return Deallocating(fileobj, self._worker_model, response_socket_id)
+                socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
+                self._send_read_message(worker_id, socket_id, target, read_args)
+                return self._get_read_response_stream(worker_id, socket_id)
             except Exception:
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
@@ -209,14 +204,12 @@ class DownloadManager(object):
                 with self.file_util.OpenFile(file_path, gzipped=False) as f:
                     return f
         else:
-            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
-            response_socket_id = self._worker_model.allocate_socket(
-                worker['user_id'], worker['worker_id']
-            )
+            worker_id = self._bundle_model.get_bundle_worker(target.bundle_uuid)['worker_id']
             try:
                 read_args = {'type': 'stream_file'}
-                self._send_read_message(worker, response_socket_id, target, read_args)
-                fileobj = self._get_read_response_stream(response_socket_id)
+                socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
+                self._send_read_message(worker_id, socket_id, target, read_args)
+                chunk_generator = self._get_read_response_stream(response_socket_id)
                 if not gzipped:
                     fileobj = un_gzip_stream(fileobj)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)
@@ -243,6 +236,7 @@ class DownloadManager(object):
             )
             try:
                 read_args = {'type': 'read_file_section', 'offset': offset, 'length': length}
+                # TODO
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 bytestring = self._get_read_response(response_socket_id)
             finally:
@@ -286,6 +280,7 @@ class DownloadManager(object):
                     'max_line_length': max_line_length,
                     'truncation_text': truncation_text,
                 }
+                # TODO!
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 bytestring = self._get_read_response(response_socket_id)
             finally:
@@ -357,18 +352,17 @@ class DownloadManager(object):
             permission='r', **kwargs
         )
 
-    def _send_read_message(self, worker, response_socket_id, target, read_args):
+    def _send_read_message(self, worker_id, socket_id, target, read_args):
         message = {
             'type': 'read',
-            'socket_id': response_socket_id,
             'uuid': target.bundle_uuid,
             'path': target.subpath,
             'read_args': read_args,
         }
-        if not self._worker_model.send_json_message(
-            worker['socket_id'], worker['worker_id'], message, 60
+        if not self._worker_model.send(
+            message, worker_id, socket_id, timeout_secs=60, is_json=True
         ):  # dead workers are a fact of life now
-            logging.info('Unable to reach worker')
+            logging.warning(f'Unable to reach worker {worker_id} at socket {socket_id}')
 
     def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
         message = {
@@ -378,42 +372,23 @@ class DownloadManager(object):
             'port': port,
             'message': message,
         }
-        if not self._worker_model.send_json_message(
-            worker['socket_id'], worker['worker_id'], message, 60
+        if not self._worker_model.send(
+            message, worker_id, socket_id, timeout_secs=60, is_json=True
         ):  # dead workers are a fact of life now
-            logging.info('Unable to reach worker')
+            logging.warning(f'Unable to reach worker {worker_id} at socket {socket_id}')
 
-    def _get_read_response_stream(self, response_socket_id):
-        with closing(self._worker_model.start_listening(response_socket_id)) as sock:
-            header_message = self._worker_model.get_json_message(sock, 60)
-            precondition(header_message is not None, 'Unable to reach worker')
-            if 'error_code' in header_message:
-                raise http_error_to_exception(
-                    header_message['error_code'], header_message['error_message']
-                )
+    def _get_read_response_stream(self, worker_id, socket_id):
+        header_message = self._worker_model.recv(worker_id, socket_id, timeout_secs=60)
+        precondition(header_message is not None, 'Unable to reach worker')
+        if 'error_code' in header_message:
+            raise http_error_to_exception(
+                header_message['error_code'], header_message['error_message']
+            )
 
-            fileobj = self._worker_model.get_stream(sock, 60)
-            precondition(fileobj is not None, 'Unable to reach worker')
-            return fileobj
+        chunk_generator = self._worker_model.recv(worker_id, socket_id, timeout_secs=60, is_json=False)
+        precondition(chunk_generator is not None, 'Unable to reach worker')
+        return chunk_generator
 
     def _get_read_response(self, response_socket_id):
         with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
             return fileobj.read()
-
-
-class Deallocating(object):
-    """
-    Deallocates the socket when closed.
-    """
-
-    def __init__(self, fileobj, worker_model, socket_id):
-        self._fileobj = fileobj
-        self._worker_model = worker_model
-        self._socket_id = socket_id
-
-    def __getattr__(self, attr):
-        return getattr(self._fileobj, attr)
-
-    def close(self):
-        self._fileobj.close()
-        self._worker_model.deallocate_socket(self._socket_id)
