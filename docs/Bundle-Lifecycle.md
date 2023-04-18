@@ -7,7 +7,7 @@ bundles. Each bundle transitions through various states during its lifecycle.
 
 <br />
 
-<img src='./images/uploaded-bundle-states.png' />
+<img src='../images/uploaded-bundle-states.png' />
 
 <br />
 
@@ -21,7 +21,7 @@ bundles. Each bundle transitions through various states during its lifecycle.
 <br />
 <br />
 
-<img src='./images/make-bundle-states.png' />
+<img src='../images/make-bundle-states.png' />
 
 <br />
 
@@ -35,7 +35,7 @@ bundles. Each bundle transitions through various states during its lifecycle.
 <br />
 <br />
 
-<img src='./images/run-bundle-states.png' />
+<img src='../images/run-bundle-states.png' />
 
 <br />
 
