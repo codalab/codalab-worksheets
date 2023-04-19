@@ -279,6 +279,7 @@ class BundleCheckinState(object):
         bundle_profile_stats,  # type: dict
         cpu_usage,  # type: float
         memory_usage,  # type: int
+        disk_utilization,  # type: int
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -291,9 +292,10 @@ class BundleCheckinState(object):
         self.remote = remote
         self.exitcode = exitcode
         self.failure_message = failure_message
+        self.bundle_profile_stats = bundle_profile_stats
         self.cpu_usage = cpu_usage
         self.memory_usage = memory_usage
-        self.bundle_profile_stats = bundle_profile_stats
+        self.disk_utilization = disk_utilization
 
     @classmethod
     def from_dict(cls, dct):
@@ -309,9 +311,10 @@ class BundleCheckinState(object):
             remote=dct['remote'],
             exitcode=dct['exitcode'],
             failure_message=dct['failure_message'],
+            bundle_profile_stats=dct.get('bundle_profile_stats'),
             cpu_usage=dct.get('cpu_usage'),
             memory_usage=dct.get('memory_usage'),
-            bundle_profile_stats=dct.get('bundle_profile_stats'),
+            disk_utilization=dct.get('disk_utilization'),
         )
 
     @property
