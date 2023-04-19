@@ -7,7 +7,7 @@
 [![PyPI version](https://badge.fury.io/py/codalab.svg)](https://badge.fury.io/py/codalab)
 
 
-CodaLab Worksheets is a collaborative platform for reproducible research that allows researchers to run, manage, and share their experiments in the cloud. It helps researchers ensure that their runs are reproducible and consistent.
+CodaLab Worksheets is a collaborative platform for reproducible research that allows researchers to run, manage, and share their experiments in the cloud. It helps researchers ensure that their runs are reproducible and consistent. 
 
 * [Official CodaLab Worksheets Instance](https://worksheets.codalab.org/)
 * [CodaLab Worksheets Documentation](https://codalab-worksheets.readthedocs.io/en/latest/)
