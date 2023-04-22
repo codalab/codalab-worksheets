@@ -308,17 +308,19 @@ class WorkerModel(object):
         :return True if data was sent properly, False otherwise.
         """
         CHUNK_SIZE = 4096  # TODO: Make this a variable set in Codalab environment.
-        with connect(f"{WS_SERVER_PATH}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
-            if is_json:
-                websocket.send(json.dumps(data).encode())
-                return True
-            else:
-                while True:
-                    chunk = data.read(CHUNK_SIZE)
-                    if not chunk: break
-                    websocket.send(chunk)
-            return True
-        logging.warning(f"Socket timeout sending data to worker {worker_id} at socket {socket_id}.")
+        try:
+            with connect(f"{WS_SERVER_PATH}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+                if is_json:
+                    websocket.send(json.dumps(data).encode())
+                    return True
+                else:
+                    while True:
+                        chunk = data.read(CHUNK_SIZE)
+                        if not chunk: break
+                        websocket.send(chunk)
+                    return True
+        except Exception as e:
+            logger.error(f"Send to worker {worker_id} through socket {socket_id} failed with {e}")
         return False
 
     def recv(self, worker_id, socket_id, timeout_secs=60, is_json=True):
@@ -336,14 +338,25 @@ class WorkerModel(object):
 
         :return A dictionary if is_json is True. A generator otherwise.
         """
-        with connect(f"{WS_SERVER_PATH}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
-            if is_json:
-                data = websocket.recv()
-                return json.loads(data.decode())
-            else:
-                try:
-                    chunk = websocket.recv()
-                    if not chunk: break
-                    yield chunk
-                except websockets.exceptions.ConnectionClosed: break
-        logging.warning(f"Socket timeout receiving data from worker {worker_id} at socket {socket_id}.")
+        try:
+            with connect(f"{WS_SERVER_PATH}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+                if is_json:
+                    data = websocket.recv()
+                    return json.loads(data.decode())
+                else:
+                    try:
+                        chunk = websocket.recv()
+                        if not chunk: break
+                        yield chunk
+                    except websockets.exceptions.ConnectionClosed: break
+        except Exception as e:
+            logger.error(f"Recv from worker {worker_id} through socket {socket_id} failed with {e}")
+
+    def connect_and_send(self, data, worker_id, timeout_secs=60, is_json=True):
+        """
+        Convenience method to connect to worker socket, send, and then disconnect.
+        """
+        socket_id = self.connect_to_ws(worker_id)
+        sent = self.send(data, worker_id, socket_id, timeout_secs, is_json)
+        self.disconnect(worker_id, socket_id)
+        return sent

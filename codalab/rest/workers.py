@@ -71,11 +71,19 @@ def checkin(worker_id):
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))
 
+    """
+    TODO!!!! We NEED a way to do this reliably; we'll have to CACHE THE MESSAGES IF THEY AREN'T SENT
+    Wait, no; that's fine actually. We don't need to; it'll just send the messages again if need be.
+    We will have to catch the exception below, though.
+    """
     if messages:
-        socket_id = local.worker_model.connect_to_ws(worker_id)
-        for message in messages:
-            local.worker_model.send(message, worker_id, socket_id)
-        local.worker_model.disconnect(worker_id, socket_id)
+        try:
+            socket_id = local.worker_model.connect_to_ws(worker_id)
+            for message in messages:
+                local.worker_model.send(message, worker_id, socket_id)
+            local.worker_model.disconnect(worker_id, socket_id)
+        except Exception as e:
+            logger.error(f"Could not send messages to worker {worker_id}. Failed with: {e}")
 
 def check_reply_permission(worker_id, socket_id):
     """
@@ -91,7 +99,6 @@ def check_run_permission(bundle):
     """
     if not check_bundle_have_run_permission(local.model, request.user, bundle):
         abort(http.client.FORBIDDEN, "User does not have permission to run bundle.")
-
 
 @post(
     "/workers/<worker_id>/start_bundle/<uuid:re:%s>" % spec_util.UUID_STR,
