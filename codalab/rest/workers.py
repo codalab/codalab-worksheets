@@ -71,11 +71,11 @@ def checkin(worker_id):
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))
 
-    with closing(local.worker_model.start_listening(socket_id)) as sock:
-        messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))
-    response.content_type = 'application/json'
-    return json.dumps(messages)
-
+    if messages:
+        socket_id = local.worker_model.connect_to_ws(worker_id)
+        for message in messages:
+            local.worker_model.send(message, worker_id, socket_id)
+        local.worker_model.disconnect(worker_id, socket_id)
 
 def check_reply_permission(worker_id, socket_id):
     """
@@ -84,49 +84,6 @@ def check_reply_permission(worker_id, socket_id):
     """
     if not local.worker_model.has_reply_permission(request.user.user_id, worker_id, socket_id):
         abort(http.client.FORBIDDEN, "Not your socket ID!")
-
-
-@post(
-    "/workers/<worker_id>/reply/<socket_id:int>",
-    name="worker_reply_json",
-    apply=AuthenticatedProtectedPlugin(),
-)
-def reply(worker_id, socket_id):
-    """
-    Replies with a single JSON message to the given socket ID.
-    """
-    check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, worker_id, request.json, 60, autoretry=False)
-
-
-@post(
-    "/workers/<worker_id>/reply_data/<socket_id:int>",
-    name="worker_reply_blob",
-    apply=AuthenticatedProtectedPlugin(),
-)
-def reply_data(worker_id, socket_id):
-    """
-    Replies with a stream of data to the given socket ID. This reply mechanism
-    works through 2 messages sent by this method: the first message is a header
-    message containing metadata. The second message streams the actual data in.
-
-    The contents of the first message are parsed from the header_message query
-    parameter, which should be in JSON format.
-
-    The contents of the second message go in the body of the HTTP request.
-    """
-    if "header_message" not in request.query:
-        abort(http.client.BAD_REQUEST, "Missing header message.")
-
-    try:
-        header_message = json.loads(request.query.header_message)
-    except ValueError:
-        abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
-
-    check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, worker_id, header_message, 60, autoretry=False)
-    local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
-
 
 def check_run_permission(bundle):
     """

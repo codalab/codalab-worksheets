@@ -23,6 +23,44 @@ from zipfile import (  # type: ignore
 
 from codalab.lib.beam.streamingzipfile import StreamingZipFile
 
+class GenericStream(BytesIO):
+    """Generic base class that creates a filelike object from a generator.
+    """
+
+    decoder = None
+
+    def __init__(self, generator, close_fn, name):
+        self._generator = generator
+        self._close_fn = close_fn
+        self._name = name
+
+        self._buffer = BytesBuffer()
+        self._finished = False
+
+    def read(self, num_bytes=None):
+        # Read more data, if we need to.
+        while not self._finished and (num_bytes is None or len(self._buffer) < num_bytes):
+            try:
+                chunk = next(self._generator)
+                self._buffer.write(chunk)
+            except StopIteration:
+                self._finished = True
+        if num_bytes is None:
+            num_bytes = len(self._buffer)
+        return self._buffer.read(num_bytes)
+
+    def close(self):
+        self._close_fn
+
+    def __getattr__(self, name):
+        """
+        Proxy any methods/attributes besides read() and close() to the
+        fileobj (for example, if we're wrapping an HTTP response object.)
+        Behavior is undefined if other file methods such as tell() are
+        attempted through this proxy.
+        """
+        return self._name
+
 
 class GenericUncompressStream(BytesIO):
     """Generic base class that uncompresses a stream.

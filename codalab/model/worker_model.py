@@ -272,7 +272,7 @@ class WorkerModel(object):
                 socket_id = None
         return socket_id
 
-    def connect_to_ws(self, worker_id, timeout_secs):
+    def connect_to_ws(self, worker_id, timeout_secs=5):
         """
         Loop until connection achieved.
         """
@@ -288,11 +288,11 @@ class WorkerModel(object):
         if not socket_id: logging.error("No connection reached")
         return socket_id
 
-    def disconnect(self, worker_id, socket_id, timeout_secs):
+    def disconnect(self, worker_id, socket_id, timeout_secs=5):
         with connect(f"{WS_SERVER_PATH}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             pass  # Just disconnect it.
     
-    def send(self, data, worker_id, socket_id, timeout_secs, is_json=True):
+    def send(self, data, worker_id, socket_id, timeout_secs=60, is_json=True):
         """
         Send data to the worker.
 
@@ -321,7 +321,7 @@ class WorkerModel(object):
         logging.warning(f"Socket timeout sending data to worker {worker_id} at socket {socket_id}.")
         return False
 
-    def recv(self, worker_id, socket_id, timeout_secs, is_json=True):
+    def recv(self, worker_id, socket_id, timeout_secs=60, is_json=True):
         """
         Receive data from the worker.
 

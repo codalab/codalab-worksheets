@@ -11,7 +11,7 @@ from codalab.common import (
 )
 from codalab.worker import download_util
 from codalab.worker.bundle_state import State
-from codalab.worker.un_gzip_stream import un_gzip_stream
+from codalab.worker.un_gzip_stream import un_gzip_stream, GeneratorStream
 
 logger = logging.getLogger(__name__)
 
@@ -378,14 +378,19 @@ class DownloadManager(object):
             logging.warning(f'Unable to reach worker {worker_id} at socket {socket_id}')
 
     def _get_read_response_stream(self, worker_id, socket_id):
-        header_message = self._worker_model.recv(worker_id, socket_id, timeout_secs=60)
+        header_message = self._worker_model.recv(worker_id, socket_id)
         precondition(header_message is not None, 'Unable to reach worker')
         if 'error_code' in header_message:
             raise http_error_to_exception(
                 header_message['error_code'], header_message['error_message']
             )
 
-        chunk_generator = self._worker_model.recv(worker_id, socket_id, timeout_secs=60, is_json=False)
+        chunk_generator = self._worker_model.recv(worker_id, socket_id, is_json=False)
+        fileobj = GeneratorStream(
+            chunk_generator,
+            partial(self._worker_model.disconnect, worker_id, socket_id),
+            "test"
+        )
         precondition(chunk_generator is not None, 'Unable to reach worker')
         return chunk_generator
 
