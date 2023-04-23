@@ -13,6 +13,7 @@ import sys
 from typing import Optional, Set, Dict
 from types import SimpleNamespace
 import websockets
+import json
 
 import psutil
 
@@ -306,6 +307,7 @@ class Worker:
         :param message: (list(dict)) A list of JSON messages for the worker.
         :return: None
         """
+        message = json.loads(message.decode())
         with self._lock:
             # Stop processing any new runs received from server
             if not message or self.terminate_and_restage or self.terminate:
