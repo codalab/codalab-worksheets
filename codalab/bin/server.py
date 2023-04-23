@@ -28,9 +28,9 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         extensions_to_watch = ('.js', '.py', '.html', '.css', '.tpl')
         file_extension = os.path.splitext(event.src_path)[1]
 
-        if file_extension in extensions_to_watch:
-            print("Saw file change: %s -- restarting!" % (os.path.basename(event.src_path)))
-            self.restart()
+        # if file_extension in extensions_to_watch:
+        #     print("Saw file change: %s -- restarting!" % (os.path.basename(event.src_path)))
+        #     self.restart()
 
 
 def run_server_with_watch():

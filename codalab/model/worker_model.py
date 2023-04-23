@@ -97,9 +97,9 @@ class WorkerModel(object):
                     .values(worker_row)
                 )
             else:
-                socket_id = self.allocate_socket(user_id, worker_id, conn)
+                # TODO: migrate worker table to not have socket id.
                 worker_row.update(
-                    {'user_id': user_id, 'worker_id': worker_id, 'socket_id': socket_id}
+                    {'user_id': user_id, 'worker_id': worker_id}
                 )
                 conn.execute(cl_worker.insert().values(worker_row))
 

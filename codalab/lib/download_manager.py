@@ -151,8 +151,6 @@ class DownloadManager(object):
                     target_info['resolved_target']
                 )
                 return target_info
-            finally:
-                self._worker_model.deallocate_socket(response_socket_id)
 
     @retry_if_no_longer_running
     def stream_tarred_gzipped_directory(self, target):
@@ -186,8 +184,9 @@ class DownloadManager(object):
                 socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
                 self._send_read_message(worker_id, socket_id, target, read_args)
                 return self._get_read_response_stream(worker_id, socket_id)
-            except Exception:
-                self._worker_model.deallocate_socket(response_socket_id)
+            except Exception as e:
+                logger.error(e)
+                if socket_id: self._worker_model.disconnect(worker_id, socket_id)
                 raise
 
     @retry_if_no_longer_running
@@ -209,12 +208,18 @@ class DownloadManager(object):
                 read_args = {'type': 'stream_file'}
                 socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
                 self._send_read_message(worker_id, socket_id, target, read_args)
-                chunk_generator = self._get_read_response_stream(response_socket_id)
+                chunk_generator = self._get_read_response_stream(worker_id, socket_id)
+                fileobj = GeneratorStream(
+                    chunk_generator,
+                    partial(self._worker_model.disconnect, worker_id, socket_id),
+                    "test"
+                )
                 if not gzipped:
                     fileobj = un_gzip_stream(fileobj)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)
-            except Exception:
-                self._worker_model.deallocate_socket(response_socket_id)
+            except Exception as e:
+                logger.error(e)
+                if socket_id: self._worker_model.disconnect(worker_id, socket_id)
                 raise
 
     @retry_if_no_longer_running
@@ -230,18 +235,15 @@ class DownloadManager(object):
                 bytestring = self.file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
-            response_socket_id = self._worker_model.allocate_socket(
-                worker['user_id'], worker['worker_id']
-            )
+            worker_id = self._bundle_model.get_bundle_worker(target.bundle_uuid)['worker_id']
             try:
                 read_args = {'type': 'read_file_section', 'offset': offset, 'length': length}
-                # TODO
+                socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
                 self._send_read_message(worker, response_socket_id, target, read_args)
-                bytestring = self._get_read_response(response_socket_id)
+                bytestring = self._get_read_response(worker_id, sockte_id)
             finally:
-                self._worker_model.deallocate_socket(response_socket_id)
-
+                if socket_id: self._worker_model.disconnect(worker_id, socket_id)
+                
             # Note: all data from the worker is gzipped (see `local_reader.py`).
             if not gzipped:
                 bytestring = self.file_util.un_gzip_bytestring(bytestring)
@@ -268,10 +270,7 @@ class DownloadManager(object):
                 bytestring = self.file_util.gzip_bytestring(bytestring)
             return bytestring
         else:
-            worker = self._bundle_model.get_bundle_worker(target.bundle_uuid)
-            response_socket_id = self._worker_model.allocate_socket(
-                worker['user_id'], worker['worker_id']
-            )
+            worker_id = self._bundle_model.get_bundle_worker(target.bundle_uuid)['worker_id']
             try:
                 read_args = {
                     'type': 'summarize_file',
@@ -280,11 +279,11 @@ class DownloadManager(object):
                     'max_line_length': max_line_length,
                     'truncation_text': truncation_text,
                 }
-                # TODO!
-                self._send_read_message(worker, response_socket_id, target, read_args)
+                socket_id = self._worker_model.connect(worker_id)
+                self._send_read_message(worker_id, socket_id, target, read_args)
                 bytestring = self._get_read_response(response_socket_id)
             finally:
-                self._worker_model.deallocate_socket(response_socket_id)
+                if socket_id: self._worker_model.disconnect(worker_id, socket_id)
 
             # Note: all data from the worker is gzipped (see `local_reader.py`).
             if not gzipped:
@@ -296,15 +295,8 @@ class DownloadManager(object):
         Sends a raw bytestring into the specified port of a running bundle, then return the response.
         """
         worker = self._bundle_model.get_bundle_worker(uuid)
-        response_socket_id = self._worker_model.allocate_socket(
-            worker['user_id'], worker['worker_id']
-        )
-        try:
-            self._send_netcat_message(worker, response_socket_id, uuid, port, message)
-            bytestring = self._get_read_response(response_socket_id)
-        finally:
-            self._worker_model.deallocate_socket(response_socket_id)
-
+        self._send_netcat_message(worker, response_socket_id, uuid, port, message)
+        bytestring = self._get_read_response(response_socket_id)
         return bytestring
 
     def _is_available_locally(self, target):
@@ -385,15 +377,20 @@ class DownloadManager(object):
                 header_message['error_code'], header_message['error_message']
             )
 
-        chunk_generator = self._worker_model.recv(worker_id, socket_id, is_json=False)
-        fileobj = GeneratorStream(
-            chunk_generator,
-            partial(self._worker_model.disconnect, worker_id, socket_id),
-            "test"
-        )
-        precondition(chunk_generator is not None, 'Unable to reach worker')
-        return chunk_generator
+        try:
+            chunk_generator = self._worker_model.recv(worker_id, socket_id, is_json=False)
+            fileobj = GeneratorStream(
+                chunk_generator,
+                partial(self._worker_model.disconnect, worker_id, socket_id),
+                "test"
+            )
+        except Exception as e:
+            logger.error(e)
+            if socket_id: self._worker_model.disconnect(worker_id, socket_id)
+            raise
+        precondition(fileobj is not None, 'Unable to reach worker')
+        return fileobj
 
-    def _get_read_response(self, response_socket_id):
-        with closing(self._get_read_response_stream(response_socket_id)) as fileobj:
+    def _get_read_response(self, worker_id, socket_id):
+        with closing(self._get_read_response_stream(worker_id, socket_id)) as fileobj:
             return fileobj.read()
