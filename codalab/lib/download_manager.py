@@ -151,6 +151,10 @@ class DownloadManager(object):
                     target_info['resolved_target']
                 )
                 return target_info
+            except Exception as e:
+                logger.error(e)
+                if socket_id: self._worker_model.disconnect(worker_id, socket_id)
+                raise
 
     @retry_if_no_longer_running
     def stream_tarred_gzipped_directory(self, target):

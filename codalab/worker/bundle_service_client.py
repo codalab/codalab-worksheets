@@ -11,7 +11,6 @@ import urllib.error
 
 from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
-from .worker_model import send, recv
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, ensure_str, urlopen_with_retry
 
 
@@ -130,13 +129,13 @@ class BundleServiceClient(RestClient):
         )
 
     @wrap_exception('Unable to reply to message from bundle service')
-    def reply(self, worker_id, socket_id, message):
-        send(message, worker_id, socket_id)
+    def reply(self, worker_model, worker_id, socket_id, message):
+        worker_model.send(message, worker_id, socket_id)
 
     @wrap_exception('Unable to reply to message from bundle service')
-    def reply_data(self, worker_id, socket_id, header_message, fileobj_or_bytestring):
-        send(header_message, worker_id, socket_id)  # send header message
-        send(fileobj_or_bytestring, worker_id, socket_id, timeout_secs=10000, is_json=False)  # send stream
+    def reply_data(self, worker_model, worker_id, socket_id, header_message, fileobj_or_bytestring):
+        worker_model.send(header_message, worker_id, socket_id)  # send header message
+        worker_model.send(fileobj_or_bytestring, worker_id, socket_id, timeout_secs=10000, is_json=False)  # send stream
 
     @wrap_exception('Unable to start bundle in bundle service')
     def start_bundle(self, worker_id, uuid, request_data):

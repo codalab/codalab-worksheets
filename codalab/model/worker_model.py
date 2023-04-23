@@ -38,7 +38,6 @@ class WorkerModel(object):
 
     def __init__(self, engine, socket_dir, ws_server):
         self._engine = engine
-        self._socket_dir = socket_dir
         self._ws_server = ws_server
 
     def worker_checkin(
@@ -90,7 +89,6 @@ class WorkerModel(object):
                 )
             ).fetchone()
             if existing_row:
-                socket_id = existing_row.socket_id
                 conn.execute(
                     cl_worker.update()
                     .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
@@ -123,8 +121,6 @@ class WorkerModel(object):
                     )
                 )
 
-        return socket_id
-
     @staticmethod
     def _serialize_dependencies(dependencies):
         return json.dumps(dependencies, separators=(',', ':'))
@@ -139,24 +135,6 @@ class WorkerModel(object):
         as the socket directory.
         """
         with self._engine.begin() as conn:
-            socket_rows = conn.execute(
-                cl_worker_socket.select().where(
-                    and_(
-                        cl_worker_socket.c.user_id == user_id,
-                        cl_worker_socket.c.worker_id == worker_id,
-                    )
-                )
-            ).fetchall()
-            for socket_row in socket_rows:
-                self._cleanup_socket(socket_row.socket_id)
-            conn.execute(
-                cl_worker_socket.delete().where(
-                    and_(
-                        cl_worker_socket.c.user_id == user_id,
-                        cl_worker_socket.c.worker_id == worker_id,
-                    )
-                )
-            )
             conn.execute(
                 cl_worker_run.delete().where(
                     and_(cl_worker_run.c.user_id == user_id, cl_worker_run.c.worker_id == worker_id)
@@ -203,7 +181,6 @@ class WorkerModel(object):
                 'memory_bytes': row.memory_bytes,
                 'free_disk_bytes': row.free_disk_bytes,
                 'checkin_time': row.checkin_time,
-                'socket_id': row.socket_id,
                 # run_uuids will be set later
                 'run_uuids': [],
                 'dependencies': row.dependencies
@@ -245,7 +222,7 @@ class WorkerModel(object):
                 )
     
     def _connect(self, worker_id, timeout_secs):
-        with connect(f"{WS_SERVER_PATH}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+        with connect(f"{self.ws_server}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             try:
                 socket_id = websocket.recv()
             except:
@@ -269,7 +246,7 @@ class WorkerModel(object):
         return socket_id
 
     def disconnect(self, worker_id, socket_id, timeout_secs=5):
-        with connect(f"{WS_SERVER_PATH}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+        with connect(f"{self.ws_server}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             pass  # Just disconnect it.
     
     def send(self, data, worker_id, socket_id, timeout_secs=60, is_json=True):
@@ -289,7 +266,7 @@ class WorkerModel(object):
         """
         CHUNK_SIZE = 4096  # TODO: Make this a variable set in Codalab environment.
         try:
-            with connect(f"{WS_SERVER_PATH}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            with connect(f"{self.ws_server}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:
                     websocket.send(json.dumps(data).encode())
                     return True
@@ -319,7 +296,7 @@ class WorkerModel(object):
         :return A dictionary if is_json is True. A generator otherwise.
         """
         try:
-            with connect(f"{WS_SERVER_PATH}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            with connect(f"{self.ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:
                     data = websocket.recv()
                     return json.loads(data.decode())

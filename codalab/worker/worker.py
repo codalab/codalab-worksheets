@@ -22,6 +22,7 @@ from codalab.lib.telemetry_util import capture_exception, using_sentry
 from codalab.worker.runtime import Runtime
 import requests
 
+from .worker_model import WorkerModel
 from .bundle_service_client import BundleServiceException, BundleServiceClient
 from .dependency_manager import DependencyManager
 from .docker_utils import DEFAULT_DOCKER_TIMEOUT, DEFAULT_RUNTIME
@@ -159,6 +160,9 @@ class Worker:
         # access the runs dictionary, thereby causing race conditions.
         self._lock = RLock()
 
+        # Temporary
+        self.worker_model = WorkerModel(None, None, self.ws_server)
+
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
         Set up docker networks for runs: one with external network access and one without
@@ -292,7 +296,7 @@ class Worker:
         """
         return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
     
-    def process_message(self, message):
+    def process_message(self, message, socket_id):
         """
         Process messages from the rest server in the worker.
 
@@ -356,9 +360,8 @@ class Worker:
                         break
 
     def listen_thread_fn(self):
-        futures = [listen(self)]
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        futures = [self.listen]
+        loop = asyncio.get_event_loop()
         loop.run_until_complete(asyncio.wait(futures))
 
     def start(self):
@@ -372,8 +375,9 @@ class Worker:
         
         NUM_THREADS = 5  # temporary
 
+        asyncio.new_event_loop()
         for _ in range(NUM_THREADS):
-            t = threading.Thread(target=self.listen_thread_fn, args=[self])
+            t = threading.Thread(target=self.listen_thread_fn)
             self.listen_threads.append(t)
             t.start()
         while not self.terminate:
@@ -871,11 +875,11 @@ class Worker:
     def bundle_service_reply(self, socket_id, err, message, data):
         if err:
             err = {'error_code': err[0], 'error_message': err[1]}
-            self.bundle_service.reply(self.id, socket_id, err)
+            self.bundle_service.reply(self.worker_model, self.id, socket_id, err)
         elif data:
-            self.bundle_service.reply_data(self.id, socket_id, message, data)
+            self.bundle_service.reply_data(self.worker_model, self.id, socket_id, message, data)
         else:
-            self.bundle_service.reply(self.id, socket_id, message)
+            self.bundle_service.reply(self.worker_model, self.id, socket_id, message)
 
     def start_stage_stats(self, uuid: str, stage: str) -> None:
         """
