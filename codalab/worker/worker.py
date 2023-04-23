@@ -314,7 +314,7 @@ class Worker:
                     self.initialize_run(action['bundle'], action['resources'])
                 else:
                     uuid = action['uuid']
-                    socket_id = action.get('socket_id', None)
+                    socket_id = threading.get_ident()
                     if uuid not in self.runs:
                         if action_type in ['read', 'netcat']:
                             self.read_run_missing(socket_id)

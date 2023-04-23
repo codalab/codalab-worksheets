@@ -243,26 +243,6 @@ class WorkerModel(object):
                     .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
                     .values(update)
                 )
-
-    def has_reply_permission(self, user_id, worker_id, socket_id):
-        """
-        Checks whether the given user running a worker with the given ID can
-        reply on the socket with the given ID. Used to prevent a user from
-        impersonating a worker from another user and replying to its messages.
-        """
-        with self._engine.begin() as conn:
-            row = conn.execute(
-                cl_worker_socket.select().where(
-                    and_(
-                        cl_worker_socket.c.user_id == user_id,
-                        cl_worker_socket.c.worker_id == worker_id,
-                        cl_worker_socket.c.socket_id == socket_id,
-                    )
-                )
-            ).fetchone()
-            if row:
-                return True
-            return False
     
     def _connect(self, worker_id, timeout_secs):
         with connect(f"{WS_SERVER_PATH}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
