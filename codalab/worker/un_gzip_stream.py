@@ -23,7 +23,7 @@ from zipfile import (  # type: ignore
 
 from codalab.lib.beam.streamingzipfile import StreamingZipFile
 
-class GenericStream(BytesIO):
+class GeneratorStream(BytesIO):
     """Generic base class that creates a filelike object from a generator.
     """
 

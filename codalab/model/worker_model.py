@@ -344,11 +344,12 @@ class WorkerModel(object):
                     data = websocket.recv()
                     return json.loads(data.decode())
                 else:
-                    try:
-                        chunk = websocket.recv()
-                        if not chunk: break
-                        yield chunk
-                    except websockets.exceptions.ConnectionClosed: break
+                    while True:
+                        try:
+                            chunk = websocket.recv()
+                            if not chunk: break
+                            yield chunk
+                        except websockets.exceptions.ConnectionClosed: break
         except Exception as e:
             logger.error(f"Recv from worker {worker_id} through socket {socket_id} failed with {e}")
 
