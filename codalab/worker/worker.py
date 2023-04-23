@@ -90,7 +90,8 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
-        preemptible=False,  # type: bool
+        preemptible=False,  # type: bool,
+        num_threads=5  # type: int. Number of threads to have running concurrently waiting for socket messages.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -132,10 +133,12 @@ class Worker:
         self.checkin_frequency_seconds = checkin_frequency_seconds
         self.last_checkin = None
         self.last_checkin_successful = False
-        self.listen_threads = list()
+        self.listen_thread = None
         self.last_time_ran = None  # type: Optional[bool]
 
         self.ws_server = ws_server
+
+        self.num_threads = num_threads
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
@@ -318,7 +321,6 @@ class Worker:
                     self.initialize_run(action['bundle'], action['resources'])
                 else:
                     uuid = action['uuid']
-                    socket_id = threading.get_ident()
                     if uuid not in self.runs:
                         if action_type in ['read', 'netcat']:
                             self.read_run_missing(socket_id)
@@ -339,16 +341,19 @@ class Worker:
                     else:
                         logger.warning("Unrecognized action type from server: %s", action_type)
     
-    async def listen(self):
+    async def listen(self, socket_id):
         logger.warning("Started websocket listening thread")
         while not self.terminate:
-            logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}/{threading.get_ident()}")
+            logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}/{socket_id}")
             async with websockets.connect(
-                f"{self.ws_server}/worker/{self.id}/{threading.get_ident()}", max_queue=1
+                f"{self.ws_server}/worker/{self.id}/{socket_id}", max_queue=1
             ) as websocket:
                 async def receive_msg():
-                    message = await asyncio.wait_for(websocket.recv())
-                    self.process_message(message)
+                    # Note: we set a timeout below so that we can check the termination
+                    # condition every <timeout_secs> seconds to ensure the worker
+                    # doesn't run forever.
+                    message = await asyncio.wait_for(websocket.recv(), timeout=30)
+                    self.process_message(message, socket_id)
 
                 while not self.terminate:
                     try:
@@ -360,9 +365,10 @@ class Worker:
                         break
 
     def listen_thread_fn(self):
-        futures = [self.listen]
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.wait(futures))
+        coroutines = [self.listen(i) for i in range(self.num_threads)]
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(asyncio.gather(*coroutines))
 
     def start(self):
         """Return whether we ran anything."""
@@ -372,14 +378,10 @@ class Worker:
         self.image_manager.start()
         if not self.shared_file_system:
             self.dependency_manager.start()
-        
-        NUM_THREADS = 5  # temporary
 
         asyncio.new_event_loop()
-        for _ in range(NUM_THREADS):
-            t = threading.Thread(target=self.listen_thread_fn)
-            self.listen_threads.append(t)
-            t.start()
+        self.listen_thread = threading.Thread(target=self.listen_thread_fn)
+        self.listen_thread.start()
         while not self.terminate:
             try:
                 self.checkin()
@@ -439,7 +441,7 @@ class Worker:
         Blocks until cleanup is complete and it is safe to quit
         """
         logger.info("Stopping Worker")
-        for t in self.listen_threads: t.join()
+        self.listen_thread.join()
         self.image_manager.stop()
         if not self.shared_file_system:
             self.dependency_manager.stop()

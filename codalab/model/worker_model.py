@@ -222,7 +222,7 @@ class WorkerModel(object):
                 )
     
     def _connect(self, worker_id, timeout_secs):
-        with connect(f"{self.ws_server}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+        with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             try:
                 socket_id = websocket.recv()
             except:
@@ -246,7 +246,7 @@ class WorkerModel(object):
         return socket_id
 
     def disconnect(self, worker_id, socket_id, timeout_secs=5):
-        with connect(f"{self.ws_server}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+        with connect(f"{self._ws_server}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             pass  # Just disconnect it.
     
     def send(self, data, worker_id, socket_id, timeout_secs=60, is_json=True):
@@ -266,7 +266,7 @@ class WorkerModel(object):
         """
         CHUNK_SIZE = 4096  # TODO: Make this a variable set in Codalab environment.
         try:
-            with connect(f"{self.ws_server}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            with connect(f"{self._ws_server}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:
                     websocket.send(json.dumps(data).encode())
                     return True
@@ -296,7 +296,7 @@ class WorkerModel(object):
         :return A dictionary if is_json is True. A generator otherwise.
         """
         try:
-            with connect(f"{self.ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            with connect(f"{self._ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:
                     data = websocket.recv()
                     return json.loads(data.decode())
