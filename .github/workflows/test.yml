@@ -53,7 +53,7 @@ jobs:
           key: pip-${{ hashFiles('requirements.txt') }}-${{ matrix.python-version }}
           restore-keys: |
             pip-
-      - run: pip install -e .
+      - run: python -m pip --upgrade pip install -e .
       - run: cl
   
   test_frontend:
