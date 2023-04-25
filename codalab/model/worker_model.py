@@ -237,6 +237,7 @@ class WorkerModel(object):
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
             socket_id = self._connect(worker_id, timeout_secs)
+            logger.error(f"SOCKET ID: {socket_id}")
             if socket_id: 
                 break
             else:
@@ -265,6 +266,7 @@ class WorkerModel(object):
         :return True if data was sent properly, False otherwise.
         """
         CHUNK_SIZE = 4096  # TODO: Make this a variable set in Codalab environment.
+        if not socket_id: return False
         try:
             with connect(f"{self._ws_server}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:
@@ -295,6 +297,7 @@ class WorkerModel(object):
 
         :return A dictionary if is_json is True. A generator otherwise.
         """
+        if not socket_id: return
         try:
             with connect(f"{self._ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:

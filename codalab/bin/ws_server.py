@@ -9,14 +9,16 @@ from typing import Any, Dict, List
 import websockets
 from dataclasses import dataclass
 import threading
+import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
 """
-TODO!!! WE NEED TO ADD A SECRET OR SOME SORT OF AUTH FOR THE SERVER ENDPOITNS
+TODO!!! WE NEED TO ADD A SECRET OR SOME SORT OF AUTH FOR THE WS SERVER ENDPOITNS
 Otherwise, people could create a custom local worker build and wreak havoc on the ws server...
+Note that this was already an issue, though; people could've just hit the checkpoint endpoint...
 """
 
 @dataclass
@@ -27,6 +29,8 @@ class WS:
     """
     _ws: Any = None
     _is_available: bool = True
+    _timeout: float = 5.0
+    _last_use: float = None
 
     @property
     def ws(self):
@@ -35,10 +39,22 @@ class WS:
     @property
     def is_available(self):
         return self._is_available
-    
+
     @is_available.setter
     def is_available(self, value):
         self._is_available = value
+    
+    @property
+    def timeout(self):
+        return self._timeout
+    
+    @property
+    def last_use(self):
+        return self._last_use
+    
+    @last_use.setter
+    def last_use(self, value):
+        self._last_use = value
 
 worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(dict)  # Maps worker to list of its websockets (since each worker has a pool of connections)
 server_ws_to_worker_ws: Dict[Any, Any] = dict()  # Map the rest-server websocket connection to the corresponding worker socket connection.
@@ -52,14 +68,17 @@ async def connection_handler(websocket, worker_id):
     Returns the id of the socket to connect to, which will be used in later requests.
     """
     logger.error(f"Got a message from the rest server, to connect to worker: {worker_id}.")
-    socket_id = ''  # Set to empty message so that it registers as None on client side
+    logger.error(worker_to_ws)
+    socket_id = None
     with worker_to_ws_lock:
         for s_id, ws in worker_to_ws[worker_id].items():
-            if ws.is_available:
+            if ws.is_available or time.time() - ws.last_use >= ws.timeout:
+                ws.last_use = time.time()
                 socket_id = s_id
                 worker_to_ws[worker_id][socket_id].is_available = False
                 break
     
+    logger.error(f"SOCKET ID: {socket_id}")
     if socket_id:
         await websocket.send(socket_id)  # Send id back to rest server.
     else:
@@ -93,12 +112,14 @@ async def send_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /send/{worker_id}/{socket_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
+    worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
     await exchange(websocket, worker_to_ws[worker_id][socket_id].ws, worker_id, socket_id)
 
 async def recv_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /recv/{worker_id}/{socket_id}. This route is called by
     the rest-server or bundle-manager when either wants to receive a message/stream from the worker.
     """
+    worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
     await exchange(worker_to_ws[worker_id][socket_id].ws, websocket, worker_id, socket_id)
 
 async def worker_handler(websocket, worker_id, socket_id):

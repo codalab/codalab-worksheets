@@ -132,10 +132,10 @@ class DownloadManager(object):
             worker_id = self._bundle_model.get_bundle_worker(target.bundle_uuid)['worker_id']
             try:
                 read_args = {'type': 'get_target_info', 'depth': depth}
-                socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
+                socket_id = self._worker_model.connect_to_ws(worker_id)
                 self._send_read_message(worker_id, socket_id, target, read_args)
-                result = self._worker_model.recv(worker_id, socket_id, timeout_secs=30, is_json=True)
-                self._worker_model.disconnect(worker_id, socket_id, timeout_secs=5)
+                result = self._worker_model.recv(worker_id, socket_id)
+                self._worker_model.disconnect(worker_id, socket_id)
                 if result is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
                     raise NotFoundError(
@@ -187,7 +187,8 @@ class DownloadManager(object):
                 read_args = {'type': 'stream_directory'}
                 socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
                 self._send_read_message(worker_id, socket_id, target, read_args)
-                return self._get_read_response_stream(worker_id, socket_id)
+                fileobj = self._get_read_response_stream(worker_id, socket_id)
+                self._worker_model.disconnect(worker_id, socket_id)
             except Exception as e:
                 logger.error(e)
                 if socket_id: self._worker_model.disconnect(worker_id, socket_id)
@@ -220,7 +221,7 @@ class DownloadManager(object):
                 )
                 if not gzipped:
                     fileobj = un_gzip_stream(fileobj)
-                return Deallocating(fileobj, self._worker_model, response_socket_id)
+                return fileobj
             except Exception as e:
                 logger.error(e)
                 if socket_id: self._worker_model.disconnect(worker_id, socket_id)
@@ -244,7 +245,9 @@ class DownloadManager(object):
                 read_args = {'type': 'read_file_section', 'offset': offset, 'length': length}
                 socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
                 self._send_read_message(worker, response_socket_id, target, read_args)
-                bytestring = self._get_read_response(worker_id, sockte_id)
+                bytestring = self._get_read_response(worker_id, socket_id)
+            except Exception as e:
+                logger.error(e)
             finally:
                 if socket_id: self._worker_model.disconnect(worker_id, socket_id)
                 
@@ -286,6 +289,8 @@ class DownloadManager(object):
                 socket_id = self._worker_model.connect(worker_id)
                 self._send_read_message(worker_id, socket_id, target, read_args)
                 bytestring = self._get_read_response(response_socket_id)
+            except Exception as e:
+                logger.error(e)
             finally:
                 if socket_id: self._worker_model.disconnect(worker_id, socket_id)
 

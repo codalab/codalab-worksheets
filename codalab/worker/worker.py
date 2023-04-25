@@ -92,7 +92,7 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool,
-        num_threads=5  # type: int. Number of threads to have running concurrently waiting for socket messages.
+        num_threads=10  # type: int. Number of threads to have running concurrently waiting for socket messages.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -312,36 +312,31 @@ class Worker:
             # Stop processing any new runs received from server
             if not message or self.terminate_and_restage or self.terminate:
                 return
-            if type(message) is not list:
-                message = [message]
-            for action in message:
-                if not action:
-                    continue
-                action_type = action['type']
-                logger.debug('Received %s message: %s', action_type, action)
-                if action_type == 'run':
-                    self.initialize_run(action['bundle'], action['resources'])
+            action_type = message['type']
+            logger.debug('Received %s message: %s', action_type, message)
+            if action_type == 'run':
+                self.initialize_run(message['bundle'], message['resources'])
+            else:
+                uuid = message['uuid']
+                if uuid not in self.runs:
+                    if action_type in ['read', 'netcat']:
+                        self.read_run_missing(socket_id)
+                    return
+                if action_type == 'kill':
+                    kill_message = 'Kill requested'
+                    if 'kill_message' in message:
+                        kill_message = message['kill_message']
+                    self.kill(uuid, kill_message)
+                elif action_type == 'mark_finalized':
+                    self.mark_finalized(uuid)
+                elif action_type == 'read':
+                    self.read(socket_id, uuid, message['path'], message['read_args'])
+                elif action_type == 'netcat':
+                    self.netcat(socket_id, uuid, message['port'], message['message'])
+                elif action_type == 'write':
+                    self.write(uuid, message['subpath'], message['string'])
                 else:
-                    uuid = action['uuid']
-                    if uuid not in self.runs:
-                        if action_type in ['read', 'netcat']:
-                            self.read_run_missing(socket_id)
-                        return
-                    if action_type == 'kill':
-                        kill_message = 'Kill requested'
-                        if 'kill_message' in action:
-                            kill_message = action['kill_message']
-                        self.kill(uuid, kill_message)
-                    elif action_type == 'mark_finalized':
-                        self.mark_finalized(uuid)
-                    elif action_type == 'read':
-                        self.read(socket_id, uuid, action['path'], action['read_args'])
-                    elif action_type == 'netcat':
-                        self.netcat(socket_id, uuid, action['port'], action['message'])
-                    elif action_type == 'write':
-                        self.write(uuid, action['subpath'], action['string'])
-                    else:
-                        logger.warning("Unrecognized action type from server: %s", action_type)
+                    logger.warning("Unrecognized action type from server: %s", action_type)
     
     async def listen(self, socket_id):
         logger.warning("Started websocket listening thread")
