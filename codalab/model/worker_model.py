@@ -225,7 +225,8 @@ class WorkerModel(object):
         with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             try:
                 socket_id = websocket.recv()
-            except:
+            except Exception as e:
+                logger.error(f"SOCKET ERROR: {e}")
                 socket_id = None
         return socket_id
 

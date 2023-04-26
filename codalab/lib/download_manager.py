@@ -1,3 +1,4 @@
+from functools import partial
 import logging
 import os
 from contextlib import closing
@@ -244,7 +245,7 @@ class DownloadManager(object):
             try:
                 read_args = {'type': 'read_file_section', 'offset': offset, 'length': length}
                 socket_id = self._worker_model.connect_to_ws(worker_id, timeout_secs=5)
-                self._send_read_message(worker, response_socket_id, target, read_args)
+                self._send_read_message(worker, socket_id, target, read_args)
                 bytestring = self._get_read_response(worker_id, socket_id)
             except Exception as e:
                 logger.error(e)
@@ -286,9 +287,9 @@ class DownloadManager(object):
                     'max_line_length': max_line_length,
                     'truncation_text': truncation_text,
                 }
-                socket_id = self._worker_model.connect(worker_id)
+                socket_id = self._worker_model.connect_to_ws(worker_id)
                 self._send_read_message(worker_id, socket_id, target, read_args)
-                bytestring = self._get_read_response(response_socket_id)
+                bytestring = self._get_read_response(socket_id)
             except Exception as e:
                 logger.error(e)
             finally:
@@ -303,9 +304,11 @@ class DownloadManager(object):
         """
         Sends a raw bytestring into the specified port of a running bundle, then return the response.
         """
-        worker = self._bundle_model.get_bundle_worker(uuid)
-        self._send_netcat_message(worker, response_socket_id, uuid, port, message)
-        bytestring = self._get_read_response(response_socket_id)
+        worker_id = self._bundle_model.get_bundle_worker(uuid)['worker_id']
+        socket_id = self._worker_model.connect_to_ws(worker_id)
+        self._send_netcat_message(worker_id, socket_id, uuid, port, message)
+        bytestring = self._get_read_response(worker_id, socket_id)
+        self._worker_model.disconnect(worker_id, socket_id)
         return bytestring
 
     def _is_available_locally(self, target):
@@ -365,10 +368,10 @@ class DownloadManager(object):
         ):  # dead workers are a fact of life now
             logging.warning(f'Unable to reach worker {worker_id} at socket {socket_id}')
 
-    def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
+    def _send_netcat_message(self, worker_id, socket_id, uuid, port, message):
         message = {
             'type': 'netcat',
-            'socket_id': response_socket_id,
+            'socket_id': socket_id,
             'uuid': uuid,
             'port': port,
             'message': message,
