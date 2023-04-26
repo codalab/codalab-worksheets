@@ -68,6 +68,7 @@ logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
+EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$')
 
 
 def str_key_dict(row):
@@ -78,6 +79,15 @@ def str_key_dict(row):
     This function converts the keys to strings.
     """
     return dict((str(k), v) for k, v in row.items())
+
+
+def is_academic_email(email):
+    """
+    This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
+    Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
+    """
+    email_suffix = EDU_USER_REGEXES.findall(email.lower())
+    return len(email_suffix) > 0
 
 
 @dataclass
@@ -2475,18 +2485,19 @@ class BundleModel(object):
         :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
+
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex
 
             time_quota = (
                 self.default_user_info['edu_time_quota']
-                if email.endswith(".edu")
+                if is_academic_email(email)
                 else self.default_user_info['time_quota']
             )
             disk_quota = (
                 self.default_user_info['edu_disk_quota']
-                if email.endswith(".edu")
+                if is_academic_email(email)
                 else self.default_user_info['disk_quota']
             )
 

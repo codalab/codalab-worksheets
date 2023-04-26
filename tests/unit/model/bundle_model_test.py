@@ -1,6 +1,7 @@
 import unittest
 from tests.unit.server.bundle_manager import TestBase
 from codalab.worker.bundle_state import State
+from codalab.model.bundle_model import is_academic_email
 
 
 class BundleModelTest(TestBase, unittest.TestCase):
@@ -21,6 +22,21 @@ class BundleModelTest(TestBase, unittest.TestCase):
         self.assertEqual(result, True)
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
         self.assertEqual(bundle.state, State.WORKER_OFFLINE)
+
+    def test_is_academic_email(self):
+        """Unit test to check is_academic_email function."""
+        test_cases = {
+            "abc@stanford.edu": True,
+            "abc@xyz.edu.cn": True,
+            "abc@xyz.edu.sg": True,
+            "abc.edu.cn@xyz.mail": False,
+            "abc@xyz.edu.xyz": False,
+            "abc@xyz.ac.cn": True,
+            "abc@xyz.ac.sg": True,
+            "abc@xyz.ac.xyz": False,
+        }
+        for key, value in test_cases.items():
+            self.assertEqual(is_academic_email(key), value)
 
 
 def metadata_to_dicts(uuid, metadata):
