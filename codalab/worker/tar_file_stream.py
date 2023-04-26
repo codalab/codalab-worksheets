@@ -33,7 +33,7 @@ class TarFileStream(BytesIO):
         """
         contents = self.tf.read(
             fileInfo=self.finfo,
-            size=self.finfo.size
+            size=self.finfo.size  # can this param be None?  If this is None, it will read more original file.
             if num_bytes is None
             else min(self.finfo.size - self.pos, num_bytes),
             offset=self.pos,
