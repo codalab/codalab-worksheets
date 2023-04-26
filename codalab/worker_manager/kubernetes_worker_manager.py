@@ -173,8 +173,8 @@ class KubernetesWorkerManager(WorkerManager):
                                             }
                                         ]
                                     },
-                                    'topologyKey': 'topology.kubernetes.io/zone',
-                                }
+                                },
+                                'topologyKey': 'topology.kubernetes.io/zone',
                             }
                         ]
                     }
