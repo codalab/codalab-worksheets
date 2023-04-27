@@ -3,7 +3,7 @@ import os
 from typing import Dict, Optional
 
 import sentry_sdk
-from sentry_sdk.profiler import start_profiling
+from sentry_sdk.profiler import start_profiling  # type: ignore
 
 from .worker_run_state import RunState
 
@@ -17,7 +17,7 @@ sentry_sdk.init(
     dsn=os.getenv('CODALAB_SENTRY_INGEST_URL'),
     environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
     traces_sample_rate=transaction_sample_rate,
-    _experiments={"profiles_sample_rate": profiles_sample_rate,},
+    _experiments={"profiles_sample_rate": profiles_sample_rate,},  # type: ignore
 )
 
 
