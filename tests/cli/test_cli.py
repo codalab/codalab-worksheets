@@ -317,7 +317,7 @@ def data_hash(uuid, worksheet=None):
     files = recursive_ls(path)[1]
     for f in files:
         sha1.update(open(f, 'r').read().encode())
-    #os.removedir(path)
+    shutil.rmtree(path)
     return sha1.hexdigest()
 
 
@@ -2430,10 +2430,6 @@ def test_mimic(ctx):
     new_named_input_uuid = _run_command([cl, 'upload', test_path('b.txt')])
 
     # Try running macro with numbered and named inputs
-    # Here is where mimic is failing.
-    # Not sure why...
-    # Plan should be to try and run this command, run data_hash, see what happens
-    # We can read the commands run and re-create them and see what's going on!
     macro_out_uuid = _run_command(
         [
             cl,
