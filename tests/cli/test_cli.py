@@ -305,6 +305,7 @@ def data_hash(uuid, worksheet=None):
     """Temporarily download bundle contents.
     Return a hash of those contents.
     """
+    _run_command([cl, 'wait', uuid])
     path = temp_path(uuid)
     if not os.path.exists(path):
         # Download the bundle to that path.
