@@ -302,10 +302,9 @@ def recursive_ls(path):
 
 
 def data_hash(uuid, worksheet=None):
+    """Temporarily download bundle contents.
+    Return a hash of those contents.
     """
-        Temporarily download bundle contents.
-        Return a hash of those contents.
-        """
     path = temp_path(uuid)
     if not os.path.exists(path):
         # Download the bundle to that path.
@@ -316,10 +315,8 @@ def data_hash(uuid, worksheet=None):
     sha1 = hashlib.sha1()
     files = recursive_ls(path)[1]
     for f in files:
-        try:
-            sha1.update(open(f, 'r').read().encode())
-        except Exception as e:
-            raise Exception("file name: {}. exception: {}".format(f, e))
+        sha1.update(open(f, 'r').read().encode())
+    #os.removedir(path)
     return sha1.hexdigest()
 
 
@@ -2388,11 +2385,6 @@ def test_write(ctx):
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 
-"""
-This we'll have ot think about how to migrate...
-"""
-
-
 @TestModule.register('mimic')
 def test_mimic(ctx):
     simple_name = random_name()
@@ -2437,6 +2429,10 @@ def test_mimic(ctx):
     new_named_input_uuid = _run_command([cl, 'upload', test_path('b.txt')])
 
     # Try running macro with numbered and named inputs
+    # Here is where mimic is failing.
+    # Not sure why...
+    # Plan should be to try and run this command, run data_hash, see what happens
+    # We can read the commands run and re-create them and see what's going on!
     macro_out_uuid = _run_command(
         [
             cl,
