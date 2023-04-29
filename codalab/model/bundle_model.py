@@ -1107,6 +1107,7 @@ class BundleModel(object):
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         # Build metadata
+        logger.error(worker_run.as_dict)
         metadata = {}
         if failure_message is not None:
             metadata['failure_message'] = failure_message
