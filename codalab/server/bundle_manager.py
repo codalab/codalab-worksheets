@@ -329,7 +329,7 @@ class BundleManager(object):
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
-            logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
+            logger.info('Failing bundle %s\n %s', bundle.uuid, traceback.format_exc())
             self._model.update_bundle(
                 bundle,
                 {
