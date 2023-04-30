@@ -1709,19 +1709,15 @@ class BundleCLI(object):
         # Add new bundle's location. If user specify the storage using `--store`, the bundle will be added to that storage.
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
-        if destination_bundle_store is not None:
-            bundle_store_uuid = None
-
-            # 1) Read destination store from --store if user has specified it
-            if destination_bundle_store:
-                storage_info = client.fetch_one(
-                    'bundle_stores',
-                    params={
-                        'name': destination_bundle_store,
-                        'include': ['uuid', 'storage_type', 'url'],
-                    },
-                )
-                bundle_store_uuid = storage_info['uuid']
+        if destination_bundle_store:
+            storage_info = client.fetch_one(
+                'bundle_stores',
+                params={
+                    'name': destination_bundle_store,
+                    'include': ['uuid', 'storage_type', 'url'],
+                },
+            )
+            bundle_store_uuid = storage_info['uuid']
 
             # Do not need to bypass server for MakeBundle. Directly make bundle on server.
             params = {'need_bypass': False}
