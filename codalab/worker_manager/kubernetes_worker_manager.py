@@ -138,7 +138,7 @@ class KubernetesWorkerManager(WorkerManager):
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
-            'metadata': {'name': worker_name, 'labels': {'type': 'cl-worker'}},
+            'metadata': {'name': worker_name, 'labels': {'app': 'cl-worker'}},
             'spec': {
                 'containers': [
                     {
@@ -167,7 +167,7 @@ class KubernetesWorkerManager(WorkerManager):
                                     'labelSelector': {
                                         "matchExpressions": [
                                             {
-                                                "key": "type",
+                                                "key": "app",
                                                 "operator": "In",
                                                 "values": ["cl-worker"],
                                             }
