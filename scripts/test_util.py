@@ -137,7 +137,8 @@ def run_command(
         colorize = Colorizer.cyan
         extra = ''
     print(
-        colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)).strip(), end="\t"
+        colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)).strip(),
+        end="\t",
     )
     print(sanitize(output, max_output_chars).strip())
     sys.stdout.flush()
