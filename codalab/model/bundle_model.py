@@ -1107,6 +1107,7 @@ class BundleModel(object):
         self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         # Build metadata
+        logger.error("-"*80)
         logger.error(worker_run.as_dict)
         metadata = {}
         if failure_message is not None:
@@ -1125,6 +1126,8 @@ class BundleModel(object):
             The final state is determined by whether a failure message or exitcode
             was recorded during finalization of the bundle.
         """
+        logger.error("-"*80)
+        logger.error(bundle.to_dict())
         metadata = bundle.metadata.to_dict()
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)

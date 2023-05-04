@@ -397,6 +397,8 @@ class BundleManager(object):
                 )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 # TODO(Ashwin): fix this -- bundle location could be linked.
+                logger.error("-"*80)
+                logger.error(bundle.to_dict())
                 self._model.transition_bundle_finished(bundle, bundle_location)
 
     def _bring_offline_stuck_running_bundles(self, workers):
