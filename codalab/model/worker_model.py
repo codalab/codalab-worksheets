@@ -8,6 +8,7 @@ import socket
 import time
 import websockets
 from websockets.sync.client import connect
+import traceback
 
 from sqlalchemy import and_, select
 
@@ -227,10 +228,11 @@ class WorkerModel(object):
                 socket_id = websocket.recv()
             except Exception as e:
                 logger.error(f"SOCKET ERROR: {e}")
+                logger.error(traceback.print_exc())
                 socket_id = None
         return socket_id
 
-    def connect_to_ws(self, worker_id, timeout_secs=5):
+    def connect_to_ws(self, worker_id, timeout_secs=30):
         """
         Loop until connection achieved.
         """
@@ -239,7 +241,7 @@ class WorkerModel(object):
         while time.time() - start_time < timeout_secs:
             socket_id = self._connect(worker_id, timeout_secs)
             logger.error(f"SOCKET ID: {socket_id}")
-            if socket_id: 
+            if socket_id:
                 break
             else:
                 logging.error(f"No sockets available for worker {worker_id}; retrying")
@@ -247,7 +249,7 @@ class WorkerModel(object):
         if not socket_id: logging.error("No connection reached")
         return socket_id
 
-    def disconnect(self, worker_id, socket_id, timeout_secs=5):
+    def disconnect(self, worker_id, socket_id, timeout_secs=30):
         with connect(f"{self._ws_server}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             pass  # Just disconnect it.
     

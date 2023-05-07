@@ -68,9 +68,9 @@ async def connection_handler(websocket, worker_id):
     Returns the id of the socket to connect to, which will be used in later requests.
     """
     logger.error(f"Got a message from the rest server, to connect to worker: {worker_id}.")
-    logger.error(worker_to_ws)
     socket_id = None
     with worker_to_ws_lock:
+        logger.error([ws.is_available for _,ws in worker_to_ws[worker_id].items()])
         for s_id, ws in worker_to_ws[worker_id].items():
             if ws.is_available or time.time() - ws.last_use >= ws.timeout:
                 ws.last_use = time.time()
