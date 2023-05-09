@@ -52,7 +52,7 @@ class WorkerModel(object):
                 break
             else:
                 logging.error(f"No sockets available for worker {worker_id}; retrying")
-                time.sleep(0.5)
+                time.sleep(3)
         if not socket_id: logging.error("No connection reached")
         return socket_id
 

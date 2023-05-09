@@ -1,6 +1,7 @@
 # This is the real ws-server, basically.
 # Main entry point for CodaLab cl-ws-server.
 import argparse
+import json
 import asyncio
 from collections import defaultdict
 import logging
@@ -12,8 +13,8 @@ import threading
 import time
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
-logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
+logger.setLevel(logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d', level=logging.DEBUG)
 
 """
 TODO!!! WE NEED TO ADD A SECRET OR SOME SORT OF AUTH FOR THE WS SERVER ENDPOITNS
@@ -79,11 +80,11 @@ async def connection_handler(websocket, worker_id):
                 break
     
     logger.error(f"SOCKET ID: {socket_id}")
-    if socket_id:
-        await websocket.send(socket_id)  # Send id back to rest server.
-    else:
+    if not socket_id:
         logger.error(f"No socket ids available for worker {worker_id}")
-        # Don't send anything; server receives None.
+    payload = json.dumps({'socket_id': socket_id})
+    logger.error(payload)
+    await websocket.send(payload)
     
 
 async def disconnection_handler(websocket, worker_id, socket_id):
@@ -163,7 +164,7 @@ async def async_main():
     parser.add_argument('--port', help='Port to run the server on.', type=int, required=False, default=6789)
     args = parser.parse_args()
     logging.debug(f"Running ws-server on 0.0.0.0:{args.port}")
-    async with websockets.serve(ws_handler, "0.0.0.0", args.port):
+    async with websockets.serve(ws_handler, "0.0.0.0", args.port, ping_interval=None, ping_timeout=None, close_timeout=None, max_queue=2**32):
         await asyncio.Future()  # run server forever
 
 

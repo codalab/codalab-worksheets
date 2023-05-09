@@ -139,7 +139,8 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
             os.makedirs(locks_claims_dir)
         except FileExistsError:
             logger.info(f"A locks directory at {locks_claims_dir} already exists.")
-        self._state_lock = NFSLock(os.path.join(locks_claims_dir, 'state.lock'))
+        self._state_lock = threading.RLock()
+        #self._state_lock = NFSLock(os.path.join(locks_claims_dir, 'state.lock'))
 
         # File paths that are currently being used to store dependencies. Used to prevent conflicts
         self._paths: Set[str] = set()
@@ -220,7 +221,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         WARNING: If a value for `default` is specified, errors will be silently handled.
         """
-        assert self._state_lock.is_locked
+        #assert self._state_lock.is_locked
         state: DependencyManagerState = self._state_committer.load(default)
         dependencies: Dict[DependencyKey, DependencyState] = state['dependencies']
         paths: Set[str] = state['paths']
@@ -232,7 +233,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         WARNING: If a value for `default` is specified, errors will be silently handled.
         """
-        assert self._state_lock.is_locked
+        #assert self._state_lock.is_locked
         dependencies, _ = self._fetch_state(default)
         return dependencies
 
@@ -241,7 +242,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         Update state in dependencies JSON file stored on disk.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        assert self._state_lock.is_locked
+        #assert self._state_lock.is_locked
         state: DependencyManagerState = {'dependencies': dependencies, 'paths': paths}
         self._state_committer.commit(state)
 
@@ -385,7 +386,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
 
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        assert self._state_lock.is_locked
+        #assert self._state_lock.is_locked
 
         if dep_key in dependencies:
             try:
@@ -512,7 +513,7 @@ class DependencyManager(StateTransitioner, BaseDependencyManager):
         Checks if the dependency is downloading or not.
         NOT NFS-SAFE - Caller should acquire self._state_lock before calling this method.
         """
-        assert self._state_lock.is_locked
+        #assert self._state_lock.is_locked
 
         def download():
             """
