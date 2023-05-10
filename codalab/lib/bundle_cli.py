@@ -1705,17 +1705,16 @@ class BundleCLI(object):
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
         bundle_store_uuid = None
-        if destination_bundle_store is not None:
+        if destination_bundle_store:
             # 1) Read destination store from --store if user has specified it
-            if destination_bundle_store:
-                storage_info = client.fetch_one(
-                    'bundle_stores',
-                    params={
-                        'name': destination_bundle_store,
-                        'include': ['uuid', 'storage_type', 'url'],
-                    },
-                )
-                bundle_store_uuid = storage_info['uuid']
+            storage_info = client.fetch_one(
+                'bundle_stores',
+                params={
+                    'name': destination_bundle_store,
+                    'include': ['uuid', 'storage_type', 'url'],
+                },
+            )
+            bundle_store_uuid = storage_info['uuid']
 
         new_bundle = client.create(
             'bundles',
