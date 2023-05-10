@@ -269,6 +269,7 @@ def _compute_target_info_blob(
                     perm=0o755,
                 ),
             )
+
         if linked_bundle_path.archive_subpath:
             # Return the contents of a subpath within a directory.
             return _get_info(linked_bundle_path.archive_subpath, depth)

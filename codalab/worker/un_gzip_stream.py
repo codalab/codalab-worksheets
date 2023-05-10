@@ -107,6 +107,7 @@ class UnGzipStream(GenericUncompressStream):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        self.seekable = lambda: False
 
 
 class UnBz2Stream(GenericUncompressStream):
@@ -298,10 +299,19 @@ class BytesBuffer(BytesIO):
         if size < 0:
             ret_list[-1], remainder = ret_list[-1][:size], ret_list[-1][size:]
             self.__buf.appendleft(remainder)
+            size += len(remainder)
+            assert size == 0
+
         ret = b''.join(ret_list)
         self.__size -= len(ret)
         self.__pos += len(ret)
         return ret
+
+    def peek(self, size: int):
+        b = bytearray()
+        for i in range(0, min(size, len(self.__buf))):
+            b.extend(self.__buf[i])
+        return bytes(b)[:size]
 
     def flush(self):
         pass
