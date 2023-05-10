@@ -1700,18 +1700,12 @@ class BundleCLI(object):
         # Support anonymous make calls by replacing None keys with ''
         targets = [('' if key is None else key, val) for key, val in targets]
         metadata = self.get_missing_metadata(MakeBundle, args)
-        new_bundle = client.create(
-            'bundles',
-            self.derive_bundle(MakeBundle.BUNDLE_TYPE, None, targets, metadata),
-            params={'worksheet': worksheet_uuid},
-        )
-
-        # Add new bundle's location. If user specify the storage using `--store`, the bundle will be added to that storage.
+        
+        # Add new bundle's location. If the user specifies the storage using `--store`, the bundle will be added to that storage.
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
+        bundle_store_uuid = None
         if destination_bundle_store is not None:
-            bundle_store_uuid = None
-
             # 1) Read destination store from --store if user has specified it
             if destination_bundle_store:
                 storage_info = client.fetch_one(
@@ -1723,9 +1717,11 @@ class BundleCLI(object):
                 )
                 bundle_store_uuid = storage_info['uuid']
 
-            # Do not need to bypass server for MakeBundle. Directly make bundle on server.
-            params = {'need_bypass': False}
-            client.add_bundle_location(new_bundle['uuid'], bundle_store_uuid, params)
+        new_bundle = client.create(
+            'bundles',
+            self.derive_bundle(MakeBundle.BUNDLE_TYPE, None, targets, metadata),
+            params={'worksheet': worksheet_uuid, 'bundle_store': bundle_store_uuid},
+        )
 
         print(new_bundle['uuid'], file=self.stdout)
 
