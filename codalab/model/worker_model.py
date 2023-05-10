@@ -22,6 +22,8 @@ from codalab.model.tables import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.CRITICAL)
+logger.addHandler(logging.StreamHandler())
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d', level=logging.DEBUG)
 
 
@@ -224,7 +226,7 @@ class WorkerModel(object):
                 )
     
     def _connect(self, worker_id, timeout_secs):
-        with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=30, close_timeout=30) as websocket:
+        with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=30, close_timeout=30, logger=logger) as websocket:
             try:
                 payload = websocket.recv()
                 socket_id = json.loads(payload)['socket_id']
@@ -247,7 +249,7 @@ class WorkerModel(object):
                 break
             else:
                 logging.error(f"No sockets available for worker {worker_id}; retrying")
-                time.sleep(3)
+                time.sleep(2)
         if not socket_id: logging.error("No connection reached")
         return socket_id
 
@@ -323,6 +325,7 @@ class WorkerModel(object):
         Convenience method to connect to worker socket, send, and then disconnect.
         """
         socket_id = self.connect_to_ws(worker_id)
+        if not socket_id: return False
         sent = self.send(data, worker_id, socket_id, timeout_secs, is_json)
         self.disconnect(worker_id, socket_id)
         return sent

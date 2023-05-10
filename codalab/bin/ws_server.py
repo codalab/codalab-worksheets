@@ -13,8 +13,10 @@ import threading
 import time
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d', level=logging.DEBUG)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
+logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
+
 
 """
 TODO!!! WE NEED TO ADD A SECRET OR SOME SORT OF AUTH FOR THE WS SERVER ENDPOITNS
@@ -30,6 +32,7 @@ class WS:
     """
     _ws: Any = None
     _is_available: bool = True
+    _lock: threading.Lock = threading.Lock()
     _timeout: float = 5.0
     _last_use: float = None
 
@@ -60,8 +63,6 @@ class WS:
 worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(dict)  # Maps worker to list of its websockets (since each worker has a pool of connections)
 server_ws_to_worker_ws: Dict[Any, Any] = dict()  # Map the rest-server websocket connection to the corresponding worker socket connection.
 
-worker_to_ws_lock = threading.Lock()
-
 async def connection_handler(websocket, worker_id):
     """
     Handles routes of the form: /server/connect/worker_id. This route is called by the rest-server
@@ -70,13 +71,17 @@ async def connection_handler(websocket, worker_id):
     """
     logger.error(f"Got a message from the rest server, to connect to worker: {worker_id}.")
     socket_id = None
-    with worker_to_ws_lock:
-        logger.error([ws.is_available for _,ws in worker_to_ws[worker_id].items()])
-        for s_id, ws in worker_to_ws[worker_id].items():
+    #logger.error([ws.is_available for _,ws in worker_to_ws[worker_id].items()])
+    for s_id, ws in worker_to_ws[worker_id].items():
+        logger.error("about to lock")
+        with ws._lock:
+            logger.error("locked")
             if ws.is_available or time.time() - ws.last_use >= ws.timeout:
+                logger.error("available")
                 ws.last_use = time.time()
                 socket_id = s_id
                 worker_to_ws[worker_id][socket_id].is_available = False
+                logger.error("breaking")
                 break
     
     logger.error(f"SOCKET ID: {socket_id}")
@@ -84,6 +89,7 @@ async def connection_handler(websocket, worker_id):
         logger.error(f"No socket ids available for worker {worker_id}")
     payload = json.dumps({'socket_id': socket_id})
     logger.error(payload)
+    #import pdb; pdb.set_trace()
     await websocket.send(payload)
     
 
@@ -113,14 +119,16 @@ async def send_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /send/{worker_id}/{socket_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
-    worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
+    with worker_to_ws[worker_id][socket_id].ws._lock:
+        worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
     await exchange(websocket, worker_to_ws[worker_id][socket_id].ws, worker_id, socket_id)
 
 async def recv_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /recv/{worker_id}/{socket_id}. This route is called by
     the rest-server or bundle-manager when either wants to receive a message/stream from the worker.
     """
-    worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
+    with worker_to_ws[worker_id][socket_id].ws._lock:
+        worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
     await exchange(worker_to_ws[worker_id][socket_id].ws, websocket, worker_id, socket_id)
 
 async def worker_handler(websocket, worker_id, socket_id):
@@ -164,7 +172,7 @@ async def async_main():
     parser.add_argument('--port', help='Port to run the server on.', type=int, required=False, default=6789)
     args = parser.parse_args()
     logging.debug(f"Running ws-server on 0.0.0.0:{args.port}")
-    async with websockets.serve(ws_handler, "0.0.0.0", args.port, ping_interval=None, ping_timeout=None, close_timeout=None, max_queue=2**32):
+    async with websockets.serve(ws_handler, "0.0.0.0", args.port, ping_interval=None, ping_timeout=None, close_timeout=None, max_queue=2**32, read_limit=2**32, write_limit=2**32, logger=logger):
         await asyncio.Future()  # run server forever
 
 
