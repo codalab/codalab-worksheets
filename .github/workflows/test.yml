@@ -105,20 +105,22 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
-          - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
-          - worker_manager service
-          - run time
-          - run2
-          - search link read kill write mimic workers edit_user sharing_workers
-          - resources
-          - memoize
-          - copy
-          - netcat netcurl
-          - edit
-          - open wopen
-          - store_add
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
         runtime: [docker, kubernetes]
         exclude:
           # netcat / netcurl not supported for kubernetes.
@@ -506,19 +508,22 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
-          - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
-          - worker_manager service
-          - run time
-          - run2
-          - search read kill write mimic workers edit_user sharing_workers
-          # - search link read kill write mimic workers edit_user sharing_workers
-          - resources
-          - memoize
-          - copy netcat netcurl
-          - edit blob
-          - open wopen
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
+          - make
     steps:
       - name: Clear free space
         run: |
