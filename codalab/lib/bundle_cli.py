@@ -1700,7 +1700,7 @@ class BundleCLI(object):
         # Support anonymous make calls by replacing None keys with ''
         targets = [('' if key is None else key, val) for key, val in targets]
         metadata = self.get_missing_metadata(MakeBundle, args)
-        
+
         # Add new bundle's location. If the user specifies the storage using `--store`, the bundle will be added to that storage.
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
