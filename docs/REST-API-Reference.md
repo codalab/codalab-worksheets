@@ -480,6 +480,8 @@ Query parameters:
 - `worksheet`: UUID of the parent worksheet of the new bundle, add to
   this worksheet if not detached or shadowing another bundle. The new
   bundle also inherits permissions from this worksheet.
+- `bundle_store`: UUID of the bundle store that the new bundle
+  should be stored on. Optional.
 - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
   as an item immediately after this bundle in its parent worksheet).
 - `detached`: 1 if should not add new bundle to any worksheet,
