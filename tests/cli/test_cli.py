@@ -302,10 +302,10 @@ def recursive_ls(path):
 
 
 def data_hash(uuid, worksheet=None):
+    """Temporarily download bundle contents.
+    Return a hash of those contents.
     """
-        Temporarily download bundle contents.
-        Return a hash of those contents.
-        """
+    _run_command([cl, 'wait', uuid])
     path = temp_path(uuid)
     if not os.path.exists(path):
         # Download the bundle to that path.
@@ -316,10 +316,8 @@ def data_hash(uuid, worksheet=None):
     sha1 = hashlib.sha1()
     files = recursive_ls(path)[1]
     for f in files:
-        try:
-            sha1.update(open(f, 'r').read().encode())
-        except Exception as e:
-            raise Exception("file name: {}. exception: {}".format(f, e))
+        sha1.update(open(f, 'r').read().encode())
+    shutil.rmtree(path)
     return sha1.hexdigest()
 
 
@@ -2371,8 +2369,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -2386,11 +2383,6 @@ def test_write(ctx):
     _run_command([cl, 'wait', uuid])
     check_equals('hello world', _run_command([cl, 'cat', target]))
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
-
-
-"""
-This we'll have ot think about how to migrate...
-"""
 
 
 @TestModule.register('mimic')
