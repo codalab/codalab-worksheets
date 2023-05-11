@@ -52,18 +52,18 @@ jobs:
           - {name: kill, index: 11}
           - {name: kill, index: 12}
           - {name: kill, index: 13}
-          - {name: kill, index: 14}
-          - {name: kill, index: 15}
-          - {name: kill, index: 16}
-          - {name: kill, index: 17}
-          - {name: kill, index: 18}
-          - {name: kill, index: 19}
-          - {name: kill, index: 20}
-          - {name: kill, index: 21}
-          - {name: kill, index: 22}
-          - {name: kill, index: 23}
-          - {name: kill, index: 24}
-          - {name: kill, index: 25}
+          - {name: run, index: 14}
+          - {name: run, index: 15}
+          - {name: run, index: 16}
+          - {name: run, index: 17}
+          - {name: run, index: 18}
+          - {name: run, index: 19}
+          - {name: run, index: 20}
+          - {name: run, index: 21}
+          - {name: run, index: 22}
+          - {name: run, index: 23}
+          - {name: run, index: 24}
+          - {name: run, index: 25}
         runtime: [docker]
     steps:
       - name: Clear free space
