@@ -5,9 +5,37 @@ on:
   pull_request:
 
 jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [rest-server, worker, frontend]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
+      - run: python3 codalab_service.py build --pull --version ${VERSION} -s ${SERVICE} $([ -z "${CODALAB_DOCKER_USERNAME}" ] || echo "--push")
+        env:
+          CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
+          CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
+          # Gives us the branch name of the PR if on a pull_request-triggered build,
+          # otherwise, "master" if on a push-triggered build
+          VERSION: ${{ github.head_ref || 'master' }}
+          SERVICE: ${{ matrix.service }}
+  
   test_backend:
     name: Test backend
     runs-on: ubuntu-latest
+    needs: [build]
     strategy:
       matrix:
         test:
