@@ -12,7 +12,31 @@ jobs:
     strategy:
       matrix:
         test:
-          - kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill kill
+          - {name: kill, index: 1}
+          - {name: kill, index: 2}
+          - {name: kill, index: 3}
+          - {name: kill, index: 4}
+          - {name: kill, index: 5}
+          - {name: kill, index: 6}
+          - {name: kill, index: 7}
+          - {name: kill, index: 8}
+          - {name: kill, index: 9}
+          - {name: kill, index: 10}
+          - {name: kill, index: 11}
+          - {name: kill, index: 12}
+          - {name: kill, index: 13}
+          - {name: kill, index: 14}
+          - {name: kill, index: 15}
+          - {name: kill, index: 16}
+          - {name: kill, index: 17}
+          - {name: kill, index: 18}
+          - {name: kill, index: 19}
+          - {name: kill, index: 20}
+          - {name: kill, index: 21}
+          - {name: kill, index: 22}
+          - {name: kill, index: 23}
+          - {name: kill, index: 24}
+          - {name: kill, index: 25}
         runtime: [docker]
     steps:
       - name: Clear free space
@@ -43,7 +67,7 @@ jobs:
           python3 codalab_service.py start --services default --version ${VERSION}
           python3 test_runner.py --version ${VERSION} ${TEST}
         env:
-          TEST: ${{ matrix.test }}
+          TEST: ${{ matrix.test.name }}
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
@@ -55,5 +79,5 @@ jobs:
         if: (failure() || cancelled())
         uses: actions/upload-artifact@v1
         with:
-          name: logs-test-docker-${{ matrix.test }}
+          name: logs-test-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
           path: /tmp/logs
