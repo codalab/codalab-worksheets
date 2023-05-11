@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.6.2_
+_version 1.6.3_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -609,6 +609,11 @@ Response format:
   }
 }
 ```
+
+### `PATCH /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/filesize/`
+
+This function is used to fix the file size field in the index.sqlite file.
+This only allows user to increase the file size for a single file.
 
 ### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>/`
 
