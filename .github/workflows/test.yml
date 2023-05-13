@@ -49,9 +49,6 @@ jobs:
           - {name: kill, index: 8}
           - {name: kill, index: 9}
           - {name: kill, index: 10}
-          - {name: kill, index: 11}
-          - {name: kill, index: 12}
-          - {name: kill, index: 13}
           - {name: run, index: 14}
           - {name: run, index: 15}
           - {name: run, index: 16}
@@ -59,11 +56,19 @@ jobs:
           - {name: run, index: 18}
           - {name: run, index: 19}
           - {name: run, index: 20}
-          - {name: run, index: 21}
-          - {name: run, index: 22}
-          - {name: run, index: 23}
-          - {name: run, index: 24}
-          - {name: run, index: 25}
+          - {name: search read kill, index: 26}
+          - {name: search read kill, index: 27}
+          - {name: search read kill, index: 28}
+          - {name: search read kill, index: 29}
+          - {name: search read kill, index: 30}
+          - {name: search read kill, index: 31}
+          - {name: search read kill, index: 32}
+          - {name: search read kill, index: 33}
+          - {name: search read kill, index: 34}
+          - {name: search read kill, index: 35}
+          - {name: search read kill, index: 36}
+          - {name: search read kill, index: 37}
+          - {name: search read kill, index: 38}
         runtime: [docker]
     steps:
       - name: Clear free space
@@ -107,4 +112,85 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
+          path: /tmp/logs
+
+
+  test_backend_azure_blob:
+    name: Test backend with Azure Blob Storage
+    runs-on: ubuntu-latest
+    needs: [build]
+    strategy:
+      matrix:
+        test:
+          - {name: kill, index: 1}
+          - {name: kill, index: 2}
+          - {name: kill, index: 3}
+          - {name: kill, index: 4}
+          - {name: kill, index: 5}
+          - {name: kill, index: 6}
+          - {name: kill, index: 7}
+          - {name: kill, index: 8}
+          - {name: kill, index: 9}
+          - {name: kill, index: 10}
+          - {name: run, index: 14}
+          - {name: run, index: 15}
+          - {name: run, index: 16}
+          - {name: run, index: 17}
+          - {name: run, index: 18}
+          - {name: run, index: 19}
+          - {name: run, index: 20}
+          - {name: search read kill, index: 26}
+          - {name: search read kill, index: 27}
+          - {name: search read kill, index: 28}
+          - {name: search read kill, index: 29}
+          - {name: search read kill, index: 30}
+          - {name: search read kill, index: 31}
+          - {name: search read kill, index: 32}
+          - {name: search read kill, index: 33}
+          - {name: search read kill, index: 34}
+          - {name: search read kill, index: 35}
+          - {name: search read kill, index: 36}
+          - {name: search read kill, index: 37}
+          - {name: search read kill, index: 38}
+    steps:
+      - name: Clear free space
+        run: |
+            sudo rm -rf /opt/ghc
+            df -h
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-
+      - run: pip install -r requirements.txt
+      - name: Setup tests
+        run: |
+          sudo service mysql stop
+          python3 codalab_service.py build services --version ${VERSION} --pull
+        env:
+          VERSION: ${{ github.head_ref || 'master' }}
+      - name: Run tests
+        run: |
+          python3 codalab_service.py start --services default azurite --version ${VERSION}
+          python3 test_runner.py --version ${VERSION} ${TEST}
+        env:
+          TEST: ${{ matrix.test.name }}
+          VERSION: ${{ github.head_ref || 'master' }}
+          CODALAB_LINK_MOUNTS: /tmp
+          CODALAB_ALWAYS_USE_AZURE_BLOB_BETA: 1
+      - name: Save logs
+        if: (failure() || cancelled())
+        run: |
+          mkdir /tmp/logs
+          for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
+      - name: Upload logs
+        if: (failure() || cancelled())
+        uses: actions/upload-artifact@v1
+        with:
+          name: logs-test-azblob-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
           path: /tmp/logs
