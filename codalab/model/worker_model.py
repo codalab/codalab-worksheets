@@ -22,9 +22,14 @@ from codalab.model.tables import (
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.CRITICAL)
+logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
-logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
+
+logging.getLogger("websockets").propagate = False
+logging.getLogger("websockets").setLevel(logging.DEBUG)
+
+os.environ["PYTHONASYNCIODEBUG"] = "1"
 
 
 class WorkerModel(object):
@@ -225,38 +230,34 @@ class WorkerModel(object):
                     .values(update)
                 )
     
-    def _connect(self, worker_id, timeout_secs):
-        with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=30, close_timeout=30, logger=logger) as websocket:
-            try:
-                payload = websocket.recv()
-                socket_id = json.loads(payload)['socket_id']
-            except Exception as e:
-                logging.error(f"SOCKET ERROR: {e}")
-                logging.error(traceback.print_exc())
-                socket_id = None
+    def _connect(self, worker_id, timeout_secs=20):
+        with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+            socket_id = json.loads(websocket.recv())['socket_id']
         return socket_id
 
-    def connect_to_ws(self, worker_id, timeout_secs=5):
+    def connect_to_ws(self, worker_id, timeout_secs=20):
         """
         Loop until connection achieved.
         """
         socket_id = None
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
-            socket_id = self._connect(worker_id, timeout_secs)
-            logger.error(f"SOCKET ID: {socket_id}")
-            if socket_id:
+            try:
+                socket_id = self._connect(worker_id, timeout_secs)
+            except Exception as e:
+                logger.error(f"connect exceptioN: {e}")
+            if socket_id: 
                 break
             else:
                 logging.error(f"No sockets available for worker {worker_id}; retrying")
-                time.sleep(2)
+                time.sleep(0.5)
         if not socket_id: logging.error("No connection reached")
         return socket_id
 
-    def disconnect(self, worker_id, socket_id, timeout_secs=5):
+    def disconnect(self, worker_id, socket_id, timeout_secs=20):
         with connect(f"{self._ws_server}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
             pass  # Just disconnect it.
-    
+
     def send(self, data, worker_id, socket_id, timeout_secs=60, is_json=True):
         """
         Send data to the worker.

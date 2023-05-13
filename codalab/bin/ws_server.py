@@ -13,7 +13,7 @@ import threading
 import time
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
@@ -39,6 +39,10 @@ class WS:
     @property
     def ws(self):
         return self._ws
+    
+    @property
+    def lock(self):
+        return self._lock
     
     @property
     def is_available(self):
@@ -74,7 +78,7 @@ async def connection_handler(websocket, worker_id):
     #logger.error([ws.is_available for _,ws in worker_to_ws[worker_id].items()])
     for s_id, ws in worker_to_ws[worker_id].items():
         logger.error("about to lock")
-        with ws._lock:
+        with ws.lock:
             logger.error("locked")
             if ws.is_available or time.time() - ws.last_use >= ws.timeout:
                 logger.error("available")
@@ -87,10 +91,9 @@ async def connection_handler(websocket, worker_id):
     logger.error(f"SOCKET ID: {socket_id}")
     if not socket_id:
         logger.error(f"No socket ids available for worker {worker_id}")
-    payload = json.dumps({'socket_id': socket_id})
-    logger.error(payload)
     #import pdb; pdb.set_trace()
-    await websocket.send(payload)
+    await websocket.send(json.dumps({'socket_id': socket_id}))
+    logger.error("Sent.")
     
 
 async def disconnection_handler(websocket, worker_id, socket_id):
@@ -99,10 +102,11 @@ async def disconnection_handler(websocket, worker_id, socket_id):
     (or bundle-manager) when they want a connection to a worker.
     Returns the id of the socket to connect to, which will be used in later requests.
     """
-    if worker_to_ws[worker_id][socker_id]:
-        # For now, just log the error.
-        logging.error("Available socket set for disconnection")
-    worker_to_ws[worker_id][socker_id].is_available = True
+    with worker_to_ws[worker_id][socket_id].lock:
+        if worker_to_ws[worker_id][socket_id].is_available:
+            # For now, just log the error.
+            logging.error("Available socket set for disconnection")
+        worker_to_ws[worker_id][socket_id].is_available = True
     
 
 async def exchange(from_ws, to_ws, worker_id, socket_id):
@@ -119,7 +123,7 @@ async def send_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /send/{worker_id}/{socket_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
-    with worker_to_ws[worker_id][socket_id].ws._lock:
+    with worker_to_ws[worker_id][socket_id].lock:
         worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
     await exchange(websocket, worker_to_ws[worker_id][socket_id].ws, worker_id, socket_id)
 
@@ -127,7 +131,7 @@ async def recv_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /recv/{worker_id}/{socket_id}. This route is called by
     the rest-server or bundle-manager when either wants to receive a message/stream from the worker.
     """
-    with worker_to_ws[worker_id][socket_id].ws._lock:
+    with worker_to_ws[worker_id][socket_id].lock:
         worker_to_ws[worker_id][socket_id].ws.last_use = time.time()
     await exchange(worker_to_ws[worker_id][socket_id].ws, websocket, worker_id, socket_id)
 
@@ -154,13 +158,14 @@ ROUTES = (
     (r'^.*/send/(.+)/(.+)$', send_handler),
     (r'^.*/recv/(.+)/(.+)$', recv_handler),
     (r'^.*/server/connect/(.+)$', connection_handler),
-    (r'^.*/server/disconnect$', disconnection_handler),
+    (r'^.*/server/disconnect/(.+)/(.+)$', disconnection_handler),
     (r'^.*/worker/(.+)/(.+)$', worker_handler),
 )
 async def ws_handler(websocket, *args):
     """Handler for websocket connections. Routes websockets to the appropriate
     route handler defined in ROUTES."""
-    logger.info(f"websocket handler, path: {websocket.path}.")
+    logger.error("Websocket router")
+    logger.error(f"websocket handler, path: {websocket.path}.")
     for (pattern, handler) in ROUTES:
         match = re.match(pattern, websocket.path)
         if match:
@@ -169,10 +174,10 @@ async def ws_handler(websocket, *args):
 async def async_main():
     """Main function that runs the websocket server."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', help='Port to run the server on.', type=int, required=False, default=6789)
+    parser.add_argument('--port', help='Port to run the server on.', type=int, required=False, default=2901)
     args = parser.parse_args()
     logging.debug(f"Running ws-server on 0.0.0.0:{args.port}")
-    async with websockets.serve(ws_handler, "0.0.0.0", args.port, ping_interval=None, ping_timeout=None, close_timeout=None, max_queue=2**32, read_limit=2**32, write_limit=2**32, logger=logger):
+    async with websockets.serve(ws_handler, "0.0.0.0", args.port, logger=logger):
         await asyncio.Future()  # run server forever
 
 
