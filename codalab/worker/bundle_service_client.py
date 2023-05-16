@@ -13,6 +13,8 @@ from .rest_client import RestClient, RestClientException
 from .file_util import tar_gzip_directory
 from codalab.common import URLOPEN_TIMEOUT_SECONDS, ensure_str, urlopen_with_retry
 
+import logging
+
 
 def wrap_exception(message):
     def decorator(f):
@@ -131,11 +133,26 @@ class BundleServiceClient(RestClient):
     @wrap_exception('Unable to reply to message from bundle service')
     def reply(self, worker_model, worker_id, socket_id, message):
         worker_model.send(message, worker_id, socket_id)
+        # Block until server has received message. How?
+
 
     @wrap_exception('Unable to reply to message from bundle service')
-    def reply_data(self, worker_model, worker_id, socket_id, header_message, fileobj_or_bytestring):
+    def reply_data(self, worker_model, worker_id, socket_id, header_message, fileobj):
+        logging.error("@"*100)
+        logging.error("SENDING REPLY DATA!!!!!!!!!!!!!")
+        # TODO! Right now, this is sending the data back to the worker! lol.
+        # We need it to send data to the rest server.
+        # I see what the issue is.
+        # Yeah, so basically the endpoints are correct BUT what can happen is that this
+        # thread finishes sending the data through that last send and then loops back
+        # around to await the recv_message() function. It does that while the rest-server is
+        # waiting to receive that data. Then, the worker recieves the data first
+        logging.error(header_message)
         worker_model.send(header_message, worker_id, socket_id)  # send header message
-        worker_model.send(fileobj_or_bytestring, worker_id, socket_id, timeout_secs=10000, is_json=False)  # send stream
+        logging.error("Sent header message!!!!")
+        worker_model.send(fileobj, worker_id, socket_id, timeout_secs=10000, is_json=False)  # send stream
+        logging.error("Sent stream!!!!")
+        # Block until server has received message. How?
 
     @wrap_exception('Unable to start bundle in bundle service')
     def start_bundle(self, worker_id, uuid, request_data):

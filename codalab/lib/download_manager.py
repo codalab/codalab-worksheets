@@ -307,7 +307,10 @@ class DownloadManager(object):
         worker_id = self._bundle_model.get_bundle_worker(uuid)['worker_id']
         socket_id = self._worker_model.connect_to_ws(worker_id)
         self._send_netcat_message(worker_id, socket_id, uuid, port, message)
+        logger.error("Just sent netcat message, about to read the response...")
         bytestring = self._get_read_response(worker_id, socket_id)
+        logger.error("@"*100)
+        logger.error(bytestring)
         self._worker_model.disconnect(worker_id, socket_id)
         return bytestring
 
@@ -382,7 +385,10 @@ class DownloadManager(object):
             logging.warning(f'Unable to reach worker {worker_id} at socket {socket_id}')
 
     def _get_read_response_stream(self, worker_id, socket_id):
-        header_message = self._worker_model.recv(worker_id, socket_id)
+        logger.error("recving header message")
+        header_message = self._worker_model.recv(worker_id, socket_id, is_json=True)
+        logger.error(header_message)
+        logger.error("got header message")
         precondition(header_message is not None, 'Unable to reach worker')
         if 'error_code' in header_message:
             raise http_error_to_exception(
@@ -390,12 +396,14 @@ class DownloadManager(object):
             )
 
         try:
+            logger.error("About to get fileobj")
             chunk_generator = self._worker_model.recv(worker_id, socket_id, is_json=False)
             fileobj = GeneratorStream(
                 chunk_generator,
                 partial(self._worker_model.disconnect, worker_id, socket_id),
                 "test"
             )
+            logger.error("Got fileobj")
         except Exception as e:
             logger.error(e)
             if socket_id: self._worker_model.disconnect(worker_id, socket_id)
@@ -405,4 +413,5 @@ class DownloadManager(object):
 
     def _get_read_response(self, worker_id, socket_id):
         with closing(self._get_read_response_stream(worker_id, socket_id)) as fileobj:
+            logger.error("about to read fileobjs")
             return fileobj.read()

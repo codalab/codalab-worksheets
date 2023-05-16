@@ -22,14 +22,9 @@ from codalab.model.tables import (
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
-
-logging.getLogger("websockets").propagate = False
-logging.getLogger("websockets").setLevel(logging.DEBUG)
-
-os.environ["PYTHONASYNCIODEBUG"] = "1"
 
 
 class WorkerModel(object):
@@ -245,13 +240,15 @@ class WorkerModel(object):
             try:
                 socket_id = self._connect(worker_id, timeout_secs)
             except Exception as e:
-                logger.error(f"connect exceptioN: {e}")
-            if socket_id: 
+                logger.error(f"Error receiving socket_id from _connect: {e}")
+            if socket_id:
                 break
             else:
                 logging.error(f"No sockets available for worker {worker_id}; retrying")
                 time.sleep(0.5)
-        if not socket_id: logging.error("No connection reached")
+        if not socket_id:
+            logging.error("No connection reached")
+            raise ValueError("Worker socket ID is None. Worker cannot")
         return socket_id
 
     def disconnect(self, worker_id, socket_id, timeout_secs=20):
@@ -305,13 +302,20 @@ class WorkerModel(object):
 
         :return A dictionary if is_json is True. A generator otherwise.
         """
-        if not socket_id: return
+        logger.error("in recv")
+        if not socket_id:
+            logger.error("no socket id")
+            return
         try:
+            logger.error("about to connect")
             with connect(f"{self._ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+                logger.error("connected")
                 if is_json:
+                    logger.error("In recv json")
                     data = websocket.recv()
                     return json.loads(data.decode())
                 else:
+                    logger.error("In recv STREAM")
                     while True:
                         try:
                             chunk = websocket.recv()

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import io
 import os
 import shutil
 from subprocess import PIPE, Popen
@@ -92,7 +93,7 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool,
-        num_threads=50  # type: int. Number of threads to have running concurrently waiting for socket messages.
+        num_threads=10  # type: int. Number of threads to have running concurrently waiting for socket messages.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -350,16 +351,13 @@ class Worker:
                         # Note: we set a timeout below so that we can check the termination
                         # condition every <timeout_secs> seconds to ensure the worker
                         # doesn't run forever.
-                        logger.warning(f"Thread {socket_id} about to receive message")
                         message = await asyncio.wait_for(websocket.recv(), timeout=5)
                         logger.error(f"Thread {socket_id} processing messsage: {message}")
                         self.process_message(message, socket_id)
 
                     while not self.terminate:
                         try:
-                            logger.warning(f"Thread {socket_id} calling receive_msg")
                             await receive_msg()
-                            logger.warning(f"Thread {socket_id} done calling receive_msg")
                         except asyncio.TimeoutError:
                             pass
                         except websockets.exceptions.ConnectionClosed:
@@ -844,7 +842,7 @@ class Worker:
                         break
                     total_data.append(data)
                 s.close()
-                reply(None, {}, b''.join(total_data))
+                reply(None, {}, io.BytesIO(b''.join(total_data)))
             except BundleServiceException:
                 traceback.print_exc()
             except Exception as e:
@@ -853,6 +851,7 @@ class Worker:
                 reply(err)
 
         threading.Thread(target=netcat_fn).start()
+        time.sleep(30)
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
