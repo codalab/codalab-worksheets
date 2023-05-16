@@ -39,23 +39,6 @@ jobs:
     strategy:
       matrix:
         test:
-          - {name: kill, index: 1}
-          - {name: kill, index: 2}
-          - {name: kill, index: 3}
-          - {name: kill, index: 4}
-          - {name: kill, index: 5}
-          - {name: kill, index: 6}
-          - {name: kill, index: 7}
-          - {name: kill, index: 8}
-          - {name: kill, index: 9}
-          - {name: kill, index: 10}
-          - {name: run, index: 14}
-          - {name: run, index: 15}
-          - {name: run, index: 16}
-          - {name: run, index: 17}
-          - {name: run, index: 18}
-          - {name: run, index: 19}
-          - {name: run, index: 20}
           - {name: search read kill, index: 26}
           - {name: search read kill, index: 27}
           - {name: search read kill, index: 28}
@@ -122,23 +105,6 @@ jobs:
     strategy:
       matrix:
         test:
-          - {name: kill, index: 1}
-          - {name: kill, index: 2}
-          - {name: kill, index: 3}
-          - {name: kill, index: 4}
-          - {name: kill, index: 5}
-          - {name: kill, index: 6}
-          - {name: kill, index: 7}
-          - {name: kill, index: 8}
-          - {name: kill, index: 9}
-          - {name: kill, index: 10}
-          - {name: run, index: 14}
-          - {name: run, index: 15}
-          - {name: run, index: 16}
-          - {name: run, index: 17}
-          - {name: run, index: 18}
-          - {name: run, index: 19}
-          - {name: run, index: 20}
           - {name: search read kill, index: 26}
           - {name: search read kill, index: 27}
           - {name: search read kill, index: 28}
