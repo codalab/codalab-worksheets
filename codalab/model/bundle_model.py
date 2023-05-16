@@ -1109,6 +1109,7 @@ class BundleModel(object):
         # Build metadata
         logger.error("-"*80)
         logger.error(worker_run.as_dict)
+        logger.error("In transition_bundle_finalizing...")
         metadata = {}
         if failure_message is not None:
             metadata['failure_message'] = failure_message
