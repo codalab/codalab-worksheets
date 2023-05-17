@@ -1184,10 +1184,9 @@ class BundleModel(object):
                 )
         except Exception:
             current_data_size = 0
-        disk_increment = data_size - current_data_size
         bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
+        self.update_user_disk_used(bundle.owner_id)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
@@ -2787,6 +2786,21 @@ class BundleModel(object):
         if not user_info:
             user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
+    
+    def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
+        return (
+            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
+                'result'
+            ]
+            or 0
+        )
+
+    def update_user_disk_used(self, user_id):
+        user_info = self.get_user_info(user_id)
+        # Compute from scratch for simplicity
+        user_info['disk_used'] = self._get_disk_used(user_id)
+        self.update_user_info(user_info)
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:
