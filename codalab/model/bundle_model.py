@@ -1043,9 +1043,13 @@ class BundleModel(object):
                 RunStage.UPLOADING_RESULTS
             ]['elapsed']
 
+        logger.error("-"*80)
+        logger.error("in transition_bundle_running")
+        logger.error(f"metadata_update:{metadata_update}")
         self.update_bundle(
             bundle, {'state': worker_run.state, 'metadata': metadata_update}, connection
         )
+        logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
 
         return True
 
@@ -1133,7 +1137,6 @@ class BundleModel(object):
         """
         logger.error("-"*80)
         logger.error("In transition_bundle_finished")
-        logger.error(bundle.to_dict())
         metadata = bundle.metadata.to_dict()
         logger.error(metadata)
         failure_message = metadata.get('failure_message', None)
