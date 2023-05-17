@@ -416,18 +416,15 @@ class UploadManager(object):
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.
-        return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
+        bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+        return os.path.lexists(bundle_location) or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value) or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value)
 
     def cleanup_existing_contents(self, bundle):
-        data_size = int(
-            self._bundle_model.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
-        )
         bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
         removed = self._bundle_store.cleanup(bundle_location, dry_run=False)
         bundle_update = {'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
-        if removed:
-            self._bundle_model.increment_user_disk_used(bundle.owner_id, -data_size)
+        self._bundle_model.update_user_disk_used(bundle.owner_id)
 
     def get_bundle_sas_token(self, path, **kwargs):
         """

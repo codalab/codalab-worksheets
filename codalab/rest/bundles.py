@@ -1209,8 +1209,6 @@ def _update_bundle_contents_blob(uuid):
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
-        if local.upload_manager.has_contents(bundle):
-            local.upload_manager.cleanup_existing_contents(bundle)
         msg = "Upload failed: %s" % err
         local.model.update_bundle(
             bundle,
@@ -1219,13 +1217,12 @@ def _update_bundle_contents_blob(uuid):
                 'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
             },
         )
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
         abort(http.client.BAD_REQUEST, msg)
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
-        if local.upload_manager.has_contents(bundle):
-            local.upload_manager.cleanup_existing_contents(bundle)
-
         msg = "Upload failed: %s" % e
 
         # The client may not want to finalize the bundle on failure, to keep
@@ -1245,9 +1242,12 @@ def _update_bundle_contents_blob(uuid):
         else:
             local.model.update_bundle(
                 bundle,
-                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},},
+                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()}},
             )
 
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
+        
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
 
     else:

@@ -1009,9 +1009,11 @@ class BundleModel(object):
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
-            'memory_usage': memory_usage,
-            'data_size': worker_run.disk_utilization,
+            'memory_usage': memory_usage
         }
+        if self.get_bundle_state(bundle.uuid) != State.FAILED:
+            # If the bundle state is failed, it means it failed on uploading_results and data_size was wiped.
+            metadata_update['data_size'] = worker_run.disk_utilization
 
         # Increment user time and disk as we go to ensure user doesn't go over quota.
         # time increment is the change in running time for this bundle since the last checkin.
@@ -1099,12 +1101,6 @@ class BundleModel(object):
         failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
-
-        if user_id == self.root_user_id:
-            time_increment = worker_run.container_time_total - bundle.metadata.time
-            self.increment_user_time_used(bundle.owner_id, time_increment)
-        disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         # Build metadata
         metadata = {}
