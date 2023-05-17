@@ -1108,17 +1108,21 @@ class BundleModel(object):
 
         # Build metadata
         logger.error("-"*80)
-        logger.error(worker_run.as_dict)
         logger.error("In transition_bundle_finalizing...")
+        logger.error(worker_run.as_dict)
         metadata = {}
         if failure_message is not None:
             metadata['failure_message'] = failure_message
         if exitcode is not None:
             metadata['exitcode'] = exitcode
+        
+        logger.error(f"failure_message: {failure_message}")
+        logger.error(f"metadata: {metadata}")
 
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 
         self.update_bundle(bundle, bundle_update, connection)
+        logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
         return True
 
     def transition_bundle_finished(self, bundle, bundle_location):
