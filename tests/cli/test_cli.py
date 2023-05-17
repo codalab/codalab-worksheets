@@ -2369,8 +2369,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -2574,7 +2573,7 @@ def test_resources(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('http://www.msftconnecttest.com/connecttest.txt').read()" """
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above
