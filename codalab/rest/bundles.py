@@ -1359,6 +1359,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
     # Delete the actual bundle
     if not dry_run:
+        for bundle in bundles:
+            local.model.update_bundle(bundle, {'metadata': {'data_size': 0}})
         if not data_only:
             # Delete bundle metadata.
             local.model.delete_bundles(relevant_uuids)

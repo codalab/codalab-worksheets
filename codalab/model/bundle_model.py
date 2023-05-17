@@ -2790,7 +2790,7 @@ class BundleModel(object):
     def _get_disk_used(self, user_id):
         # TODO(Ashwin): don't include linked bundles
         return (
-            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
+            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])[
                 'result'
             ]
             or 0
