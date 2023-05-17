@@ -1009,7 +1009,7 @@ class BundleModel(object):
             'time_system': worker_run.container_time_system,
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
-            'memory_usage': memory_usage
+            'memory_usage': memory_usage,
         }
         if self.get_bundle_state(bundle.uuid) != State.FAILED:
             # If the bundle state is failed, it means it failed on uploading_results and data_size was wiped.
@@ -1171,15 +1171,6 @@ class BundleModel(object):
         Only used by bundle_manager when creating make bundles.
         """
         data_size = self.get_data_size(bundle_location)
-        try:
-            if 'data_size' in bundle.metadata.__dict__:
-                current_data_size = bundle.metadata.data_size
-            else:
-                current_data_size = int(
-                    self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
-                )
-        except Exception:
-            current_data_size = 0
         bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
@@ -2782,15 +2773,10 @@ class BundleModel(object):
         if not user_info:
             user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
-    
+
     def _get_disk_used(self, user_id):
         # TODO(Ashwin): don't include linked bundles
-        return (
-            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])[
-                'result'
-            ]
-            or 0
-        )
+        return self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])['result'] or 0
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)

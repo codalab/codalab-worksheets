@@ -1247,7 +1247,7 @@ def _update_bundle_contents_blob(uuid):
 
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
-        
+
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
 
     else:
@@ -1352,7 +1352,6 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             )
 
     # cache these so we have them even after the metadata for the bundle has been deleted
-    bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
     bundle_locations = {
         uuid: local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids
     }
@@ -1376,13 +1375,12 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             bundle_location = bundle_locations[uuid]
 
             # Remove bundle
-            removed = False
             if (
                 os.path.lexists(bundle_location)
                 or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value)
                 or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value)
             ):
-                removed = local.bundle_store.cleanup(bundle_location, dry_run)
+                local.bundle_store.cleanup(bundle_location, dry_run)
 
     # Update user disk used.
     local.model.update_user_disk_used(request.user.user_id)
