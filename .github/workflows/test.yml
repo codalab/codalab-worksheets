@@ -86,10 +86,12 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
@@ -148,10 +150,12 @@ jobs:
           CODALAB_LINK_MOUNTS: /tmp
           CODALAB_ALWAYS_USE_AZURE_BLOB_BETA: 1
       - name: Save logs
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-azblob-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
