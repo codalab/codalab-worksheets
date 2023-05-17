@@ -603,6 +603,8 @@ def _update_bundle_state(bundle_uuid: str):
         local.model.update_bundle(
             bundle, {'state': state_on_failure, 'metadata': {'failure_message': error_msg},},
         )
+        local.model.update_disk_metadata(bundle, bundle_location)
+        local.model.enforce_disk_quota(bundle, bundle_location)
     bundles_dict = get_bundle_infos([bundle_uuid])
     return BundleSchema(many=True).dump([bundles_dict]).data
 
@@ -1202,6 +1204,7 @@ def _update_bundle_contents_blob(uuid):
             )
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
+            local.model.update_disk_metadata(bundle, bundle_location)
             local.model.enforce_disk_quota(bundle, bundle_location)
 
     except UsageError as err:
