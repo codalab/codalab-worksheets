@@ -386,7 +386,8 @@ class DownloadManager(object):
 
     def _get_read_response_stream(self, worker_id, socket_id):
         logger.error("recving header message")
-        header_message = self._worker_model.recv(worker_id, socket_id, is_json=True)
+        #import pdb; pdb.set_trace()
+        header_message = self._worker_model.recv_json(worker_id, socket_id)
         logger.error(header_message)
         logger.error("got header message")
         precondition(header_message is not None, 'Unable to reach worker')
@@ -397,7 +398,7 @@ class DownloadManager(object):
 
         try:
             logger.error("About to get fileobj")
-            chunk_generator = self._worker_model.recv(worker_id, socket_id, is_json=False)
+            chunk_generator = self._worker_model.recv_stream(worker_id, socket_id)
             fileobj = GeneratorStream(
                 chunk_generator,
                 partial(self._worker_model.disconnect, worker_id, socket_id),

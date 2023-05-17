@@ -12,9 +12,10 @@ from dataclasses import dataclass
 import threading
 import time
 
+ACK=b'a'
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
 
@@ -119,6 +120,28 @@ async def exchange(from_ws, to_ws, worker_id, socket_id):
     # lots of chunks)
     async for data in from_ws:
         await to_ws.send(data)
+        data = await to_ws.recv()
+        if (data != ACK): break
+        await from_ws.send(ACK)  # Tell the from_websocket when the recipient has received the message.
+        # ahhh... this won't work. When the message is sent, it's actually buffered at the client, so it being sent doesn't mean it was received...
+        # Shoot... I wonder if tehre's a way around htis...
+        # In fact, seee here: https://stackoverflow.com/questions/46549892/does-websocket-send-guarantee-consumption
+        # we need to receive an ACK from the to_ws lol and then send it to the from_ws. yuck lol
+        # But that's not too hard; we can do that pretty easily.
+        # this will create lot sof extra traffic, but that's OK
+
+        # Now, we're getting the "recv() called by two coroutines for same websocket"
+        # It makes sense: the thread sending to ws=websocket(worker_id, socket_id) is calling data = await ws.recv()
+        # and the recv caller is calling async for data in ws: and so both are calling recv().
+        # That's an issue that's not solvable, I don't think... shoot.
+
+        # The answer in this case might be to keep two versions of websockets per worker.
+        # So, one for the worker and one for the server (for each worker_id, socket_id combination).
+        # Why do this? So that we can wait and send properly... It'd be very annoying, though, for sure
+        # I don't like it. Is there any better way to do this?
+        # I don't think so... I think this works better, unfortunately. It's kind of gross, but that's alright.
+        # We'll need a separate send and recv handler now for server and worker... Kind of annoying.
+        # Might be able to get by it with some clever instantiation... oh well
 
 async def send_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /send/{worker_id}/{socket_id}. This route is called by

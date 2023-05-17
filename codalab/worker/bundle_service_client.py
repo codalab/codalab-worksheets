@@ -147,7 +147,9 @@ class BundleServiceClient(RestClient):
         # thread finishes sending the data through that last send and then loops back
         # around to await the recv_message() function. It does that while the rest-server is
         # waiting to receive that data. Then, the worker recieves the data first
+        logging.error(socket_id)
         logging.error(header_message)
+        #import pdb; pdb.set_trace()
         worker_model.send(header_message, worker_id, socket_id)  # send header message
         logging.error("Sent header message!!!!")
         worker_model.send(fileobj, worker_id, socket_id, timeout_secs=10000, is_json=False)  # send stream

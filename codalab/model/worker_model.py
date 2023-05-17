@@ -23,9 +23,9 @@ from codalab.model.tables import (
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
+ACK=b'a'
 
 class WorkerModel(object):
     """
@@ -271,26 +271,34 @@ class WorkerModel(object):
         :return True if data was sent properly, False otherwise.
         """
         CHUNK_SIZE = 4096  # TODO: Make this a variable set in Codalab environment.
+        logger.error("in send")
         if not socket_id: return False
         try:
             with connect(f"{self._ws_server}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 if is_json:
+                    logger.error("in send json")
                     websocket.send(json.dumps(data).encode())
-                    return True
+                    logger.error("sent")
+                    data = websocket.recv()
+                    logger.error(f"Received ack: {data}")
+                    return (data == ACK)
                 else:
                     while True:
                         chunk = data.read(CHUNK_SIZE)
                         if not chunk: break
                         websocket.send(chunk)
+                        data = websocket.recv()
+                        if (data != ACK): return False
                     return True
         except Exception as e:
             logger.error(f"Send to worker {worker_id} through socket {socket_id} failed with {e}")
         return False
 
-    def recv(self, worker_id, socket_id, timeout_secs=60, is_json=True):
+    def _recv(self, recv_fn, worker_id, socket_id, timeout_secs=5):
         """
         Receive data from the worker.
 
+        :param recv_fn: A Callable which takes a websocket as argument and receives data from the worker socket.
         :param socket_id: The ID of the socket through which we send data to the worker.
         :param worker_id: The ID of the worker to send data to
         :param timeout_secs: Seconds until timeout. The actual data sending could take
@@ -310,20 +318,29 @@ class WorkerModel(object):
             logger.error("about to connect")
             with connect(f"{self._ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 logger.error("connected")
-                if is_json:
-                    logger.error("In recv json")
-                    data = websocket.recv()
-                    return json.loads(data.decode())
-                else:
-                    logger.error("In recv STREAM")
-                    while True:
-                        try:
-                            chunk = websocket.recv()
-                            if not chunk: break
-                            yield chunk
-                        except websockets.exceptions.ConnectionClosed: break
+                return recv_fn(websocket)
         except Exception as e:
             logger.error(f"Recv from worker {worker_id} through socket {socket_id} failed with {e}")
+    
+    def recv_json(self, worker_id, socket_id, timeout_secs=60):
+        def _recv_json(websocket):
+            logger.error("In recv json")
+            data = websocket.recv()
+            logger.error("received")
+            websocket.send(ACK)
+            return json.loads(data.decode())
+        return self._recv(_recv_json, worker_id, socket_id, timeout_secs)
+    def recv_stream(self, worker_id, socket_id, timeout_secs=60):
+        def _recv_stream(websocket):
+            logger.error("In recv STREAM")
+            while True:
+                try:
+                    chunk = websocket.recv()
+                    if not chunk: break
+                    websocket.send(ACK)
+                    yield chunk
+                except websockets.exceptions.ConnectionClosed: break
+        return self._recv(_recv_stream, worker_id, socket_id, timeout_secs)
 
     def connect_and_send(self, data, worker_id, timeout_secs=60, is_json=True):
         """
