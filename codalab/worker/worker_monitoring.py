@@ -53,7 +53,7 @@ class WorkerMonitoring(object):
             tx = hub.start_transaction(
                 op="queue.task", name=f"worker-{run_state.bundle.command.split()[0]}"
             )
-            self._bundle_uuid_to_profile[bundle_uuid] = start_profiling(tx, hub)
+            self._bundle_uuid_to_profile[bundle_uuid] = start_profiling(tx, hub)  # type: ignore
             tx.__enter__()
             self._bundle_uuid_to_profile[bundle_uuid].__enter__()
         else:
