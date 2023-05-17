@@ -1704,7 +1704,7 @@ class BundleCLI(object):
         # Add new bundle's location. If the user specifies the storage using `--store`, the bundle will be added to that storage.
         # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
         destination_bundle_store = metadata.get('store')
-        bundle_store_uuid = None
+        params = {'worksheet': worksheet_uuid}
         if destination_bundle_store:
             # 1) Read destination store from --store if user has specified it
             storage_info = client.fetch_one(
@@ -1714,12 +1714,12 @@ class BundleCLI(object):
                     'include': ['uuid', 'storage_type', 'url'],
                 },
             )
-            bundle_store_uuid = storage_info['uuid']
+            params['bundle_store_uuid'] = storage_info['uuid']
 
         new_bundle = client.create(
             'bundles',
             self.derive_bundle(MakeBundle.BUNDLE_TYPE, None, targets, metadata),
-            params={'worksheet': worksheet_uuid, 'bundle_store': bundle_store_uuid},
+            params=params,
         )
 
         print(new_bundle['uuid'], file=self.stdout)
