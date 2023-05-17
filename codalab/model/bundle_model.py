@@ -1240,7 +1240,7 @@ class BundleModel(object):
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
             if bundle_store_uuid:
                 bundle_location_value = {
-                    'bundle_uuid': bundle['uuid'],
+                    'bundle_uuid': bundle.uuid,
                     'bundle_store_uuid': bundle_store_uuid,
                 }
                 connection.execute(cl_bundle_location.insert().values(bundle_location_value))
