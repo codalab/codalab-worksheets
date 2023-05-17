@@ -66,7 +66,7 @@ class WS:
         self._last_use = value
 
 worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(dict)  # Maps worker to list of its websockets (since each worker has a pool of connections)
-server_ws_to_worker_ws: Dict[Any, Any] = dict()  # Map the rest-server websocket connection to the corresponding worker socket connection.
+server_worker_to_ws:  Dict[str, Dict[str, WS]] = defaultdict(dict)   # Map the rest-server websocket connection to the corresponding worker socket connection.
 
 async def connection_handler(websocket, worker_id):
     """
@@ -111,18 +111,20 @@ async def disconnection_handler(websocket, worker_id, socket_id):
         worker_to_ws[worker_id][socket_id].is_available = True
     
 
-async def exchange(from_ws, to_ws, worker_id, socket_id):
-    if worker_id not in worker_to_ws or socket_id not in worker_to_ws[worker_id]:
-        logger.error("Invalid request. WorkerID: {worker_id}, SocketID: {socket_id}")
-    
+async def exchange(from_ws, to_ws, worker_id, socket_id):    
     # Send and receive all data until connection closes.
     # (We may be streaming a file, in which case we need to receive and then send
     # lots of chunks)
-    async for data in from_ws:
-        await to_ws.send(data)
-        data = await to_ws.recv()
-        if (data != ACK): break
-        await from_ws.send(ACK)  # Tell the from_websocket when the recipient has received the message.
+    while True:
+        # Don't use async for so we can avoid two couroutines waiting on same socket.
+        try:
+            data = await from_ws.recv()
+            await to_ws.send(data)
+            ack = await to_ws.recv()
+            if (ack != ACK): raise ValueError("Data receipt not properly acknowledged.")
+            await from_ws.send(ACK)  # Tell the from_websocket when the recipient has received the message.
+        except websockets.exceptions.ConnectionClosed:
+            break
         # ahhh... this won't work. When the message is sent, it's actually buffered at the client, so it being sent doesn't mean it was received...
         # Shoot... I wonder if tehre's a way around htis...
         # In fact, seee here: https://stackoverflow.com/questions/46549892/does-websocket-send-guarantee-consumption
@@ -142,6 +144,8 @@ async def exchange(from_ws, to_ws, worker_id, socket_id):
         # I don't think so... I think this works better, unfortunately. It's kind of gross, but that's alright.
         # We'll need a separate send and recv handler now for server and worker... Kind of annoying.
         # Might be able to get by it with some clever instantiation... oh well
+
+        # No, I think we can avoid that.
 
 async def send_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /send/{worker_id}/{socket_id}. This route is called by
