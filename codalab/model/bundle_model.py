@@ -1126,6 +1126,7 @@ class BundleModel(object):
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 
         self.update_bundle(bundle, bundle_update, connection)
+        logger.error(f"bundle: {bundle.to_dict()}")
         logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
         return True
 
@@ -1137,6 +1138,7 @@ class BundleModel(object):
         """
         logger.error("-"*80)
         logger.error("In transition_bundle_finished")
+        logger.error(f"bundle: {bundle.to_dict()}")
         metadata = bundle.metadata.to_dict()
         logger.error(metadata)
         failure_message = metadata.get('failure_message', None)
