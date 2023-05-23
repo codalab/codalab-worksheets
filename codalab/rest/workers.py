@@ -25,6 +25,7 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
+    logger.error("worker checking in")
     WAIT_TIME_SECS = 5.0
 
     # Old workers might not have all the fields, so allow subsets to be missing.
@@ -49,6 +50,7 @@ def checkin(worker_id):
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
+            logger.error(f"worker run: {worker_run}")
             bundle = local.model.get_bundle(worker_run.uuid)
             local.model.bundle_checkin(
                 bundle, worker_run, request.user.user_id, worker_id,
