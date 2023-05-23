@@ -926,11 +926,11 @@ class BundleModel(object):
             # Reset all metadata fields that aren't input by user from RunBundle class to be None.
             # Excluding all the fields that can be set by users, which for now is just the "actions" field.
             # Excluding the "created" field to keep track of the original date when the bundle is created
-            metadata_update = {
-                spec.key: None
-                for spec in RunBundle.METADATA_SPECS
-                if spec.generated and spec.key not in ['actions', 'created']
-            }
+            # metadata_update = {
+            #     spec.key: None
+            #     for spec in RunBundle.METADATA_SPECS
+            #     if spec.generated and spec.key not in ['actions', 'created']
+            # }
             metadata_update[
                 'staged_status'
             ] = "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
