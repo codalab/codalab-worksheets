@@ -912,6 +912,9 @@ class BundleModel(object):
             Returns False if the bundle was not in STARTING state.
             Clears the job_handle metadata and removes the worker_run row.
         """
+        logger.error("IN TRANSTIOIN BUNDLE STAGED FOR SOME REASON ... THIS MIGHT BE WHY METADATA GETTING WIPED")
+        logger.error(f"{bundle.metadata.to_dict()}")
+        logger.error(f"state: {bundle.to_dict()['state']}")
         with self.engine.begin() as connection:
             # Make sure it's still starting.
             row = connection.execute(

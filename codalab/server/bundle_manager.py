@@ -371,6 +371,7 @@ class BundleManager(object):
             ):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
                 if self._model.transition_bundle_staged(bundle):
+                    logger.error("transition staged from restage stuck starting")
                     workers.restage(bundle.uuid)
 
     def _acknowledge_recently_finished_bundles(self, workers):
@@ -400,6 +401,7 @@ class BundleManager(object):
                 logger.error("-"*80)
                 logger.error(bundle.to_dict())
                 self._model.transition_bundle_finished(bundle, bundle_location)
+        logger.info("finished acknowledge recently finished bundles.")
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -754,6 +756,7 @@ class BundleManager(object):
             )
             return True
         else:
+            logger.error("transition staged from try start bundle")
             self._model.transition_bundle_staged(bundle)
             workers.restage(bundle.uuid)
             return False
