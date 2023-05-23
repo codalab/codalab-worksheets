@@ -1349,6 +1349,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             )
 
     # cache these so we have them even after the metadata for the bundle has been deleted
+    bundle_owner_ids = local.model.get_bundle_owner_ids(relevant_uuids)
     bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
     bundle_locations = {
         uuid: local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids
@@ -1382,7 +1383,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             # Update user disk used.
             if removed and uuid in bundle_data_sizes:
                 local.model.increment_user_disk_used(
-                    request.user.user_id, -int(bundle_data_sizes[uuid])
+                    bundle_owner_ids[uuid], -int(bundle_data_sizes[uuid])
                 )
     return relevant_uuids
 
