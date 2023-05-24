@@ -323,7 +323,8 @@ def main():
     elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
         image_manager = NoOpImageManager()
         if args.kubernetes_cert_path == "/dev/null":
-            # Create temp file
+            # Create temp file to store kubernetes cert, as we need to pass in a file path.
+            # TODO: Delete the file afterwards (upon CodaLab service stop?)
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 f.write(args.kubernetes_cert)
                 kubernetes_cert_path = f.name
