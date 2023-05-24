@@ -167,7 +167,6 @@ class BundleManagerMakeBundlesTest(BaseBundleManagerTest):
             unpack=True,
             use_azure_blob_beta=True,
         )
-
         self.make_bundles_and_wait()
 
         bundle = self.bundle_manager._model.get_bundle(bundle.uuid)

@@ -302,10 +302,10 @@ def recursive_ls(path):
 
 
 def data_hash(uuid, worksheet=None):
+    """Temporarily download bundle contents.
+    Return a hash of those contents.
     """
-        Temporarily download bundle contents.
-        Return a hash of those contents.
-        """
+    _run_command([cl, 'wait', uuid])
     path = temp_path(uuid)
     if not os.path.exists(path):
         # Download the bundle to that path.
@@ -316,10 +316,8 @@ def data_hash(uuid, worksheet=None):
     sha1 = hashlib.sha1()
     files = recursive_ls(path)[1]
     for f in files:
-        try:
-            sha1.update(open(f, 'r').read().encode())
-        except Exception as e:
-            raise Exception("file name: {}. exception: {}".format(f, e))
+        sha1.update(open(f, 'r').read().encode())
+    shutil.rmtree(path)
     return sha1.hexdigest()
 
 
@@ -873,7 +871,7 @@ def test_upload1(ctx):
             _run_command([cl, 'work', worksheet_uuid])
             # expect to fail when we upload something more than 2k bytes
             check_contains(
-                'User disk quota exceeded',
+                'disk quota exceeded',
                 _run_command(
                     [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
                     expected_exit_code=1,
@@ -1518,7 +1516,7 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory=None,
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
     )
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
@@ -2371,8 +2369,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -2386,11 +2383,6 @@ def test_write(ctx):
     _run_command([cl, 'wait', uuid])
     check_equals('hello world', _run_command([cl, 'cat', target]))
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
-
-
-"""
-This we'll have ot think about how to migrate...
-"""
 
 
 @TestModule.register('mimic')
@@ -2581,7 +2573,7 @@ def test_resources(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('http://www.msftconnecttest.com/connecttest.txt').read()" """
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above

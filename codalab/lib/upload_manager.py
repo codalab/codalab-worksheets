@@ -5,9 +5,11 @@ import tempfile
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from typing import Any, Dict, Union, Tuple, IO, cast
-from ratarmountcore import SQLiteIndexedTar
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
+from codalab.lib.beam.MultiReaderFileStream import MultiReaderFileStream
 from contextlib import closing
 from codalab.worker.upload_util import upload_with_chunked_encoding
+from threading import Thread
 
 from codalab.common import (
     StorageURLScheme,
@@ -15,9 +17,8 @@ from codalab.common import (
     StorageType,
     urlopen_with_retry,
     parse_linked_bundle_url,
-    httpopen_with_retry,
 )
-from codalab.worker.file_util import tar_gzip_directory, GzipStream
+from codalab.worker.file_util import tar_gzip_directory, GzipStream, update_file_size
 from codalab.worker.bundle_state import State
 from codalab.lib import file_util, path_util, zip_util
 from codalab.objects.bundle import Bundle
@@ -95,7 +96,6 @@ class Uploader:
         Given arguments are the same as UploadManager.upload_to_bundle_store().
         Used when uploading from rest server."""
         try:
-            # bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
             is_url, is_fileobj, filename = self._interpret_source(source)
             if is_url:
                 assert isinstance(source, str)
@@ -113,11 +113,21 @@ class Uploader:
                     bundle_path = self._update_and_get_bundle_location(
                         bundle, is_directory=source_ext in ARCHIVE_EXTS_DIR
                     )
-                    self.write_fileobj(source_ext, source_fileobj, bundle_path, unpack_archive=True)
+                    self.write_fileobj(
+                        source_ext,
+                        source_fileobj,
+                        bundle_path,
+                        unpack_archive=True,
+                        bundle_uuid=bundle.uuid,
+                    )
                 else:
                     bundle_path = self._update_and_get_bundle_location(bundle, is_directory=False)
                     self.write_fileobj(
-                        source_ext, source_fileobj, bundle_path, unpack_archive=False
+                        source_ext,
+                        source_fileobj,
+                        bundle_path,
+                        unpack_archive=False,
+                        bundle_uuid=bundle.uuid,
                     )
 
         except UsageError:
@@ -236,55 +246,69 @@ class BlobStorageUploader(Uploader):
         else:
             output_fileobj = GzipStream(source_fileobj)
 
+        stream_file = MultiReaderFileStream(output_fileobj)
+        file_reader = stream_file.readers[0]
+        index_reader = stream_file.readers[1]
+
         # Write archive file.
         if bundle_conn_str is not None:
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
-            bytes_uploaded = 0
             CHUNK_SIZE = 16 * 1024
-            ITERATIONS_PER_DISK_CHECK = 2000
-            iteration = 0
-            with FileSystems.create(
-                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            ) as out:
-                while True:
-                    to_send = output_fileobj.read(CHUNK_SIZE)
-                    if not to_send:
-                        break
-                    out.write(to_send)
 
-                    # Update disk and check if client has gone over disk usage.
-                    if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
-                        self._client.update(
-                            'user/increment_disk_used',
-                            {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
-                        )
-                        user_info = self._client.fetch('user')
-                        if user_info['disk_used'] >= user_info['disk_quota']:
-                            raise Exception(
-                                'Upload aborted. User disk quota exceeded. '
-                                'To apply for more quota, please visit the following link: '
-                                'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
-                                '#how-do-i-request-more-disk-quota-or-time-quota'
+            def upload_file_content():
+                iteration = 0
+                ITERATIONS_PER_DISK_CHECK = 2000
+                bytes_uploaded = 0
+
+                with FileSystems.create(
+                    bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
+                ) as out:
+                    while True:
+                        iteration += 1
+                        to_send = file_reader.read(CHUNK_SIZE)
+                        if not to_send:
+                            break
+                        out.write(to_send)
+
+                        # Update disk and check if client has gone over disk usage.
+                        if self._client and iteration % ITERATIONS_PER_DISK_CHECK == 0:
+                            self._client.update(
+                                'user/increment_disk_used',
+                                {'disk_used_increment': len(to_send), 'bundle_uuid': bundle_uuid},
                             )
+                            user_info = self._client.fetch('user')
+                            if user_info['disk_used'] >= user_info['disk_quota']:
+                                raise Exception(
+                                    'Upload aborted. User disk quota exceeded. '
+                                    'To apply for more quota, please visit the following link: '
+                                    'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+                                    '#how-do-i-request-more-disk-quota-or-time-quota'
+                                )
 
-                    bytes_uploaded += len(to_send)
-                    if progress_callback is not None:
-                        should_resume = progress_callback(bytes_uploaded)
-                        if not should_resume:
-                            raise Exception('Upload aborted by client')
-                    iteration += 1
-            with FileSystems.open(
-                bundle_path, compression_type=CompressionTypes.UNCOMPRESSED
-            ) as ttf, tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+                        bytes_uploaded += len(to_send)
+                        if progress_callback is not None:
+                            should_resume = progress_callback(bytes_uploaded)
+                            if not should_resume:
+                                raise Exception('Upload aborted by client')
+
+            # temporary file that used to store index file
+            tmp_index_file = tempfile.NamedTemporaryFile(suffix=".sqlite")
+
+            def create_index():
+                is_dir = parse_linked_bundle_url(bundle_path).is_archive_dir
                 SQLiteIndexedTar(
-                    fileObject=ttf,
-                    tarFileName="contents",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
+                    fileObject=index_reader,
+                    tarFileName="contents.tar.gz"
+                    if is_dir
+                    else "contents.gz",  # If saving a single file as a .gz archive, this file can be accessed by the "/contents" entry in the index.
                     writeIndex=True,
                     clearIndexCache=True,
                     indexFilePath=tmp_index_file.name,
                 )
+
+            def upload_index():
                 if bundle_conn_str is not None:
                     os.environ['AZURE_STORAGE_CONNECTION_STRING'] = index_conn_str
                 with FileSystems.create(
@@ -296,11 +320,40 @@ class BlobStorageUploader(Uploader):
                         if not to_send:
                             break
                         out_index_file.write(to_send)
-                        bytes_uploaded += len(to_send)
-                        if progress_callback is not None:
-                            should_resume = progress_callback(bytes_uploaded)
-                            if not should_resume:
-                                raise Exception('Upload aborted by client')
+
+                # call API to update the indexed file size
+
+                if not parse_linked_bundle_url(bundle_path).is_archive_dir and hasattr(
+                    output_fileobj, "tell"
+                ):
+                    try:
+                        file_size = (
+                            output_fileobj.input_file_tell()
+                            if hasattr(output_fileobj, "input_file_tell")
+                            else output_fileobj.tell()
+                        )
+                        if self._client:
+                            self._client.update(
+                                'bundles/%s/contents/filesize/' % bundle_uuid,
+                                {'filesize': file_size},
+                            )
+                        else:  # directly update on server side
+                            update_file_size(bundle_path, file_size)
+                    except Exception as e:
+                        print(
+                            f"Skip update this type of data. The bundle path is: {bundle_path}. Exception: {repr(e)}"
+                        )
+
+            threads = [Thread(target=upload_file_content), Thread(target=create_index)]
+
+            for thread in threads:
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            upload_index()
+
         except Exception as err:
             raise err
         finally:  # restore the origin connection string
@@ -314,7 +367,8 @@ class UploadManager(object):
     the associated bundle metadata in the database.
     """
 
-    def __init__(self, bundle_model, bundle_store):
+    def __init__(self, bundle_model, bundle_store, json_api_client=None):
+        self._client = json_api_client
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
 
@@ -362,18 +416,19 @@ class UploadManager(object):
 
     def has_contents(self, bundle):
         # TODO: make this non-fs-specific.
-        return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
+        bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
+        return (
+            os.path.lexists(bundle_location)
+            or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value)
+            or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value)
+        )
 
     def cleanup_existing_contents(self, bundle):
-        data_size = int(
-            self._bundle_model.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
-        )
         bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
-        removed = self._bundle_store.cleanup(bundle_location, dry_run=False)
+        self._bundle_store.cleanup(bundle_location, dry_run=False)
         bundle_update = {'metadata': {'data_size': 0}}
         self._bundle_model.update_bundle(bundle, bundle_update)
-        if removed:
-            self._bundle_model.increment_user_disk_used(bundle.owner_id, -data_size)
+        self._bundle_model.update_user_disk_used(bundle.owner_id)
 
     def get_bundle_sas_token(self, path, **kwargs):
         """
@@ -585,35 +640,47 @@ class ClientUploadManager(object):
         else:
             output_fileobj = GzipStream(fileobj)
 
-        # Write archive file.
-        upload_with_chunked_encoding(
-            method='PUT',
-            base_url=bundle_conn_str,
-            headers={'Content-type': 'application/octet-stream'},
-            fileobj=output_fileobj,
-            query_params={},
-            progress_callback=progress_callback,
-            bundle_uuid=bundle_uuid,
-            json_api_client=json_api_client,
-        )
-        # upload the index file
-        with httpopen_with_retry(bundle_read_str) as ttf, tempfile.NamedTemporaryFile(
-            suffix=".sqlite"
-        ) as tmp_index_file:
-            SQLiteIndexedTar(
-                fileObject=ttf,
-                tarFileName="contents",
-                writeIndex=True,
-                clearIndexCache=True,
-                indexFilePath=tmp_index_file.name,
-            )
+        stream_file = MultiReaderFileStream(output_fileobj)
+        file_reader = stream_file.readers[0]
+        index_reader = stream_file.readers[1]
+
+        def upload_file_content():
+            # Write archive file.
             upload_with_chunked_encoding(
                 method='PUT',
-                base_url=index_conn_str,
+                base_url=bundle_conn_str,
                 headers={'Content-type': 'application/octet-stream'},
+                fileobj=file_reader,
                 query_params={},
-                fileobj=open(tmp_index_file.name, "rb"),
                 progress_callback=None,
                 bundle_uuid=bundle_uuid,
                 json_api_client=self._client,
             )
+
+        def create_upload_index():
+            # upload the index file
+            with tempfile.NamedTemporaryFile(suffix=".sqlite") as tmp_index_file:
+                SQLiteIndexedTar(
+                    fileObject=index_reader,
+                    tarFileName="contents",
+                    writeIndex=True,
+                    clearIndexCache=True,
+                    indexFilePath=tmp_index_file.name,
+                )
+                upload_with_chunked_encoding(
+                    method='PUT',
+                    base_url=index_conn_str,
+                    headers={'Content-type': 'application/octet-stream'},
+                    query_params={},
+                    fileobj=open(tmp_index_file.name, "rb"),
+                    progress_callback=None,
+                    json_api_client=self._client,
+                )
+
+        threads = [Thread(target=upload_file_content), Thread(target=create_upload_index)]
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()

@@ -19,9 +19,11 @@ from codalab.common import (
     precondition,
     UsageError,
     NotFoundError,
+    parse_linked_bundle_url,
 )
 from codalab.lib import canonicalize, spec_util, worksheet_util, bundle_util
 from codalab.lib.beam.filesystems import LOCAL_USING_AZURITE, get_azure_bypass_conn_str
+from codalab.worker.file_util import OpenIndexedArchiveFile, update_file_size
 from codalab.lib.server_util import (
     RequestSource,
     bottle_patch as patch,
@@ -601,6 +603,8 @@ def _update_bundle_state(bundle_uuid: str):
         local.model.update_bundle(
             bundle, {'state': state_on_failure, 'metadata': {'failure_message': error_msg},},
         )
+        local.model.update_disk_metadata(bundle, bundle_location)
+        local.model.enforce_disk_quota(bundle, bundle_location)
     bundles_dict = get_bundle_infos([bundle_uuid])
     return BundleSchema(many=True).dump([bundles_dict]).data
 
@@ -770,6 +774,41 @@ def _fetch_bundle_contents_info(uuid, path=''):
         abort(http.client.BAD_REQUEST, str(e))
 
     return {'data': info}
+
+
+@patch(
+    '/bundles/<uuid:re:%s>/contents/filesize/' % spec_util.UUID_STR, name='update_bundle_file_size'
+)
+def _update_bundle_file_size(uuid):
+    """
+    This function is used to fix the file size field in the index.sqlite file.
+    This only allows user to increase the file size for a single file.
+    """
+
+    bundle_path = local.bundle_store.get_bundle_location(uuid)
+    file_size = request.json['data'][0]['attributes']['filesize']
+    logging.info(f"File_size is : {file_size} {bundle_path} {uuid}")
+
+    update_file_size(bundle_path, file_size)
+
+    if (
+        parse_linked_bundle_url(bundle_path).uses_beam
+        and not parse_linked_bundle_url(bundle_path).is_archive_dir
+    ):
+        # check wether the info is saved to index.sqlite
+        with OpenIndexedArchiveFile(bundle_path) as tf:
+            logging.info(
+                f"Modify file size in index.sqlit. New info is: {tf.getFileInfo('/contents')}"
+            )  # get the result of a fi
+
+    bundles_dict = get_bundle_infos([uuid])
+
+    # Return bundles in original order
+    # Need to check if the UUID is in the dict, since there is a chance that a bundle is deleted
+    # right after being created.
+    bundles = [bundles_dict[uuid]] if uuid in bundles_dict.keys() else []
+    logging.info(f"before return: {bundles}")
+    return BundleSchema(many=True).dump(bundles).data
 
 
 @put(
@@ -1165,12 +1204,11 @@ def _update_bundle_contents_blob(uuid):
             )
             bundle_link_url = getattr(bundle.metadata, "link_url", None)
             bundle_location = bundle_link_url or local.bundle_store.get_bundle_location(bundle.uuid)
+            local.model.update_disk_metadata(bundle, bundle_location)
             local.model.enforce_disk_quota(bundle, bundle_location)
 
     except UsageError as err:
         # This is a user error (most likely disk quota overuser) so raise a client HTTP error
-        if local.upload_manager.has_contents(bundle):
-            local.upload_manager.cleanup_existing_contents(bundle)
         msg = "Upload failed: %s" % err
         local.model.update_bundle(
             bundle,
@@ -1179,13 +1217,12 @@ def _update_bundle_contents_blob(uuid):
                 'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},
             },
         )
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
         abort(http.client.BAD_REQUEST, msg)
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
-        if local.upload_manager.has_contents(bundle):
-            local.upload_manager.cleanup_existing_contents(bundle)
-
         msg = "Upload failed: %s" % e
 
         # The client may not want to finalize the bundle on failure, to keep
@@ -1205,8 +1242,11 @@ def _update_bundle_contents_blob(uuid):
         else:
             local.model.update_bundle(
                 bundle,
-                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()},},
+                {'metadata': {'failure_message': msg, 'error_traceback': traceback.format_exc()}},
             )
+
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
 
         abort(http.client.INTERNAL_SERVER_ERROR, msg)
 
@@ -1312,13 +1352,14 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             )
 
     # cache these so we have them even after the metadata for the bundle has been deleted
-    bundle_data_sizes = local.model.get_bundle_metadata(relevant_uuids, 'data_size')
     bundle_locations = {
         uuid: local.bundle_store.get_bundle_location(uuid) for uuid in relevant_uuids
     }
 
     # Delete the actual bundle
     if not dry_run:
+        for bundle in bundles:
+            local.model.update_bundle(bundle, {'metadata': {'data_size': 0}})
         if not data_only:
             # Delete bundle metadata.
             local.model.delete_bundles(relevant_uuids)
@@ -1334,19 +1375,15 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             bundle_location = bundle_locations[uuid]
 
             # Remove bundle
-            removed = False
             if (
                 os.path.lexists(bundle_location)
                 or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value)
                 or bundle_location.startswith(StorageURLScheme.GCS_STORAGE.value)
             ):
-                removed = local.bundle_store.cleanup(bundle_location, dry_run)
+                local.bundle_store.cleanup(bundle_location, dry_run)
 
-            # Update user disk used.
-            if removed and uuid in bundle_data_sizes:
-                local.model.increment_user_disk_used(
-                    request.user.user_id, -int(bundle_data_sizes[uuid])
-                )
+    # Update user disk used.
+    local.model.update_user_disk_used(request.user.user_id)
     return relevant_uuids
 
 
