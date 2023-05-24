@@ -1528,7 +1528,7 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory=None,
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
     )
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
@@ -2381,8 +2381,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -2586,7 +2585,7 @@ def test_resources(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('http://www.msftconnecttest.com/connecttest.txt').read()" """
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above
