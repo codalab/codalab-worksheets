@@ -36,11 +36,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9]
         os: [ubuntu-20.04, macos-latest]
-        exclude:
-          - os: macos-latest
-            python-version: 3.6
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
@@ -105,8 +102,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download disk
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - worker_manager service
           - run time
@@ -293,8 +289,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - basic status batch anonymous unicode rest1 upload1 download
+          - basic status batch anonymous unicode rest1 upload1 download disk
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - run
           - search read kill write mimic workers
@@ -406,7 +401,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.6
+          python-version: 3.7
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -506,8 +501,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download disk
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - worker_manager service
           - run time
