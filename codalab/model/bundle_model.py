@@ -1250,6 +1250,8 @@ class BundleModel(object):
         This method validates all updates to the bundle, so it is appropriate
         to use this method to update bundles based on user input (eg: cl edit).
         """
+        logger.error(f"in update bundle for bundle {bundle.uuid}")
+        import traceback; traceback.print_stack()
         message = 'Illegal update: %s' % (update,)
         precondition('id' not in update and 'uuid' not in update, message)
         # Apply the column and metadata updates in memory and validate the result.
