@@ -1206,9 +1206,11 @@ class BundleModel(object):
             # State isn't one we can check in for
             return False
 
-    def save_bundle(self, bundle):
+    def save_bundle(self, bundle, bundle_store_uuid=None):
         """
         Save a bundle. On success, sets the Bundle object's id from the result.
+        Parameters:
+        `bundle_store_uuid`: If set, bundle location is set to this value. Optional.
         """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
@@ -1222,6 +1224,12 @@ class BundleModel(object):
             result = connection.execute(cl_bundle.insert().values(bundle_value))
             self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            if bundle_store_uuid:
+                bundle_location_value = {
+                    'bundle_uuid': bundle.uuid,
+                    'bundle_store_uuid': bundle_store_uuid,
+                }
+                connection.execute(cl_bundle_location.insert().values(bundle_location_value))
             bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None, delete=False):
