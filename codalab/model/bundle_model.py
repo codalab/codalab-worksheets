@@ -912,6 +912,9 @@ class BundleModel(object):
             Returns False if the bundle was not in STARTING state.
             Clears the job_handle metadata and removes the worker_run row.
         """
+        logger.error("IN TRANSTIOIN BUNDLE STAGED FOR SOME REASON ... THIS MIGHT BE WHY METADATA GETTING WIPED")
+        logger.error(f"{bundle.metadata.to_dict()}")
+        logger.error(f"state: {bundle.to_dict()['state']}")
         with self.engine.begin() as connection:
             # Make sure it's still starting.
             row = connection.execute(
@@ -923,11 +926,11 @@ class BundleModel(object):
             # Reset all metadata fields that aren't input by user from RunBundle class to be None.
             # Excluding all the fields that can be set by users, which for now is just the "actions" field.
             # Excluding the "created" field to keep track of the original date when the bundle is created
-            metadata_update = {
-                spec.key: None
-                for spec in RunBundle.METADATA_SPECS
-                if spec.generated and spec.key not in ['actions', 'created']
-            }
+            # metadata_update = {
+            #     spec.key: None
+            #     for spec in RunBundle.METADATA_SPECS
+            #     if spec.generated and spec.key not in ['actions', 'created']
+            # }
             metadata_update[
                 'staged_status'
             ] = "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
@@ -1010,8 +1013,10 @@ class BundleModel(object):
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
             'memory_usage': memory_usage,
-            'data_size': worker_run.disk_utilization,
         }
+        if self.get_bundle_state(bundle.uuid) != State.FAILED:
+            # If the bundle state is failed, it means it failed on uploading_results and data_size was wiped.
+            metadata_update['data_size'] = worker_run.disk_utilization
 
         # Increment user time and disk as we go to ensure user doesn't go over quota.
         # time increment is the change in running time for this bundle since the last checkin.
@@ -1043,9 +1048,13 @@ class BundleModel(object):
                 RunStage.UPLOADING_RESULTS
             ]['elapsed']
 
+        logger.error("-"*80)
+        logger.error("in transition_bundle_running")
+        logger.error(f"metadata_update:{metadata_update}")
         self.update_bundle(
             bundle, {'state': worker_run.state, 'metadata': metadata_update}, connection
         )
+        logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
 
         return True
 
@@ -1100,24 +1109,24 @@ class BundleModel(object):
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
-        if user_id == self.root_user_id:
-            time_increment = worker_run.container_time_total - bundle.metadata.time
-            self.increment_user_time_used(bundle.owner_id, time_increment)
-        disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
-
         # Build metadata
         logger.error("-"*80)
+        logger.error("In transition_bundle_finalizing...")
         logger.error(worker_run.as_dict)
         metadata = {}
         if failure_message is not None:
             metadata['failure_message'] = failure_message
         if exitcode is not None:
             metadata['exitcode'] = exitcode
+        
+        logger.error(f"failure_message: {failure_message}")
+        logger.error(f"metadata: {metadata}")
 
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 
         self.update_bundle(bundle, bundle_update, connection)
+        logger.error(f"bundle: {bundle.to_dict()}")
+        logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
         return True
 
     def transition_bundle_finished(self, bundle, bundle_location):
@@ -1127,11 +1136,16 @@ class BundleModel(object):
             was recorded during finalization of the bundle.
         """
         logger.error("-"*80)
-        logger.error(bundle.to_dict())
+        logger.error("In transition_bundle_finished")
+        logger.error(f"bundle: {bundle.to_dict()}")
         metadata = bundle.metadata.to_dict()
+        logger.error(metadata)
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
+        logger.error(failure_message)
+        logger.error(exitcode)
         state = State.FAILED if failure_message or exitcode else State.READY
+        logger.error(state)
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
@@ -1179,19 +1193,9 @@ class BundleModel(object):
         Only used by bundle_manager when creating make bundles.
         """
         data_size = self.get_data_size(bundle_location)
-        try:
-            if 'data_size' in bundle.metadata.__dict__:
-                current_data_size = bundle.metadata.data_size
-            else:
-                current_data_size = int(
-                    self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
-                )
-        except Exception:
-            current_data_size = 0
-        disk_increment = data_size - current_data_size
         bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
+        self.update_user_disk_used(bundle.owner_id)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
@@ -2793,6 +2797,16 @@ class BundleModel(object):
         if not user_info:
             user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
+
+    def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
+        return self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])['result'] or 0
+
+    def update_user_disk_used(self, user_id):
+        user_info = self.get_user_info(user_id)
+        # Compute from scratch for simplicity
+        user_info['disk_used'] = self._get_disk_used(user_id)
+        self.update_user_info(user_info)
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:

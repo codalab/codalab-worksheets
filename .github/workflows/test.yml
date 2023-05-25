@@ -39,23 +39,6 @@ jobs:
     strategy:
       matrix:
         test:
-          - {name: kill, index: 1}
-          - {name: kill, index: 2}
-          - {name: kill, index: 3}
-          - {name: kill, index: 4}
-          - {name: kill, index: 5}
-          - {name: kill, index: 6}
-          - {name: kill, index: 7}
-          - {name: kill, index: 8}
-          - {name: kill, index: 9}
-          - {name: kill, index: 10}
-          - {name: run, index: 14}
-          - {name: run, index: 15}
-          - {name: run, index: 16}
-          - {name: run, index: 17}
-          - {name: run, index: 18}
-          - {name: run, index: 19}
-          - {name: run, index: 20}
           - {name: search read kill, index: 26}
           - {name: search read kill, index: 27}
           - {name: search read kill, index: 28}
@@ -103,12 +86,12 @@ jobs:
           VERSION: ${{ github.head_ref || 'master' }}
           CODALAB_LINK_MOUNTS: /tmp
       - name: Save logs
-        if: (failure() || cancelled())
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: (failure() || cancelled())
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
@@ -122,23 +105,6 @@ jobs:
     strategy:
       matrix:
         test:
-          - {name: kill, index: 1}
-          - {name: kill, index: 2}
-          - {name: kill, index: 3}
-          - {name: kill, index: 4}
-          - {name: kill, index: 5}
-          - {name: kill, index: 6}
-          - {name: kill, index: 7}
-          - {name: kill, index: 8}
-          - {name: kill, index: 9}
-          - {name: kill, index: 10}
-          - {name: run, index: 14}
-          - {name: run, index: 15}
-          - {name: run, index: 16}
-          - {name: run, index: 17}
-          - {name: run, index: 18}
-          - {name: run, index: 19}
-          - {name: run, index: 20}
           - {name: search read kill, index: 26}
           - {name: search read kill, index: 27}
           - {name: search read kill, index: 28}
@@ -184,12 +150,12 @@ jobs:
           CODALAB_LINK_MOUNTS: /tmp
           CODALAB_ALWAYS_USE_AZURE_BLOB_BETA: 1
       - name: Save logs
-        if: (failure() || cancelled())
+        if: always()
         run: |
           mkdir /tmp/logs
           for c in $(docker ps -a --format="{{.Names}}"); do docker logs $c > /tmp/logs/$c.log 2> /tmp/logs/$c.err.log; done
       - name: Upload logs
-        if: (failure() || cancelled())
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: logs-test-azblob-docker-${{ matrix.test.name }}-${{ matrix.test.index }}
