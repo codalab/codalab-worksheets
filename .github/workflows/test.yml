@@ -114,7 +114,7 @@ jobs:
           - netcat netcurl
           - edit
           - open wopen
-          - store_add
+          - store_add parallel
         runtime: [docker, kubernetes]
         exclude:
           # netcat / netcurl not supported for kubernetes.
