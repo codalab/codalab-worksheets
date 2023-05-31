@@ -1,4 +1,6 @@
 import argparse
+from collections import defaultdict
+import json
 import os
 import random
 import string
@@ -9,7 +11,13 @@ import time
 from multiprocessing import cpu_count, Pool
 from threading import Thread
 
-from scripts.test_util import cleanup, run_command
+from scripts.test_util import cleanup, run_command, Timer
+
+
+def temp_path(file_name):
+    root = '/tmp'
+    return os.path.join(root, file_name)
+
 
 """
 Script to stress test CodaLab's backend. The following is a list of what's being tested:
@@ -38,6 +46,7 @@ class TestFile:
 
     def __init__(self, file_name, size_mb=1, content=None):
         self._file_name = file_name
+        self._file_path = temp_path(file_name)
         if content is None:
             self._size_mb = size_mb
             self._make_random_file()
@@ -45,27 +54,30 @@ class TestFile:
             self._write_content(content)
 
     def _make_random_file(self):
-        with open(self._file_name, 'wb') as file:
-            file.seek(self._size_mb * 1024 * 1024)  # Seek takes in file size in terms of bytes
+        with open(self._file_path, 'wb') as file:
+            file.seek(int(self._size_mb * 1024 * 1024))  # Seek takes in file size in terms of bytes
             file.write(b'0')
-        print('Created file {} of size {} MB.'.format(self._file_name, self._size_mb))
+        print('Created file {} of size {} MB.'.format(self._file_path, self._size_mb))
 
     def _write_content(self, content):
-        with open(self._file_name, 'w') as file:
+        with open(self._file_path, 'w') as file:
             file.write(content)
 
     def name(self):
         return self._file_name
 
+    def path(self):
+        return self._file_path
+
     def delete(self):
         '''
         Removes the file.
         '''
-        if os.path.exists(self._file_name):
-            os.remove(self._file_name)
-            print('Deleted file {}.'.format(self._file_name))
+        if os.path.exists(self._file_path):
+            os.remove(self._file_path)
+            print('Deleted file {}.'.format(self._file_path))
         else:
-            print('File {} has already been deleted.'.format(self._file_name))
+            print('File {} has already been deleted.'.format(self._file_path))
 
 
 class StressTestRunner:
@@ -101,70 +113,56 @@ class StressTestRunner:
         'sonarqube:latest',
         'tensorflow/tensorflow:latest',
     ]
-    _TAG = 'codalab-stress-test'
 
-    def __init__(self, cl, args):
+    def __init__(self, cl, args, tag='codalab-stress-test'):
         self._cl = cl
         self._args = args
+        self._TAG = tag
+        self._runs = defaultdict(list)
 
         # Connect to the instance the stress tests will run on
         print('Connecting to instance %s...' % args.instance)
         subprocess.call([self._cl, 'work', '%s::' % args.instance])
 
+    def time_function(self, fn):
+        t = Timer(handle_timeouts=False)
+        with t:
+            fn()
+            self.cleanup()
+        print(f'{fn.__name__} finished in {t.time_elapsed}')
+        self._runs[fn.__name__].append(t.time_elapsed)
+
+    def test_function(self, fn):
+        try:
+            self.time_function(fn)
+        except Exception as e:
+            print(f"Exception for function {fn.__name__}: {e}")
+            self._runs[fn.__name__].append(str(e))
+
     def run(self):
         print('Cleaning up stress test files from other runs...')
-        cleanup(self._cl, StressTestRunner._TAG, should_wait=False)
+        cleanup(self._cl, self._TAG, should_wait=True)
 
         print('Running stress tests...')
         self._start_heartbeat()
 
-        self._test_large_bundle_result()
-        print('_test_large_bundle_result finished')
-        self.cleanup()
+        functions = [
+            self._test_large_bundle_upload,
+            self._test_large_bundle_result,
+            self._test_many_gpu_runs,
+            self._test_multiple_cpus_runs_count,
+            self._test_many_bundle_uploads,
+            self._test_many_worksheet_copies,
+            self._test_parallel_runs,
+            self._test_many_docker_runs,
+            self._test_infinite_memory,
+            self._test_infinite_gpu,
+            self._test_infinite_disk,
+            self._test_many_disk_writes,
+        ]
 
-        self._test_large_bundle_upload()
-        print('_test_large_bundle_upload finished')
-        self.cleanup()
-
-        self._test_many_gpu_runs()
-        print('_test_many_gpu_runs finished')
-        self.cleanup()
-
-        self._test_multiple_cpus_runs_count()
-        print('_test_multiple_cpus_runs_count finished')
-        self.cleanup()
-
-        self._test_many_bundle_uploads()
-        print('_test_many_bundle_uploads finished')
-        self.cleanup()
-
-        self._test_many_worksheet_copies()
-        print('_test_many_worksheet_copies finished')
-        self.cleanup()
-
-        self._test_parallel_runs()
-        print('_test_parallel_runs finished')
-        self.cleanup()
-
-        self._test_many_docker_runs()
-        print('_test_many_docker_runs finished')
-        self.cleanup()
-
-        self._test_infinite_memory()
-        print('_test_infinite_memory finished')
-        self.cleanup()
-
-        self._test_infinite_gpu()
-        print('_test_infinite_gpu finished')
-        self.cleanup()
-
-        self._test_infinite_disk()
-        print('_test_infinite_disk finished')
-        self.cleanup()
-
-        self._test_many_disk_writes()
-        print('_test_many_disk_writes finished')
-        self.cleanup()
+        for fn in functions:
+            self.test_function(fn)
         print('Done.')
 
     def _start_heartbeat(self):
@@ -182,8 +180,8 @@ class StressTestRunner:
             if t.is_alive():
                 print('Heartbeat failed. Exiting...')
                 sys.exit(1)
-            # Have heartbeat run every 30 seconds
-            time.sleep(30)
+            # Have heartbeat run every 10 minutes
+            time.sleep(600)
 
     def _test_large_bundle_result(self) -> None:
         def create_large_file_in_bundle(large_file_size_gb: int) -> TestFile:
@@ -194,7 +192,7 @@ class StressTestRunner:
 
         self._set_worksheet('large_bundle_result')
         file: TestFile = create_large_file_in_bundle(self._args.large_dependency_size_gb)
-        self._run_bundle([self._cl, 'upload', file.name()])
+        self._run_bundle([self._cl, 'upload', file.path()])
         file.delete()
 
         dependency_uuid: str = self._run_bundle(
@@ -214,7 +212,7 @@ class StressTestRunner:
     def _test_large_bundle_upload(self) -> None:
         self._set_worksheet('large_bundle_upload')
         large_file: TestFile = TestFile('large_file', self._args.large_file_size_gb * 1000)
-        dependency_uuid: str = self._run_bundle([self._cl, 'upload', large_file.name()])
+        dependency_uuid: str = self._run_bundle([self._cl, 'upload', large_file.path()])
         large_file.delete()
         uuid: str = self._run_bundle(
             [
@@ -241,7 +239,7 @@ class StressTestRunner:
         self._set_worksheet('many_bundle_uploads')
         file = TestFile('small_file', 1)
         for _ in range(self._args.bundle_upload_count):
-            self._run_bundle([self._cl, 'upload', file.name()])
+            self._run_bundle([self._cl, 'upload', file.path()])
         file.delete()
 
     def _test_many_worksheet_copies(self):
@@ -249,7 +247,7 @@ class StressTestRunner:
         worksheet_uuid = self._set_worksheet('many_worksheet_copies')
         file = TestFile('copy_file', 1)
         for _ in range(10):
-            self._run_bundle([self._cl, 'upload', file.name()])
+            self._run_bundle([self._cl, 'upload', file.path()])
         file.delete()
 
         # Create many worksheets with current worksheet's content copied over
@@ -284,7 +282,7 @@ class StressTestRunner:
             return
         self._set_worksheet('infinite_memory')
         file = self._create_infinite_memory_script()
-        self._run_bundle([self._cl, 'upload', file.name()])
+        self._run_bundle([self._cl, 'upload', file.path()])
         self._run_bundle(
             [self._cl, 'run', ':' + file.name(), 'python ' + file.name()], expected_exit_code=1
         )
@@ -299,7 +297,7 @@ class StressTestRunner:
             return
         self._set_worksheet('infinite_gpu')
         file = self._create_infinite_memory_script()
-        self._run_bundle([self._cl, 'upload', file.name()])
+        self._run_bundle([self._cl, 'upload', file.path()])
         for _ in range(self._args.infinite_gpu_runs_count):
             self._run_bundle(
                 [self._cl, 'run', ':' + file.name(), 'python ' + file.name(), '--request-gpus=1'],
@@ -328,7 +326,7 @@ class StressTestRunner:
         worksheet_name = self._create_worksheet_name(run_name)
         uuid = run_command([self._cl, 'new', worksheet_name])
         run_command([self._cl, 'work', worksheet_name])
-        run_command([self._cl, 'wedit', '--tag=%s' % StressTestRunner._TAG])
+        run_command([self._cl, 'wedit', '--tag=%s' % self._TAG])
         return uuid
 
     def _create_worksheet_name(self, base_name):
@@ -340,17 +338,17 @@ class StressTestRunner:
         )
 
     def _run_bundle(self, args, expected_exit_code=0):
-        args.append('--tags=%s' % StressTestRunner._TAG)
+        args.append('--tags=%s' % self._TAG)
         return run_command(args, expected_exit_code)
 
     def cleanup(self):
         if self._args.bypass_cleanup:
             return
-        cleanup(self._cl, StressTestRunner._TAG, not self._args.bypass_wait)
+        cleanup(self._cl, self._TAG, not self._args.bypass_wait)
 
     @staticmethod
-    def _simple_run(cl):
-        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % StressTestRunner._TAG])
+    def _simple_run(cl, tag='codalab-stress-test'):
+        run_command([cl, 'run', 'echo stress testing...', '--tags=%s' % tag])
 
     @staticmethod
     def _heartbeat_cl_commands(cl):
@@ -393,6 +391,7 @@ def main():
     runner.run()
     duration_seconds = time.time() - start_time
     print("--- Completion Time: {} minutes---".format(duration_seconds / 60))
+    print(json.dumps(runner._runs))
 
 
 if __name__ == '__main__':

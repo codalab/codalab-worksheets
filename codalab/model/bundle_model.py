@@ -68,6 +68,7 @@ logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
+EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$')
 
 
 def str_key_dict(row):
@@ -78,6 +79,15 @@ def str_key_dict(row):
     This function converts the keys to strings.
     """
     return dict((str(k), v) for k, v in row.items())
+
+
+def is_academic_email(email):
+    """
+    This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
+    Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
+    """
+    email_suffix = EDU_USER_REGEXES.findall(email.lower())
+    return len(email_suffix) > 0
 
 
 @dataclass
@@ -222,16 +232,15 @@ class BundleModel(object):
         if len(uuids) == 0:
             return []
         with self.engine.begin() as connection:
-            rows = connection.execute(
-                select(
-                    [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
-                ).where(
-                    and_(
-                        cl_bundle_metadata.c.metadata_key == metadata_key,
-                        cl_bundle_metadata.c.bundle_uuid.in_(uuids),
-                    )
+            query = select(
+                [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
+            ).where(
+                and_(
+                    cl_bundle_metadata.c.metadata_key == metadata_key,
+                    cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                 )
-            ).fetchall()
+            )
+            rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
     def get_owner_ids(self, table, uuids):
@@ -1002,11 +1011,22 @@ class BundleModel(object):
             'cpu_usage': cpu_usage,
             'memory_usage': memory_usage,
         }
+        if self.get_bundle_state(bundle.uuid) != State.FAILED:
+            # If the bundle state is failed, it means it failed on uploading_results and data_size was wiped.
+            metadata_update['data_size'] = worker_run.disk_utilization
 
-        # Increment user time as we go to ensure user doesn't go over time quota.
-        if user_id == self.root_user_id and hasattr(bundle.metadata, 'time'):
-            time_increment = worker_run.container_time_total - bundle.metadata.time
+        # Increment user time and disk as we go to ensure user doesn't go over quota.
+        # time increment is the change in running time for this bundle since the last checkin.
+        # disk increment is the change in disk quota used for this bundle since the last checkin.
+        if user_id == self.root_user_id:
+            time_increment = worker_run.container_time_total
+            if hasattr(bundle.metadata, 'time'):
+                time_increment -= bundle.metadata.time
             self.increment_user_time_used(bundle.owner_id, time_increment)
+        disk_increment = worker_run.disk_utilization
+        if hasattr(bundle.metadata, 'data_size'):
+            disk_increment -= bundle.metadata.data_size
+        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
@@ -1082,10 +1102,6 @@ class BundleModel(object):
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
-        if user_id == self.root_user_id:
-            time_increment = worker_run.container_time_total - bundle.metadata.time
-            self.increment_user_time_used(bundle.owner_id, time_increment)
-
         # Build metadata
         metadata = {}
         if failure_message is not None:
@@ -1111,12 +1127,6 @@ class BundleModel(object):
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
-        worker = self.get_bundle_worker(bundle.uuid)
-
-        if worker['shared_file_system']:
-            # TODO(Ashwin): fix for --link.
-            self.update_disk_metadata(bundle, bundle_location)
-
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
         with self.engine.begin() as connection:
@@ -1129,10 +1139,9 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+    def get_data_size(self, bundle_location):
         """
-        Computes the disk use and data hash of the given bundle.
-        Updates the database rows for the bundle and user with the new disk use
+        Returns data_size (in bytes) of bundle at bundle_location
         """
         dirs_and_files = None
         if os.path.isdir(bundle_location):
@@ -1141,28 +1150,30 @@ class BundleModel(object):
             dirs_and_files = [], [bundle_location]
 
         # TODO(Ashwin): make this non-fs specific
-        data_size = path_util.get_size(bundle_location, dirs_and_files)
-        try:
-            if 'data_size' in bundle.metadata.__dict__:
-                current_data_size = bundle.metadata.data_size
-            else:
-                current_data_size = int(
-                    self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
-                )
-        except Exception:
-            current_data_size = 0
-        disk_increment = data_size - current_data_size
-        if enforce_disk_quota:
-            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
-            if disk_increment > disk_left:
-                raise UsageError(
-                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (data_size, disk_left)
-                )
+        return path_util.get_size(bundle_location, dirs_and_files)
 
+    def enforce_disk_quota(self, bundle, bundle_location):
+        """
+        Throws an error if saving bundle will cause user to go over disk quota left.
+        """
+        data_size = self.get_data_size(bundle_location)
+        disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+        if data_size > disk_left:
+            raise UsageError(
+                "Can't save bundle, user disk quota exceeded. Bundle size %s greater than user's disk quota left: %s"
+                % (data_size, disk_left)
+            )
+
+    def update_disk_metadata(self, bundle, bundle_location):
+        """
+        Update user's disk used with the size of the new bundle.
+
+        Only used by bundle_manager when creating make bundles.
+        """
+        data_size = self.get_data_size(bundle_location)
         bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
+        self.update_user_disk_used(bundle.owner_id)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
@@ -1195,9 +1206,11 @@ class BundleModel(object):
             # State isn't one we can check in for
             return False
 
-    def save_bundle(self, bundle):
+    def save_bundle(self, bundle, bundle_store_uuid=None):
         """
         Save a bundle. On success, sets the Bundle object's id from the result.
+        Parameters:
+        `bundle_store_uuid`: If set, bundle location is set to this value. Optional.
         """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
@@ -1211,6 +1224,12 @@ class BundleModel(object):
             result = connection.execute(cl_bundle.insert().values(bundle_value))
             self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            if bundle_store_uuid:
+                bundle_location_value = {
+                    'bundle_uuid': bundle.uuid,
+                    'bundle_store_uuid': bundle_store_uuid,
+                }
+                connection.execute(cl_bundle_location.insert().values(bundle_location_value))
             bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None, delete=False):
@@ -2460,18 +2479,19 @@ class BundleModel(object):
         :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
+
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex
 
             time_quota = (
                 self.default_user_info['edu_time_quota']
-                if email.endswith(".edu")
+                if is_academic_email(email)
                 else self.default_user_info['time_quota']
             )
             disk_quota = (
                 self.default_user_info['edu_disk_quota']
-                if email.endswith(".edu")
+                if is_academic_email(email)
                 else self.default_user_info['disk_quota']
             )
 
@@ -2714,21 +2734,41 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
-        """
-        User used some time.
-        """
-        user_info = self.get_user_info(user_id)
-        user_info['time_used'] += amount
-        self.update_user_info(user_info)
-
     def increment_user_disk_used(self, user_id: str, amount: int):
         """
-        Increment disk_used for user by amount
+        Increment disk_used for user by amount.
+        When incrementing values, we have to use a special query to ensure that we avoid
+        race conditions or deadlock arising from multiple threads calling functions
+        concurrently. We do this using with_for_update() and commit().
         """
-        user_info = self.get_user_info(user_id)
-        user_info['disk_used'] += amount
-        self.update_user_info(user_info)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.disk_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            disk_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(disk_used=disk_used)
+            )
+            connection.commit()
+
+    def increment_user_time_used(self, user_id: str, amount: int):
+        """
+        User used some time.
+        See comment for increment_user_disk_used.
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.time_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            time_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(time_used=time_used)
+            )
+            connection.commit()
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
@@ -2736,6 +2776,21 @@ class BundleModel(object):
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
+
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
+        return user_info['disk_quota'] - user_info['disk_used']
+
+    def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
+        return self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])['result'] or 0
+
+    def update_user_disk_used(self, user_id):
+        user_info = self.get_user_info(user_id)
+        # Compute from scratch for simplicity
+        user_info['disk_used'] = self._get_disk_used(user_id)
+        self.update_user_info(user_info)
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:
@@ -2761,11 +2816,6 @@ class BundleModel(object):
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
-
-    def get_user_disk_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        return user_info['disk_quota'] - user_info['disk_used']
 
     # ===========================================================================
     # OAuth-related methods follow!

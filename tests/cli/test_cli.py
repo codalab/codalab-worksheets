@@ -27,7 +27,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, run_command
+from scripts.test_util import Colorizer, Timer, run_command
 
 import argparse
 import hashlib
@@ -167,7 +167,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_state, timeout_seconds=1000):
+def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_states=False):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -176,6 +176,8 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         uuid: UUID of bundle to check state for
         expected_state: Expected state of bundle
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
+        exclude_final_states: If True, final states will be ignored and function will loop until
+            desired state is reached or timeout occurs.
     """
     start_time = time.time()
     while True:
@@ -186,7 +188,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif current_state in State.FINAL_STATES:
+        elif not exclude_final_states and current_state in State.FINAL_STATES:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
                     uuid, expected_state, current_state
@@ -300,10 +302,10 @@ def recursive_ls(path):
 
 
 def data_hash(uuid, worksheet=None):
+    """Temporarily download bundle contents.
+    Return a hash of those contents.
     """
-        Temporarily download bundle contents.
-        Return a hash of those contents.
-        """
+    _run_command([cl, 'wait', uuid])
     path = temp_path(uuid)
     if not os.path.exists(path):
         # Download the bundle to that path.
@@ -314,10 +316,8 @@ def data_hash(uuid, worksheet=None):
     sha1 = hashlib.sha1()
     files = recursive_ls(path)[1]
     for f in files:
-        try:
-            sha1.update(open(f, 'r').read().encode())
-        except Exception as e:
-            raise Exception("file name: {}. exception: {}".format(f, e))
+        sha1.update(open(f, 'r').read().encode())
+    shutil.rmtree(path)
     return sha1.hexdigest()
 
 
@@ -871,7 +871,7 @@ def test_upload1(ctx):
             _run_command([cl, 'work', worksheet_uuid])
             # expect to fail when we upload something more than 2k bytes
             check_contains(
-                'User disk quota exceeded',
+                'disk quota exceeded',
                 _run_command(
                     [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
                     expected_exit_code=1,
@@ -1516,7 +1516,7 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory=None,
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
     )
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
@@ -1539,6 +1539,52 @@ def test_make(ctx):
     _run_command([cl, 'rm', uuid1], 1)  # should fail
     _run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+
+    # test using make to replicate bundles between bundle stores
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        bundle_store_name = random_name()
+        bundle_store_uuid = _run_command(
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--url',
+                'azfs://devstoreaccount1/bundles',
+            ]
+        )
+
+        parent_child_store = [
+            # parent 1, parent 2, child
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 1) blob storage -> local filesystem
+            [[], [], ['--store', bundle_store_name]],  # 2) local filesystem -> blob storage
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 3) blob storage -> blob storage
+        ]
+        for store in parent_child_store:
+            uuid1 = _run_command([cl, 'upload', test_path('a.txt')] + store[0])
+            uuid2 = _run_command([cl, 'upload', test_path('b.txt')] + store[1])
+            # make
+            uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2] + store[2])
+            wait(uuid3)
+            check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
+            uuid4 = _run_command([cl, 'make', 'dep:' + uuid1] + store[2])
+            wait(uuid4)
+            check_equals(
+                test_path_contents('a.txt'), _run_command([cl, 'cat', uuid4 + '/dep']),
+            )
+            # clean up
+            _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+            _run_command([cl, 'rm', '-r', uuid2])
+        _run_command([cl, 'store', 'rm', bundle_store_uuid])
 
 
 @TestModule.register('worksheet')
@@ -1936,6 +1982,29 @@ def test_run(ctx):
     )
     _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
 
+    # Test that bundle fails when run without sufficient disk quota
+    # Note: We add 1MB to the disk quota since that's the minimum disk allowed to be requested
+    # by a container.
+    # We then create a file with size 1MB + 10 bytes, since that should now violate the disk quota.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
+    uuid = _run_command(
+        [cl, 'run', 'head -c 1000010 /dev/zero > test.txt; sleep 100000',],
+        request_disk=None,
+        request_memory=None,
+    )
+    wait_until_state(
+        uuid, State.KILLED, timeout_seconds=500, exclude_final_states=True
+    )  # exclude final states because upon the initial upload attempt, the bundle state is set to FAILED
+    check_contains(
+        'Kill requested: User disk quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'),
+    )
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
@@ -2063,13 +2132,61 @@ def test_run(ctx):
 
 
 @TestModule.register('time')
-def test_time(ctx):
-    """Various tests that ensure the timing of runs is still fast."""
+def test_time(ctx, timeout=True):
+    """ Basic tests. """
+    # Uploading. Sweep file sizes.
+    FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
+    TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
+    temp_file_path = temp_path(random_name())
+    f = open(temp_file_path, 'w+')
+    for i, size in enumerate(FILE_SIZES):
+        # Have to use subprocess because redirection is impossible with _run_command.
+        subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
+        with Timer(TIMEOUTS[i]):
+            start = time.time()
+            uuid = _run_command([cl, 'upload', temp_file_path])
+            wait_until_state(uuid, State.READY, timeout_seconds=1)
+            duration = time.time() - start
+            print(f"{duration}")
+    _run_command(['rm', temp_file_path])
+
+    # Run simple bundle.
+    start = time.time()
     uuid = _run_command([cl, 'run', 'echo hello'])
     wait_until_state(uuid, State.READY, timeout_seconds=20)
+    duration = time.time() - start
+    print(f"{duration}")
 
-    uuid = _run_command([cl, 'run', f'dep:{uuid}', 'ls dep'])
-    wait_until_state(uuid, State.READY, timeout_seconds=20)
+    # Loading bundle info
+    with Timer(0.1):
+        start = time.time()
+        get_info(uuid, 'name')
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Loading a worksheet and getting worksheet info
+    with Timer(0.1):
+        start = time.time()
+        _run_command([cl, 'new', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with Timer(0.3):
+        start = time.time()
+        _run_command([cl, 'work', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with Timer(0.2):
+        start = time.time()
+        _run_command([cl, 'wrm', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Removing a bundle
+    with Timer(0.2):
+        start = time.time()
+        _run_command([cl, 'rm', uuid])
+        duration = time.time() - start
+        print(f"{duration}")
 
 
 @TestModule.register('link')
@@ -2252,8 +2369,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -2267,11 +2383,6 @@ def test_write(ctx):
     _run_command([cl, 'wait', uuid])
     check_equals('hello world', _run_command([cl, 'cat', target]))
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
-
-
-"""
-This we'll have ot think about how to migrate...
-"""
 
 
 @TestModule.register('mimic')
@@ -2462,7 +2573,7 @@ def test_resources(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('http://www.msftconnecttest.com/connecttest.txt').read()" """
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above

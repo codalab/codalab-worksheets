@@ -1700,10 +1700,26 @@ class BundleCLI(object):
         # Support anonymous make calls by replacing None keys with ''
         targets = [('' if key is None else key, val) for key, val in targets]
         metadata = self.get_missing_metadata(MakeBundle, args)
+
+        # Add new bundle's location. If the user specifies the storage using `--store`, the bundle will be added to that storage.
+        # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
+        destination_bundle_store = metadata.get('store')
+        params = {'worksheet': worksheet_uuid}
+        if destination_bundle_store:
+            # 1) Read destination store from --store if user has specified it
+            storage_info = client.fetch_one(
+                'bundle_stores',
+                params={
+                    'name': destination_bundle_store,
+                    'include': ['uuid', 'storage_type', 'url'],
+                },
+            )
+            params['bundle_store_uuid'] = storage_info['uuid']
+
         new_bundle = client.create(
             'bundles',
             self.derive_bundle(MakeBundle.BUNDLE_TYPE, None, targets, metadata),
-            params={'worksheet': worksheet_uuid},
+            params=params,
         )
 
         print(new_bundle['uuid'], file=self.stdout)
@@ -1738,6 +1754,7 @@ class BundleCLI(object):
                     'parent_path': parent_target.subpath,
                 }
             )
+
         return {
             'bundle_type': bundle_type,
             'command': command,
