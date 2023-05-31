@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib import path_util
+from codalab.lib.formatting import parse_bytes
 from codalab.lib.zip_util import pack_files_for_upload
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
@@ -2992,8 +2993,8 @@ def test_workers(ctx):
     cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
     cpus_used, cpus_total = (int(i) for i in cpus_original.split("/"))
     gpus_used, gpus_total = (int(i) for i in gpus_original.split("/"))
-    free_memory_original = int(free_memory_original)
-    free_disk_original = int(free_disk_original)
+    free_memory_original = parse_bytes(free_memory_original)
+    free_disk_original = parse_bytes(free_disk_original)
     uuid = _run_command(
         [
             cl,
