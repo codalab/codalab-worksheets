@@ -233,6 +233,8 @@ def _create_bundles():
     - `worksheet`: UUID of the parent worksheet of the new bundle, add to
       this worksheet if not detached or shadowing another bundle. The new
       bundle also inherits permissions from this worksheet.
+    - `bundle_store`: UUID of the bundle store that the new bundle
+      should be stored on. Optional.
     - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
       as an item immediately after this bundle in its parent worksheet).
     - `detached`: 1 if should not add new bundle to any worksheet,
@@ -245,6 +247,7 @@ def _create_bundles():
       bundles from being executed by the BundleManager. Default is 0.
     """
     worksheet_uuid = request.query.get('worksheet')
+    bundle_store_uuid = request.query.get('bundle_store')
     shadow_parent_uuid = request.query.get('shadow')
     after_sort_key = request.query.get('after_sort_key')
     detached = query_get_bool('detached', default=False)
@@ -299,7 +302,7 @@ def _create_bundles():
         bundle = bundle_class(bundle, strict=False)
 
         # Save bundle into model
-        local.model.save_bundle(bundle)
+        local.model.save_bundle(bundle, bundle_store_uuid=bundle_store_uuid)
 
         if not detached:
             # Inherit worksheet permissions; else, only the user will have all permissions on the bundle
