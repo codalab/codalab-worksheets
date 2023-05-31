@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v3
         with:
           node-version: 14.x
       - name: Set up Python 3.7
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v3
         with:
           node-version: 14.x
       - run: npm ci
@@ -102,8 +102,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download disk
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - worker_manager service
           - run time
@@ -115,7 +114,7 @@ jobs:
           - netcat netcurl
           - edit
           - open wopen
-          - store_add
+          - store_add parallel
         runtime: [docker, kubernetes]
         exclude:
           # netcat / netcurl not supported for kubernetes.
@@ -290,8 +289,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - basic status batch anonymous unicode rest1 upload1 download
+          - basic status batch anonymous unicode rest1 upload1 download disk
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - run
           - search read kill write mimic workers
@@ -503,8 +501,7 @@ jobs:
     strategy:
       matrix:
         test:
-          - disk
-          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download
+          - unittest gen-rest-docs gen-cli-docs gen-readthedocs basic auth status batch anonymous competition unicode rest1 upload1 upload2 upload3 upload4 download disk
           - refs binary rm make worksheet_search worksheet_tags bundle_freeze_unfreeze worksheet_freeze_unfreeze detach perm search_time groups
           - worker_manager service
           - run time
