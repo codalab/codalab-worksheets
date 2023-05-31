@@ -527,6 +527,11 @@ for worker_manager_type in ['cpu', 'gpu']:
             type=str,
             help='Path to the generated SSL cert for the Kubernetes worker manager',
         ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cert',
+            type=str,
+            help='Contents of the generated SSL cert for the Kubernetes worker manager',
+        ),
     ]
 
 
