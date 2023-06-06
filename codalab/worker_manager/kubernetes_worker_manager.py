@@ -48,6 +48,12 @@ class KubernetesWorkerManager(WorkerManager):
             required=True,
         )
         subparser.add_argument(
+            '--cert',
+            type=str,
+            help='Contents of the SSL cert for the Kubernetes cluster',
+            required=True,
+        )
+        subparser.add_argument(
             '--nfs-volume-name', type=str, help='Name of the persistent volume for the NFS server.',
         )
 
@@ -76,6 +82,7 @@ class KubernetesWorkerManager(WorkerManager):
         self.auth_token = args.auth_token
         self.cluster_host = args.cluster_host
         self.cert_path = args.cert_path
+        self.cert = args.cert
 
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
@@ -121,6 +128,7 @@ class KubernetesWorkerManager(WorkerManager):
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
         command.extend(['--kubernetes-cert-path', self.cert_path])
+        command.extend(['--kubernetes-cert', self.cert])
 
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
@@ -138,7 +146,7 @@ class KubernetesWorkerManager(WorkerManager):
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
-            'metadata': {'name': worker_name},
+            'metadata': {'name': worker_name, 'labels': {'app': 'cl-worker'}},
             'spec': {
                 'containers': [
                     {
@@ -158,6 +166,27 @@ class KubernetesWorkerManager(WorkerManager):
                         ],
                     }
                 ],
+                # Only one worker pod should be scheduled per node.
+                'affinity': {
+                    'podAntiAffinity': {
+                        'requiredDuringSchedulingIgnoredDuringExecution': [
+                            {
+                                'podAffinityTerm': {
+                                    'labelSelector': {
+                                        "matchExpressions": [
+                                            {
+                                                "key": "app",
+                                                "operator": "In",
+                                                "values": ["cl-worker"],
+                                            }
+                                        ]
+                                    },
+                                },
+                                'topologyKey': 'topology.kubernetes.io/hostname',
+                            }
+                        ]
+                    }
+                },
                 'volumes': [
                     {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
                     {
