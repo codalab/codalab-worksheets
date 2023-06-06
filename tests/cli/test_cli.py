@@ -1228,6 +1228,18 @@ def test_upload_default_bundle_store(ctx):
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
 
+@TestModule.register('parallel')
+def test_parallel(ctx):
+    """Ensures bundles can run in parallel."""
+    uuid = _run_command([cl, 'run', 'sleep 60'])
+    wait_until_state(uuid, State.RUNNING)
+    uuid2 = _run_command([cl, 'run', 'sleep 60'])
+    wait_until_state(uuid2, State.RUNNING)
+    check_equals(get_info(uuid, "state"), State.RUNNING)
+    wait(uuid)
+    wait(uuid2)
+
+
 @TestModule.register('store_add')
 def test_store_add(ctx):
     """
@@ -1516,7 +1528,7 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory=None,
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
     )
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
