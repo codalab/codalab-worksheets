@@ -13,7 +13,6 @@ class MultiReaderFileStream(BytesIO):
     # MAX memory usage <= MAX_BUF_SIZE + max(num_bytes called in read)
     MAX_BUF_SIZE = 1024 * 1024 * 1024  # 10 MiB for test
 
-
     def __init__(self, fileobj):
         self._bufs = [BytesBuffer() for _ in range(0, self.NUM_READERS)]
         self._pos = [0 for _ in range(0, self.NUM_READERS)]
@@ -49,7 +48,6 @@ class MultiReaderFileStream(BytesIO):
             self._current_max_buf_length = max(self._current_max_buf_length, len(self._bufs[i]))
         # print(f"find largest buffer:  {self._current_max_buf_length} in thread: {threading.current_thread().name}")
 
-
     def read(self, index: int, num_bytes=None):  # type: ignore
         """Read the specified number of bytes from the associated file.
         index: index that specifies which reader is reading.
@@ -72,7 +70,6 @@ class MultiReaderFileStream(BytesIO):
         s = self._bufs[index].read(num_bytes)
         self.find_largest_buffer()
         # print("Current thread name: ", threading.current_thread().name)
-
 
         self._pos[index] += len(s)
         return s
