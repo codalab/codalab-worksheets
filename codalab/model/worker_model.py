@@ -458,7 +458,6 @@ class WorkerModel(object):
         Note, only the worker should call this method with autoretry set to
         False. See comments below.
         """
-        self._ping_worker_ws(worker_id)
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
