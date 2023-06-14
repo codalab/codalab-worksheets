@@ -22,7 +22,6 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib import path_util
-from codalab.lib.formatting import parse_size
 from codalab.lib.zip_util import pack_files_for_upload
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
@@ -2990,17 +2989,17 @@ def test_workers(ctx):
 
     # Make sure that when we run a worker that uses resources, the worker's available resources are decremented accordingly.
     cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
-    cpus_used, cpus_total = (int(i) for i in cpus_original.split("/"))
-    gpus_used, gpus_total = (int(i) for i in gpus_original.split("/"))
+    cpus_available, cpus_total = (int(i) for i in cpus_original.split("/"))
+    gpus_available, gpus_total = (int(i) for i in gpus_original.split("/"))
     uuid = _run_command(
         [
             cl,
             'run',
             'sleep 100',
             '--request-cpus',
-            str(cpus_total - cpus_used),
+            str(cpus_available),
             '--request-gpus',
-            str(gpus_total - gpus_used),
+            str(cpus_available),
         ],
         request_memory="100m",
         request_disk="100m",
@@ -3010,8 +3009,8 @@ def test_workers(ctx):
     lines = result.split("\n")
     worker_info = lines[2].split()
     cpus, gpus, free_memory, free_disk = worker_info[1:5]
-    check_equals(f'{cpus_total}/{cpus_total}', cpus)
-    check_equals(f'{gpus_total}/{gpus_total}', gpus)
+    check_equals(f'0/{cpus_total}', cpus)
+    check_equals(f'0/{gpus_total}', gpus)
 
     wait(uuid)
     result = _run_command([cl, 'workers'])
