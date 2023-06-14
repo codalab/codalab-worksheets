@@ -384,11 +384,10 @@ class BundleManager(object):
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
                 self._model.transition_bundle_worker_offline(bundle)
-            elif self._worker_model.send_json_message(
-                worker['socket_id'],
-                worker['worker_id'],
+            elif self._worker_model.connect_and_send(
                 {'type': 'mark_finalized', 'uuid': bundle.uuid},
-                1,
+                worker['worker_id'],
+                20,
             ):
                 logger.info(
                     'Acknowledged finalization of run bundle {} on worker {}'.format(
@@ -741,11 +740,10 @@ class BundleManager(object):
             path = self._bundle_store.get_bundle_location(bundle.uuid)
             remove_path(path)
             os.mkdir(path)
-        if self._worker_model.send_json_message(
-            worker['socket_id'],
-            worker['worker_id'],
+        if self._worker_model.connect_and_send(
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
-            1,
+            worker['worker_id'],
+            20,
         ):
             logger.info(
                 'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
