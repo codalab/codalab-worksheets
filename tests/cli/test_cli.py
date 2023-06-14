@@ -2992,8 +2992,6 @@ def test_workers(ctx):
     cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
     cpus_used, cpus_total = (int(i) for i in cpus_original.split("/"))
     gpus_used, gpus_total = (int(i) for i in gpus_original.split("/"))
-    free_memory_original = parse_size(free_memory_original)
-    free_disk_original = parse_size(free_disk_original)
     uuid = _run_command(
         [
             cl,
@@ -3004,8 +3002,8 @@ def test_workers(ctx):
             '--request-gpus',
             str(gpus_total - gpus_used),
         ],
-        request_memory=str(free_memory_original - 1024),
-        request_disk=str(free_disk_original - 1024),
+        request_memory="100m",
+        request_disk="100m",
     )
     wait_until_state(uuid, State.RUNNING)
     result = _run_command([cl, 'workers'])
