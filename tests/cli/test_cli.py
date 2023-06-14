@@ -22,7 +22,7 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib import path_util
-from codalab.lib.formatting import parse_size, size_str
+from codalab.lib.formatting import parse_size
 from codalab.lib.zip_util import pack_files_for_upload
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
