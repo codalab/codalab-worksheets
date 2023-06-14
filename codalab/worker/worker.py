@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import io
 import os
 import shutil
 from subprocess import PIPE, Popen
@@ -13,6 +14,7 @@ import sys
 from typing import Optional, Set, Dict
 from types import SimpleNamespace
 import websockets
+import json
 
 import psutil
 
@@ -89,7 +91,8 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
-        preemptible=False,  # type: bool
+        preemptible=False,  # type: bool,
+        num_threads=10  # type: int. Number of threads to have running concurrently waiting for socket messages.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -136,6 +139,8 @@ class Worker:
 
         self.ws_server = ws_server
 
+        self.num_threads = num_threads
+
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
         self.init_docker_networks(docker_network_prefix)
@@ -158,6 +163,7 @@ class Worker:
         # Lock ensures listening thread and main thread don't simultaneously
         # access the runs dictionary, thereby causing race conditions.
         self._lock = RLock()
+
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
@@ -291,6 +297,81 @@ class Worker:
                  False if neither of the two conditions are met.
         """
         return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
+    
+    def process_message(self, message):
+        """
+        Process messages from the rest server in the worker.
+
+        :param message: (list(dict)) A list of JSON messages for the worker.
+        :return: None
+        """
+        message = json.loads(message.decode())
+        with self._lock:
+            # Stop processing any new runs received from server
+            if not message or self.terminate_and_restage or self.terminate:
+                return
+            action_type = message['type']
+            logger.debug('Received %s message: %s', action_type, message)
+            if action_type == 'run':
+                self.initialize_run(message['bundle'], message['resources'])
+            else:
+                uuid = message['uuid']
+                socket_id = message.get('socket_id', None)
+                if uuid not in self.runs:
+                    if action_type in ['read', 'netcat']:
+                        self.read_run_missing(socket_id)
+                    return
+                if action_type == 'kill':
+                    kill_message = 'Kill requested'
+                    if 'kill_message' in message:
+                        kill_message = message['kill_message']
+                    self.kill(uuid, kill_message)
+                elif action_type == 'mark_finalized':
+                    self.mark_finalized(uuid)
+                elif action_type == 'read':
+                    self.read(socket_id, uuid, message['path'], message['read_args'])
+                elif action_type == 'netcat':
+                    self.netcat(socket_id, uuid, message['port'], message['message'])
+                elif action_type == 'write':
+                    self.write(uuid, message['subpath'], message['string'])
+                else:
+                    logger.warning("Unrecognized action type from server: %s", action_type)
+    
+    async def listen(self, socket_id):
+        logger.warning("Started websocket listening thread")
+        while not self.terminate:
+            logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}/{socket_id}")
+            try:
+                async with websockets.connect(
+                    f"{self.ws_server}/worker/{self.id}/{socket_id}", max_queue=1
+                ) as websocket:
+                    async def receive_msg():
+                        # Note: we set a timeout below so that we can check the termination
+                        # condition every <timeout_secs> seconds to ensure the worker
+                        # doesn't run forever.
+                        message = await asyncio.wait_for(websocket.recv(), timeout=5)
+                        logger.error(f"Thread {socket_id} processing messsage: {message}")
+                        self.process_message(message)
+
+                    while not self.terminate:
+                        try:
+                            await receive_msg()
+                        except asyncio.TimeoutError:
+                            pass
+                        except websockets.exceptions.ConnectionClosed:
+                            logger.warning("Websocket connection closed, starting a new one...")
+                            break
+                        except Exception as e:
+                            logger.error(traceback.print_exc())
+            except Exception as e:
+                logger.error(f"Miscellaneous exception connecting to ws-server: {traceback.print_exc()}")
+                time.sleep(3)
+
+    def listen_thread_fn(self):
+        coroutines = [self.listen(i) for i in range(self.num_threads)]
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(asyncio.gather(*coroutines))
 
     def start(self):
         """Return whether we ran anything."""
@@ -301,39 +382,8 @@ class Worker:
         if not self.shared_file_system:
             self.dependency_manager.start()
 
-        async def listen(self):
-            logger.warning("Started websocket listening thread")
-            while not self.terminate:
-                logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}")
-                async with websockets.connect(
-                    f"{self.ws_server}/worker/{self.id}", max_queue=1
-                ) as websocket:
-
-                    async def receive_msg():
-                        await websocket.send("a")
-                        data = await asyncio.wait_for(websocket.recv(), timeout=10)
-                        logger.warning(
-                            f"Got websocket message, got data: {data}, going to check in now."
-                        )
-                        self.checkin()
-                        self.last_checkin = time.time()
-
-                    while not self.terminate:
-                        try:
-                            await receive_msg()
-                        except asyncio.TimeoutError:
-                            pass
-                        except websockets.exceptions.ConnectionClosed:
-                            logger.warning("Websocket connection closed, starting a new one...")
-                            break
-
-        def listen_thread_fn(self):
-            futures = [listen(self)]
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(asyncio.wait(futures))
-
-        self.listen_thread = threading.Thread(target=listen_thread_fn, args=[self])
+        asyncio.new_event_loop()
+        self.listen_thread = threading.Thread(target=self.listen_thread_fn)
         self.listen_thread.start()
         while not self.terminate:
             try:
@@ -394,8 +444,7 @@ class Worker:
         Blocks until cleanup is complete and it is safe to quit
         """
         logger.info("Stopping Worker")
-        if self.listen_thread:
-            self.listen_thread.join()
+        self.listen_thread.join()
         self.image_manager.stop()
         if not self.shared_file_system:
             self.dependency_manager.stop()
@@ -477,6 +526,7 @@ class Worker:
                 for dep_key in self.dependency_manager.all_dependencies
             ]
 
+
     def checkin(self):
         """
         Checkin with the server and get a response. React to this response.
@@ -501,7 +551,7 @@ class Worker:
                 'preemptible': self.preemptible,
             }
             try:
-                response = self.bundle_service.checkin(self.id, request)
+                self.bundle_service.checkin(self.id, request)
                 logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
             except BundleServiceException as ex:
@@ -512,41 +562,6 @@ class Worker:
                     )
                     time.sleep(self.CHECKIN_COOLDOWN)
                 self.last_checkin_successful = False
-                response = None
-            # Stop processing any new runs received from server
-            if not response or self.terminate_and_restage or self.terminate:
-                return
-            if type(response) is not list:
-                response = [response]
-            for action in response:
-                if not action:
-                    continue
-                action_type = action['type']
-                logger.debug('Received %s message: %s', action_type, action)
-                if action_type == 'run':
-                    self.initialize_run(action['bundle'], action['resources'])
-                else:
-                    uuid = action['uuid']
-                    socket_id = action.get('socket_id', None)
-                    if uuid not in self.runs:
-                        if action_type in ['read', 'netcat']:
-                            self.read_run_missing(socket_id)
-                        return
-                    if action_type == 'kill':
-                        kill_message = 'Kill requested'
-                        if 'kill_message' in action:
-                            kill_message = action['kill_message']
-                        self.kill(uuid, kill_message)
-                    elif action_type == 'mark_finalized':
-                        self.mark_finalized(uuid)
-                    elif action_type == 'read':
-                        self.read(socket_id, uuid, action['path'], action['read_args'])
-                    elif action_type == 'netcat':
-                        self.netcat(socket_id, uuid, action['port'], action['message'])
-                    elif action_type == 'write':
-                        self.write(uuid, action['subpath'], action['string'])
-                    else:
-                        logger.warning("Unrecognized action type from server: %s", action_type)
             self.process_runs()
 
     def process_runs(self):
@@ -825,7 +840,7 @@ class Worker:
                         break
                     total_data.append(data)
                 s.close()
-                reply(None, {}, b''.join(total_data))
+                reply(None, {}, io.BytesIO(b''.join(total_data)))
             except BundleServiceException:
                 traceback.print_exc()
             except Exception as e:
@@ -834,6 +849,7 @@ class Worker:
                 reply(err)
 
         threading.Thread(target=netcat_fn).start()
+        time.sleep(30)
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]

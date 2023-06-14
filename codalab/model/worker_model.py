@@ -42,6 +42,7 @@ class WorkerModel(object):
 
     def __init__(self, engine, socket_dir, ws_server):
         self._engine = engine
+        self._socket_dir = socket_dir
         self._ws_server = ws_server
 
     def worker_checkin(
@@ -93,15 +94,16 @@ class WorkerModel(object):
                 )
             ).fetchone()
             if existing_row:
+                socket_id = existing_row.socket_id
                 conn.execute(
                     cl_worker.update()
                     .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
                     .values(worker_row)
                 )
             else:
-                # TODO: migrate worker table to not have socket id.
+                socket_id = self.allocate_socket(user_id, worker_id, conn)
                 worker_row.update(
-                    {'user_id': user_id, 'worker_id': worker_id}
+                    {'user_id': user_id, 'worker_id': worker_id, 'socket_id': socket_id}
                 )
                 conn.execute(cl_worker.insert().values(worker_row))
 
@@ -124,6 +126,7 @@ class WorkerModel(object):
                         user_id=user_id, worker_id=worker_id, dependencies=blob
                     )
                 )
+        return socket_id
 
     @staticmethod
     def _serialize_dependencies(dependencies):
@@ -132,6 +135,56 @@ class WorkerModel(object):
     @staticmethod
     def _deserialize_dependencies(blob):
         return list(map(tuple, json.loads(blob)))
+    
+    def allocate_socket(self, user_id, worker_id, conn=None):
+        """
+        Allocates a unique socket ID.
+        """
+
+        def do(conn):
+            socket_row = {'user_id': user_id, 'worker_id': worker_id}
+            return conn.execute(cl_worker_socket.insert().values(socket_row)).inserted_primary_key[
+                0
+            ]
+
+        if conn is None:
+            with self._engine.begin() as conn:
+                return do(conn)
+        else:
+            return do(conn)
+
+    def deallocate_socket(self, socket_id):
+        """
+        Cleans up the socket, removing the associated file in the socket
+        directory.
+        """
+        self._cleanup_socket(socket_id)
+        with self._engine.begin() as conn:
+            conn.execute(cl_worker_socket.delete().where(cl_worker_socket.c.socket_id == socket_id))
+
+    def _socket_path(self, socket_id):
+        return os.path.join(self._socket_dir, str(socket_id))
+
+    def _cleanup_socket(self, socket_id):
+        try:
+            os.remove(self._socket_path(socket_id))
+        except OSError:
+            pass
+
+    def start_listening(self, socket_id):
+        """
+        Returns a Python socket object that can be used to accept connections on
+        the socket with the given ID. This object should be passed to the
+        get_ methods below. as in:
+
+            with closing(worker_model.start_listening(socket_id)) as sock:
+                message = worker_model.get_json_message_with_sock(sock, timeout_secs)
+        """
+        self._cleanup_socket(socket_id)
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.bind(self._socket_path(socket_id))
+        sock.listen(0)
+        return sock
 
     def worker_cleanup(self, user_id, worker_id):
         """
@@ -139,6 +192,24 @@ class WorkerModel(object):
         as the socket directory.
         """
         with self._engine.begin() as conn:
+            socket_rows = conn.execute(
+                cl_worker_socket.select().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                    )
+                )
+            ).fetchall()
+            for socket_row in socket_rows:
+                self._cleanup_socket(socket_row.socket_id)
+            conn.execute(
+                cl_worker_socket.delete().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                    )
+                )
+            )
             conn.execute(
                 cl_worker_run.delete().where(
                     and_(cl_worker_run.c.user_id == user_id, cl_worker_run.c.worker_id == worker_id)
@@ -185,6 +256,7 @@ class WorkerModel(object):
                 'memory_bytes': row.memory_bytes,
                 'free_disk_bytes': row.free_disk_bytes,
                 'checkin_time': row.checkin_time,
+                'socket_id': row.socket_id,
                 # run_uuids will be set later
                 'run_uuids': [],
                 'dependencies': row.dependencies
@@ -226,7 +298,7 @@ class WorkerModel(object):
                 )
     
     def _connect(self, worker_id, timeout_secs=20):
-        with connect(f"{self._ws_server}/server/connect/{worker_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
+        with connect(f"{self._ws_server}/server/connect/{worker_id}") as websocket:
             socket_id = json.loads(websocket.recv())['socket_id']
         return socket_id
 
@@ -236,7 +308,7 @@ class WorkerModel(object):
         """
         socket_id = None
         start_time = time.time()
-        while time.time() - start_time < timeout_secs:
+        while time.time() - start_time < 1000000000000:
             try:
                 socket_id = self._connect(worker_id, timeout_secs)
             except Exception as e:
@@ -444,6 +516,6 @@ class WorkerModel(object):
         """
         socket_id = self.connect_to_ws(worker_id)
         if not socket_id: return False
-        sent = self.send_json_message(data, worker_id, socket_id, timeout_secs)
+        sent = self.send_json(data, worker_id, socket_id, timeout_secs)
         self.disconnect(worker_id, socket_id)
         return sent

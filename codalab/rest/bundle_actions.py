@@ -32,7 +32,7 @@ def create_bundle_actions():
         # The state updates of bundles in PREPARING, RUNNING, or FINALIZING state will be handled on the worker side.
         if worker:
             precondition(
-                local.worker_model.connect_and_send(
+                local.worker_model.connect_and_send_json(
                      action, worker['worker_id'], 60
                 ),
                 'Unable to reach worker.',

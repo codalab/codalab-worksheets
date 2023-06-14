@@ -60,7 +60,7 @@ def checkin(worker_id):
                     'Kill requested: User time quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
-                local.worker_model.connect_and_send(
+                local.worker_model.connect_and_send_json(
                     {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message},
                     worker_id
                 )
@@ -70,7 +70,7 @@ def checkin(worker_id):
                     'Kill requested: User disk quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
-                local.worker_model.connect_and_send(
+                local.worker_model.connect_and_send_json(
                     {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message},
                     worker_id
                 )

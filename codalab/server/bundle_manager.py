@@ -384,7 +384,7 @@ class BundleManager(object):
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
                 self._model.transition_bundle_worker_offline(bundle)
-            elif self._worker_model.connect_and_send(
+            elif self._worker_model.connect_and_send_json(
                 {'type': 'mark_finalized', 'uuid': bundle.uuid},
                 worker['worker_id'],
                 20,
@@ -397,6 +397,8 @@ class BundleManager(object):
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 # TODO(Ashwin): fix this -- bundle location could be linked.
                 self._model.transition_bundle_finished(bundle, bundle_location)
+            else:
+                logger.error(f"No finalization occurred for bundle {bundle.uuid}")
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -740,7 +742,7 @@ class BundleManager(object):
             path = self._bundle_store.get_bundle_location(bundle.uuid)
             remove_path(path)
             os.mkdir(path)
-        if self._worker_model.connect_and_send(
+        if self._worker_model.connect_and_send_json(
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
             worker['worker_id'],
             20,
