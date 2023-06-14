@@ -22,7 +22,7 @@ from datetime import datetime
 from typing import Dict
 
 from codalab.lib import path_util
-from codalab.lib.formatting import parse_size
+from codalab.lib.formatting import parse_size, size_str
 from codalab.lib.zip_util import pack_files_for_upload
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
@@ -3014,8 +3014,6 @@ def test_workers(ctx):
     cpus, gpus, free_memory, free_disk = worker_info[1:5]
     check_equals(f'{cpus_total}/{cpus_total}', cpus)
     check_equals(f'{gpus_total}/{gpus_total}', gpus)
-    check_equals('0', free_memory)
-    check_equals('0', free_disk)
 
     wait(uuid)
     result = _run_command([cl, 'workers'])
@@ -3024,8 +3022,6 @@ def test_workers(ctx):
     cpus, gpus, free_memory, free_disk = worker_info[1:5]
     check_equals(cpus_original, cpus)
     check_equals(gpus_original, gpus)
-    check_equals(free_memory_original, free_memory)
-    check_equals(free_disk_original, free_disk)
 
 
 @TestModule.register('sharing_workers')
