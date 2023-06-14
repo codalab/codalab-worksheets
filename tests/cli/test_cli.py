@@ -2950,6 +2950,10 @@ def test_unicode(ctx):
 
 @TestModule.register('workers')
 def test_workers(ctx):
+    # Spin up a run in case a worker isn't already running, so it can be started by the worker manager.
+    uuid = _run_command([cl, 'run', 'echo'])
+    wait(uuid)
+
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
 
@@ -2982,6 +2986,39 @@ def test_workers(ctx):
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
     assert len(worker_info) >= 10
+
+    # Make sure that when we run a worker that uses resources, the worker's available resources are decremented accordingly.
+    cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
+    cpus_available, cpus_total = (int(i) for i in cpus_original.split("/"))
+    gpus_available, gpus_total = (int(i) for i in gpus_original.split("/"))
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'sleep 100',
+            '--request-cpus',
+            str(cpus_available),
+            '--request-gpus',
+            str(cpus_available),
+        ],
+        request_memory="100m",
+        request_disk="100m",
+    )
+    wait_until_state(uuid, State.RUNNING)
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+    worker_info = lines[2].split()
+    cpus, gpus, free_memory, free_disk = worker_info[1:5]
+    check_equals(f'0/{cpus_total}', cpus)
+    check_equals(f'0/{gpus_total}', gpus)
+
+    wait(uuid)
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+    worker_info = lines[2].split()
+    cpus, gpus, free_memory, free_disk = worker_info[1:5]
+    check_equals(cpus_original, cpus)
+    check_equals(gpus_original, gpus)
 
 
 @TestModule.register('sharing_workers')
