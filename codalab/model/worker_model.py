@@ -439,7 +439,7 @@ class WorkerModel(object):
 
         If no messages are received within timeout_secs seconds, returns None.
         """
-        fileobj = self.get_stream(sock, timeout_secs)
+        fileobj = self.recv_stream(sock, timeout_secs)
 
         if fileobj is None:
             return None
