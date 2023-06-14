@@ -120,9 +120,6 @@ async def exchange(from_ws, to_ws, worker_id, socket_id):
         try:
             data = await from_ws.recv()
             await to_ws.send(data)
-            ack = await to_ws.recv()
-            if (ack != ACK): raise ValueError("Data receipt not properly acknowledged.")
-            await from_ws.send(ACK)  # Tell the from_websocket when the recipient has received the message.
         except websockets.exceptions.ConnectionClosed:
             break
         # ahhh... this won't work. When the message is sent, it's actually buffered at the client, so it being sent doesn't mean it was received...

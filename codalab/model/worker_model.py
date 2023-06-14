@@ -347,12 +347,10 @@ class WorkerModel(object):
                 logger.error("in send json")
                 websocket.send(json.dumps(data).encode())
                 logger.error("sent")
-                data = websocket.recv()
-                logger.error(f"Received ack: {data}")
-                return (data == ACK)
         except Exception as e:
             logger.error(f"Send to worker {worker_id} through socket {socket_id} failed with {e}")
-        return False
+            return False
+        return True
 
     def recv_json(self, worker_id, socket_id, timeout_secs=5):
         """
@@ -379,9 +377,6 @@ class WorkerModel(object):
             with connect(f"{self._ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
                 logger.error("In recv json")
                 data = websocket.recv()
-                logger.error("received")
-                websocket.send(ACK)
-                return json.loads(data.decode())
         except Exception as e:
             logger.error(f"Recv from worker {worker_id} through socket {socket_id} failed with {e}")
     
