@@ -328,6 +328,8 @@ def main():
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 f.write(args.kubernetes_cert.replace(r'\n', '\n'))  # Properly add newlines, which appear as "\n" if specified in the environment variable.
                 kubernetes_cert_path = f.name
+                logger.info('Temporarily writing kubernetes cert to: %s', kubernetes_cert_path)
+                f.flush()
         else:
             kubernetes_cert_path = args.kubernetes_cert_path
         bundle_runtime_class = KubernetesRuntime(
