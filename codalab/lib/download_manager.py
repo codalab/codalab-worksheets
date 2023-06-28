@@ -365,7 +365,7 @@ class DownloadManager(object):
             'path': target.subpath,
             'read_args': read_args,
         }
-        if not self._worker_model.connect_and_send_json(message, worker['worker_id']):
+        if not self._worker_model.send_json(message, worker['worker_id']):
             logging.info('Unable to reach worker')
 
     def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
@@ -376,7 +376,7 @@ class DownloadManager(object):
             'port': port,
             'message': message,
         }
-        if not self._worker_model.connect_and_send_json(message, worker['worker_id']):
+        if not self._worker_model.send_json(message, worker['worker_id']):
             logging.info('Unable to reach worker')
 
     def _get_read_response_stream(self, response_socket_id):

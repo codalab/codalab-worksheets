@@ -296,42 +296,11 @@ class WorkerModel(object):
                     .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
                     .values(update)
                 )
-    
-    def _connect(self, worker_id, timeout_secs=20):
-        with connect(f"{self._ws_server}/server/connect/{worker_id}") as websocket:
-            socket_id = json.loads(websocket.recv())['socket_id']
-        return socket_id
 
-    def connect_to_ws(self, worker_id, timeout_secs=20):
-        """
-        Loop until connection achieved.
-        """
-        socket_id = None
-        start_time = time.time()
-        while time.time() - start_time < 1000000000000:
-            try:
-                socket_id = self._connect(worker_id, timeout_secs)
-            except Exception as e:
-                logger.error(f"Error receiving socket_id from _connect: {e}")
-            if socket_id:
-                break
-            else:
-                logging.error(f"No sockets available for worker {worker_id}; retrying")
-                time.sleep(0.5)
-        if not socket_id:
-            logging.error("No connection reached")
-            raise ValueError("Worker socket ID is None. Worker cannot")
-        return socket_id
-
-    def disconnect(self, worker_id, socket_id, timeout_secs=20):
-        with connect(f"{self._ws_server}/server/disconnect/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
-            pass  # Just disconnect it.
-
-    def send_json(self, data, worker_id, socket_id, timeout_secs=60):
+    def send_json(self, data: dict, worker_id: str, timeout_secs: int=60):
         """
         Send data to the worker.
 
-        :param socket_id: The ID of the socket through which we send data to the worker.
         :param worker_id: The ID of the worker to send data to
         :param data: Data to send to worker. Could be a file or a json message.
         :param timeout_secs: Seconds until timeout. The actual data sending could take
@@ -341,44 +310,17 @@ class WorkerModel(object):
         :return True if data was sent properly, False otherwise.
         """
         logger.error("in send")
-        if not socket_id: return False
         try:
-            with connect(f"{self._ws_server}/send/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
-                logger.error("in send json")
+            with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
+                logger.error("connected")
                 websocket.send(json.dumps(data).encode())
-                logger.error("sent")
+                logger.error("finished sending")
+                ack = websocket.recv()
+                logger.error(f"ACK: {ack}")
         except Exception as e:
-            logger.error(f"Send to worker {worker_id} through socket {socket_id} failed with {e}")
+            logger.error(f"Send to worker {worker_id} failed with {e}")
             return False
-        return True
-
-    def recv_json(self, worker_id, socket_id, timeout_secs=5):
-        """
-        Receive data from the worker.
-
-        :param recv_fn: A Callable which takes a websocket as argument and receives data from the worker socket.
-        :param socket_id: The ID of the socket through which we send data to the worker.
-        :param worker_id: The ID of the worker to send data to
-        :param timeout_secs: Seconds until timeout. The actual data sending could take
-                                2 times this value (although this is quite unlikely) since
-                                both open_timeout and close_timeout are set to timeout_secs 
-        :param is_json: True if received data should be json decoded.
-                        Otherwise, we assume we are receiving a stream and the function is used as a generator,
-                          yielding bytes chunk by chunk.
-
-        :return A dictionary if is_json is True. A generator otherwise.
-        """
-        logger.error("in recv")
-        if not socket_id:
-            logger.error("no socket id")
-            return
-        try:
-            logger.error("about to connect")
-            with connect(f"{self._ws_server}/recv/{worker_id}/{socket_id}", open_timeout=timeout_secs, close_timeout=timeout_secs) as websocket:
-                logger.error("In recv json")
-                data = websocket.recv()
-        except Exception as e:
-            logger.error(f"Recv from worker {worker_id} through socket {socket_id} failed with {e}")
+        return (ack == self.ACK)
     
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -504,16 +446,6 @@ class WorkerModel(object):
                 return True
         logging.info("Socket message timeout.")
         return False
-
-    def connect_and_send_json(self, data, worker_id, timeout_secs=60):
-        """
-        Convenience method to connect to worker socket, send, and then disconnect.
-        """
-        socket_id = self.connect_to_ws(worker_id)
-        if not socket_id: return False
-        sent = self.send_json(data, worker_id, socket_id, timeout_secs)
-        self.disconnect(worker_id, socket_id)
-        return sent
 
     def has_reply_permission(self, user_id, worker_id, socket_id):
         """

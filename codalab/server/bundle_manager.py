@@ -384,7 +384,7 @@ class BundleManager(object):
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
                 self._model.transition_bundle_worker_offline(bundle)
-            elif self._worker_model.connect_and_send_json(
+            elif self._worker_model.send_json(
                 {'type': 'mark_finalized', 'uuid': bundle.uuid},
                 worker['worker_id'],
                 20,
@@ -742,7 +742,7 @@ class BundleManager(object):
             path = self._bundle_store.get_bundle_location(bundle.uuid)
             remove_path(path)
             os.mkdir(path)
-        if self._worker_model.connect_and_send_json(
+        if self._worker_model.send_json(
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
             worker['worker_id'],
             20,
