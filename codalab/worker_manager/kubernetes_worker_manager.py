@@ -13,6 +13,7 @@ import uuid
 from argparse import ArgumentParser
 from typing import Any, Dict, List, Optional
 from codalab.common import BundleRuntime
+import tempfile
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
@@ -89,7 +90,18 @@ class KubernetesWorkerManager(WorkerManager):
         configuration.api_key_prefix['authorization'] = 'Bearer'
         configuration.api_key['authorization'] = args.auth_token
         configuration.host = args.cluster_host
-        configuration.ssl_ca_cert = args.cert_path
+        if args.cert_path == "/dev/null" and args.cert != "/dev/null":
+            # Create temp file to store kubernetes cert, as we need to pass in a file path.
+            # TODO: Delete the file afterwards (upon CodaLab service stop?)
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write(
+                    args.cert.replace(r'\n', '\n')
+                )  # Properly add newlines, which appear as "\n" if specified in the environment variable.
+                cert_path = f.name
+                logger.info('Temporarily writing kubernetes cert to: %s', cert_path)
+        else:
+            cert_path = args.cert_path
+        configuration.ssl_ca_cert = cert_path
         if configuration.host == "https://codalab-control-plane:6443":
             # Don't verify SSL if we are connecting to a local cluster for testing / development.
             configuration.verify_ssl = False
