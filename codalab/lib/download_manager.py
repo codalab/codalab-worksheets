@@ -365,9 +365,7 @@ class DownloadManager(object):
             'path': target.subpath,
             'read_args': read_args,
         }
-        if not self._worker_model.send_json_message_with_sock(
-            worker['socket_id'], worker['worker_id'], message, 60
-        ):  # dead workers are a fact of life now
+        if not self._worker_model.connect_and_send_json(message, worker['worker_id']):
             logging.info('Unable to reach worker')
 
     def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
@@ -378,9 +376,7 @@ class DownloadManager(object):
             'port': port,
             'message': message,
         }
-        if not self._worker_model.send_json_message_with_sock(
-            worker['socket_id'], worker['worker_id'], message, 60
-        ):  # dead workers are a fact of life now
+        if not self._worker_model.connect_and_send_json(message, worker['worker_id']):
             logging.info('Unable to reach worker')
 
     def _get_read_response_stream(self, response_socket_id):
@@ -392,7 +388,7 @@ class DownloadManager(object):
                     header_message['error_code'], header_message['error_message']
                 )
 
-            fileobj = self._worker_model.get_stream(sock, 60)
+            fileobj = self._worker_model.recv_stream(sock, 60)
             precondition(fileobj is not None, 'Unable to reach worker')
             return fileobj
 

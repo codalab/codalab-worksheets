@@ -337,20 +337,20 @@ class Worker:
                 else:
                     logger.warning("Unrecognized action type from server: %s", action_type)
     
-    async def listen(self, socket_id):
+    async def listen(self, thread_id):
         logger.warning("Started websocket listening thread")
         while not self.terminate:
-            logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}/{socket_id}")
+            logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}/{thread_id}")
             try:
                 async with websockets.connect(
-                    f"{self.ws_server}/worker/{self.id}/{socket_id}", max_queue=1
+                    f"{self.ws_server}/worker/{self.id}/{thread_id}", max_queue=1
                 ) as websocket:
                     async def receive_msg():
                         # Note: we set a timeout below so that we can check the termination
                         # condition every <timeout_secs> seconds to ensure the worker
                         # doesn't run forever.
                         message = await asyncio.wait_for(websocket.recv(), timeout=5)
-                        logger.error(f"Thread {socket_id} processing messsage: {message}")
+                        logger.error(f"Thread {thread_id} processing messsage: {message}")
                         self.process_message(message)
 
                     while not self.terminate:

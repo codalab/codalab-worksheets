@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
-ACK=b'a'
 
 class WorkerModel(object):
     """
@@ -39,6 +38,7 @@ class WorkerModel(object):
        socket directory), clean up sockets (i.e. delete the socket files),
        listen on these sockets for messages and send messages to these sockets.
     """
+    ACK=b'a'
 
     def __init__(self, engine, socket_dir, ws_server):
         self._engine = engine
@@ -439,7 +439,7 @@ class WorkerModel(object):
 
         If no messages are received within timeout_secs seconds, returns None.
         """
-        fileobj = self.get_stream(sock, timeout_secs)
+        fileobj = self.recv_stream(sock, timeout_secs)
 
         if fileobj is None:
             return None
@@ -481,6 +481,7 @@ class WorkerModel(object):
                         success = True
                 except socket.error as e:
                     logging.error(f"socket error when calling send_json_message: {e}")
+                    logging.error(traceback.print_exc())
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -513,3 +514,23 @@ class WorkerModel(object):
         sent = self.send_json(data, worker_id, socket_id, timeout_secs)
         self.disconnect(worker_id, socket_id)
         return sent
+
+    def has_reply_permission(self, user_id, worker_id, socket_id):
+        """
+        Checks whether the given user running a worker with the given ID can
+        reply on the socket with the given ID. Used to prevent a user from
+        impersonating a worker from another user and replying to its messages.
+        """
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                cl_worker_socket.select().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                        cl_worker_socket.c.socket_id == socket_id,
+                    )
+                )
+            ).fetchone()
+            if row:
+                return True
+            return False
