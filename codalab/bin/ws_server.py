@@ -82,6 +82,7 @@ async def send_handler(server_websocket, worker_id):
             await server_websocket.send(ACK)
             logger.error("sent ACK")
             worker_websocket.lock.release()
+            break
 
 async def worker_handler(websocket, worker_id, socket_id):
     """Handles routes of the form: /worker/{worker_id}/{socket_id}. This route is called when

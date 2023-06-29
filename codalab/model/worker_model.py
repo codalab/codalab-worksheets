@@ -320,6 +320,10 @@ class WorkerModel(object):
         except Exception as e:
             logger.error(f"Send to worker {worker_id} failed with {e}")
             return False
+        logger.error("gtting ready to return")
+        logger.error(ack)
+        logger.error(self.ACK)
+        logger.error(ack == self.ACK)
         return (ack == self.ACK)
     
     def send_stream(self, socket_id, fileobj, timeout_secs):
