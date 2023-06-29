@@ -106,6 +106,7 @@ class Migration:
         file_name = "contents.tar.gz" if is_dir else "contents.gz"
         target_location = f"{self.target_store_url}/{bundle_uuid}/{file_name}"
 
+        # TODO: This step might cause repeated upload. Can not check by checking size (Azure blob storage is zipped).
         if FileSystems.exists(target_location):
             path_util.remove(target_location)
 
@@ -202,17 +203,20 @@ if __name__ == '__main__':
         description='Manages your local CodaLab Worksheets service deployment'
     )
     parser.add_argument(
+        '-a', '--all', help='Run migration on all worksheets and all bundles', action='store_true',
+    )
+    parser.add_argument(
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
     )
     parser.add_argument('--target_store_name', type=str, help='The destination bundle store name')
     parser.add_argument(
-        '-d',
-        '--dry-run',
-        help='Only upload the bundle to Azure, does not modify database',
+        '-c',
+        '--change_db',
+        help='Change the bundle location in the database',
         action='store_true',
     )
     parser.add_argument(
-        '-k', '--keep', help='Keep bundle content in origin bundle store', action='store_true'
+        '-d', '--delete', help='Delete the original database', action='store_true'
     )
 
     args = parser.parse_args()
@@ -221,14 +225,19 @@ if __name__ == '__main__':
     target_store_name = (
         "azure-store-default" if args.target_store_name is None else args.target_store_name
     )
-    if worksheet_uuid is not None and not spec_util.UUID_REGEX.match(worksheet_uuid):
-        raise Exception("Input worksheet uuid has wrong format. ")
+    
 
     # TODO: write output to log / log files
     migration = Migration(target_store_name)
     migration.setUp()
 
-    bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
+    if args.all:
+        bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=None)
+    else:
+        # Must specify worksheet uuid
+        if worksheet_uuid is not None and not spec_util.UUID_REGEX.match(worksheet_uuid):
+            raise Exception("Input worksheet uuid has wrong format. ")
+        bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     for bundle_uuid in bundle_uuids:
         logging.info(bundle_uuid)
@@ -256,8 +265,8 @@ if __name__ == '__main__':
         is_dir = bundle_info['type'] == 'directory'
         migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
 
-        if not args.dry_run:  # If dry_run, only upload to new bundle location
+        if args.change_db:  # If need to change the database, continue to run
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
-            if not args.keep:
+            if args.delete:
                 migration.delete_original_bundle(bundle_uuid, bundle_location)
