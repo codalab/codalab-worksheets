@@ -97,7 +97,7 @@ def run_command(
         return string
 
     # If we don't care about the exit code, set `expected_exit_code` to None.
-    print(">>", *map(str, args), sep=" ")
+    print(">>", *map(str, args), sep=" ", end="\t")
     sys.stdout.flush()
 
     try:
@@ -136,9 +136,11 @@ def run_command(
     else:
         colorize = Colorizer.cyan
         extra = ''
-    print(colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)))
-    sys.stdout.flush()
-    print(sanitize(output, max_output_chars))
+    print(
+        colorize(" (exit code %s, expected %s%s)" % (exitcode, expected_exit_code, extra)).strip(),
+        end="\t",
+    )
+    print(sanitize(output, max_output_chars).strip())
     sys.stdout.flush()
     assert (
         expected_exit_code == exitcode

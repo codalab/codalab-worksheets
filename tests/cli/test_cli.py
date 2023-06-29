@@ -302,10 +302,10 @@ def recursive_ls(path):
 
 
 def data_hash(uuid, worksheet=None):
+    """Temporarily download bundle contents.
+    Return a hash of those contents.
     """
-        Temporarily download bundle contents.
-        Return a hash of those contents.
-        """
+    _run_command([cl, 'wait', uuid])
     path = temp_path(uuid)
     if not os.path.exists(path):
         # Download the bundle to that path.
@@ -316,10 +316,8 @@ def data_hash(uuid, worksheet=None):
     sha1 = hashlib.sha1()
     files = recursive_ls(path)[1]
     for f in files:
-        try:
-            sha1.update(open(f, 'r').read().encode())
-        except Exception as e:
-            raise Exception("file name: {}. exception: {}".format(f, e))
+        sha1.update(open(f, 'r').read().encode())
+    shutil.rmtree(path)
     return sha1.hexdigest()
 
 
@@ -873,7 +871,7 @@ def test_upload1(ctx):
             _run_command([cl, 'work', worksheet_uuid])
             # expect to fail when we upload something more than 2k bytes
             check_contains(
-                'User disk quota exceeded',
+                'disk quota exceeded',
                 _run_command(
                     [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
                     expected_exit_code=1,
@@ -1230,6 +1228,18 @@ def test_upload_default_bundle_store(ctx):
     check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
 
 
+@TestModule.register('parallel')
+def test_parallel(ctx):
+    """Ensures bundles can run in parallel."""
+    uuid = _run_command([cl, 'run', 'sleep 60'])
+    wait_until_state(uuid, State.RUNNING)
+    uuid2 = _run_command([cl, 'run', 'sleep 60'])
+    wait_until_state(uuid2, State.RUNNING)
+    check_equals(get_info(uuid, "state"), State.RUNNING)
+    wait(uuid)
+    wait(uuid2)
+
+
 @TestModule.register('store_add')
 def test_store_add(ctx):
     """
@@ -1518,7 +1528,7 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory=None,
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
     )
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
@@ -2371,8 +2381,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -2386,11 +2395,6 @@ def test_write(ctx):
     _run_command([cl, 'wait', uuid])
     check_equals('hello world', _run_command([cl, 'cat', target]))
     check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
-
-
-"""
-This we'll have ot think about how to migrate...
-"""
 
 
 @TestModule.register('mimic')
@@ -2581,7 +2585,7 @@ def test_resources(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('http://www.msftconnecttest.com/connecttest.txt').read()" """
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above
@@ -2946,6 +2950,10 @@ def test_unicode(ctx):
 
 @TestModule.register('workers')
 def test_workers(ctx):
+    # Spin up a run in case a worker isn't already running, so it can be started by the worker manager.
+    uuid = _run_command([cl, 'run', 'echo'])
+    wait(uuid)
+
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
 
@@ -2978,6 +2986,39 @@ def test_workers(ctx):
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
     assert len(worker_info) >= 10
+
+    # Make sure that when we run a worker that uses resources, the worker's available resources are decremented accordingly.
+    cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
+    cpus_available, cpus_total = (int(i) for i in cpus_original.split("/"))
+    gpus_available, gpus_total = (int(i) for i in gpus_original.split("/"))
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'sleep 100',
+            '--request-cpus',
+            str(cpus_available),
+            '--request-gpus',
+            str(cpus_available),
+        ],
+        request_memory="100m",
+        request_disk="100m",
+    )
+    wait_until_state(uuid, State.RUNNING)
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+    worker_info = lines[2].split()
+    cpus, gpus, free_memory, free_disk = worker_info[1:5]
+    check_equals(f'0/{cpus_total}', cpus)
+    check_equals(f'0/{gpus_total}', gpus)
+
+    wait(uuid)
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+    worker_info = lines[2].split()
+    cpus, gpus, free_memory, free_disk = worker_info[1:5]
+    check_equals(cpus_original, cpus)
+    check_equals(gpus_original, gpus)
 
 
 @TestModule.register('sharing_workers')

@@ -282,6 +282,7 @@ class BundleManager(object):
                             un_tar_directory(fileobj, dependency_path, 'gz')
                         else:
                             fileobj = self._download_manager.stream_file(target, gzipped=False)
+
                             with open(dependency_path, 'wb') as f:
                                 shutil.copyfileobj(fileobj, f)
 
