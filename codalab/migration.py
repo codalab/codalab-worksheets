@@ -208,7 +208,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
     )
-    parser.add_argument('--target_store_name', type=str, help='The destination bundle store name')
+    parser.add_argument('-t', '--target_store_name', type=str, help='The destination bundle store name')
     parser.add_argument(
         '-c',
         '--change_db',
