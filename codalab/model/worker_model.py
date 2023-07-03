@@ -308,22 +308,16 @@ class WorkerModel(object):
 
         :return True if data was sent properly, False otherwise.
         """
-        logger.error("in send")
-        try:
-            with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
-                logger.error("connected")
-                websocket.send(json.dumps(data).encode())
-                logger.error("finished sending")
-                ack = websocket.recv()
-                logger.error(f"ACK: {ack}")
-        except Exception as e:
-            logger.error(f"Send to worker {worker_id} failed with {e}")
-            return False
-        logger.error("gtting ready to return")
-        logger.error(ack)
-        logger.error(self.ACK)
-        logger.error(ack == self.ACK)
-        return ack == self.ACK
+        start_time = time.time()
+        while time.time() - start_time < timeout_secs:
+            try:
+                with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
+                    websocket.send(json.dumps(data).encode())
+                    ack = websocket.recv()
+                    return ack == self.ACK
+            except Exception as e:
+                logger.error(f"Send to worker {worker_id} failed with {e}. Retrying...")
+        return False
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """

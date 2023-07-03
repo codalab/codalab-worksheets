@@ -5,7 +5,7 @@ import asyncio
 from collections import defaultdict
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import websockets
 from dataclasses import dataclass
 import threading
@@ -35,7 +35,7 @@ class WS:
     _is_available: bool = True
     _lock: threading.Lock = threading.Lock()
     _timeout: float = 86400
-    _last_use: float = None
+    _last_use: Optional[float] = None
 
     @property
     def ws(self):
