@@ -113,7 +113,7 @@ class Migration:
         uploader = BlobStorageUploader(
             bundle_model=self.bundle_manager._model,
             bundle_store=self.bundle_manager._bundle_store,
-            destination_bundle_store=None,
+            destination_bundle_store=self.bundle_manager._bundle_store,
             json_api_client=None,
         )
 
@@ -127,6 +127,7 @@ class Migration:
             source_ext = ''
             unpack = False
 
+        logging.info("Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
         # Upload file content and generate index file
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
@@ -240,13 +241,12 @@ if __name__ == '__main__':
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     for bundle_uuid in bundle_uuids:
-        logging.info(bundle_uuid)
 
         bundle = migration.get_bundle(bundle_uuid)
         if bundle.bundle_type != 'dataset' or bundle.state != 'ready':
             # only migrate uploaded bundle, and the bundle state needs to be ready
             continue
-
+        
         # Uploaded bundles does not need has dependencies
         assert len(bundle.dependencies) == 0
 
@@ -258,11 +258,14 @@ if __name__ == '__main__':
 
         if parse_linked_bundle_url(bundle_location).uses_beam:
             # Do not migrate Azure / GCP bundles
+            logging.info("Skip bundle %s with location %s", bundle_uuid, bundle_location)
             continue
 
         bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
 
         is_dir = bundle_info['type'] == 'directory'
+
+        logging.info("Uploading bundle from %s", bundle_location)
         migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
 
         if args.change_db:  # If need to change the database, continue to run
