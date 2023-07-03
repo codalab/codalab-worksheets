@@ -209,16 +209,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
     )
-    parser.add_argument('-t', '--target_store_name', type=str, help='The destination bundle store name')
     parser.add_argument(
-        '-c',
-        '--change_db',
-        help='Change the bundle location in the database',
-        action='store_true',
+        '-t', '--target_store_name', type=str, help='The destination bundle store name'
     )
     parser.add_argument(
-        '-d', '--delete', help='Delete the original database', action='store_true'
+        '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
     )
+    parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
 
     args = parser.parse_args()
 
@@ -226,7 +223,6 @@ if __name__ == '__main__':
     target_store_name = (
         "azure-store-default" if args.target_store_name is None else args.target_store_name
     )
-    
 
     # TODO: write output to log / log files
     migration = Migration(target_store_name)
@@ -246,7 +242,7 @@ if __name__ == '__main__':
         if bundle.bundle_type != 'dataset' or bundle.state != 'ready':
             # only migrate uploaded bundle, and the bundle state needs to be ready
             continue
-        
+
         # Uploaded bundles does not need has dependencies
         assert len(bundle.dependencies) == 0
 
