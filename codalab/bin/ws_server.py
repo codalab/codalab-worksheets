@@ -1,4 +1,3 @@
-# This is the real ws-server, basically.
 # Main entry point for CodaLab cl-ws-server.
 import argparse
 import asyncio
@@ -9,12 +8,6 @@ from typing import Any, Dict, Optional
 import websockets
 from dataclasses import dataclass
 import threading
-
-ACK = b'a'
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
 
 """
@@ -69,9 +62,8 @@ class WS:
 worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(
     dict
 )  # Maps worker to list of its websockets (since each worker has a pool of connections)
-server_worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(
-    dict
-)  # Map the rest-server websocket connection to the corresponding worker socket connection.
+ACK = b'a'
+logger = logging.getLogger(__name__)
 
 
 async def send_handler(server_websocket, worker_id):

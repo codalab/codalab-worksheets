@@ -93,7 +93,7 @@ class Worker:
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool
         num_threads=10,  # type: int
-        # Number of threads to have running concurrently waiting for socket messages.
+        # Number of threads to have running concurrently waiting for socket messages. MUST be a natural number.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -140,6 +140,7 @@ class Worker:
 
         self.ws_server = ws_server
 
+        assert num_threads > 0 and type(num_threads) is int, "num_threads must be a natural number."
         self.num_threads = num_threads
 
         self.runs = {}  # type: Dict[str, RunState]

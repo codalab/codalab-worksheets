@@ -135,6 +135,30 @@ class WorkerModel(object):
     def _deserialize_dependencies(blob):
         return list(map(tuple, json.loads(blob)))
 
+    def update_workers(self, user_id, worker_id, update):
+        """
+        Update the designated worker with columns and values
+        :param user_id: a user_id indicating whom a worker belongs to
+        :param worker_id: a worker's identification number
+        :param update: a dictionary of (key, value) pairs that specifies the columns and the values to update
+        """
+        if not update:
+            return
+
+        with self._engine.begin() as conn:
+            existing_row = conn.execute(
+                cl_worker.select().where(
+                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
+                )
+            ).fetchone()
+
+            if existing_row:
+                conn.execute(
+                    cl_worker.update()
+                    .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
+                    .values(update)
+                )
+
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
         Allocates a unique socket ID.
@@ -271,53 +295,6 @@ class WorkerModel(object):
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
         return list(worker_dict.values())
-
-    def update_workers(self, user_id, worker_id, update):
-        """
-        Update the designated worker with columns and values
-        :param user_id: a user_id indicating whom a worker belongs to
-        :param worker_id: a worker's identification number
-        :param update: a dictionary of (key, value) pairs that specifies the columns and the values to update
-        """
-        if not update:
-            return
-
-        with self._engine.begin() as conn:
-            existing_row = conn.execute(
-                cl_worker.select().where(
-                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
-                )
-            ).fetchone()
-
-            if existing_row:
-                conn.execute(
-                    cl_worker.update()
-                    .where(and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id))
-                    .values(update)
-                )
-
-    def send_json(self, data: dict, worker_id: str, timeout_secs: int = 60):
-        """
-        Send data to the worker.
-
-        :param worker_id: The ID of the worker to send data to
-        :param data: Data to send to worker. Could be a file or a json message.
-        :param timeout_secs: Seconds until timeout. The actual data sending could take
-                                2 times this value (although this is quite unlikely) since
-                                both open_timeout and close_timeout are set to timeout_secs
-
-        :return True if data was sent properly, False otherwise.
-        """
-        start_time = time.time()
-        while time.time() - start_time < timeout_secs:
-            try:
-                with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
-                    websocket.send(json.dumps(data).encode())
-                    ack = websocket.recv()
-                    return ack == self.ACK
-            except Exception as e:
-                logger.error(f"Send to worker {worker_id} failed with {e}. Retrying...")
-        return False
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -466,3 +443,26 @@ class WorkerModel(object):
             if row:
                 return True
             return False
+
+    def send_json(self, data: dict, worker_id: str, timeout_secs: int = 60):
+        """
+        Send data to the worker.
+
+        :param worker_id: The ID of the worker to send data to
+        :param data: Data to send to worker. Could be a file or a json message.
+        :param timeout_secs: Seconds until timeout. The actual data sending could take
+                                2 times this value (although this is quite unlikely) since
+                                both open_timeout and close_timeout are set to timeout_secs
+
+        :return True if data was sent properly, False otherwise.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout_secs:
+            try:
+                with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
+                    websocket.send(json.dumps(data).encode())
+                    ack = websocket.recv()
+                    return ack == self.ACK
+            except Exception as e:
+                logger.error(f"Send to worker {worker_id} failed with {e}. Retrying...")
+        return False

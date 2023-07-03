@@ -396,7 +396,7 @@ class BundleManager(object):
                 # TODO(Ashwin): fix this -- bundle location could be linked.
                 self._model.transition_bundle_finished(bundle, bundle_location)
             else:
-                logger.error(f"No finalization occurred for bundle {bundle.uuid}")
+                logger.info(f"Bundle {bundle.uuid} could not be finalized.")
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -740,7 +740,6 @@ class BundleManager(object):
             path = self._bundle_store.get_bundle_location(bundle.uuid)
             remove_path(path)
             os.mkdir(path)
-        logger.error("About to send json for try start bundle")
         if self._worker_model.send_json(
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
             worker['worker_id'],
@@ -750,6 +749,9 @@ class BundleManager(object):
             )
             return True
         else:
+            logger.info(
+                f"Bundle {bundle.uuid} could not be started on worker {worker['worker_id']}"
+            )
             self._model.transition_bundle_staged(bundle)
             workers.restage(bundle.uuid)
             return False
