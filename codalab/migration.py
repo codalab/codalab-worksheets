@@ -138,7 +138,7 @@ class Migration:
         Change the bundle location in the database
         ATTENTION: this function will modify codalab
         """
-
+        logging.info(f"Modifying bundle info {bundle_uuid} in database")
         # add bundle location
         self.bundle_manager._model.add_bundle_location(bundle_uuid, self.target_store_uuid)
 
@@ -254,14 +254,12 @@ if __name__ == '__main__':
 
         if parse_linked_bundle_url(bundle_location).uses_beam:
             # Do not migrate Azure / GCP bundles
-            logging.info("Skip bundle %s with location %s", bundle_uuid, bundle_location)
             continue
 
         bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
 
         is_dir = bundle_info['type'] == 'directory'
 
-        logging.info("Uploading bundle from %s", bundle_location)
         migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
 
         if args.change_db:  # If need to change the database, continue to run
