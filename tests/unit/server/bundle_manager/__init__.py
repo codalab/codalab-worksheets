@@ -263,7 +263,7 @@ class TestBase:
             preemptible=False,
         )
         # Mock a reply from the worker
-        self.bundle_manager._worker_model.send_json_message = Mock(return_value=True)
+        self.bundle_manager._worker_model.send_json = Mock(return_value=True)
         return worker_id
 
     def mock_bundle_checkin(self, bundle, worker_id, user_id=None):

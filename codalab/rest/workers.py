@@ -1,7 +1,6 @@
 from __future__ import (
     absolute_import,
 )  # Without this line "from worker.worker import VERSION" doesn't work.
-from contextlib import closing
 import http.client
 import json
 from datetime import datetime
@@ -25,10 +24,9 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    WAIT_TIME_SECS = 5.0
 
     # Old workers might not have all the fields, so allow subsets to be missing.
-    socket_id = local.worker_model.worker_checkin(
+    local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
         request.json.get("tag"),
@@ -45,7 +43,6 @@ def checkin(worker_id):
         request.json.get("preemptible", False),
     )
 
-    messages = []
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
@@ -61,8 +58,7 @@ def checkin(worker_id):
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
                 local.worker_model.send_json(
-                    {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message},
-                    worker_id
+                    {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message}, worker_id
                 )
             elif local.model.get_user_disk_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their disk quota and we kill the job.
@@ -71,8 +67,7 @@ def checkin(worker_id):
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
                 local.worker_model.send_json(
-                    {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message},
-                    worker_id
+                    {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message}, worker_id
                 )
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))
@@ -97,7 +92,9 @@ def reply(worker_id, socket_id):
     Replies with a single JSON message to the given socket ID.
     """
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message_with_sock(socket_id, worker_id, request.json, 60, autoretry=False)
+    local.worker_model.send_json_message_with_sock(
+        socket_id, worker_id, request.json, 60, autoretry=False
+    )
 
 
 @post(
@@ -125,7 +122,9 @@ def reply_data(worker_id, socket_id):
         abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message_with_sock(socket_id, worker_id, header_message, 60, autoretry=False)
+    local.worker_model.send_json_message_with_sock(
+        socket_id, worker_id, header_message, 60, autoretry=False
+    )
     local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
 
 

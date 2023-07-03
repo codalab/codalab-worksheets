@@ -385,8 +385,7 @@ class BundleManager(object):
                 )
                 self._model.transition_bundle_worker_offline(bundle)
             elif self._worker_model.send_json(
-                {'type': 'mark_finalized', 'uuid': bundle.uuid},
-                worker['worker_id']
+                {'type': 'mark_finalized', 'uuid': bundle.uuid}, worker['worker_id']
             ):
                 logger.info(
                     'Acknowledged finalization of run bundle {} on worker {}'.format(
@@ -744,7 +743,7 @@ class BundleManager(object):
         logger.error("About to send json for try start bundle")
         if self._worker_model.send_json(
             self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
-            worker['worker_id']
+            worker['worker_id'],
         ):
             logger.info(
                 'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])

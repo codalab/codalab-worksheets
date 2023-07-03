@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import closing
 import datetime
 import json
@@ -6,7 +5,6 @@ import logging
 import os
 import socket
 import time
-import websockets
 from websockets.sync.client import connect
 import traceback
 
@@ -38,7 +36,8 @@ class WorkerModel(object):
        socket directory), clean up sockets (i.e. delete the socket files),
        listen on these sockets for messages and send messages to these sockets.
     """
-    ACK=b'a'
+
+    ACK = b'a'
 
     def __init__(self, engine, socket_dir, ws_server):
         self._engine = engine
@@ -135,7 +134,7 @@ class WorkerModel(object):
     @staticmethod
     def _deserialize_dependencies(blob):
         return list(map(tuple, json.loads(blob)))
-    
+
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
         Allocates a unique socket ID.
@@ -297,7 +296,7 @@ class WorkerModel(object):
                     .values(update)
                 )
 
-    def send_json(self, data: dict, worker_id: str, timeout_secs: int=60):
+    def send_json(self, data: dict, worker_id: str, timeout_secs: int = 60):
         """
         Send data to the worker.
 
@@ -305,8 +304,8 @@ class WorkerModel(object):
         :param data: Data to send to worker. Could be a file or a json message.
         :param timeout_secs: Seconds until timeout. The actual data sending could take
                                 2 times this value (although this is quite unlikely) since
-                                both open_timeout and close_timeout are set to timeout_secs 
-        
+                                both open_timeout and close_timeout are set to timeout_secs
+
         :return True if data was sent properly, False otherwise.
         """
         logger.error("in send")
@@ -324,8 +323,8 @@ class WorkerModel(object):
         logger.error(ack)
         logger.error(self.ACK)
         logger.error(ack == self.ACK)
-        return (ack == self.ACK)
-    
+        return ack == self.ACK
+
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
         Streams the given file-like object to the given socket.
@@ -357,7 +356,7 @@ class WorkerModel(object):
                     sock.sendall(data)
 
         return False
-    
+
     def recv_stream(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns a file-like
@@ -378,6 +377,7 @@ class WorkerModel(object):
             return fileobj
         except socket.timeout:
             return None
+
     def recv_json_message_with_sock(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns the message
@@ -392,8 +392,10 @@ class WorkerModel(object):
 
         with closing(fileobj):
             return json.loads(fileobj.read().decode())
-    
-    def send_json_message_with_sock(self, socket_id, worker_id, message, timeout_secs, autoretry=True):
+
+    def send_json_message_with_sock(
+        self, socket_id, worker_id, message, timeout_secs, autoretry=True
+    ):
         """
         Sends a JSON message to the given socket, retrying until it is received
         correctly.

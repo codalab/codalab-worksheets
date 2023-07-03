@@ -91,8 +91,9 @@ class Worker:
         # A flag indicating if the worker will exit if it encounters an exception
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
-        preemptible=False,  # type: bool,
-        num_threads=10  # type: int. Number of threads to have running concurrently waiting for socket messages.
+        preemptible=False,  # type: bool
+        num_threads=10,  # type: int
+        # Number of threads to have running concurrently waiting for socket messages.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -163,7 +164,6 @@ class Worker:
         # Lock ensures listening thread and main thread don't simultaneously
         # access the runs dictionary, thereby causing race conditions.
         self._lock = RLock()
-
 
     def init_docker_networks(self, docker_network_prefix, verbose=True):
         """
@@ -297,7 +297,7 @@ class Worker:
                  False if neither of the two conditions are met.
         """
         return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
-    
+
     def process_message(self, message):
         """
         Process messages from the rest server in the worker.
@@ -336,7 +336,7 @@ class Worker:
                     self.write(uuid, message['subpath'], message['string'])
                 else:
                     logger.warning("Unrecognized action type from server: %s", action_type)
-    
+
     async def listen(self, thread_id):
         logger.warning("Started websocket listening thread")
         while not self.terminate:
@@ -345,6 +345,7 @@ class Worker:
                 async with websockets.connect(
                     f"{self.ws_server}/worker/{self.id}/{thread_id}", max_queue=1
                 ) as websocket:
+
                     async def receive_msg():
                         # Note: we set a timeout below so that we can check the termination
                         # condition every <timeout_secs> seconds to ensure the worker
@@ -361,10 +362,12 @@ class Worker:
                         except websockets.exceptions.ConnectionClosed:
                             logger.warning("Websocket connection closed, starting a new one...")
                             break
-                        except Exception as e:
+                        except Exception:
                             logger.error(traceback.print_exc())
-            except Exception as e:
-                logger.error(f"Miscellaneous exception connecting to ws-server: {traceback.print_exc()}")
+            except Exception:
+                logger.error(
+                    f"Miscellaneous exception connecting to ws-server: {traceback.print_exc()}"
+                )
                 time.sleep(3)
 
     def listen_thread_fn(self):
@@ -525,7 +528,6 @@ class Worker:
                 (dep_key.parent_uuid, dep_key.parent_path)
                 for dep_key in self.dependency_manager.all_dependencies
             ]
-
 
     def checkin(self):
         """
@@ -849,7 +851,6 @@ class Worker:
                 reply(err)
 
         threading.Thread(target=netcat_fn).start()
-        time.sleep(30)
 
     def write(self, uuid, path, string):
         run_state = self.runs[uuid]
