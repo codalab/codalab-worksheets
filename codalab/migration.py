@@ -65,6 +65,24 @@ class Migration:
         assert StorageType.AZURE_BLOB_STORAGE.value == self.target_store['storage_type']
         self.target_store_type = StorageType.AZURE_BLOB_STORAGE
 
+        # This file is used to log those bundles's loation that has been changed in database.
+        self.change_db_records_file = "change_db_records.txt"
+        self.logger = self.get_logger() 
+
+    def get_logger():
+        """
+        Create a logger to log the migration process.
+        """
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(logger.log_file)
+        handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        return logger
+
     def get_bundle_uuids(self, worksheet_uuid, max_result=100):
         if worksheet_uuid is None:
             bundle_uuids = self.bundle_manager._model.get_all_bundle_uuids(max_results=max_result)
@@ -82,7 +100,8 @@ class Migration:
         return bundle_link_url is None
 
     def get_bundle_location(self, bundle_uuid):
-        # bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle_uuid)  # this is getting locations from
+        # bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle_uuid)  # this is getting locations from database
+        # TODO: why after upload to Azure, this will automatically change to Azure url?
         bundle_location = self.bundle_manager._bundle_store.get_bundle_location(bundle_uuid)
         return bundle_location
 
@@ -91,12 +110,12 @@ class Migration:
 
     def get_bundle_info(self, bundle_uuid, bundle_location):
         target = BundleTarget(bundle_uuid, subpath='')
-        logging.info(f"[migration] {target}")
+        self.logger.info(f"[migration] {target}")
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
-            logging.info(f"[migration] {info}")
+            self.logger.info(f"[migration] {info}")
         except Exception as e:
-            logging.info(f"[migration] Error: {str(e)}")
+            self.logger.info(f"[migration] Error: {str(e)}")
             raise e
 
         return info
@@ -127,7 +146,7 @@ class Migration:
             source_ext = ''
             unpack = False
 
-        logging.info("Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
+        self.logger.info("[migration] Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
         # Upload file content and generate index file
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
@@ -138,8 +157,11 @@ class Migration:
         Change the bundle location in the database
         ATTENTION: this function will modify codalab
         """
-        logging.info(f"Modifying bundle info {bundle_uuid} in database")
-        # add bundle location
+        self.logger.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
+        
+        original_location = self.get_bundle_location(bundle_uuid)
+
+        # add bundle location: Add bundle location to database
         self.bundle_manager._model.add_bundle_location(bundle_uuid, self.target_store_uuid)
 
         new_location = self.get_bundle_location(bundle_uuid)
@@ -160,11 +182,15 @@ class Migration:
                 'metadata': {'store': self.target_store_name},
             },
         )
+        
+        # write change database record to a file
+        with open(self.change_db_records_file, 'a') as f:
+            f.write(f"{bundle_uuid},{original_location},{new_location}\n")
 
     def sanity_check(self, bundle_uuid, bundle_location, bundle_info, is_dir):
         new_location = self.get_bundle_location(bundle_uuid)
         if is_dir:
-            # For dirs, check the folder contains same files
+            # For dirs, check the folder contains same files. 
             with OpenFile(new_location, gzipped=True) as f:
                 new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
                 new_file_list.sort()
@@ -181,8 +207,10 @@ class Migration:
             new_content = read_file_section(new_location, 5, 10)
             assert old_content == new_content
 
-    def delete_original_bundle(self, bundle_uuid, bundle_location):
-        # Delete data from orginal bundle store
+    def delete_original_bundle_by_uuid(self, bundle_uuid, bundle_location):
+        """
+        Delete original bundle from local disk
+        """
         if os.path.exists(bundle_location):
             deleted_size = path_util.get_path_size(bundle_location)
             bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
@@ -197,6 +225,23 @@ class Migration:
                 {'user_id': bundle_user_id, 'disk_used': new_disk_used}
             )
 
+    def delete_original_bundle(self):
+        """
+        Delete all the original bundle that has been uploaded to Azure Blob Storage and changed location in database
+        """
+        with open(self.change_db_records_file, "r") as f:
+            lines = f.readlines()
+            f.seek(0)
+            for line in lines:
+                bundle_uuid, origin_bundle_location, _ = line.split()
+                try:
+                    self.delete_original_bundle_by_uuid(bundle_uuid, origin_bundle_location)
+                except Exception as e:
+                    # If the bundle is not deleted, save the information in the file
+                    self.logger.error(f"[migration] Delete Original Bundle Error: {str(e)}")
+                    f.write(line)
+            f.truncate()
+                
 
 if __name__ == '__main__':
     # Command line parser, parse the worksheet id
@@ -224,7 +269,6 @@ if __name__ == '__main__':
         "azure-store-default" if args.target_store_name is None else args.target_store_name
     )
 
-    # TODO: write output to log / log files
     migration = Migration(target_store_name)
     migration.setUp()
 
@@ -237,8 +281,9 @@ if __name__ == '__main__':
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     for bundle_uuid in bundle_uuids:
-
         bundle = migration.get_bundle(bundle_uuid)
+
+        # TODO: change this to allow migration of run bundles
         if bundle.bundle_type != 'dataset' or bundle.state != 'ready':
             # only migrate uploaded bundle, and the bundle state needs to be ready
             continue
@@ -250,6 +295,7 @@ if __name__ == '__main__':
             # Do not migrate link bundle
             continue
 
+        # bundle_location is the original bundle location
         bundle_location = migration.get_bundle_location(bundle_uuid)
 
         if parse_linked_bundle_url(bundle_location).uses_beam:
@@ -265,5 +311,6 @@ if __name__ == '__main__':
         if args.change_db:  # If need to change the database, continue to run
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
-            if args.delete:
-                migration.delete_original_bundle(bundle_uuid, bundle_location)
+            
+    if args.delete:
+        migration.delete_original_bundle()
