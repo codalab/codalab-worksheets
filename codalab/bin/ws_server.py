@@ -12,31 +12,12 @@ import threading
 
 from codalab.lib.codalab_manager import CodaLabManager
 
-"""
-TODO!!! WE NEED TO ADD A SECRET OR SOME SORT OF AUTH FOR THE WS SERVER ENDPOITNS
-Otherwise, people could create a custom local worker build and wreak havoc on the ws server...
-Note that this was already an issue, though; people could've just hit the checkpoint endpoint...
-"""
-
-# class WebsocketRestClient(RestClient):
-#     """Allows Websocket Server to make HTTP requests to REST server.
-
-#     Used to authenticate workers.
-#     """
-#     def __init__(self, base_url: str, access_token: str) -> None:
-#         super(WebsocketRestClient, self).__init__(base_url)
-#         self._access_token = access_token
-
-#     def _get_access_token(self) -> str:
-#         return self._access_token
-
 @dataclass
 class WS:
     """
     Stores websocket object and whether or not the websocket is available.
     TODO: give this a better, less confusing name.
     """
-
     _ws: Any = None
     _is_available: bool = True
     _lock: threading.Lock = threading.Lock()
@@ -87,33 +68,21 @@ async def send_handler(server_websocket, worker_id):
     """Handles routes of the form: /send/{worker_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
+    # Authenticate server.
     receieved_secret = await server_websocket.recv()
-    if not (receieved_secret == server_secret):
-        logger.error("Server sent incorrect secret. Aborting")
+    if receieved_secret != server_secret:
+        logger.error("Server unable to authenticate.")
+        await server_websocket.close(1008, "Server unable to authenticate.")
         return
 
+    # Send message from server to worker.
     data = await server_websocket.recv()
-    logger.error("received data")
     for _, worker_websocket in worker_to_ws[worker_id].items():
-        logger.error("trying to acquire a websocket")
         if worker_websocket.lock.acquire(blocking=False):
-            logger.error("Sending data")
             await worker_websocket.ws.send(data)
             await server_websocket.send(ACK)
-            logger.error("sent ACK")
             worker_websocket.lock.release()
             break
-
-
-# async def authenticate_worker(websocket: Any, worker_id: str) -> bool:
-#     """Helper function to verify worker identity.
-
-#     It checks if the Oauth2 token corresponding to the provided user_id is the same
-#     as the Oauth2 token corresponding to the provided access_token.
-#     """
-#     user_id = 
-    
-#     return bundle_model.access_token_exists_for_user('codalab_worker_client', user_id, access_token)
 
 
 async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None:
@@ -121,6 +90,7 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
     This route is called when a worker first connects to the ws-server, creating
     a connection that can be used to ask the worker to check-in later.
     """
+    # Authenticate worker.
     access_token = await websocket.recv()
     user_id = worker_model.get_user_id_for_worker(worker_id=worker_id)
     authenticated = bundle_model.access_token_exists_for_user(
@@ -129,13 +99,12 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
         access_token)
     if not authenticated:
         logger.error(f"Thread {socket_id} for worker {worker_id} unable to authenticate.")
+        await websocket.close(1008, f"Thread {socket_id} for worker {worker_id} unable to authenticate.")
         return
 
-    # Otherwise, establish a connection with the worker
+    # Establish a connection with worker and keep it alive.
     worker_to_ws[worker_id][socket_id] = WS(websocket)
     logger.warning(f"Worker {worker_id} connected; has {len(worker_to_ws[worker_id])} connections")
-
-    # keep connection alive.
     while True:
         try:
             await asyncio.sleep(60)
