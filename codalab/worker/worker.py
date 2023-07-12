@@ -338,7 +338,7 @@ class Worker:
                 else:
                     logger.warning("Unrecognized action type from server: %s", action_type)
     
-    async def recv_messages(websocket):
+    async def recv_messages(self, websocket):
         # Authenticate with Websocket Server.
         await websocket.send(self.bundle_service._get_access_token())
 
@@ -356,12 +356,12 @@ class Worker:
                 logger.error(traceback.print_exc())
 
     async def listen(self, thread_id):
-        wss_uri = f"{self.ws_server}/worker/{self.bundle_service._username}/{self.id}/{thread_id}"
+        wss_uri = f"{self.ws_server}/worker/{self.id}/{thread_id}"
         while not self.terminate:
             logger.info(f"Connecting to {wss_uri}")
             try:
                 async with websockets.connect(f"{wss_uri}", max_queue=1) as websocket:
-                    await recv_messages(websocket)
+                    await self.recv_messages(websocket)
             except Exception:
                 logger.error(f"Error connecting to ws-server: {traceback.print_exc()}")
                 time.sleep(3)

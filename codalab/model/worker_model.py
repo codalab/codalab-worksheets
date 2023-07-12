@@ -252,6 +252,21 @@ class WorkerModel(object):
                     and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
                 )
             )
+    
+
+    def get_user_id_for_worker(self, worker_id):
+        """Return the user_id corresponding to the worker with ID worker_id
+        """
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                select([cl_worker])
+                .where(cl_worker.c.worker_id == worker_id)
+            ).fetchone()
+
+        if row is None:
+            return None
+        return row.user_id
+
 
     def get_workers(self):
         """
