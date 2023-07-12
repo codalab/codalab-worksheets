@@ -17,9 +17,6 @@ provided by Microsoft Azure.
 - Jiani Wang
 - Andrew Gaut
 - Yifan Mai
-- Tony Lee
-- Pranav Jain
-- Leilenah Mamea
 
 ## Former Developers
 
@@ -46,3 +43,6 @@ provided by Microsoft Azure.
 - Aditya Prerepa
 - Andy Jin
 - Jizhen Wang
+- Tony Lee
+- Pranav Jain
+- Leilenah Mamea
