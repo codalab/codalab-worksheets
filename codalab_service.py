@@ -246,6 +246,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='ws_port', help='Port for websocket server', type=int, default=2901),
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
     CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
+    CodalabArg(name='server_secret', help='Secret key used to authenticate the REST server with the Websocket server'),
     CodalabArg(
         name='shared_file_system', help='Whether worker has access to the bundle mount', type=bool
     ),

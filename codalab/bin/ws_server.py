@@ -77,12 +77,18 @@ worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(
 ACK = b'a'
 logger = logging.getLogger(__name__)
 bundle_model = CodalabManager().model
+server_secret = os.environ["CODALAB_SERVER_SECRET"]
 
 
 async def send_handler(server_websocket, worker_id):
     """Handles routes of the form: /send/{worker_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
+    receieved_secret = await server_websocket.recv()
+    if not (receieved_secret == server_secret):
+        logger.error("Server sent incorrect secret. Aborting")
+        return
+
     data = await server_websocket.recv()
     logger.error("received data")
     for _, worker_websocket in worker_to_ws[worker_id].items():

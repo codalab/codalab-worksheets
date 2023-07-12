@@ -43,6 +43,7 @@ class WorkerModel(object):
         self._engine = engine
         self._socket_dir = socket_dir
         self._ws_server = ws_server
+        self._server_secret = os.environ["CODALAB_SERVER_SECRET"]
 
     def worker_checkin(
         self,
@@ -460,6 +461,7 @@ class WorkerModel(object):
         while time.time() - start_time < timeout_secs:
             try:
                 with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
+                    websocket.send(self._server_secret)  # Authenticate
                     websocket.send(json.dumps(data).encode())
                     ack = websocket.recv()
                     return ack == self.ACK
