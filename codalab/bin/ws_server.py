@@ -9,6 +9,7 @@ import websockets
 from dataclasses import dataclass
 import threading
 
+from codalab.lib.codalab_manager import CodaLabManager
 
 """
 TODO!!! WE NEED TO ADD A SECRET OR SOME SORT OF AUTH FOR THE WS SERVER ENDPOITNS
@@ -16,6 +17,17 @@ Otherwise, people could create a custom local worker build and wreak havoc on th
 Note that this was already an issue, though; people could've just hit the checkpoint endpoint...
 """
 
+# class WebsocketRestClient(RestClient):
+#     """Allows Websocket Server to make HTTP requests to REST server.
+
+#     Used to authenticate workers.
+#     """
+#     def __init__(self, base_url: str, access_token: str) -> None:
+#         super(WebsocketRestClient, self).__init__(base_url)
+#         self._access_token = access_token
+
+#     def _get_access_token(self) -> str:
+#         return self._access_token
 
 @dataclass
 class WS:
@@ -64,6 +76,7 @@ worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(
 )  # Maps worker to list of its websockets (since each worker has a pool of connections)
 ACK = b'a'
 logger = logging.getLogger(__name__)
+bundle_model = CodalabManager().model
 
 
 async def send_handler(server_websocket, worker_id):
@@ -83,12 +96,33 @@ async def send_handler(server_websocket, worker_id):
             break
 
 
-async def worker_handler(websocket, worker_id, socket_id):
-    """Handles routes of the form: /worker/{worker_id}/{socket_id}. This route is called when
-    a worker first connects to the ws-server, creating a connection that can
-    be used to ask the worker to check-in later.
+async def authenticate_worker(websocket: Any, user_id: str) -> bool:
+    """Helper function to verify worker identity.
+
+    It checks if the Oauth2 token corresponding to the provided user_id is the same
+    as the Oauth2 token corresponding to the provided access_token.
     """
-    # runs on worker connect
+    access_token = await websocket.recv()
+    oauth2_token_for_access_token = bundle_model.get_oauth2_token(access_token)
+    oauth2_token_for_user = bundle_model.find_oauth2_token(
+        client_id = 'codalab_worker_client',  # TODO: Don't hard-code client-id.
+        user_id = user_id
+    )
+
+    return (oauth2_token_for_access_token == oauth2_token_for_user)
+
+
+async def worker_handler(websocket: Any, user_id: str, worker_id: str, socket_id: str) -> None:
+    """Handles routes of the form: /worker/{user_id}/{worker_id}/{socket_id}.
+    This route is called when a worker first connects to the ws-server, creating
+    a connection that can be used to ask the worker to check-in later.
+    """
+    authenticated = await authenticate_worker(websocket, user_id)
+    if not authenticated:
+        logger.error("Thread {socket_id} for worker {worker_id} unable to authenticate.")
+        return
+
+    # Otherwise, establish a connection with the worker
     worker_to_ws[worker_id][socket_id] = WS(websocket)
     logger.warning(f"Worker {worker_id} connected; has {len(worker_to_ws[worker_id])} connections")
 
@@ -103,15 +137,13 @@ async def worker_handler(websocket, worker_id, socket_id):
             break
 
 
-ROUTES = (
-    (r'^.*/send/(.+)$', send_handler),
-    (r'^.*/worker/(.+)/(.+)$', worker_handler),
-)
-
-
 async def ws_handler(websocket, *args):
     """Handler for websocket connections. Routes websockets to the appropriate
     route handler defined in ROUTES."""
+    ROUTES = (
+        (r'^.*/send/(.+)$', send_handler),
+        (r'^.*/worker/(.+)/(.+)/(.+)$', worker_handler),
+    )
     logger.debug(f"websocket handler, path: {websocket.path}.")
     for (pattern, handler) in ROUTES:
         match = re.match(pattern, websocket.path)

@@ -2876,7 +2876,7 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
-    def find_oauth2_token(self, client_id, user_id, expires_after):
+    def find_oauth2_token(self, client_id, user_id, expires_after=datetime.utcnow()):
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([oauth2_token])

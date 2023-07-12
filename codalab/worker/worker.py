@@ -337,38 +337,33 @@ class Worker:
                     self.write(uuid, message['subpath'], message['string'])
                 else:
                     logger.warning("Unrecognized action type from server: %s", action_type)
+    
+    async def recv_messages(websocket):
+        # Authenticate with Websocket Server.
+        await websocket.send(self.bundle_service._get_access_token())
+
+        # Loop and keep waiting for messages.
+        while not self.terminate:
+            try:
+                message = await asyncio.wait_for(websocket.recv(), timeout=5)
+                self.process_message(message)
+            except asyncio.TimeoutError:
+                pass
+            except websockets.exceptions.ConnectionClosed:
+                logger.warning("Websocket connection closed, starting a new one...")
+                break
+            except Exception:
+                logger.error(traceback.print_exc())
 
     async def listen(self, thread_id):
-        logger.warning("Started websocket listening thread")
+        wss_uri = f"{self.ws_server}/worker/{self.bundle_service._username}/{self.id}/{thread_id}"
         while not self.terminate:
-            logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}/{thread_id}")
+            logger.info(f"Connecting to {wss_uri}")
             try:
-                async with websockets.connect(
-                    f"{self.ws_server}/worker/{self.id}/{thread_id}", max_queue=1
-                ) as websocket:
-
-                    async def receive_msg():
-                        # Note: we set a timeout below so that we can check the termination
-                        # condition every <timeout_secs> seconds to ensure the worker
-                        # doesn't run forever.
-                        message = await asyncio.wait_for(websocket.recv(), timeout=5)
-                        logger.error(f"Thread {thread_id} processing messsage: {message}")
-                        self.process_message(message)
-
-                    while not self.terminate:
-                        try:
-                            await receive_msg()
-                        except asyncio.TimeoutError:
-                            pass
-                        except websockets.exceptions.ConnectionClosed:
-                            logger.warning("Websocket connection closed, starting a new one...")
-                            break
-                        except Exception:
-                            logger.error(traceback.print_exc())
+                async with websockets.connect(f"{wss_uri}", max_queue=1) as websocket:
+                    await recv_messages(websocket)
             except Exception:
-                logger.error(
-                    f"Miscellaneous exception connecting to ws-server: {traceback.print_exc()}"
-                )
+                logger.error(f"Error connecting to ws-server: {traceback.print_exc()}")
                 time.sleep(3)
 
     def listen_thread_fn(self):
