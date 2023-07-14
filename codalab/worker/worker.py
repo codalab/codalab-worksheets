@@ -359,8 +359,8 @@ class Worker:
         wss_uri = f"{self.ws_server}/worker/{self.id}/{thread_id}"
         while not self.terminate:
             logger.info(f"Connecting to {wss_uri}")
-            try:  # TODO(agaut): don't always set ssl to be True
-                async with websockets.connect(f"{wss_uri}", max_queue=1, ssl=True) as websocket:
+            try:
+                async with websockets.connect(f"{wss_uri}", max_queue=1) as websocket:
                     await self.recv_messages(websocket)
             except Exception:
                 logger.error(f"Error connecting to ws-server: {traceback.print_exc()}")

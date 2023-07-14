@@ -2,13 +2,12 @@
 import argparse
 import asyncio
 from collections import defaultdict
-from dataclasses import dataclass
 import logging
 import os
 import re
 from typing import Any, Dict, Optional
-import ssl
 import websockets
+from dataclasses import dataclass
 import threading
 
 from codalab.lib.codalab_manager import CodaLabManager
@@ -53,20 +52,16 @@ class WS:
     def last_use(self, value):
         self._last_use = value
 
-# Configure logging.
-logger = logging.getLogger(__name__)
 
-# Variables for authenticating and acknowledging receipt of messages.
-server_secret = os.environ["CODALAB_SERVER_SECRET"]
+worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(
+    dict
+)  # Maps worker to list of its websockets (since each worker has a pool of connections)
 ACK = b'a'
-
-# Maps worker to list of its websockets (since each worker has a pool of connections)
-worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(dict)  
-
-# Configure access to SQL database.
+logger = logging.getLogger(__name__)
 manager = CodaLabManager()
 bundle_model = manager.model()
 worker_model = manager.worker_model()
+server_secret = os.environ["CODALAB_SERVER_SECRET"]
 
 
 async def send_handler(server_websocket, worker_id):
@@ -140,20 +135,9 @@ async def async_main():
     parser.add_argument(
         '--port', help='Port to run the server on.', type=int, required=False, default=2901
     )
-    parser.add_argument(
-        '--cert-path', help='Path to SSL certificate file for websocket server.', type=str, required=False
-    )
     args = parser.parse_args()
-
-    # Parse SSL config.
-    if args.cert_path:
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(args.cert_path)
-    else:
-        ssl_context = None
-
     logging.debug(f"Running ws-server on 0.0.0.0:{args.port}")
-    async with websockets.serve(ws_handler, "0.0.0.0", args.port, ssl=ssl_context):
+    async with websockets.serve(ws_handler, "0.0.0.0", args.port):
         await asyncio.Future()  # run server forever
 
 

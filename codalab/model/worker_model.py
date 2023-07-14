@@ -474,8 +474,8 @@ class WorkerModel(object):
         """
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
-            try:  # TODO(agaut): don't always set ssl to be True
-                with connect(f"{self._ws_server}/send/{worker_id}", ssl=True) as websocket:
+            try:
+                with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
                     websocket.send(self._server_secret)  # Authenticate
                     websocket.send(json.dumps(data).encode())
                     ack = websocket.recv()
