@@ -39,11 +39,12 @@ class WorkerModel(object):
 
     ACK = b'a'
 
-    def __init__(self, engine, socket_dir, ws_server):
+    def __init__(self, engine, socket_dir, ws_server, server_secret, use_ssl):
         self._engine = engine
         self._socket_dir = socket_dir
         self._ws_server = ws_server
-        self._server_secret = os.environ["CODALAB_SERVER_SECRET"]
+        self._server_secret = server_secret
+        self._use_ssl = use_ssl
 
     def worker_checkin(
         self,
@@ -474,8 +475,9 @@ class WorkerModel(object):
         """
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
-            try:  # TODO(agaut): don't always set ssl to be True
-                with connect(f"{self._ws_server}/send/{worker_id}", ssl=True) as websocket:
+            try:
+                ssl_context = True if self._use_ssl else None
+                with connect(f"{self._ws_server}/send/{worker_id}", ssl_context=ssl_context) as websocket:
                     websocket.send(self._server_secret)  # Authenticate
                     websocket.send(json.dumps(data).encode())
                     ack = websocket.recv()

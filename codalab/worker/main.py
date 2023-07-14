@@ -124,6 +124,13 @@ def parse_args():
         'password is read from standard input.',
     )
     parser.add_argument(
+        '--use-ssl',
+        action='store_true',
+        default=False,
+        help='If True, use a secure `wss` connection to the websocket server, which'
+        'encrypts messages sent to and received from the websocket server.',
+    )
+    parser.add_argument(
         '--verbose', action='store_true', help='Whether to output verbose log messages.'
     )
     parser.add_argument(
@@ -389,6 +396,7 @@ def main():
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
         bundle_runtime=bundle_runtime_class,
+        use_ssl=args.use_ssl,
     )
 
     # Register a signal handler to ensure safe shutdown.
