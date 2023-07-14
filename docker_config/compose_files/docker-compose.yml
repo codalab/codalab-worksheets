@@ -133,7 +133,7 @@ services:
 
   ws-server:
     image: codalab/server:${CODALAB_VERSION}
-    command: cl-ws-server --port ${CODALAB_WS_PORT}
+    command: cl-ws-server --port ${CODALAB_WS_PORT} --cert-path ${CODALAB_SSL_CERT_FILE}
     <<: *codalab-base
     <<: *codalab-server
     depends_on:

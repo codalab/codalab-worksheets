@@ -92,9 +92,8 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool
-        # Number of threads to have running concurrently waiting for socket messages. MUST be a natural number.
         num_threads=10,  # type: int
-        use_ssl=False,  # type: bool
+        # Number of threads to have running concurrently waiting for socket messages. MUST be a natural number.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -143,10 +142,6 @@ class Worker:
 
         assert num_threads > 0 and type(num_threads) is int, "num_threads must be a natural number."
         self.num_threads = num_threads
-
-        self.use_ssl = use_ssl
-        if use_ssl:
-            self.ws_server.replace("ws://", "wss://")
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
@@ -364,10 +359,8 @@ class Worker:
         wss_uri = f"{self.ws_server}/worker/{self.id}/{thread_id}"
         while not self.terminate:
             logger.info(f"Connecting to {wss_uri}")
-            try:
-                ssl_context = True if self.use_ssl else None
-                # NOTE: it seems to me that the argument below should be `ssl_context=` rather than `ssl=`
-                async with websockets.connect(f"{wss_uri}", max_queue=1, ssl=ssl_context) as websocket:
+            try:  # TODO(agaut): don't always set ssl to be True
+                async with websockets.connect(f"{wss_uri}", max_queue=1, ssl=True) as websocket:
                     await self.recv_messages(websocket)
             except Exception:
                 logger.error(f"Error connecting to ws-server: {traceback.print_exc()}")
