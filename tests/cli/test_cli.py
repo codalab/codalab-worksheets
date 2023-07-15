@@ -771,7 +771,7 @@ def test_auth(ctx):
     try:
         with websockets.sync.client.connect(f"{ws_server_uri}/worker/{worker_id}/15") as ws:
             ws.send("fake-access-token")
-            test = ws.recv()
+            ws.recv()
     except websockets.exceptions.ConnectionClosedError as e:
         exception = e
     check_equals(exception.code, 1008)
