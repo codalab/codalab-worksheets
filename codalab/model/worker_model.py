@@ -478,15 +478,14 @@ class WorkerModel(object):
                     ack = websocket.recv()
                     return ack == self.ACK
             except Exception as e:
-                error_message = f"Send to worker {worker_id} failed with {e}."
+                logger.error(f"Send to worker {worker_id} failed with {e}.")
 
                 # Disconnects due to 1000 or 1011 happen intermittently, so only
                 # retry in those cases.
-                if hasattr(e, "code") and e.code != 1000 and e.code != 1011:
-                    logger.error(error_message)
+                if hasattr(e, "code") and e.code != 1000 and e.code != 1011:  # type: ignore
                     break
 
                 # Otherwise, retry.
-                logger.error(error_message + " Retrying...")
+                logger.error(" Retrying...")
                 time.sleep(0.1)  # TODO(agaut): Do exponential backoff here?
         return False
