@@ -12,12 +12,14 @@ import threading
 
 from codalab.lib.codalab_manager import CodaLabManager
 
+
 @dataclass
 class WS:
     """
     Stores websocket object and whether or not the websocket is available.
     TODO: give this a better, less confusing name.
     """
+
     _ws: Any = None
     _is_available: bool = True
     _lock: threading.Lock = threading.Lock()
@@ -94,12 +96,13 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
     access_token = await websocket.recv()
     user_id = worker_model.get_user_id_for_worker(worker_id=worker_id)
     authenticated = bundle_model.access_token_exists_for_user(
-        'codalab_worker_client',  # TODO: Avoid hard-coding this if possible.
-        user_id,
-        access_token)
+        'codalab_worker_client', user_id, access_token  # TODO: Avoid hard-coding this if possible.
+    )
     if not authenticated:
         logger.error(f"Thread {socket_id} for worker {worker_id} unable to authenticate.")
-        await websocket.close(1008, f"Thread {socket_id} for worker {worker_id} unable to authenticate.")
+        await websocket.close(
+            1008, f"Thread {socket_id} for worker {worker_id} unable to authenticate."
+        )
         return
 
     # Establish a connection with worker and keep it alive.

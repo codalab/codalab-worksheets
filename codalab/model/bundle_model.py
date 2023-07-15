@@ -2894,7 +2894,7 @@ class BundleModel(object):
             return None
 
         return OAuth2Token(self, **row)
-    
+
     def access_token_exists_for_user(self, client_id: str, user_id: str, access_token: str) -> bool:
         """Check that the provided access_token exists in the database for the provided user_id.
         """
@@ -2912,7 +2912,7 @@ class BundleModel(object):
                 .limit(1)
             ).fetchone()
 
-        return (row is not None)
+        return row is not None
 
     def save_oauth2_token(self, token):
         with self.engine.begin() as connection:

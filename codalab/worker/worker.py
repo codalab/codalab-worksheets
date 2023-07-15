@@ -337,7 +337,7 @@ class Worker:
                     self.write(uuid, message['subpath'], message['string'])
                 else:
                     logger.warning("Unrecognized action type from server: %s", action_type)
-    
+
     async def recv_messages(self, websocket):
         # Authenticate with Websocket Server.
         await websocket.send(self.bundle_service._get_access_token())
