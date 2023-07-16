@@ -345,7 +345,8 @@ class Worker:
         # Loop and keep waiting for messages.
         while not self.terminate:
             try:
-                message = await asyncio.wait_for(websocket.recv(), timeout=5)
+                await websocket.send("a")
+                message = await asyncio.wait_for(websocket.recv(), timeout=10)
                 self.process_message(message)
             except asyncio.TimeoutError:
                 pass

@@ -70,6 +70,7 @@ async def send_handler(server_websocket, worker_id):
     """Handles routes of the form: /send/{worker_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
+    logger.error("in send handler")
     # Authenticate server.
     receieved_secret = await server_websocket.recv()
     if receieved_secret != server_secret:
@@ -79,8 +80,10 @@ async def send_handler(server_websocket, worker_id):
 
     # Send message from server to worker.
     data = await server_websocket.recv()
+    logger.error("recv'ed data")
     for _, worker_websocket in worker_to_ws[worker_id].items():
         if worker_websocket.lock.acquire(blocking=False):
+            logger.error("acquired lock...")
             await worker_websocket.ws.send(data)
             await server_websocket.send(ACK)
             worker_websocket.lock.release()
@@ -110,13 +113,14 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
     logger.warning(f"Worker {worker_id} connected; has {len(worker_to_ws[worker_id])} connections")
     while True:
         try:
-            await asyncio.sleep(60)
+            await asyncio.wait_for(websocket.recv(), timeout=60)
         except asyncio.futures.TimeoutError:
             pass
         except websockets.exceptions.ConnectionClosed:
             logger.error(f"Socket connection closed with worker {worker_id}.")
             break
-
+    del worker_to_ws[worker_id][socket_id]
+    logger.warning(f"Worker {worker_id} now has {len(worker_to_ws[worker_id])} connections")
 
 async def ws_handler(websocket, *args):
     """Handler for websocket connections. Routes websockets to the appropriate
@@ -125,7 +129,7 @@ async def ws_handler(websocket, *args):
         (r'^.*/send/(.+)$', send_handler),
         (r'^.*/worker/(.+)/(.+)$', worker_handler),
     )
-    logger.debug(f"websocket handler, path: {websocket.path}.")
+    logger.error(f"websocket handler, path: {websocket.path}.")
     for (pattern, handler) in ROUTES:
         match = re.match(pattern, websocket.path)
         if match:
