@@ -12,6 +12,7 @@ from codalab.worker.docker_utils import DEFAULT_RUNTIME
 from codalab.common import BundleRuntime
 from codalab.worker.runtime import Runtime
 
+import os
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -232,3 +233,15 @@ class KubernetesRuntime(Runtime):
                     f'Exception when calling Kubernetes api->delete_namespaced_pod...: {e}'
                 )
                 raise e
+
+    def get_node_availability_stats(self) -> dict:
+        node_name = os.getenv("CODALAB_KUBERNETES_NODE_NAME")
+        node = self.k8_api.read_node(name=node_name)
+        allocatable = node.status.allocatable
+
+        return {
+            'cpus': int(allocatable.get('cpu')),
+            'gpus': int(allocatable.get('nvidia.com/gpu') or '0'),
+            'memory_bytes': int(utils.parse_quantity(allocatable.get('memory'))),
+            'free_disk_bytes': int(utils.parse_quantity(allocatable.get('ephemeral-storage'))),
+        }
