@@ -457,19 +457,20 @@ class WorkerModel(object):
                 return True
             return False
 
-    def send_json(self, data: dict, worker_id: str, timeout_secs: int = 60):
+    def send_json(self, data: dict, worker_id: str, timeout_secs: int = 5, initial_sleep: float = 0.1):
         """
         Send data to the worker.
 
         :param worker_id: The ID of the worker to send data to
         :param data: Data to send to worker. Could be a file or a json message.
-        :param timeout_secs: Seconds until timeout. The actual data sending could take
-                                2 times this value (although this is quite unlikely) since
-                                both open_timeout and close_timeout are set to timeout_secs
+        :param timeout_secs: Seconds until send fails due to timeout.
+        :param initial_sleep: Time to sleep before retrying send after a failure.
+                              Note: upon successive failures, exponential backoff is applied.
 
         :return True if data was sent properly, False otherwise.
         """
         start_time = time.time()
+        sleep_time = initial_sleep
         while time.time() - start_time < timeout_secs:
             try:
                 with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
@@ -487,5 +488,6 @@ class WorkerModel(object):
 
                 # Otherwise, retry.
                 logger.error(" Retrying...")
-                time.sleep(0.1)  # TODO(agaut): Do exponential backoff here?
+                time.sleep(sleep_time)
+                sleep_time *= 2  # Exponential backoff
         return False
