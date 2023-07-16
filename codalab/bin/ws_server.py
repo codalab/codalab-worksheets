@@ -81,7 +81,8 @@ async def send_handler(server_websocket, worker_id):
     # Send message from server to worker.
     data = await server_websocket.recv()
     logger.error("recv'ed data")
-    for _, worker_websocket in worker_to_ws[worker_id].items():
+    for worker_websocket in random.sample(worker_to_ws[worker_id].values(), len(worker_to_ws[worker_id])):
+        logger.error("looping...")
         if worker_websocket.lock.acquire(blocking=False):
             logger.error("acquired lock...")
             await worker_websocket.ws.send(data)
