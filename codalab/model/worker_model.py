@@ -39,11 +39,11 @@ class WorkerModel(object):
 
     ACK = b'a'
 
-    def __init__(self, engine, socket_dir, ws_server):
+    def __init__(self, engine, socket_dir, ws_server, server_secret):
         self._engine = engine
         self._socket_dir = socket_dir
         self._ws_server = ws_server
-        self._server_secret = os.environ["CODALAB_SERVER_SECRET"]
+        self._server_secret = server_secret
 
     def worker_checkin(
         self,

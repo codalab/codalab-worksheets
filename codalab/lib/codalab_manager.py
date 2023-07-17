@@ -250,6 +250,11 @@ class CodaLabManager(object):
 
     @property  # type: ignore
     @cached
+    def server_secret(self):
+        return os.getenv("CODALAB_SERVER_SECRET")
+
+    @property  # type: ignore
+    @cached
     def worker_socket_dir(self):
         from codalab.lib import path_util
 
@@ -380,7 +385,9 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        return WorkerModel(self.model().engine, self.worker_socket_dir, self.ws_server)
+        return WorkerModel(
+            self.model().engine, self.worker_socket_dir, self.ws_server, self.server_secret
+        )
 
     @cached
     def upload_manager(self):
