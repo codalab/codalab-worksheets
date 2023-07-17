@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 manager = CodaLabManager()
 bundle_model = manager.model()
 worker_model = manager.worker_model()
-server_secret = os.environ["CODALAB_SERVER_SECRET"]
+server_secret = os.getenv("CODALAB_SERVER_SECRET")
 
 
 async def send_handler(server_websocket, worker_id):

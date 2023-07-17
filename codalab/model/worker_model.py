@@ -461,7 +461,7 @@ class WorkerModel(object):
         self, data: dict, worker_id: str, timeout_secs: int = 5, initial_sleep: float = 0.1
     ):
         """
-        Send data to the worker.
+        Send JSON message to the worker.
 
         :param worker_id: The ID of the worker to send data to
         :param data: Data to send to worker. Could be a file or a json message.
@@ -481,15 +481,7 @@ class WorkerModel(object):
                     ack = websocket.recv()
                     return ack == self.ACK
             except Exception as e:
-                logger.error(f"Send to worker {worker_id} failed with {e}.")
-
-                # Disconnects due to 1000 or 1011 happen intermittently, so only
-                # retry in those cases.
-                if hasattr(e, "code") and e.code != 1000 and e.code != 1011:  # type: ignore
-                    break
-
-                # Otherwise, retry.
-                logger.error(" Retrying...")
+                logger.error(f"Send to worker {worker_id} failed with {e}. Retrying...")
                 time.sleep(sleep_time)
                 sleep_time *= 2  # Exponential backoff
         return False
