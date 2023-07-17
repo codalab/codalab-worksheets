@@ -6,6 +6,7 @@ import logging
 import os
 import random
 import re
+import time
 from typing import Any, Dict
 import websockets
 import threading
@@ -13,8 +14,37 @@ import threading
 from codalab.lib.codalab_manager import CodaLabManager
 
 
+class TimedLock:
+    """A lock that gets automatically released after timeout_seconds.
+    """
+
+    def __init__(self, timeout_seconds: float = 60):
+        self._lock = threading.Lock()
+        self._time_since_locked: float
+        self._timeout: float = timeout_seconds
+
+    def acquire(self, blocking=True, timeout=-1):
+        acquired = self._lock.acquire(blocking, timeout)
+        if acquired:
+            self._time_since_locked = time.time()
+        return acquired
+
+    def locked(self):
+        return self._lock.locked()
+
+    def release(self):
+        self._lock.release()
+
+    def timeout(self):
+        return time.time() - self._time_since_locked > self._timeout
+
+    def release_if_timeout(self):
+        if self.locked() and self.timeout():
+            self.release()
+
+
 worker_to_ws: Dict[str, Dict[str, Any]] = defaultdict(dict)  # Maps worker to socket ID to websocket
-ws_to_lock: Dict[str, Dict[str, threading.Lock]] = defaultdict(dict)
+ws_to_lock: Dict[str, Dict[str, TimedLock]] = defaultdict(dict)
 ACK = b'a'
 logger = logging.getLogger(__name__)
 manager = CodaLabManager()
@@ -43,7 +73,10 @@ async def send_handler(server_websocket, worker_id):
             await worker_websocket.send(data)
             await server_websocket.send(ACK)
             ws_to_lock[worker_id][socket_id].release()
-            break
+            return
+
+    logger.error("All websockets currently busy.")
+    await server_websocket.close(1013, "All websockets currently busy.")
 
 
 async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None:
@@ -66,11 +99,12 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
 
     # Establish a connection with worker and keep it alive.
     worker_to_ws[worker_id][socket_id] = websocket
-    ws_to_lock[worker_id][socket_id] = threading.Lock()
+    ws_to_lock[worker_id][socket_id] = TimedLock()
     logger.warning(f"Worker {worker_id} connected; has {len(worker_to_ws[worker_id])} connections")
     while True:
         try:
             await asyncio.wait_for(websocket.recv(), timeout=60)
+            ws_to_lock[worker_id][socket_id].release_if_timeout()  # Failsafe in case not released
         except asyncio.futures.TimeoutError:
             pass
         except websockets.exceptions.ConnectionClosed:
