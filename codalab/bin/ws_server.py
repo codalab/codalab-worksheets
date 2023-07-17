@@ -4,60 +4,17 @@ import asyncio
 from collections import defaultdict
 import logging
 import os
+import random
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import websockets
-from dataclasses import dataclass
 import threading
 
 from codalab.lib.codalab_manager import CodaLabManager
 
 
-@dataclass
-class WS:
-    """
-    Stores websocket object and whether or not the websocket is available.
-    TODO: give this a better, less confusing name.
-    """
-
-    _ws: Any = None
-    _is_available: bool = True
-    _lock: threading.Lock = threading.Lock()
-    _timeout: float = 86400
-    _last_use: Optional[float] = None
-
-    @property
-    def ws(self):
-        return self._ws
-
-    @property
-    def lock(self):
-        return self._lock
-
-    @property
-    def is_available(self):
-        return self._is_available
-
-    @is_available.setter
-    def is_available(self, value):
-        self._is_available = value
-
-    @property
-    def timeout(self):
-        return self._timeout
-
-    @property
-    def last_use(self):
-        return self._last_use
-
-    @last_use.setter
-    def last_use(self, value):
-        self._last_use = value
-
-
-worker_to_ws: Dict[str, Dict[str, WS]] = defaultdict(
-    dict
-)  # Maps worker to list of its websockets (since each worker has a pool of connections)
+worker_to_ws: Dict[str, Dict[str, Any]] = defaultdict(dict)  # Maps worker to socket ID to websocket
+ws_to_lock: Dict[str, Dict[str, threading.Lock]] = defaultdict(dict)
 ACK = b'a'
 logger = logging.getLogger(__name__)
 manager = CodaLabManager()
@@ -70,7 +27,6 @@ async def send_handler(server_websocket, worker_id):
     """Handles routes of the form: /send/{worker_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
-    logger.error("in send handler")
     # Authenticate server.
     receieved_secret = await server_websocket.recv()
     if receieved_secret != server_secret:
@@ -80,14 +36,13 @@ async def send_handler(server_websocket, worker_id):
 
     # Send message from server to worker.
     data = await server_websocket.recv()
-    logger.error("recv'ed data")
-    for worker_websocket in random.sample(worker_to_ws[worker_id].values(), len(worker_to_ws[worker_id])):
-        logger.error("looping...")
-        if worker_websocket.lock.acquire(blocking=False):
-            logger.error("acquired lock...")
-            await worker_websocket.ws.send(data)
+    for socket_id, worker_websocket in random.sample(
+        worker_to_ws[worker_id].items(), len(worker_to_ws[worker_id])
+    ):
+        if ws_to_lock[worker_id][socket_id].acquire(blocking=False):
+            await worker_websocket.send(data)
             await server_websocket.send(ACK)
-            worker_websocket.lock.release()
+            ws_to_lock[worker_id][socket_id].release()
             break
 
 
@@ -110,7 +65,8 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
         return
 
     # Establish a connection with worker and keep it alive.
-    worker_to_ws[worker_id][socket_id] = WS(websocket)
+    worker_to_ws[worker_id][socket_id] = websocket
+    ws_to_lock[worker_id][socket_id] = threading.Lock()
     logger.warning(f"Worker {worker_id} connected; has {len(worker_to_ws[worker_id])} connections")
     while True:
         try:
@@ -121,7 +77,9 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
             logger.error(f"Socket connection closed with worker {worker_id}.")
             break
     del worker_to_ws[worker_id][socket_id]
+    del ws_to_lock[worker_id][socket_id]
     logger.warning(f"Worker {worker_id} now has {len(worker_to_ws[worker_id])} connections")
+
 
 async def ws_handler(websocket, *args):
     """Handler for websocket connections. Routes websockets to the appropriate
@@ -130,7 +88,7 @@ async def ws_handler(websocket, *args):
         (r'^.*/send/(.+)$', send_handler),
         (r'^.*/worker/(.+)/(.+)$', worker_handler),
     )
-    logger.error(f"websocket handler, path: {websocket.path}.")
+    logger.info(f"websocket handler, path: {websocket.path}.")
     for (pattern, handler) in ROUTES:
         match = re.match(pattern, websocket.path)
         if match:

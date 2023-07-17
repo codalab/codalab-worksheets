@@ -457,7 +457,9 @@ class WorkerModel(object):
                 return True
             return False
 
-    def send_json(self, data: dict, worker_id: str, timeout_secs: int = 5, initial_sleep: float = 0.1):
+    def send_json(
+        self, data: dict, worker_id: str, timeout_secs: int = 5, initial_sleep: float = 0.1
+    ):
         """
         Send data to the worker.
 
