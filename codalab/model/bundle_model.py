@@ -1294,8 +1294,11 @@ class BundleModel(object):
                 if update:
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
-                    connection.execute(cl_bundle_metadata.delete().where(metadata_update_clause))
-                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_update_values)
+                    with connection.begin():
+                        connection.execute(
+                            cl_bundle_metadata.delete().where(metadata_update_clause)
+                        )
+                        connection.execute(cl_bundle_metadata.insert(), metadata_update_values)
                 if metadata_delete_keys:
                     connection.execute(cl_bundle_metadata.delete().where(metadata_delete_clause))
             except UnicodeError:
