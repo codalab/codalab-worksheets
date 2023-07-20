@@ -1290,15 +1290,16 @@ class BundleModel(object):
         # Perform the actual updates and deletes.
         def do_update(connection):
             try:
-                logger.error(update)
-                logger.error(metadata_update)
                 if update:
                     logger.error("ABOUT TO UPDATE!")
-                    logger.error(clause)
+                    logger.error(f"update clause: {clause}")
+                    logger.error(f"The acutal update: {update}")
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
-                    logger.error(metadata_update_clause)
-                    logger.error(metadata_update_values)
+                    logger.error("ABOUT TO UPDATE METADATA!")
+                    logger.error(f"metadata_update_clause: {metadata_update_clause}")
+                    logger.error(f"metadata_update_values: {metadata_update_values}")
+                    logger.error(f"metadata_update: {metadata_update}")
                     connection.execute(cl_bundle_metadata.insert(), metadata_update_values)
                     connection.execute(cl_bundle_metadata.delete().where(metadata_update_clause))
                 if metadata_delete_keys:
