@@ -1291,15 +1291,8 @@ class BundleModel(object):
         def do_update(connection):
             try:
                 if update:
-                    logger.error("ABOUT TO UPDATE!")
-                    logger.error(f"update clause: {clause}")
-                    logger.error(f"The acutal update: {update}")
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
-                    logger.error("ABOUT TO UPDATE METADATA!")
-                    logger.error(f"metadata_update_clause: {metadata_update_clause}")
-                    logger.error(f"metadata_update_values: {metadata_update_values}")
-                    logger.error(f"metadata_update: {metadata_update}")
                     connection.execute(cl_bundle_metadata.delete().where(metadata_update_clause))
                     self.do_multirow_insert(connection, cl_bundle_metadata, metadata_update_values)
                 if metadata_delete_keys:
