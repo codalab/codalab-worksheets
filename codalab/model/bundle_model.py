@@ -157,8 +157,7 @@ class BundleModel(object):
         #   - Some dialects do not support multiple inserts in a single statement,
         #     which we deal with by using the DBAPI execute_many pattern.
         if values:
-            with connection.begin():
-                connection.execute(table.insert(), values)
+            connection.execute(table.insert(), values)
 
     @staticmethod
     def make_clause(key, value):
@@ -1291,14 +1290,17 @@ class BundleModel(object):
         # Perform the actual updates and deletes.
         def do_update(connection):
             try:
+                logger.error(update)
+                logger.error(metadata_update)
                 if update:
+                    logger.error("ABOUT TO UPDATE!")
+                    logger.error(clause)
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
-                    with connection.begin():
-                        connection.execute(
-                            cl_bundle_metadata.delete().where(metadata_update_clause)
-                        )
-                        connection.execute(cl_bundle_metadata.insert(), metadata_update_values)
+                    logger.error(metadata_update_clause)
+                    logger.error(metadata_update_values)
+                    connection.execute(cl_bundle_metadata.insert(), metadata_update_values)
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_update_clause))
                 if metadata_delete_keys:
                     connection.execute(cl_bundle_metadata.delete().where(metadata_delete_clause))
             except UnicodeError:
