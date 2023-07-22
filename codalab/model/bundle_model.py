@@ -157,8 +157,7 @@ class BundleModel(object):
         #   - Some dialects do not support multiple inserts in a single statement,
         #     which we deal with by using the DBAPI execute_many pattern.
         if values:
-            with connection.begin():
-                connection.execute(table.insert(), values)
+            connection.execute(table.insert(), values)
 
     @staticmethod
     def make_clause(key, value):
@@ -745,6 +744,12 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
+    def get_all_bundle_uuids(self, max_results):
+        clause = and_(true(), cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+        query = select([cl_bundle.c.uuid]).where(clause)
+        query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+        return self._execute_query(query)
+
     def get_memoized_bundles(self, user_id, command, dependencies):
         """
         Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
@@ -1228,9 +1233,11 @@ class BundleModel(object):
             # State isn't one we can check in for
             return False
 
-    def save_bundle(self, bundle):
+    def save_bundle(self, bundle, bundle_store_uuid=None):
         """
         Save a bundle. On success, sets the Bundle object's id from the result.
+        Parameters:
+        `bundle_store_uuid`: If set, bundle location is set to this value. Optional.
         """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
@@ -1244,6 +1251,12 @@ class BundleModel(object):
             result = connection.execute(cl_bundle.insert().values(bundle_value))
             self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            if bundle_store_uuid:
+                bundle_location_value = {
+                    'bundle_uuid': bundle.uuid,
+                    'bundle_store_uuid': bundle_store_uuid,
+                }
+                connection.execute(cl_bundle_location.insert().values(bundle_location_value))
             bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None, delete=False):
