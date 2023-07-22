@@ -6,9 +6,8 @@ collaborative manner.
 
 The project was started in 2013 by [Percy
 Liang](https://cs.stanford.edu/~pliang/) at Stanford University with the
-help of [Evelyne Viegas](https://www.microsoft.com/en-us/research/people/evelynev/) at Microsoft.
-The project is currently funded by Microsoft, and the computing resources are
-provided by Microsoft Azure.
+support of [Evelyne Viegas](https://www.microsoft.com/en-us/research/people/evelynev/) at Microsoft.
+CodaLab Worksheets currently is hosted on Microsoft Azure.
 
 ## Current Developers
 
@@ -17,9 +16,6 @@ provided by Microsoft Azure.
 - Jiani Wang
 - Andrew Gaut
 - Yifan Mai
-- Tony Lee
-- Pranav Jain
-- Leilenah Mamea
 
 ## Former Developers
 
@@ -46,3 +42,6 @@ provided by Microsoft Azure.
 - Aditya Prerepa
 - Andy Jin
 - Jizhen Wang
+- Tony Lee
+- Pranav Jain
+- Leilenah Mamea
