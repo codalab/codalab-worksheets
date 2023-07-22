@@ -5,6 +5,10 @@ and validates the metadata before returning.
 '''
 from codalab.common import UsageError
 from codalab.lib import formatting
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 class Metadata(object):
@@ -86,7 +90,7 @@ class Metadata(object):
                 metadata_dict[key].append(value)
             else:
                 if metadata_dict.get(key):
-                    raise UsageError(
+                    logger.warning(
                         'Got duplicate values {} and {} for key {}. metadata dict is {}, rows are {}'.format(
                             metadata_dict[key], value, key, metadata_dict, rows
                         )
