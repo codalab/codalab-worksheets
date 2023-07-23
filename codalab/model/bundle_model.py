@@ -1268,7 +1268,6 @@ class BundleModel(object):
         to use this method to update bundles based on user input (eg: cl edit).
         """
         logger.error(f"in update bundle for bundle {bundle.uuid}")
-        import traceback; traceback.print_stack()
         message = 'Illegal update: %s' % (update,)
         precondition('id' not in update and 'uuid' not in update, message)
         # Apply the column and metadata updates in memory and validate the result.
@@ -1314,6 +1313,8 @@ class BundleModel(object):
         # Perform the actual updates and deletes.
         def do_update(connection):
             try:
+                logger.error(f"BUNDLE UPDATE: {update}")
+                logger.error(f"BUNDLE METADATA UPDATE: {metadata_update}")
                 if update:
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:
