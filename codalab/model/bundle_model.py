@@ -1142,15 +1142,13 @@ class BundleModel(object):
         """
         logger.error("-"*80)
         logger.error("In transition_bundle_finished")
-        logger.error(f"bundle: {bundle.to_dict()}")
         metadata = bundle.metadata.to_dict()
-        logger.error(metadata)
+        logger.error(f"metadata for bundle {bundle.uuid}: {metadata}")
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
-        logger.error(failure_message)
-        logger.error(exitcode)
+        actions = metadata.get('actions', None)
         state = State.FAILED if failure_message or exitcode else State.READY
-        logger.error(state)
+        #if (failure_message and 'Kill requested' in failure_message) or (actions and 'kill' in actions):
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
