@@ -65,9 +65,9 @@ class Migration:
         assert StorageType.AZURE_BLOB_STORAGE.value == self.target_store['storage_type']
         self.target_store_type = StorageType.AZURE_BLOB_STORAGE
 
-        # This file is used to log those bundles's loation that has been changed in database.
+        # This file is used to log those bundles's location that has been changed in database.
         self.change_db_records_file = "change_db_records.txt"
-        # self.logger = self.get_logger() 
+        self.logger = self.get_logger() 
 
     def get_logger(self):
         """
@@ -75,7 +75,7 @@ class Migration:
         """
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
-        handler = logging.FileHandler("migration.log")
+        handler = logging.FileHandler(os.path.join(self.codalab_manager.codalab_home, "migration.log"))
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
@@ -110,19 +110,19 @@ class Migration:
 
     def get_bundle_info(self, bundle_uuid, bundle_location):
         target = BundleTarget(bundle_uuid, subpath='')
-        logging.info(f"[migration] {target}")
+        self.logger.info(f"[migration] {target}")
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
-            logging.info(f"[migration] {info}")
+            self.logger.info(f"[migration] {info}")
         except Exception as e:
-            logging.info(f"[migration] Error: {str(e)}")
+            self.logger.info(f"[migration] Error: {str(e)}")
             raise e
 
         return info
 
     def upload_to_azure_blob(self, bundle_uuid, bundle_location, is_dir=False):
         # generate target bundle path
-        logging.info(f"[migration] Uploading bundle {bundle_uuid} to Azure storage")
+        self.logger.info(f"[migration] Uploading bundle {bundle_uuid} to Azure storage")
         file_name = "contents.tar.gz" if is_dir else "contents.gz"
         target_location = f"{self.target_store_url}/{bundle_uuid}/{file_name}"
 
@@ -147,7 +147,7 @@ class Migration:
             source_ext = ''
             unpack = False
 
-        logging.info("[migration] Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
+        self.logger.info("[migration] Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
         # Upload file content and generate index file
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
@@ -158,7 +158,7 @@ class Migration:
         Change the bundle location in the database
         ATTENTION: this function will modify codalab
         """
-        logging.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
+        self.logger.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
 
         original_location = self.get_bundle_location(bundle_uuid)
 
@@ -202,6 +202,10 @@ class Migration:
             old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
             old_file_list.sort()
 
+            old_file_size = path_util.get_path_size(bundle_location)
+            new_file_size = path_util.get_path_size(new_location)
+            assert old_file_size == new_file_size
+
             assert old_file_list == new_file_list
         else:
             # For files, check the file has same contents
@@ -209,12 +213,23 @@ class Migration:
             new_content = read_file_section(new_location, 5, 10)
             assert old_content == new_content
 
+            old_file_size = path_util.get_path_size(bundle_location)
+            new_file_size = path_util.get_path_size(new_location)
+            assert old_file_size == new_file_size
+
+            # check file contents of last 10 bytes
+            if old_file_size < 10:
+                assert(read_file_section(bundle_location, 0, 10) == read_file_section(new_location, 0, 10))
+            else:
+                assert(read_file_section(bundle_location, old_file_size - 10, 10) == read_file_section(new_location, old_file_size - 10, 10))
+
+
     def delete_original_bundle_by_uuid(self, bundle_uuid, bundle_location):
         """
         Delete original bundle from local disk
         """
         if os.path.exists(bundle_location):
-            logging.info(f"[migration] Deleting original bundle {bundle_uuid} from local disk path {bundle_location}")
+            self.logger.info(f"[migration] Deleting original bundle {bundle_uuid} from local disk path {bundle_location}")
             deleted_size = path_util.get_path_size(bundle_location)
             bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
                 bundle_uuid
@@ -240,13 +255,13 @@ class Migration:
             for line in lines:
                 bundle_uuid, origin_bundle_location, _ = line.split(",")
                 if not self.get_bundle_location(bundle_uuid).startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                    logging.info(f"Bundle {bundle_uuid} info in database is not properly updated")
+                    self.logger.info(f"Bundle {bundle_uuid} info in database is not properly updated")
                     raise Exception(f"Bundle {bundle_uuid} info in database is not properly updated")
                 try:
                     self.delete_original_bundle_by_uuid(bundle_uuid, origin_bundle_location)
                 except Exception as e:
                     # If the bundle is not deleted, save the information in the file
-                    logging.error(f"[migration] Delete Original Bundle Error: {str(e)}")
+                    self.logger.error(f"[migration] Delete Original Bundle Error: {str(e)}")
                     f.write(line)
             f.truncate()
                 
@@ -318,7 +333,7 @@ if __name__ == '__main__':
 
         if args.change_db:  # If need to change the database, continue to run
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
-            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
+            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir) # TODO: sanity check in each command
             
     if args.delete:
         migration.delete_original_bundle()
