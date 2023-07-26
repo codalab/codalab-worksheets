@@ -256,7 +256,7 @@ class Migration:
             lines = f.readlines()
             for line in lines:
                 bundle_uuid, origin_bundle_location, new_location = line.split(",")
-                migration.sanity_check(bundle_uuid, origin_bundle_location, bundle_info, is_dir, new_location)
+                migration.sanity_check(bundle_uuid, origin_bundle_location, None, is_dir, new_location)
                 if not self.get_bundle_location(bundle_uuid).startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
                     logging.info(f"Bundle {bundle_uuid} info in database is not properly updated")
                     raise Exception(f"Bundle {bundle_uuid} info in database is not properly updated")
