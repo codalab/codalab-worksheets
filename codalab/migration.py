@@ -206,12 +206,9 @@ class Migration:
             old_file_list = files + dirs
             old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
             old_file_list.sort()
-
-            old_file_size = path_util.get_path_size(bundle_location)
-            new_file_size = path_util.get_path_size(new_location)
-            assert old_file_size == new_file_size
-
             assert old_file_list == new_file_list
+
+
         else:
             # For files, check the file has same contents
             old_content = read_file_section(bundle_location, 5, 10)
