@@ -113,19 +113,19 @@ class Migration:
 
     def get_bundle_info(self, bundle_uuid, bundle_location):
         target = BundleTarget(bundle_uuid, subpath='')
-        self.logger.info(f"[migration] {target}")
+        logging.info(f"[migration] {target}")
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
-            self.logger.info(f"[migration] {info}")
+            logging.info(f"[migration] {info}")
         except Exception as e:
-            self.logger.info(f"[migration] Error: {str(e)}")
+            logging.info(f"[migration] Error: {str(e)}")
             raise e
 
         return info
 
     def upload_to_azure_blob(self, bundle_uuid, bundle_location, is_dir=False):
         # generate target bundle path
-        self.logger.info(f"[migration] Uploading bundle {bundle_uuid} to Azure storage")
+        logging.info(f"[migration] Uploading bundle {bundle_uuid} to Azure storage")
         file_name = "contents.tar.gz" if is_dir else "contents.gz"
         target_location = f"{self.target_store_url}/{bundle_uuid}/{file_name}"
 
@@ -150,7 +150,7 @@ class Migration:
             source_ext = ''
             unpack = False
 
-        self.logger.info("[migration] Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
+        logging.info("[migration] Uploading from %s to Azure Blob Storage %s", bundle_location, target_location)
         # Upload file content and generate index file
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
@@ -162,7 +162,7 @@ class Migration:
         Change the bundle location in the database
         ATTENTION: this function will modify codalab
         """
-        self.logger.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
+        logging.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
 
         original_location = self.get_bundle_location(bundle_uuid)
 
@@ -234,7 +234,7 @@ class Migration:
         Delete original bundle from local disk
         """
         if os.path.exists(bundle_location):
-            self.logger.info(f"[migration] Deleting original bundle {bundle_uuid} from local disk path {bundle_location}")
+            logging.info(f"[migration] Deleting original bundle {bundle_uuid} from local disk path {bundle_location}")
             deleted_size = path_util.get_path_size(bundle_location)
             bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
                 bundle_uuid
@@ -261,13 +261,13 @@ class Migration:
                 bundle_uuid, origin_bundle_location, new_location = line.split(",")
                 migration.sanity_check(bundle_uuid, origin_bundle_location, bundle_info, is_dir, new_location)
                 if not self.get_bundle_location(bundle_uuid).startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                    self.logger.info(f"Bundle {bundle_uuid} info in database is not properly updated")
+                    logging.info(f"Bundle {bundle_uuid} info in database is not properly updated")
                     raise Exception(f"Bundle {bundle_uuid} info in database is not properly updated")
                 try:
                     self.delete_original_bundle_by_uuid(bundle_uuid, origin_bundle_location)
                 except Exception as e:
                     # If the bundle is not deleted, save the information in the file
-                    self.logger.error(f"[migration] Delete Original Bundle Error: {str(e)}")
+                    logging.error(f"[migration] Delete Original Bundle Error: {str(e)}")
                     f.write(line)
             f.truncate()
                 
