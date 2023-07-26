@@ -1,3 +1,6 @@
+
+
+
 # A script to migrate bundles from disk storage to Azure storage (UploadBundles, MakeBundles, RunBundles?)
 import logging
 import argparse
@@ -152,6 +155,7 @@ class Migration:
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
         assert FileSystems.exists(target_location)
+        return target_location
 
     def modify_bundle_data(self, bundle, bundle_uuid, is_dir):
         """
@@ -189,8 +193,9 @@ class Migration:
         with open(path, 'a') as f:
             f.write(f"{bundle_uuid},{original_location},{new_location}\n")
 
-    def sanity_check(self, bundle_uuid, bundle_location, bundle_info, is_dir):
-        new_location = self.get_bundle_location(bundle_uuid)
+    def sanity_check(self, bundle_uuid, bundle_location, bundle_info, is_dir, new_location = None):
+        if new_location is None:
+            new_location = self.get_bundle_location(bundle_uuid)
         if is_dir:
             # For dirs, check the folder contains same files. 
             with OpenFile(new_location, gzipped=True) as f:
@@ -253,7 +258,8 @@ class Migration:
         with open(path, "r+") as f:
             lines = f.readlines()
             for line in lines:
-                bundle_uuid, origin_bundle_location, _ = line.split(",")
+                bundle_uuid, origin_bundle_location, new_location = line.split(",")
+                migration.sanity_check(bundle_uuid, origin_bundle_location, bundle_info, is_dir, new_location)
                 if not self.get_bundle_location(bundle_uuid).startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
                     self.logger.info(f"Bundle {bundle_uuid} info in database is not properly updated")
                     raise Exception(f"Bundle {bundle_uuid} info in database is not properly updated")
@@ -329,11 +335,13 @@ if __name__ == '__main__':
 
         is_dir = bundle_info['type'] == 'directory'
 
-        migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+        new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+        migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
 
         if args.change_db:  # If need to change the database, continue to run
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
-            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir) # TODO: sanity check in each command
+            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
             
     if args.delete:
+        
         migration.delete_original_bundle()
