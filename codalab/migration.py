@@ -210,14 +210,9 @@ if __name__ == '__main__':
     )
     parser.add_argument('--target_store_name', type=str, help='The destination bundle store name')
     parser.add_argument(
-        '-c',
-        '--change_db',
-        help='Change the bundle location in the database',
-        action='store_true',
+        '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
     )
-    parser.add_argument(
-        '-d', '--delete', help='Delete the original database', action='store_true'
-    )
+    parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
 
     args = parser.parse_args()
 
@@ -225,7 +220,6 @@ if __name__ == '__main__':
     target_store_name = (
         "azure-store-default" if args.target_store_name is None else args.target_store_name
     )
-    
 
     # TODO: write output to log / log files
     migration = Migration(target_store_name)
