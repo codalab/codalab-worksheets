@@ -1,4 +1,4 @@
-FROM golang:1.15 as ecr-login-installation
+FROM golang:1.17 as ecr-login-installation
 # Install the Amazon ECR Docker Credential Helper
 # Use Docker multi-stage builds to get rid of intermediate layers related to installation
 
