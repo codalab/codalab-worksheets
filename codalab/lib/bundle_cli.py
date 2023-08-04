@@ -121,6 +121,7 @@ BUNDLE_COMMANDS = (
     'mount',
     'netcat',
     'store',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -1067,6 +1068,45 @@ class BundleCLI(object):
             raise UsageError(
                 f"cl store {args.command} is not supported. Only the following subcommands are supported: 'cl store add', 'cl store ls', 'cl store rm'."
             )
+        
+    @Commands.command(
+        'ancestors',
+        help='Recursively prints out all of the ancestors of the input bundle',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+
+    def do_ancestors_command(self, args):
+
+        def ancestors_helper(client, worksheet_uuid, spec, indent=""):
+            bundle = client.fetch(
+                'bundles',
+                params={
+                    'specs': spec,
+                    'worksheet': worksheet_uuid
+                },
+            )[0]
+
+            name, short_id = bundle['metadata']['name'], bundle['id'][:8]
+            print(f'{indent}- {name}({short_id})')
+
+            dependencies = bundle['dependencies']
+            for d in dependencies:
+                ancestors_helper(client, worksheet_uuid, d['parent_uuid'], indent + "  ")
+        
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        ancestors_helper(client, worksheet_uuid, args.bundle_spec)
+
 
     @Commands.command('status', aliases=('st',), help='Show current client status.')
     def do_status_command(self, args):
