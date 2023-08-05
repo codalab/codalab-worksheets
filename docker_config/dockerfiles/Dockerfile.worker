@@ -1,22 +1,3 @@
-FROM golang:1.17 as ecr-login-installation
-# Install the Amazon ECR Docker Credential Helper
-# Use Docker multi-stage builds to get rid of intermediate layers related to installation
-
-ENV GOPATH /root/go
-ENV SINGULARITY_VERSION=3.7.4
-
-RUN mkdir -p /usr/local/var/singularity/mnt && \
-    mkdir -p $GOPATH/src/github.com/sylabs && \
-    cd $GOPATH/src/github.com/sylabs && \
-    wget https://github.com/sylabs/singularity/releases/download/v${SINGULARITY_VERSION}/singularity-${SINGULARITY_VERSION}.tar.gz && \
-    tar -xzvf singularity-${SINGULARITY_VERSION}.tar.gz && \
-    cd singularity && \
-    ./mconfig -p /usr/local && \
-    make -C builddir && \
-    make -C builddir install;
-
-RUN go install github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/docker-credential-ecr-login@latest
-
 FROM ubuntu:20.04
 MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 ENV DEBIAN_FRONTEND noninteractive
@@ -25,6 +6,7 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common curl && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
+    amazon-ecr-credential-helper \
     build-essential \
     libssl-dev \
     uuid-dev \
@@ -45,11 +27,6 @@ RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-4.
      rm ~/miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 RUN conda --version
-
-COPY --from=ecr-login-installation /root/go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local /usr/local/bin
-COPY --from=ecr-login-installation /usr/local/bin/singularity /usr/local/bin
-# the singularity container runtime needs to be able to lookup the uid of the default user
-#RUN useradd -ms /bin/bash $default_user
 
 RUN mkdir $HOME/.docker
 RUN echo "{\"credsStore\": \"ecr-login\"}" >> ~/.docker/config.json
