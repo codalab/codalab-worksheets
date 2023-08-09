@@ -174,7 +174,8 @@ class DockerRuntime(Runtime):
             # gpus = output['message']
             gpus = ""
         # Get newline delimited gpu-index, gpu-uuid list
-        logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
+        logger.error(gpus)
+        logger.error("GPUs: " + str(gpus.split('\n')[:-1]))
         return {
             gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus.split('\n')[:-1]
         }
