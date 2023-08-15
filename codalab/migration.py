@@ -261,13 +261,23 @@ class Migration:
             return
         with open(path, "r+") as f:
             lines = f.readlines()
+            f.seek(0)
+            f.truncate()
             for line in lines:
-                bundle_uuid, origin_bundle_location, new_location = line.split(",")
-                bundle_info = migration.get_bundle_info(bundle_uuid, new_location)
-                is_dir = bundle_info['type'] == 'directory'
-                migration.sanity_check(
-                    bundle_uuid, origin_bundle_location, None, is_dir, new_location
-                )
+                bundle_uuid, origin_bundle_location, new_location = line.replace('\n', '').split(",")
+                try:
+                    is_dir = new_location.endswith("tar.gz")
+                    migration.sanity_check(
+                        bundle_uuid, origin_bundle_location, None, is_dir, new_location
+                    )
+                except FileNotFoundError:
+                    logging.info(f"Bundle {bundle_uuid} already deleted from local disk")
+                    continue
+                except Exception as e:
+                    logging.error(f"[migration] Sanity Check Error: {str(e)}")
+                    f.write(line)
+                    continue
+
                 if not self.get_bundle_location(bundle_uuid).startswith(
                     StorageURLScheme.AZURE_BLOB_STORAGE.value
                 ):
@@ -276,12 +286,13 @@ class Migration:
                         f"Bundle {bundle_uuid} info in database is not properly updated"
                     )
                 try:
+                    
                     self.delete_original_bundle_by_uuid(bundle_uuid, origin_bundle_location)
                 except Exception as e:
                     # If the bundle is not deleted, save the information in the file
                     logging.error(f"[migration] Delete Original Bundle Error: {str(e)}")
                     f.write(line)
-            f.truncate()
+            
 
 
 if __name__ == '__main__':
