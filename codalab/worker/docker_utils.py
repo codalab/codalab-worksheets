@@ -178,9 +178,7 @@ class DockerRuntime(Runtime):
             gpus = []
         # Get newline delimited gpu-index, gpu-uuid list
         logger.info("GPUs: " + str(gpus))
-        return {
-            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus
-        }
+        return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus}
 
     @wrap_exception('Unable to fetch Docker container ip')
     def get_container_ip(self, network_name: str, container_id: str):
