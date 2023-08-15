@@ -165,6 +165,9 @@ class DockerRuntime(Runtime):
                 remove=True,
             )
             gpus = output.decode()
+            if gpus.find("==========\n== CUDA ==\n==========") != -1:  # need to remove header
+                gpus = gpus.split("\n")[15:-1]
+
         else:
             # use the singularity runtime to run nvidia-smi
             # img = Client.pull('docker://' + cuda_image, pull_folder='/tmp')
@@ -172,11 +175,11 @@ class DockerRuntime(Runtime):
             # if output['return_code'] != 0:
             #     raise SingularityError
             # gpus = output['message']
-            gpus = ""
+            gpus = []
         # Get newline delimited gpu-index, gpu-uuid list
-        logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
+        logger.info("GPUs: " + str(gpus))
         return {
-            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus.split('\n')[:-1]
+            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus
         }
 
     @wrap_exception('Unable to fetch Docker container ip')
