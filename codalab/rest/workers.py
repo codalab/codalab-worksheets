@@ -57,7 +57,7 @@ def checkin(worker_id):
                     'Kill requested: User time quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
-                local.worker_model.send_json(
+                local.worker_model.send_json_message(
                     {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message}, worker_id
                 )
             elif local.model.get_user_disk_quota_left(bundle.owner_id) <= 0:
@@ -66,7 +66,7 @@ def checkin(worker_id):
                     'Kill requested: User disk quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
-                local.worker_model.send_json(
+                local.worker_model.send_json_message(
                     {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message}, worker_id
                 )
         except Exception as e:
@@ -92,7 +92,7 @@ def reply(worker_id, socket_id):
     Replies with a single JSON message to the given socket ID.
     """
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message_with_sock(
+    local.worker_model.send_json_message_with_unix_socket(
         socket_id, worker_id, request.json, 60, autoretry=False
     )
 
@@ -122,7 +122,7 @@ def reply_data(worker_id, socket_id):
         abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message_with_sock(
+    local.worker_model.send_json_message_with_unix_socket(
         socket_id, worker_id, header_message, 60, autoretry=False
     )
     local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)

@@ -137,7 +137,7 @@ class DownloadManager(object):
                 read_args = {'type': 'get_target_info', 'depth': depth}
                 self._send_read_message(worker, response_socket_id, target, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
-                    result = self._worker_model.recv_json_message_with_sock(sock, 60)
+                    result = self._worker_model.recv_json_message_with_unix_socket(sock, 60)
                 if result is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
                     raise NotFoundError(
@@ -365,7 +365,7 @@ class DownloadManager(object):
             'path': target.subpath,
             'read_args': read_args,
         }
-        if not self._worker_model.send_json(message, worker['worker_id']):
+        if not self._worker_model.send_json_message(message, worker['worker_id']):
             logging.info('Unable to reach worker')
 
     def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
@@ -376,12 +376,12 @@ class DownloadManager(object):
             'port': port,
             'message': message,
         }
-        if not self._worker_model.send_json(message, worker['worker_id']):
+        if not self._worker_model.send_json_message(message, worker['worker_id']):
             logging.info('Unable to reach worker')
 
     def _get_read_response_stream(self, response_socket_id):
         with closing(self._worker_model.start_listening(response_socket_id)) as sock:
-            header_message = self._worker_model.recv_json_message_with_sock(sock, 60)
+            header_message = self._worker_model.recv_json_message_with_unix_socket(sock, 60)
             precondition(header_message is not None, 'Unable to reach worker')
             if 'error_code' in header_message:
                 raise http_error_to_exception(

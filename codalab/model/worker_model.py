@@ -202,7 +202,7 @@ class WorkerModel(object):
         get_ methods below. as in:
 
             with closing(worker_model.start_listening(socket_id)) as sock:
-                message = worker_model.get_json_message_with_sock(sock, timeout_secs)
+                message = worker_model.get_json_message_with_unix_socket(sock, timeout_secs)
         """
         self._cleanup_socket(socket_id)
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -362,7 +362,7 @@ class WorkerModel(object):
         except socket.timeout:
             return None
 
-    def recv_json_message_with_sock(self, sock, timeout_secs):
+    def recv_json_message_with_unix_socket(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns the message
         data parsed as JSON.
@@ -377,7 +377,7 @@ class WorkerModel(object):
         with closing(fileobj):
             return json.loads(fileobj.read().decode())
 
-    def send_json_message_with_sock(
+    def send_json_message_with_unix_socket(
         self, socket_id, worker_id, message, timeout_secs, autoretry=True
     ):
         """
@@ -457,7 +457,7 @@ class WorkerModel(object):
                 return True
             return False
 
-    def send_json(
+    def send_json_message(
         self, data: dict, worker_id: str, timeout_secs: int = 5, initial_sleep: float = 0.1
     ):
         """

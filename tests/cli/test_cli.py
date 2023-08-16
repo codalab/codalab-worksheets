@@ -764,7 +764,7 @@ def test_auth(ctx):
     worker_model = CodaLabManager().worker_model()  # The server secret will be set to "gibberish"
     ws_server_uri = worker_model._ws_server
     os.environ["CODALAB_SERVER_SECRET"] = codalab_server_secret
-    check_equals(worker_model.send_json({'a': 1}, 'auth-test-worker', 1), False)
+    check_equals(worker_model.send_json_message({'a': 1}, 'auth-test-worker', 1), False)
 
     # Test worker authentication for websocket endpoint.
     exception = None
