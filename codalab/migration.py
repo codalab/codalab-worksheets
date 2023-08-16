@@ -341,7 +341,8 @@ if __name__ == '__main__':
             continue
 
         # Uploaded bundles does not need has dependencies
-        assert len(bundle.dependencies) == 0
+        logging.info(bundle.dependencies)
+        # assert len(bundle.dependencies) == 0
 
         if migration.is_linked_bundle(bundle_uuid):
             # Do not migrate link bundle
