@@ -92,7 +92,7 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool
-        num_threads=10,  # type: int
+        num_coroutines=10,  # type: int
         # Number of threads to have running concurrently waiting for socket messages. MUST be a natural number.
     ):
         self.image_manager = image_manager
@@ -140,8 +140,8 @@ class Worker:
 
         self.ws_server = ws_server
 
-        assert num_threads > 0 and type(num_threads) is int, "num_threads must be a natural number."
-        self.num_threads = num_threads
+        assert num_coroutines > 0 and type(num_coroutines) is int, "num_coroutines must be a natural number."
+        self.num_coroutines = num_coroutines
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
@@ -357,7 +357,7 @@ class Worker:
                 logger.error(traceback.print_exc())
 
     async def listen(self, thread_id):
-        wss_uri = f"{self.ws_server}/worker/{self.id}/{thread_id}"
+        wss_uri = f"{self.ws_server}/worker_connect/{self.id}/{thread_id}"
         while not self.terminate:
             logger.info(f"Connecting to {wss_uri}")
             try:
@@ -368,7 +368,7 @@ class Worker:
                 time.sleep(3)
 
     def listen_thread_fn(self):
-        coroutines = [self.listen(i) for i in range(self.num_threads)]
+        coroutines = [self.listen(i) for i in range(self.num_coroutines)]
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(asyncio.gather(*coroutines))

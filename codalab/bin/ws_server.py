@@ -43,8 +43,8 @@ class TimedLock:
             self.release()
 
 
-worker_to_ws: Dict[str, Dict[str, Any]] = defaultdict(dict)  # Maps worker to socket ID to websocket
-ws_to_lock: Dict[str, Dict[str, TimedLock]] = defaultdict(dict)
+worker_to_ws: Dict[str, Dict[str, Any]] = defaultdict(dict)  # Maps worker ID to socket ID to websocket
+worker_to_lock: Dict[str, Dict[str, TimedLock]] = defaultdict(dict)  # Maps worker ID to socket ID to lock
 ACK = b'a'
 logger = logging.getLogger(__name__)
 manager = CodaLabManager()
@@ -53,8 +53,8 @@ worker_model = manager.worker_model()
 server_secret = os.getenv("CODALAB_SERVER_SECRET")
 
 
-async def send_handler(server_websocket, worker_id):
-    """Handles routes of the form: /send/{worker_id}. This route is called by
+async def send_to_worker_handler(server_websocket, worker_id):
+    """Handles routes of the form: /send_to_worker/{worker_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
     # Check if any websockets available
@@ -66,8 +66,8 @@ async def send_handler(server_websocket, worker_id):
         return
 
     # Authenticate server.
-    receieved_secret = await server_websocket.recv()
-    if receieved_secret != server_secret:
+    received_secret = await server_websocket.recv()
+    if received_secret != server_secret:
         logger.warning("Server unable to authenticate.")
         await server_websocket.close(1008, "Server unable to authenticate.")
         return
@@ -76,19 +76,19 @@ async def send_handler(server_websocket, worker_id):
     for socket_id, worker_websocket in random.sample(
         worker_to_ws[worker_id].items(), len(worker_to_ws[worker_id])
     ):
-        if ws_to_lock[worker_id][socket_id].acquire(blocking=False):
+        if worker_to_lock[worker_id][socket_id].acquire(blocking=False):
             data = await server_websocket.recv()
             await worker_websocket.send(data)
             await server_websocket.send(ACK)
-            ws_to_lock[worker_id][socket_id].release()
+            worker_to_lock[worker_id][socket_id].release()
             return
 
     logger.warning(f"All websockets for worker {worker_id} are currently busy.")
     await server_websocket.close(1013, f"All websockets for worker {worker_id} are currently busy.")
 
 
-async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None:
-    """Handles routes of the form: /worker/{worker_id}/{socket_id}.
+async def worker_connection_handler(websocket: Any, worker_id: str, socket_id: str) -> None:
+    """Handles routes of the form: /worker_connect/{worker_id}/{socket_id}.
     This route is called when a worker first connects to the ws-server, creating
     a connection that can be used to ask the worker to check-in later.
     """
@@ -107,19 +107,19 @@ async def worker_handler(websocket: Any, worker_id: str, socket_id: str) -> None
 
     # Establish a connection with worker and keep it alive.
     worker_to_ws[worker_id][socket_id] = websocket
-    ws_to_lock[worker_id][socket_id] = TimedLock()
+    worker_to_lock[worker_id][socket_id] = TimedLock()
     logger.warning(f"Worker {worker_id} connected; has {len(worker_to_ws[worker_id])} connections")
     while True:
         try:
             await asyncio.wait_for(websocket.recv(), timeout=60)
-            ws_to_lock[worker_id][socket_id].release_if_timeout()  # Failsafe in case not released
+            worker_to_lock[worker_id][socket_id].release_if_timeout()  # Failsafe in case not released
         except asyncio.futures.TimeoutError:
             pass
         except websockets.exceptions.ConnectionClosed:
             logger.warning(f"Socket connection closed with worker {worker_id}.")
             break
     del worker_to_ws[worker_id][socket_id]
-    del ws_to_lock[worker_id][socket_id]
+    del worker_to_lock[worker_id][socket_id]
     logger.warning(f"Worker {worker_id} now has {len(worker_to_ws[worker_id])} connections")
 
 
@@ -127,8 +127,8 @@ async def ws_handler(websocket, *args):
     """Handler for websocket connections. Routes websockets to the appropriate
     route handler defined in ROUTES."""
     ROUTES = (
-        (r'^.*/send/(.+)$', send_handler),
-        (r'^.*/worker/(.+)/(.+)$', worker_handler),
+        (r'^.*/send_to_worker/(.+)$', send_to_worker_handler),
+        (r'^.*/worker_connect/(.+)/(.+)$', worker_connection_handler),
     )
     logger.info(f"websocket handler, path: {websocket.path}.")
     for (pattern, handler) in ROUTES:

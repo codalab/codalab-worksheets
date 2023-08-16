@@ -117,7 +117,7 @@ def parse_args():
         help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
     )
     parser.add_argument(
-        '--num-threads',
+        '--num-coroutines',
         help='Number of worker threads to have running concurrently waiting for socket messages. Must be a natural number.',
         type=int,
         default=10,
@@ -394,7 +394,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
-        num_threads=args.num_threads,
+        num_coroutines=args.num_coroutines,
         bundle_runtime=bundle_runtime_class,
     )
 

@@ -463,7 +463,7 @@ class WorkerModel(object):
         sleep_time = initial_sleep
         while time.time() - start_time < timeout_secs:
             try:
-                with connect(f"{self._ws_server}/send/{worker_id}") as websocket:
+                with connect(f"{self._ws_server}/send_to_worker/{worker_id}") as websocket:
                     websocket.send(self._server_secret)  # Authenticate
                     websocket.send(json.dumps(data).encode())
                     ack = websocket.recv()
