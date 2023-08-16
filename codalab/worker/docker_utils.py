@@ -164,9 +164,11 @@ class DockerRuntime(Runtime):
                 stdout=True,
                 remove=True,
             )
-            gpus = output.decode()
-            if gpus.find("==========\n== CUDA ==\n==========") != -1:  # need to remove header
-                gpus = gpus.split("\n")[15:-1]
+            gpu_info = output.decode()
+            if gpu_info.find("==========") != -1:  # need to remove header
+                gpus = gpu_info.split("\n")[15:-1]
+            else:
+                gpus = gpu_info.split("\n")[:-1]
 
         else:
             # use the singularity runtime to run nvidia-smi
