@@ -135,6 +135,93 @@ class WorkerModel(object):
     @staticmethod
     def _deserialize_dependencies(blob):
         return list(map(tuple, json.loads(blob)))
+    
+    def worker_cleanup(self, user_id, worker_id):
+        """
+        Deletes the worker and all associated data from the database as well
+        as the socket directory.
+        """
+        with self._engine.begin() as conn:
+            socket_rows = conn.execute(
+                cl_worker_socket.select().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                    )
+                )
+            ).fetchall()
+            for socket_row in socket_rows:
+                self._cleanup_socket(socket_row.socket_id)
+            conn.execute(
+                cl_worker_socket.delete().where(
+                    and_(
+                        cl_worker_socket.c.user_id == user_id,
+                        cl_worker_socket.c.worker_id == worker_id,
+                    )
+                )
+            )
+            conn.execute(
+                cl_worker_run.delete().where(
+                    and_(cl_worker_run.c.user_id == user_id, cl_worker_run.c.worker_id == worker_id)
+                )
+            )
+            conn.execute(
+                cl_worker_dependency.delete().where(
+                    and_(
+                        cl_worker_dependency.c.user_id == user_id,
+                        cl_worker_dependency.c.worker_id == worker_id,
+                    )
+                )
+            )
+            conn.execute(
+                cl_worker.delete().where(
+                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
+                )
+            )
+
+    def get_workers(self):
+        """
+        Returns information about all the workers in the database. The return
+        value is a list of dicts with the structure shown in the code below.
+        """
+        with self._engine.begin() as conn:
+            worker_rows = conn.execute(
+                select([cl_worker, cl_worker_dependency.c.dependencies]).select_from(
+                    cl_worker.outerjoin(
+                        cl_worker_dependency,
+                        cl_worker.c.worker_id == cl_worker_dependency.c.worker_id,
+                    )
+                )
+            ).fetchall()
+            worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
+
+        worker_dict = {
+            (row.user_id, row.worker_id): {
+                'user_id': row.user_id,
+                'worker_id': row.worker_id,
+                'group_uuid': row.group_uuid,
+                'tag': row.tag,
+                'cpus': row.cpus,
+                'gpus': row.gpus,
+                'memory_bytes': row.memory_bytes,
+                'free_disk_bytes': row.free_disk_bytes,
+                'checkin_time': row.checkin_time,
+                'socket_id': row.socket_id,
+                # run_uuids will be set later
+                'run_uuids': [],
+                'dependencies': row.dependencies
+                and self._deserialize_dependencies(row.dependencies),
+                'shared_file_system': row.shared_file_system,
+                'tag_exclusive': row.tag_exclusive,
+                'exit_after_num_runs': row.exit_after_num_runs,
+                'is_terminating': row.is_terminating,
+                'preemptible': row.preemptible,
+            }
+            for row in worker_rows
+        }
+        for row in worker_run_rows:
+            worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
+        return list(worker_dict.values())
 
     def update_workers(self, user_id, worker_id, update):
         """
@@ -209,105 +296,42 @@ class WorkerModel(object):
         sock.bind(self._socket_path(socket_id))
         sock.listen(0)
         return sock
-
-    def worker_cleanup(self, user_id, worker_id):
+    
+    def recv_stream(self, sock, timeout_secs):
         """
-        Deletes the worker and all associated data from the database as well
-        as the socket directory.
-        """
-        with self._engine.begin() as conn:
-            socket_rows = conn.execute(
-                cl_worker_socket.select().where(
-                    and_(
-                        cl_worker_socket.c.user_id == user_id,
-                        cl_worker_socket.c.worker_id == worker_id,
-                    )
-                )
-            ).fetchall()
-            for socket_row in socket_rows:
-                self._cleanup_socket(socket_row.socket_id)
-            conn.execute(
-                cl_worker_socket.delete().where(
-                    and_(
-                        cl_worker_socket.c.user_id == user_id,
-                        cl_worker_socket.c.worker_id == worker_id,
-                    )
-                )
-            )
-            conn.execute(
-                cl_worker_run.delete().where(
-                    and_(cl_worker_run.c.user_id == user_id, cl_worker_run.c.worker_id == worker_id)
-                )
-            )
-            conn.execute(
-                cl_worker_dependency.delete().where(
-                    and_(
-                        cl_worker_dependency.c.user_id == user_id,
-                        cl_worker_dependency.c.worker_id == worker_id,
-                    )
-                )
-            )
-            conn.execute(
-                cl_worker.delete().where(
-                    and_(cl_worker.c.user_id == user_id, cl_worker.c.worker_id == worker_id)
-                )
-            )
+        Receives a single message on the given socket and returns a file-like
+        object that can be used for streaming the message data.
 
-    def get_user_id_for_worker(self, worker_id):
-        """Return the user_id corresponding to the worker with ID worker_id
+        If no messages are received within timeout_secs seconds, returns None.
         """
-        with self._engine.begin() as conn:
-            row = conn.execute(
-                select([cl_worker]).where(cl_worker.c.worker_id == worker_id)
-            ).fetchone()
-
-        if row is None:
+        sock.settimeout(timeout_secs)
+        try:
+            conn, _ = sock.accept()
+            # Send Ack. This helps protect from messages to the worker being
+            # lost due to spuriously accepted connections when the socket
+            # file is deleted.
+            conn.sendall(WorkerModel.ACK)
+            conn.settimeout(None)  # Need to remove timeout before makefile.
+            fileobj = conn.makefile('rb')
+            conn.close()
+            return fileobj
+        except socket.timeout:
             return None
-        return row.user_id
-
-    def get_workers(self):
+    
+    def recv_json_message_with_unix_socket(self, sock, timeout_secs):
         """
-        Returns information about all the workers in the database. The return
-        value is a list of dicts with the structure shown in the code below.
-        """
-        with self._engine.begin() as conn:
-            worker_rows = conn.execute(
-                select([cl_worker, cl_worker_dependency.c.dependencies]).select_from(
-                    cl_worker.outerjoin(
-                        cl_worker_dependency,
-                        cl_worker.c.worker_id == cl_worker_dependency.c.worker_id,
-                    )
-                )
-            ).fetchall()
-            worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
+        Receives a single message on the given socket and returns the message
+        data parsed as JSON.
 
-        worker_dict = {
-            (row.user_id, row.worker_id): {
-                'user_id': row.user_id,
-                'worker_id': row.worker_id,
-                'group_uuid': row.group_uuid,
-                'tag': row.tag,
-                'cpus': row.cpus,
-                'gpus': row.gpus,
-                'memory_bytes': row.memory_bytes,
-                'free_disk_bytes': row.free_disk_bytes,
-                'checkin_time': row.checkin_time,
-                'socket_id': row.socket_id,
-                # run_uuids will be set later
-                'run_uuids': [],
-                'dependencies': row.dependencies
-                and self._deserialize_dependencies(row.dependencies),
-                'shared_file_system': row.shared_file_system,
-                'tag_exclusive': row.tag_exclusive,
-                'exit_after_num_runs': row.exit_after_num_runs,
-                'is_terminating': row.is_terminating,
-                'preemptible': row.preemptible,
-            }
-            for row in worker_rows
-        }
-        for row in worker_run_rows:
-            worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
-        return list(worker_dict.values())
+        If no messages are received within timeout_secs seconds, returns None.
+        """
+        fileobj = self.recv_stream(sock, timeout_secs)
+
+        if fileobj is None:
+            return None
+
+        with closing(fileobj):
+            return json.loads(fileobj.read().decode())
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
@@ -340,42 +364,6 @@ class WorkerModel(object):
                     sock.sendall(data)
 
         return False
-
-    def recv_stream(self, sock, timeout_secs):
-        """
-        Receives a single message on the given socket and returns a file-like
-        object that can be used for streaming the message data.
-
-        If no messages are received within timeout_secs seconds, returns None.
-        """
-        sock.settimeout(timeout_secs)
-        try:
-            conn, _ = sock.accept()
-            # Send Ack. This helps protect from messages to the worker being
-            # lost due to spuriously accepted connections when the socket
-            # file is deleted.
-            conn.sendall(WorkerModel.ACK)
-            conn.settimeout(None)  # Need to remove timeout before makefile.
-            fileobj = conn.makefile('rb')
-            conn.close()
-            return fileobj
-        except socket.timeout:
-            return None
-
-    def recv_json_message_with_unix_socket(self, sock, timeout_secs):
-        """
-        Receives a single message on the given socket and returns the message
-        data parsed as JSON.
-
-        If no messages are received within timeout_secs seconds, returns None.
-        """
-        fileobj = self.recv_stream(sock, timeout_secs)
-
-        if fileobj is None:
-            return None
-
-        with closing(fileobj):
-            return json.loads(fileobj.read().decode())
 
     def send_json_message_with_unix_socket(
         self, socket_id, worker_id, message, timeout_secs, autoretry=True
@@ -436,7 +424,7 @@ class WorkerModel(object):
                 return True
         logging.info("Socket message timeout.")
         return False
-
+    
     def has_reply_permission(self, user_id, worker_id, socket_id):
         """
         Checks whether the given user running a worker with the given ID can
@@ -485,3 +473,15 @@ class WorkerModel(object):
                 time.sleep(sleep_time)
                 sleep_time *= 2  # Exponential backoff
         return False
+    
+    def get_user_id_for_worker(self, worker_id):
+        """Return the user_id corresponding to the worker with ID worker_id
+        """
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                select([cl_worker]).where(cl_worker.c.worker_id == worker_id)
+            ).fetchone()
+
+        if row is None:
+            return None
+        return row.user_id
