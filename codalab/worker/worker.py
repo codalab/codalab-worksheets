@@ -140,7 +140,9 @@ class Worker:
 
         self.ws_server = ws_server
 
-        assert num_coroutines > 0 and type(num_coroutines) is int, "num_coroutines must be a natural number."
+        assert (
+            num_coroutines > 0 and type(num_coroutines) is int
+        ), "num_coroutines must be a natural number."
         self.num_coroutines = num_coroutines
 
         self.runs = {}  # type: Dict[str, RunState]

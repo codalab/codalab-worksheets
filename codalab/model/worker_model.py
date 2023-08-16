@@ -135,7 +135,7 @@ class WorkerModel(object):
     @staticmethod
     def _deserialize_dependencies(blob):
         return list(map(tuple, json.loads(blob)))
-    
+
     def worker_cleanup(self, user_id, worker_id):
         """
         Deletes the worker and all associated data from the database as well
@@ -296,7 +296,7 @@ class WorkerModel(object):
         sock.bind(self._socket_path(socket_id))
         sock.listen(0)
         return sock
-    
+
     def recv_stream(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns a file-like
@@ -317,7 +317,7 @@ class WorkerModel(object):
             return fileobj
         except socket.timeout:
             return None
-    
+
     def recv_json_message_with_unix_socket(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns the message
@@ -424,7 +424,7 @@ class WorkerModel(object):
                 return True
         logging.info("Socket message timeout.")
         return False
-    
+
     def has_reply_permission(self, user_id, worker_id, socket_id):
         """
         Checks whether the given user running a worker with the given ID can
@@ -473,7 +473,7 @@ class WorkerModel(object):
                 time.sleep(sleep_time)
                 sleep_time *= 2  # Exponential backoff
         return False
-    
+
     def get_user_id_for_worker(self, worker_id):
         """Return the user_id corresponding to the worker with ID worker_id
         """

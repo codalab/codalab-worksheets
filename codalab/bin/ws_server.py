@@ -43,8 +43,12 @@ class TimedLock:
             self.release()
 
 
-worker_to_ws: Dict[str, Dict[str, Any]] = defaultdict(dict)  # Maps worker ID to socket ID to websocket
-worker_to_lock: Dict[str, Dict[str, TimedLock]] = defaultdict(dict)  # Maps worker ID to socket ID to lock
+worker_to_ws: Dict[str, Dict[str, Any]] = defaultdict(
+    dict
+)  # Maps worker ID to socket ID to websocket
+worker_to_lock: Dict[str, Dict[str, TimedLock]] = defaultdict(
+    dict
+)  # Maps worker ID to socket ID to lock
 ACK = b'a'
 logger = logging.getLogger(__name__)
 manager = CodaLabManager()
@@ -112,7 +116,9 @@ async def worker_connection_handler(websocket: Any, worker_id: str, socket_id: s
     while True:
         try:
             await asyncio.wait_for(websocket.recv(), timeout=60)
-            worker_to_lock[worker_id][socket_id].release_if_timeout()  # Failsafe in case not released
+            worker_to_lock[worker_id][
+                socket_id
+            ].release_if_timeout()  # Failsafe in case not released
         except asyncio.futures.TimeoutError:
             pass
         except websockets.exceptions.ConnectionClosed:
