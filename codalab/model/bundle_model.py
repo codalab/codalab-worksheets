@@ -11,7 +11,6 @@ import logging
 import json
 
 from dataclasses import dataclass
-from dateutil import parser
 from uuid import uuid4
 from sqlalchemy import and_, or_, select, union, desc, func, Table
 from sqlalchemy.sql.expression import literal, true
@@ -571,7 +570,7 @@ class BundleModel(object):
                     conjunct = condition
             elif key in ('.before', '.after'):
                 try:
-                    target_datetime = parser.isoparse(value)
+                    target_datetime = datetime.datetime.strptime(value, '%Y-%m-%d')
                 except ValueError:
                     raise UsageError(
                         "Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD."
