@@ -165,7 +165,7 @@ class DockerRuntime(Runtime):
                 remove=True,
             )
             gpu_info = output.decode()
-            GPU_REGEX = r"(\d+), (?:GPU-)?([a-fA-F0-9-]+)"
+            GPU_REGEX = r"(\d+), ((?:GPU-)[a-fA-F0-9-]+)"
             gpus = {}
             for line in gpu_info.splitlines():
                 match = re.match(GPU_REGEX, line)
