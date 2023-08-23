@@ -225,6 +225,7 @@ class DockerRuntime(Runtime):
             volumes = self.get_bundle_container_volume_binds(
                 bundle_path, docker_bundle_path, dependencies
             )
+            logger.error("BEFORE ENVIRONMENT")
             environment = {'HOME': docker_bundle_path, 'CODALAB': 'true'}
             working_dir = docker_bundle_path
             # Unset entrypoint regardless of image
@@ -233,6 +234,7 @@ class DockerRuntime(Runtime):
             # Get user/group that owns the bundle directory
             # Then we can ensure that any created files are owned by the user/group
             # that owns the bundle directory, not root.
+            logger.error("BEFORE BUNDLE_STAT")
             bundle_stat = os.stat(bundle_path)
             uid = bundle_stat.st_uid
             gid = bundle_stat.st_gid
@@ -240,6 +242,7 @@ class DockerRuntime(Runtime):
             # This can cause problems if users expect to run as a specific user
             user = '%s:%s' % (uid, gid)
 
+            logger.error("BEFORE NVIDIA_RUNTIME")
             if runtime == NVIDIA_RUNTIME:
                 # nvidia-docker runtime uses this env variable to allocate GPUs
                 environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else ''
@@ -247,6 +250,7 @@ class DockerRuntime(Runtime):
             # Name the container with the UUID for readability
             container_name = 'codalab_run_%s' % uuid
             try:
+                logger.error("STARTING CONTAINER")
                 container = self.client.containers.run(
                     image=docker_image,
                     command=docker_command,
@@ -274,6 +278,7 @@ class DockerRuntime(Runtime):
                 # because a container with the same name already exists. So, we try to remove
                 # the container here.
                 try:
+                    logger.error("REMOVING CONTAINER")
                     self.client.api.remove_container(container_name, force=True)
                 except Exception:
                     logger.warning("Failed to clean up Docker container after failed launch.")
