@@ -152,7 +152,7 @@ class DockerRuntime(Runtime):
             docker.errors.ImageNotFound if the CUDA image cannot be pulled
             docker.errors.APIError if another server error occurs
         """
-        cuda_image = 'nvidia/cuda:12.2.0-devel-ubuntu22.04'
+        cuda_image = 'sulfurheron/nvidia-cuda:9.0-cudnn7-devel-ubuntu16.04-2018-06-08'
         nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
         if use_docker:
             self.client.images.pull(cuda_image)
