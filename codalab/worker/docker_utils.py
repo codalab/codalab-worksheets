@@ -221,6 +221,8 @@ class DockerRuntime(Runtime):
             logger.error(f"image: {docker_image}")
             logger.error(f"runtime: {runtime}")
             logger.error(f"network: {network}")
+            logger.error(f"gpuset: {gpuset}")
+            logger.error(f"cpuset: {cpuset}")
             logger.error("-"*100)
             if not command.endswith(';'):
                 command = '{};'.format(command)
