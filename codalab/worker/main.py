@@ -222,7 +222,7 @@ def parse_args():
     parser.add_argument(
         '--kubernetes-cert',
         type=str,
-        help='Contents of the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes and --kubernetes-cert-path is set to /dev/null.',
+        help='Base64 encoded contents of the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes and --kubernetes-cert-path is set to /dev/null.',
     )
     return parser.parse_args()
 

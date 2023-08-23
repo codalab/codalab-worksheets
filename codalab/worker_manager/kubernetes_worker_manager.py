@@ -52,7 +52,7 @@ class KubernetesWorkerManager(WorkerManager):
         subparser.add_argument(
             '--cert',
             type=str,
-            help='Contents of the SSL cert for the Kubernetes cluster',
+            help='Base64 encoded contents of the SSL cert for the Kubernetes cluster',
             required=True,
         )
         subparser.add_argument(
