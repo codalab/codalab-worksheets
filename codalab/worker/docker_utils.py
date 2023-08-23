@@ -216,6 +216,12 @@ class DockerRuntime(Runtime):
         shared_memory_size_gb=1,
     ) -> str:
         try:
+            logger.error("INFORMATION")
+            logger.error("-"*100)
+            logger.error(f"image: {docker_image}")
+            logger.error(f"runtime: {runtime}")
+            logger.error(f"network: {network}")
+            logger.error("-"*100)
             if not command.endswith(';'):
                 command = '{};'.format(command)
             # Explicitly specifying "/bin/bash" instead of "bash" for bash shell to avoid the situation when
