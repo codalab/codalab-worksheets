@@ -280,9 +280,10 @@ class DockerRuntime(Runtime):
                     traceback.print_exc()
                 raise
             return container.id
-        except:
+        except Exception as e:
             logger.error("ERROR STARTING DOCKER CONTAINER")
             traceback.print_exc()  # Print the whole traceback.
+            raise e
 
     def get_bundle_container_volume_binds(self, bundle_path, docker_bundle_path, dependencies):
         """
