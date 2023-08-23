@@ -761,7 +761,7 @@ def test_auth(ctx):
     create_worker(ctx, current_user()[0], worker_id)
     codalab_server_secret = os.environ["CODALAB_SERVER_SECRET"]
     os.environ["CODALAB_SERVER_SECRET"] = "fake-secret"
-    worker_model = CodaLabManager().worker_model()  # The server secret will be set to "gibberish"
+    worker_model = CodaLabManager().worker_model()  # The server secret will be set to "fake-secret"
     ws_server_uri = worker_model._ws_server
     os.environ["CODALAB_SERVER_SECRET"] = codalab_server_secret
     check_equals(worker_model.send_json_message({'a': 1}, 'auth-test-worker', 1), False)
@@ -769,13 +769,13 @@ def test_auth(ctx):
     # Test worker authentication for websocket endpoint.
     exception = None
     try:
-        with websockets.sync.client.connect(f"{ws_server_uri}/worker/{worker_id}/15") as ws:
+        with websockets.sync.client.connect(f"{ws_server_uri}/worker_connect/{worker_id}/15") as ws:
             ws.send("fake-access-token")
             ws.recv()
     except websockets.exceptions.ConnectionClosedError as e:
         exception = e
-    check_equals(exception.code, 1008)
     check_contains(exception.reason, f"Thread 15 for worker {worker_id} unable to authenticate.")
+    check_equals(1008, exception.code)
     check_equals(exception.rcvd_then_sent, True)
 
 

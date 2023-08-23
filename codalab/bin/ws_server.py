@@ -61,19 +61,19 @@ async def send_to_worker_handler(server_websocket, worker_id):
     """Handles routes of the form: /send_to_worker/{worker_id}. This route is called by
     the rest-server or bundle-manager when either wants to send a message/stream to the worker.
     """
-    # Check if any websockets available
-    if worker_id not in worker_to_ws or len(worker_to_ws[worker_id]) == 0:
-        logger.warning(f"No websockets currently available for worker {worker_id}")
-        await server_websocket.close(
-            1013, f"No websockets currently available for worker {worker_id}"
-        )
-        return
-
     # Authenticate server.
     received_secret = await server_websocket.recv()
     if received_secret != server_secret:
         logger.warning("Server unable to authenticate.")
         await server_websocket.close(1008, "Server unable to authenticate.")
+        return
+
+    # Check if any websockets available
+    if worker_id not in worker_to_ws or len(worker_to_ws[worker_id]) == 0:
+        logger.warning(f"No websockets currently available for worker {worker_id}")
+        await server_websocket.close(
+            1011, f"No websockets currently available for worker {worker_id}"
+        )
         return
 
     # Send message from server to worker.
@@ -88,7 +88,7 @@ async def send_to_worker_handler(server_websocket, worker_id):
             return
 
     logger.warning(f"All websockets for worker {worker_id} are currently busy.")
-    await server_websocket.close(1013, f"All websockets for worker {worker_id} are currently busy.")
+    await server_websocket.close(1011, f"All websockets for worker {worker_id} are currently busy.")
 
 
 async def worker_connection_handler(websocket: Any, worker_id: str, socket_id: str) -> None:
@@ -102,6 +102,7 @@ async def worker_connection_handler(websocket: Any, worker_id: str, socket_id: s
     authenticated = bundle_model.access_token_exists_for_user(
         'codalab_worker_client', user_id, access_token  # TODO: Avoid hard-coding this if possible.
     )
+    logger.error(f"AUTHENTICATED: {authenticated}")
     if not authenticated:
         logger.warning(f"Thread {socket_id} for worker {worker_id} unable to authenticate.")
         await websocket.close(
@@ -141,6 +142,7 @@ async def ws_handler(websocket, *args):
         match = re.match(pattern, websocket.path)
         if match:
             return await handler(websocket, *match.groups())
+    return await websocket.close(1011, f"Path {websocket.path} is not valid.")
 
 
 async def async_main():
