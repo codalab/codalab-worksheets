@@ -222,6 +222,7 @@ class DockerRuntime(Runtime):
             # the program can't find the symbolic link (default is "/bin/bash") of bash in the environment
             docker_command = ['/bin/bash', '-c', '( %s ) >stdout 2>stderr' % command]
             docker_bundle_path = '/' + uuid
+            logger.error("BEFORE BUNDLE CONTAINER VOLUME BINDS")
             volumes = self.get_bundle_container_volume_binds(
                 bundle_path, docker_bundle_path, dependencies
             )
