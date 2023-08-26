@@ -165,14 +165,18 @@ class DockerRuntime(Runtime):
                 remove=True,
             )
             gpu_info = output.decode()
+            logger.error(f"GPU_INFO: {gpu_info}")
             GPU_REGEX = r"(\d+), (?:GPU-)?([a-fA-F0-9-]+)"
             gpus = {}
             for line in gpu_info.splitlines():
                 match = re.match(GPU_REGEX, line)
                 if match:
+                    logger.error(f"MATCH!: {line}")
                     idx = match.group(1)
                     uuid = match.group(2)
                     gpus[idx] = uuid
+                    logger.error(f"idx, uuid: {idx}, {uuid}")
+            logger.error(f"our gpu set: {gpus}")
 
         else:
             # use the singularity runtime to run nvidia-smi

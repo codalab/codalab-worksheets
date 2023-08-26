@@ -447,7 +447,7 @@ def parse_gpuset_args(arg):
     Arguments:
         arg: comma separated string of ints, or "ALL" representing all gpus
     """
-    logger.info(f"GPUSET arg: {arg}")
+    logger.error(f"GPUSET arg: {arg}")
     if arg == '' or arg == 'NONE':
         return set()
 
@@ -458,6 +458,7 @@ def parse_gpuset_args(arg):
     # Docker socket can't be used
     except requests.exceptions.ConnectionError:
         try:
+            logger.error("ABOUT TO CALL GET NVIDIA DEVICES")
             all_gpus = DockerRuntime().get_nvidia_devices(use_docker=False)
         except SingularityError:
             all_gpus = {}
