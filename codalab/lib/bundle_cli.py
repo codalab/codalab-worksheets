@@ -3046,6 +3046,41 @@ class BundleCLI(object):
     def bundle_url(self, bundle_uuid):
         return '%s%s%s' % (self.manager.session()['address'], BUNDLES_URL_SEPARATOR, bundle_uuid)
 
+    @Commands.command(
+        'ancestors',
+        aliases=('anc',),
+        help='Prints out all ancestors of the bundle recursively.',
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
+            ),
+       ),
+    )
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        if len(args.bundle_spec) != 1:
+            print('Please provide one single bundle spec.')
+            return
+
+        default_client, default_worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        bundle_uuid = self.target_specs_to_bundle_uuids(default_client, default_worksheet_uuid, args.bundle_spec)
+        if len(bundle_uuid) == 0:
+            print(NO_RESULTS_FOUND, file=self.stderr)
+            return
+
+        # To avoid stack overflow. If there are legitimate use cases of very deeply nested hierarchy, consider pagination for display.
+        MAX_DEPTH = 200
+        def print_ancestor(uuids, depth):
+            prefix = ' ' * depth + '- '
+            if depth > MAX_DEPTH:
+                print(prefix + 'max depth exceeded; truncating')
+            bundles = default_client.fetch('bundles', params={'specs': uuids, 'worksheet': default_worksheet_uuid})
+            for bundle in bundles:
+                print(prefix + self.simple_bundle_str(bundle))
+                for dep in bundle['dependencies']:
+                    print_ancestor(dep['parent_uuid'], depth + 1)
+        print_ancestor(bundle_uuid, 0)
+
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################

@@ -3387,6 +3387,28 @@ def test_wopen(ctx):
 def test_service(ctx):
     _run_command(['codalab-service', '--help', '--version', 'master'], expected_exit_code=0)
 
+@TestModule.register('ancestors')
+def test_ancestors(ctx):
+    # - grandkid
+    #  - kid
+    #   - dir2
+    #   - dir3
+    dir2 = _run_command([cl, 'upload', test_path('dir2')])
+    dir3 = _run_command([cl, 'upload', test_path('dir3')])
+    kid = _run_command([cl, 'run', 'dir2:%s' % dir2, 'dir3:%s' % dir3, 'ls dir3', '--name', 'kid'])
+    grandkid = _run_command([cl, 'run', 'kid:%s' % kid, 'ls dir3', '--name', 'grandkid'])
+
+    # test1: no parent
+    res = _run_command([cl, 'ancestors', dir3], force_subprocess=True)
+    check_equals('- dir3(%s)' % dir3, res)
+
+    # test2: two parents
+    res = _run_command([cl, 'ancestors', kid], force_subprocess=True)
+    check_equals('- kid(%s)\n - dir2(%s)\n - dir3(%s)' % (kid, dir2, dir3), res)
+
+    # test3: recursive parents
+    res = _run_command([cl, 'ancestors', grandkid], force_subprocess=True)
+    check_equals('- grandkid(%s)\n - kid(%s)\n  - dir2(%s)\n  - dir3(%s)' % (grandkid, kid, dir2, dir3), res)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

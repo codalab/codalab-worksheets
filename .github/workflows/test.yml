@@ -115,6 +115,7 @@ jobs:
           - edit
           - open wopen
           - store_add parallel
+          - ancestors
         runtime: [docker, kubernetes]
         exclude:
           # netcat / netcurl not supported for kubernetes.
