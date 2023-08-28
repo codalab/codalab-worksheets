@@ -709,9 +709,9 @@ class BundleCLI(object):
 
         # Display the table
         lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
-        for (i, row) in enumerate(rows):
+        for i, row in enumerate(rows):
             row_strs = []
-            for (j, value) in enumerate(row):
+            for j, value in enumerate(row):
                 value = str(value)
                 length = lengths[j]
                 padding = (length - len(value)) * ' '
@@ -745,9 +745,9 @@ class BundleCLI(object):
 
         # Display the table
         lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
-        for (i, row) in enumerate(rows):
+        for i, row in enumerate(rows):
             row_strs = []
-            for (j, value) in enumerate(row):
+            for j, value in enumerate(row):
                 value = str(value)
                 length = lengths[j]
                 padding = (length - len(value)) * ' '
@@ -1019,7 +1019,9 @@ class BundleCLI(object):
                 nargs='?',
             ),
             Commands.Argument(
-                '-n', '--name', help='Name of the bundle store; must be globally unique.',
+                '-n',
+                '--name',
+                help='Name of the bundle store; must be globally unique.',
             ),
             Commands.Argument(
                 '--storage-type',
@@ -1030,10 +1032,12 @@ class BundleCLI(object):
                 help='Storage format of the bundle store. Acceptable values are "uncompressed" and "compressed_v1". Optional; if unspecified, will be set to an optimal default.',
             ),
             Commands.Argument(
-                '--url', help='A self-referential URL that points to the bundle store.',
+                '--url',
+                help='A self-referential URL that points to the bundle store.',
             ),
             Commands.Argument(
-                '--authentication', help='Key for authentication that the bundle store uses.',
+                '--authentication',
+                help='Key for authentication that the bundle store uses.',
             ),
         ),
     )
@@ -1746,7 +1750,7 @@ class BundleCLI(object):
     def derive_bundle(self, bundle_type, command, targets, metadata):
         # List the dependencies of this bundle on its targets.
         dependencies = []
-        for (child_path, parent_target) in targets:
+        for child_path, parent_target in targets:
             dependencies.append(
                 {
                     'child_path': child_path,
@@ -2617,7 +2621,6 @@ class BundleCLI(object):
         ),
     )
     def do_cat_command(self, args):
-
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(
             args.worksheet_spec
         )
@@ -2944,7 +2947,7 @@ class BundleCLI(object):
             metadata_override=metadata,
             memoize=args.memoize,
         )
-        for (old, new) in plan:
+        for old, new in plan:
             print(
                 '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new)),
                 file=self.stderr,
@@ -3033,7 +3036,8 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch(
-            'bundles', params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
+            'bundles',
+            params={'specs': args.bundle_spec, 'worksheet': worksheet_uuid},
         )
 
         for info in bundles:
@@ -3054,7 +3058,7 @@ class BundleCLI(object):
             Commands.Argument(
                 'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
             ),
-       ),
+        ),
     )
     def do_ancestors_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
@@ -3063,22 +3067,28 @@ class BundleCLI(object):
             return
 
         default_client, default_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        bundle_uuid = self.target_specs_to_bundle_uuids(default_client, default_worksheet_uuid, args.bundle_spec)
+        bundle_uuid = self.target_specs_to_bundle_uuids(
+            default_client, default_worksheet_uuid, args.bundle_spec
+        )
         if len(bundle_uuid) == 0:
             print(NO_RESULTS_FOUND, file=self.stderr)
             return
 
         # To avoid stack overflow. If there are legitimate use cases of very deeply nested hierarchy, consider pagination for display.
         MAX_DEPTH = 200
+
         def print_ancestor(uuids, depth):
             prefix = ' ' * depth + '- '
             if depth > MAX_DEPTH:
                 print(prefix + 'max depth exceeded; truncating')
-            bundles = default_client.fetch('bundles', params={'specs': uuids, 'worksheet': default_worksheet_uuid})
+            bundles = default_client.fetch(
+                'bundles', params={'specs': uuids, 'worksheet': default_worksheet_uuid}
+            )
             for bundle in bundles:
                 print(prefix + self.simple_bundle_str(bundle))
                 for dep in bundle['dependencies']:
                     print_ancestor(dep['parent_uuid'], depth + 1)
+
         print_ancestor(bundle_uuid, 0)
 
     #############################################################################
@@ -3093,7 +3103,10 @@ class BundleCLI(object):
         )
 
     def worksheet_url_and_name(self, worksheet_info):
-        return '%s (%s)' % (self.worksheet_url(worksheet_info['uuid']), worksheet_info['name'],)
+        return '%s (%s)' % (
+            self.worksheet_url(worksheet_info['uuid']),
+            worksheet_info['name'],
+        )
 
     @Commands.command(
         'new',

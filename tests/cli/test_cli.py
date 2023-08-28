@@ -116,7 +116,14 @@ def create_user(context, username, password='codalab', disk_quota='100g'):
 
     # Creates a user without going through the full sign-up process
     model.add_user(
-        username, random_name(), '', '', password, '', user_id=username, is_verified=True,
+        username,
+        random_name(),
+        '',
+        '',
+        password,
+        '',
+        user_id=username,
+        is_verified=True,
     )
     context.collect_user(username)
 
@@ -286,7 +293,7 @@ def recursive_ls(path):
     symlinked directories.
     """
     (directories, files) = ([], [])
-    for (root, _, file_names) in os.walk(path):
+    for root, _, file_names in os.walk(path):
         directories.append(root)
         for file_name in file_names:
             files.append(os.path.join(root, file_name))
@@ -780,7 +787,15 @@ def test_upload1(ctx):
     if os.environ.get("CODALAB_GOOGLE_APPLICATION_CREDENTIALS") is not None:
         bundle_store_name = "gcs-" + random_name()
         _run_command(
-            [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--url',
+                'gs://codalab-test',
+            ]
         )
         upload_suffix.append(['--store', bundle_store_name])
 
@@ -888,7 +903,8 @@ def test_upload1(ctx):
 @TestModule.register('upload2')
 def test_upload2(ctx):
     """Additional upload tests. Also checks to make sure the REST API /contents/blob/ endpoint
-    has the right headers, so that the browser can properly transparently decompress the data if needed."""
+    has the right headers, so that the browser can properly transparently decompress the data if needed.
+    """
     # Upload tar.gz and zip.
     for suffix in ['.tar.gz', '.zip']:
         # Pack it up
@@ -1064,7 +1080,7 @@ def test_upload4(ctx):
     archive_paths = [temp_path(''), temp_path('')]
     archive_exts = [p + '.tar.gz' for p in archive_paths]
     contents_paths = [test_path('dir1'), test_path('a.txt')]
-    for (archive, content) in zip(archive_exts, contents_paths):
+    for archive, content in zip(archive_exts, contents_paths):
         _run_command(
             ['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)]
         )
@@ -1073,7 +1089,8 @@ def test_upload4(ctx):
     # Make sure the names do with '.tar.gz', because when we upload multiple archives, they
     # should not get unpacked.
     check_contains(
-        [os.path.basename(ext) for ext in archive_exts], _run_command([cl, 'cat', uuid]),
+        [os.path.basename(ext) for ext in archive_exts],
+        _run_command([cl, 'cat', uuid]),
     )
 
     # Cleanup
@@ -1136,7 +1153,7 @@ def test_blob(ctx):
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
 
     # Upload file and directory
-    for (uuid, target_type) in [
+    for uuid, target_type in [
         (_run_command([cl, 'upload', '-a', test_path('echo')]), "file"),
         (_run_command([cl, 'upload', test_path('dir1')]), "directory"),
     ]:
@@ -1311,7 +1328,15 @@ def test_store_add(ctx):
     _run_command([cl, "store", "rm", blob_id])
 
     blob_id = _run_command(
-        [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--url',
+            'gs://codalab-test',
+        ]
     )
     check_contains("gcs", _run_command([cl, "store", "ls"]))
     _run_command([cl, "store", "rm", blob_id])
@@ -1491,7 +1516,7 @@ def test_disk(ctx):
     archive_paths = [temp_path(''), temp_path('')]
     archive_exts = [p + '.tar.gz' for p in archive_paths]
     contents_paths = [test_path('dir1'), test_path('a.txt')]
-    for (archive, content) in zip(archive_exts, contents_paths):
+    for archive, content in zip(archive_exts, contents_paths):
         _run_command(
             ['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)]
         )
@@ -1528,7 +1553,13 @@ def test_disk(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
+        [
+            cl,
+            'run',
+            'head -c 1000 /dev/zero > test.txt',
+        ],
+        request_disk=None,
+        request_memory='10m',
     )
     wait_until_state(uuid, State.FAILED)
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
@@ -1591,7 +1622,8 @@ def test_make(ctx):
             uuid4 = _run_command([cl, 'make', 'dep:' + uuid1] + store[2])
             wait(uuid4)
             check_equals(
-                test_path_contents('a.txt'), _run_command([cl, 'cat', uuid4 + '/dep']),
+                test_path_contents('a.txt'),
+                _run_command([cl, 'cat', uuid4 + '/dep']),
             )
             # clean up
             _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
@@ -2001,7 +2033,11 @@ def test_run(ctx):
     disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
     _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
     uuid = _run_command(
-        [cl, 'run', 'head -c 1000010 /dev/zero > test.txt; sleep 100000',],
+        [
+            cl,
+            'run',
+            'head -c 1000010 /dev/zero > test.txt; sleep 100000',
+        ],
         request_disk=None,
         request_memory=None,
     )
@@ -2145,7 +2181,7 @@ def test_run(ctx):
 
 @TestModule.register('time')
 def test_time(ctx, timeout=True):
-    """ Basic tests. """
+    """Basic tests."""
     # Uploading. Sweep file sizes.
     FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
     TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
@@ -2243,7 +2279,12 @@ def test_link(ctx):
     # Note that CodaLab can't actually read the contents of this bundle
     # because the file is in /tmp in the Docker container, which is
     # inaccessible from the host.
-    with tempfile.NamedTemporaryFile(mode='w', dir='/tmp', suffix=".txt", delete=False,) as f:
+    with tempfile.NamedTemporaryFile(
+        mode='w',
+        dir='/tmp',
+        suffix=".txt",
+        delete=False,
+    ) as f:
         f.write("hello world!")
     _, filename = f.name.split("/tmp/")
     uuid = _run_command([cl, 'upload', filename, '--link'], force_subprocess=True, cwd="/tmp")
@@ -3387,6 +3428,7 @@ def test_wopen(ctx):
 def test_service(ctx):
     _run_command(['codalab-service', '--help', '--version', 'master'], expected_exit_code=0)
 
+
 @TestModule.register('ancestors')
 def test_ancestors(ctx):
     # - grandkid
@@ -3408,7 +3450,10 @@ def test_ancestors(ctx):
 
     # test3: recursive parents
     res = _run_command([cl, 'ancestors', grandkid], force_subprocess=True)
-    check_equals('- grandkid(%s)\n - kid(%s)\n  - dir2(%s)\n  - dir3(%s)' % (grandkid, kid, dir2, dir3), res)
+    check_equals(
+        '- grandkid(%s)\n - kid(%s)\n  - dir2(%s)\n  - dir3(%s)' % (grandkid, kid, dir2, dir3), res
+    )
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
