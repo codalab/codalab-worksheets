@@ -152,7 +152,11 @@ class DockerRuntime(Runtime):
             docker.errors.ImageNotFound if the CUDA image cannot be pulled
             docker.errors.APIError if another server error occurs
         """
-        cuda_image = 'sulfurheron/nvidia-cuda:9.0-cudnn7-devel-ubuntu16.04-2018-06-08'
+
+        # Note: Do NOT update the NVIDIA image to use a CUDA version higher than
+        # that supported by the NLP machines. Otherwise, Slurm Batch Worker
+        # Manager will no longer function.
+        cuda_image = 'nvidia/cuda:11.5.2-base-ubuntu20.04'
         nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
         if use_docker:
             self.client.images.pull(cuda_image)
