@@ -875,7 +875,6 @@ class CodalabServiceManager(object):
             success = True
         else:
             try:
-                print(f'HELLOOOO {command_string}')
                 popen = subprocess.Popen(
                     command_string,
                     cwd=self.compose_cwd,
