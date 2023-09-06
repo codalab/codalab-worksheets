@@ -4,7 +4,6 @@
 # tutorial on the CodaLab documentation.
 
 import argparse
-import base64
 import getpass
 import os
 import logging
@@ -222,7 +221,7 @@ def parse_args():
     parser.add_argument(
         '--kubernetes-cert',
         type=str,
-        help='Base64 encoded contents of the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes and --kubernetes-cert-path is set to /dev/null.',
+        help='Contents of the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes and --kubernetes-cert-path is set to /dev/null.',
     )
     return parser.parse_args()
 
@@ -327,7 +326,7 @@ def main():
             # Create temp file to store kubernetes cert, as we need to pass in a file path.
             # TODO: Delete the file afterwards (upon CodaLab service stop?)
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                f.write(base64.b64decode(args.cert).decode())
+                f.write(args.cert.replace(r'\n', '\n'))
                 kubernetes_cert_path = f.name
             logger.info('Temporarily writing kubernetes cert to: %s', kubernetes_cert_path)
         else:

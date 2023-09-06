@@ -7,7 +7,6 @@ except ModuleNotFoundError:
         'Please run: pip install kubernetes'
     )
 
-import base64
 import logging
 import os
 import uuid
@@ -52,7 +51,7 @@ class KubernetesWorkerManager(WorkerManager):
         subparser.add_argument(
             '--cert',
             type=str,
-            help='Base64 encoded contents of the SSL cert for the Kubernetes cluster',
+            help='Contents of the SSL cert for the Kubernetes cluster',
             required=True,
         )
         subparser.add_argument(
@@ -95,7 +94,7 @@ class KubernetesWorkerManager(WorkerManager):
             # Create temp file to store kubernetes cert, as we need to pass in a file path.
             # TODO: Delete the file afterwards (upon CodaLab service stop?)
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                f.write(base64.b64decode(args.cert).decode())
+                f.write(args.cert.replace(r'\n', '\n'))
                 cert_path = f.name
             logger.info('Temporarily writing kubernetes cert to: %s', cert_path)
         else:
