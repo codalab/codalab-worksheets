@@ -13,6 +13,7 @@ import sys
 from typing import Optional, Set, Dict
 from types import SimpleNamespace
 import websockets
+import json
 
 import psutil
 
@@ -90,6 +91,8 @@ class Worker:
         exit_on_exception=False,  # type: bool
         shared_memory_size_gb=1,  # type: int
         preemptible=False,  # type: bool
+        num_coroutines=10,  # type: int
+        # Number of threads to have running concurrently waiting for socket messages. MUST be a natural number.
     ):
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
@@ -135,6 +138,8 @@ class Worker:
         self.last_time_ran = None  # type: Optional[bool]
 
         self.ws_server = ws_server
+
+        self.num_coroutines = num_coroutines
 
         self.runs = {}  # type: Dict[str, RunState]
         self.docker_network_prefix = docker_network_prefix
@@ -292,6 +297,80 @@ class Worker:
         """
         return self.exit_after_num_runs == self.num_runs and len(self.runs) == 0
 
+    def process_message(self, message):
+        """
+        Process messages from the rest server in the worker.
+
+        :param message: (list(dict)) A list of JSON messages for the worker.
+        :return: None
+        """
+        message = json.loads(message.decode())
+        with self._lock:
+            # Stop processing any new runs received from server
+            if not message or self.terminate_and_restage or self.terminate:
+                return
+            action_type = message['type']
+            logger.debug('Received %s message: %s', action_type, message)
+            if action_type == 'run':
+                self.initialize_run(message['bundle'], message['resources'])
+            else:
+                uuid = message['uuid']
+                socket_id = message.get('socket_id', None)
+                if uuid not in self.runs:
+                    if action_type in ['read', 'netcat']:
+                        self.read_run_missing(socket_id)
+                    return
+                if action_type == 'kill':
+                    kill_message = 'Kill requested'
+                    if 'kill_message' in message:
+                        kill_message = message['kill_message']
+                    self.kill(uuid, kill_message)
+                elif action_type == 'mark_finalized':
+                    self.mark_finalized(uuid)
+                elif action_type == 'read':
+                    self.read(socket_id, uuid, message['path'], message['read_args'])
+                elif action_type == 'netcat':
+                    self.netcat(socket_id, uuid, message['port'], message['message'])
+                elif action_type == 'write':
+                    self.write(uuid, message['subpath'], message['string'])
+                else:
+                    logger.warning("Unrecognized action type from server: %s", action_type)
+
+    async def recv_messages(self, websocket):
+        # Authenticate with Websocket Server.
+        await websocket.send(self.bundle_service._get_access_token())
+
+        # Loop and keep waiting for messages.
+        while not self.terminate:
+            try:
+                await websocket.send("a")
+                message = await asyncio.wait_for(websocket.recv(), timeout=10)
+                self.process_message(message)
+            except asyncio.TimeoutError:
+                pass
+            except websockets.exceptions.ConnectionClosed:
+                logger.warning("Websocket connection closed, starting a new one...")
+                break
+            except Exception:
+                logger.error(traceback.print_exc())
+
+    async def listen(self, thread_id):
+        wss_uri = f"{self.ws_server}/worker_connect/{self.id}/{thread_id}"
+        while not self.terminate:
+            logger.info(f"Connecting to {wss_uri}")
+            try:
+                async with websockets.connect(f"{wss_uri}", max_queue=1) as websocket:
+                    await self.recv_messages(websocket)
+            except Exception:
+                logger.error(f"Error connecting to ws-server: {traceback.print_exc()}")
+                time.sleep(3)
+
+    def listen_thread_fn(self):
+        coroutines = [self.listen(i) for i in range(self.num_coroutines)]
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(asyncio.gather(*coroutines))
+
     def start(self):
         """Return whether we ran anything."""
         logger.info(f"my id is: {self.id}")
@@ -301,39 +380,8 @@ class Worker:
         if not self.shared_file_system:
             self.dependency_manager.start()
 
-        async def listen(self):
-            logger.warning("Started websocket listening thread")
-            while not self.terminate:
-                logger.warning(f"Connecting anew to: {self.ws_server}/worker/{self.id}")
-                async with websockets.connect(
-                    f"{self.ws_server}/worker/{self.id}", max_queue=1
-                ) as websocket:
-
-                    async def receive_msg():
-                        await websocket.send("a")
-                        data = await asyncio.wait_for(websocket.recv(), timeout=10)
-                        logger.warning(
-                            f"Got websocket message, got data: {data}, going to check in now."
-                        )
-                        self.checkin()
-                        self.last_checkin = time.time()
-
-                    while not self.terminate:
-                        try:
-                            await receive_msg()
-                        except asyncio.TimeoutError:
-                            pass
-                        except websockets.exceptions.ConnectionClosed:
-                            logger.warning("Websocket connection closed, starting a new one...")
-                            break
-
-        def listen_thread_fn(self):
-            futures = [listen(self)]
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(asyncio.wait(futures))
-
-        self.listen_thread = threading.Thread(target=listen_thread_fn, args=[self])
+        asyncio.new_event_loop()
+        self.listen_thread = threading.Thread(target=self.listen_thread_fn)
         self.listen_thread.start()
         while not self.terminate:
             try:
@@ -394,8 +442,7 @@ class Worker:
         Blocks until cleanup is complete and it is safe to quit
         """
         logger.info("Stopping Worker")
-        if self.listen_thread:
-            self.listen_thread.join()
+        self.listen_thread.join()
         self.image_manager.stop()
         if not self.shared_file_system:
             self.dependency_manager.stop()
@@ -512,7 +559,7 @@ class Worker:
                     },
                 )
             try:
-                response = self.bundle_service.checkin(self.id, request)
+                self.bundle_service.checkin(self.id, request)
                 logger.info('Connected! Successful check in!')
                 self.last_checkin_successful = True
             except BundleServiceException as ex:
@@ -523,41 +570,6 @@ class Worker:
                     )
                     time.sleep(self.CHECKIN_COOLDOWN)
                 self.last_checkin_successful = False
-                response = None
-            # Stop processing any new runs received from server
-            if not response or self.terminate_and_restage or self.terminate:
-                return
-            if type(response) is not list:
-                response = [response]
-            for action in response:
-                if not action:
-                    continue
-                action_type = action['type']
-                logger.debug('Received %s message: %s', action_type, action)
-                if action_type == 'run':
-                    self.initialize_run(action['bundle'], action['resources'])
-                else:
-                    uuid = action['uuid']
-                    socket_id = action.get('socket_id', None)
-                    if uuid not in self.runs:
-                        if action_type in ['read', 'netcat']:
-                            self.read_run_missing(socket_id)
-                        return
-                    if action_type == 'kill':
-                        kill_message = 'Kill requested'
-                        if 'kill_message' in action:
-                            kill_message = action['kill_message']
-                        self.kill(uuid, kill_message)
-                    elif action_type == 'mark_finalized':
-                        self.mark_finalized(uuid)
-                    elif action_type == 'read':
-                        self.read(socket_id, uuid, action['path'], action['read_args'])
-                    elif action_type == 'netcat':
-                        self.netcat(socket_id, uuid, action['port'], action['message'])
-                    elif action_type == 'write':
-                        self.write(uuid, action['subpath'], action['string'])
-                    else:
-                        logger.warning("Unrecognized action type from server: %s", action_type)
             self.process_runs()
 
     def process_runs(self):

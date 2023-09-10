@@ -117,6 +117,12 @@ def parse_args():
         help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
     )
     parser.add_argument(
+        '--num-coroutines',
+        help='Number of worker threads to have running concurrently waiting for socket messages. Must be a natural number.',
+        type=int,
+        default=10,
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -391,6 +397,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
+        num_coroutines=args.num_coroutines,
         bundle_runtime=bundle_runtime_class,
     )
 
