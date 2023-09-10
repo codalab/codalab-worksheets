@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import io
 import os
 import shutil
 from subprocess import PIPE, Popen
@@ -140,9 +139,6 @@ class Worker:
 
         self.ws_server = ws_server
 
-        assert (
-            num_coroutines > 0 and type(num_coroutines) is int
-        ), "num_coroutines must be a natural number."
         self.num_coroutines = num_coroutines
 
         self.runs = {}  # type: Dict[str, RunState]
@@ -852,7 +848,7 @@ class Worker:
                         break
                     total_data.append(data)
                 s.close()
-                reply(None, {}, io.BytesIO(b''.join(total_data)))
+                reply(None, {}, b''.join(total_data))
             except BundleServiceException:
                 traceback.print_exc()
             except Exception as e:

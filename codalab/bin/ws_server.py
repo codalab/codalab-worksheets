@@ -1,4 +1,5 @@
-# Main entry point for CodaLab cl-ws-server.
+# Main entry point to the CodaLab Websocket Server.
+# The Websocket Server handles communication between the REST server and workers.
 import argparse
 import asyncio
 from collections import defaultdict
