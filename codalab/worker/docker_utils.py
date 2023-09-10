@@ -152,7 +152,11 @@ class DockerRuntime(Runtime):
             docker.errors.ImageNotFound if the CUDA image cannot be pulled
             docker.errors.APIError if another server error occurs
         """
-        cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
+
+        # Note: Do NOT update the NVIDIA image to use a CUDA version higher than
+        # that supported by the NLP machines. Otherwise, Slurm Batch Worker
+        # Manager will no longer function.
+        cuda_image = 'nvidia/cuda:11.5.2-base-ubuntu20.04'
         nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
         if use_docker:
             self.client.images.pull(cuda_image)
@@ -164,7 +168,16 @@ class DockerRuntime(Runtime):
                 stdout=True,
                 remove=True,
             )
-            gpus = output.decode()
+            gpu_info = output.decode()
+            GPU_REGEX = r"(\d+), ((?:GPU-)[a-fA-F0-9-]+)"
+            gpus = {}
+            for line in gpu_info.splitlines():
+                match = re.match(GPU_REGEX, line)
+                if match:
+                    idx = match.group(1)
+                    uuid = match.group(2)
+                    gpus[idx] = uuid
+
         else:
             # use the singularity runtime to run nvidia-smi
             # img = Client.pull('docker://' + cuda_image, pull_folder='/tmp')
@@ -172,12 +185,10 @@ class DockerRuntime(Runtime):
             # if output['return_code'] != 0:
             #     raise SingularityError
             # gpus = output['message']
-            gpus = ""
+            gpus = {}
         # Get newline delimited gpu-index, gpu-uuid list
-        logger.info("GPUs: " + str(gpus.split('\n')[:-1]))
-        return {
-            gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in gpus.split('\n')[:-1]
-        }
+        logger.info("GPUs: " + str(gpus))
+        return gpus
 
     @wrap_exception('Unable to fetch Docker container ip')
     def get_container_ip(self, network_name: str, container_id: str):

@@ -157,8 +157,7 @@ class BundleModel(object):
         #   - Some dialects do not support multiple inserts in a single statement,
         #     which we deal with by using the DBAPI execute_many pattern.
         if values:
-            with connection.begin():
-                connection.execute(table.insert(), values)
+            connection.execute(table.insert(), values)
 
     @staticmethod
     def make_clause(key, value):
