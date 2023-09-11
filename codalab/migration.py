@@ -349,18 +349,18 @@ if __name__ == '__main__':
             continue
 
         # bundle_location is the original bundle location
-        try:
-            bundle_location = migration.get_bundle_location(bundle_uuid)
-        except Exception as e:
-            logging.error(f"[migration] Error: {str(e)}")
-            continue
+        bundle_location = migration.get_bundle_location(bundle_uuid)
 
         if parse_linked_bundle_url(bundle_location).uses_beam:
             # Do not migrate Azure / GCP bundles
             continue
 
         # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
-        bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
+        try:
+            bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
+        except Exception as e:
+            logging.error(f"[migration] Error: {str(e)}")
+            continue
 
         is_dir = bundle_info['type'] == 'directory'
 
