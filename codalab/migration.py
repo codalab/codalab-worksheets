@@ -112,7 +112,7 @@ class Migration:
 
     def get_bundle_info(self, bundle_uuid, bundle_location):
         target = BundleTarget(bundle_uuid, subpath='')
-        logging.info(f"[migration] {target}")
+        logging.info(f"[migration] In get_bundle_info, {bundle_uuid} {bundle_location} {target}")
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
             logging.info(f"[migration] {info}")
