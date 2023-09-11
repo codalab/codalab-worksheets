@@ -349,7 +349,11 @@ if __name__ == '__main__':
             continue
 
         # bundle_location is the original bundle location
-        bundle_location = migration.get_bundle_location(bundle_uuid)
+        try:
+            bundle_location = migration.get_bundle_location(bundle_uuid)
+        except Exception as e:
+            logging.error(f"[migration] Error: {str(e)}")
+            continue
 
         if parse_linked_bundle_url(bundle_location).uses_beam:
             # Do not migrate Azure / GCP bundles
