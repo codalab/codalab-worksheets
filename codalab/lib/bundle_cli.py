@@ -1282,16 +1282,17 @@ class BundleCLI(object):
         bundle_uuid = self.resolve_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
 
     
-        def get_ancestors(client, bundle_uuid, num_intent):
+        def get_ancestors(bundle_uuid, num_intent):
             bundle_info = client.fetch('bundles', bundle_uuid)
             print(' '* num_intent + '- ' + nested_dict_get(bundle_info, 'metadata', 'name') + '(' + bundle_uuid[0:8] + ')', file=self.stdout)
             dependencies = bundle_info['dependencies']
 
-            for dep in dependencies:
-                parent_uuid = dep['parent_uuid']
-                get_ancestors(client, parent_uuid, num_intent + 1)
+            if dependencies:
+                for dep in dependencies:
+                    parent_uuid = dep['parent_uuid']
+                    get_ancestors(parent_uuid, num_intent + 1)
         
-        get_ancestors(client, bundle_uuid, 0)            
+        get_ancestors(bundle_uuid, 0)            
 
     @Commands.command(
         'upload',
