@@ -121,6 +121,7 @@ BUNDLE_COMMANDS = (
     'mount',
     'netcat',
     'store',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -1259,6 +1260,38 @@ class BundleCLI(object):
             )
 
         self.print_table(columns, data)
+    
+    @Commands.command(
+        'ancestors',
+        help=['List all of the ancestors of the bundle.'],
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', 
+                help='The bundle spec to find the ancestors of.',
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuid = self.resolve_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
+
+    
+        def get_ancestors(client, bundle_uuid, num_intent):
+            bundle_info = client.fetch('bundles', bundle_uuid)
+            print(' '* num_intent + '- ' + nested_dict_get(bundle_info, 'metadata', 'name') + '(' + bundle_uuid[0:8] + ')', file=self.stdout)
+            dependencies = bundle_info['dependencies']
+
+            for dep in dependencies:
+                parent_uuid = dep['parent_uuid']
+                get_ancestors(client, parent_uuid, num_intent + 1)
+        
+        get_ancestors(client, bundle_uuid, 0)            
 
     @Commands.command(
         'upload',
