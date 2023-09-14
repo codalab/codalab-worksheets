@@ -1441,6 +1441,48 @@ def test_rm(ctx):
     _run_command([cl, 'rm', uuid])
     check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
+@TestModule.register('ancestors')
+def test_ancestors(ctx):
+    uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
+    uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
+    _run_command([cl, 'upload'], expected_exit_code=1) # should error if no uuid given
+    
+    uuid3 = _run_command(
+        [cl, 'run', 'a:{}'.format(uuid1), 'b:{}'.format(uuid2), 'echo b_a', '--memoize']
+    )
+
+    # not sure if this is right in terms of checking lines
+    # but should be 3 lines: 1 for each uuid
+    check_num_lines(3, _run_command([cl, 'ancestors', uuid3]))
+
+    check_num_lines(1, _run_command([cl, 'ancestors', uuid1]))
+
+    uuid4 = _run_command(
+        [cl, 'run', 'a:{}'.format(uuid3), 'b:{}'.format(uuid2), 'echo b_a', '--memoize']
+    )
+
+    """
+    Should look like this
+    - uuid4
+        - uuid3
+            - uuid2
+            - uuid1
+        - uuid2
+    """
+    check_num_lines(5, _run_command([cl, 'ancestors', uuid4]))
+
+    """
+    Should be able to do multiple requests at once
+    - uuid4
+        - uuid3
+            - uuid2
+            - uuid1
+        - uuid2
+    - uuid3
+        - uuid2
+        - uuid1
+    """
+    check_num_lines(8, _run_command([cl, 'ancestors', uuid4, uuid3]))
 
 @TestModule.register('disk')
 def test_disk(ctx):
