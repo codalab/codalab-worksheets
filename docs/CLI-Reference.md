@@ -294,6 +294,12 @@ Usage: `cl <command> <arguments>`
       --url              A self-referential URL that points to the bundle store.
       --authentication   Key for authentication that the bundle store uses.
 
+### ancestors
+    List all of the ancestors of the bundle.
+    Arguments:
+      bundle_spec           The bundle spec to find the ancestors of.
+      -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+
 
 ## Commands for worksheets
 ### new
