@@ -111,6 +111,12 @@ Usage: `cl <command> <arguments>`
       -i, --dry-run         Perform a dry run (just show what will be done without doing it).
       -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
 
+### ancestors
+    Prints out the nested dependencies of a bundle.
+    Arguments:
+      bundle_spec           [[(<alias>|<address>)::](<uuid>|<name>)//](<uuid>|<name>|^<index>)
+      -w, --worksheet-spec  Operate on this worksheet ([(<alias>|<address>)::](<uuid>|<name>)).
+
 ### search (s)
     Search for bundles on a CodaLab instance (returns 10 results by default).
       search <keyword> ... <keyword>         : Name or uuid contains each <keyword>.
