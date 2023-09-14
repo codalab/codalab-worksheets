@@ -121,6 +121,7 @@ BUNDLE_COMMANDS = (
     'mount',
     'netcat',
     'store',
+    'ancestors',
 )
 
 WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
@@ -2121,7 +2122,7 @@ class BundleCLI(object):
     @Commands.command(
         'ancestors',
         aliases=('a',),
-        help="Prints out ancestors of a bundle",
+        help="Prints out the nested dependencies of a bundle",
         arguments=(
             Commands.Argument(
                 'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
@@ -2140,43 +2141,19 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
 
-        # save original uuids to print later
-        original_uuids = bundle_uuids
-
-        output_dict = {}
-
-        # Recursively search through each bundle uuid, except those already found
-        # NOTE: maybe the "recursive" parameter in make request should do real recursion instead of just one level
-        while bundle_uuids:
-            bundles = client.fetch('bundles', params={'specs': bundle_uuids, 'include': ['owner'], 'recursive': True})
-
-            new_bundle_uuids = []
-
-            for bundle in bundles:
-                bundle_id = bundle['id']
-                if bundle_id not in output_dict:
-                    deps = []
-                    for dep in bundle['dependencies']:
-                        deps.append(dep['parent_uuid'])
-                        if (dep['parent_uuid'], dep["parent_name"]) not in output_dict:
-                            new_bundle_uuids.append(dep['parent_uuid'])
-
-                    output_dict[bundle_id] = deps + [bundle["metadata"]["name"]]
-
-            bundle_uuids = new_bundle_uuids
-
-
-        def print_helper(level: int, uuid: Optional[str]) -> None:
+        def ancestors_helper(level: int, uuid: Optional[str]) -> None:
             """Helper to print all of the dependencies at the right level"""
-            output_str = f"{' ' * level} - {output_dict[uuid][-1]}({uuid[:8]})"
+            bundle = client.fetch('bundles', uuid)
+            output_str = f"{' ' * level} - {nested_dict_get(bundle, 'metadata', 'name')}({uuid[:8]})"
             print(output_str, file=self.stdout)
             
-            deps = output_dict[uuid][:-1]
-            for dep_uuid in deps:
-                print_helper(level + 2, dep_uuid)
+            deps = bundle["dependencies"]
+            for dep in deps:
+                dep_uuid = dep["parent_uuid"]
+                ancestors_helper(level + 2, dep_uuid)
             
-        for uuid in original_uuids:
-            print_helper(0, uuid)
+        for uuid in bundle_uuids:
+            ancestors_helper(0, uuid)
 
 
     @Commands.command(
