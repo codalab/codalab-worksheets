@@ -1622,6 +1622,21 @@ def test_make(ctx):
         _run_command([cl, 'store', 'rm', bundle_store_uuid])
 
 
+@TestModule.register('ancestors')
+def test_ancestors(ctx):
+    uuid1 = _run_command([cl, 'upload', test_path('00_quickstart/code')])
+    wait(uuid1)
+    uuid2 = _run_command([cl, 'upload', test_path('00_quickstart/data')])
+    wait(uuid2)
+    uuid3 = _run_command([cl, 'run', ':data', ':code', 'python code/sort.py < data/lines.txt'])
+    wait(uuid3)
+
+    result = _run_command([cl, 'ancestors', uuid3[0:8]])
+    lines = result.split("\n")
+    assert len(lines) == 3
+    assert lines[0].endswith('(' + uuid3[0:8] + ')')
+
+
 @TestModule.register('worksheet')
 def test_worksheet(ctx):
     wname = random_name()
