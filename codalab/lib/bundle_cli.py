@@ -30,7 +30,7 @@ from collections import defaultdict
 from contextlib import closing
 from io import BytesIO
 from shlex import quote
-from typing import Dict
+from typing import Dict, Optional
 import webbrowser
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -2117,6 +2117,67 @@ class BundleCLI(object):
         else:
             for uuid in deleted_uuids:
                 print(uuid, file=self.stdout)
+
+    @Commands.command(
+        'ancestors',
+        aliases=('a',),
+        help="Prints out ancestors of a bundle",
+        arguments=(
+            Commands.Argument(
+                'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter
+            ),
+            Commands.Argument(
+                '-w',
+                '--worksheet-spec',
+                help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                completer=WorksheetsCompleter,
+            ),
+        )
+    )
+
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+
+        # save original uuids to print later
+        original_uuids = bundle_uuids
+
+        output_dict = {}
+
+        # Recursively search through each bundle uuid, except those already found
+        # NOTE: maybe the "recursive" parameter in make request should do real recursion instead of just one level
+        while bundle_uuids:
+            bundles = client.fetch('bundles', params={'specs': bundle_uuids, 'include': ['owner'], 'recursive': True})
+
+            new_bundle_uuids = []
+
+            for bundle in bundles:
+                bundle_id = bundle['id']
+                if bundle_id not in output_dict:
+                    deps = []
+                    for dep in bundle['dependencies']:
+                        deps.append(dep['parent_uuid'])
+                        if (dep['parent_uuid'], dep["parent_name"]) not in output_dict:
+                            new_bundle_uuids.append(dep['parent_uuid'])
+
+                    output_dict[bundle_id] = deps + [bundle["metadata"]["name"]]
+
+            bundle_uuids = new_bundle_uuids
+
+
+        def print_helper(level: int, uuid: Optional[str]) -> None:
+            """Helper to print all of the dependencies at the right level"""
+            output_str = f"{' ' * level} - {output_dict[uuid][-1]}({uuid[:8]})"
+            print(output_str, file=self.stdout)
+            
+            deps = output_dict[uuid][:-1]
+            for dep_uuid in deps:
+                print_helper(level + 2, dep_uuid)
+            
+        for uuid in original_uuids:
+            print_helper(0, uuid)
+
 
     @Commands.command(
         'search',
