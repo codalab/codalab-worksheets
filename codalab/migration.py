@@ -112,10 +112,9 @@ class Migration:
 
     def get_bundle_info(self, bundle_uuid, bundle_location):
         target = BundleTarget(bundle_uuid, subpath='')
-        logging.info(f"[migration] In get_bundle_info, {bundle_uuid} {bundle_location} {target}")
+        # logging.info(f"[migration] In get_bundle_info, {bundle_uuid} {bundle_location} {target}")
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
-            logging.info(f"[migration] {info}")
         except Exception as e:
             logging.info(f"[migration] Error: {str(e)}")
             raise e
@@ -332,20 +331,25 @@ if __name__ == '__main__':
             raise Exception("Input worksheet uuid has wrong format. ")
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
+    total = len(bundle_uuids)
+    skipped, error_cnt = 0, 0 
+    logging.info(f"[migration] Start migrating {total} bundles")
     for bundle_uuid in bundle_uuids:
         bundle = migration.get_bundle(bundle_uuid)
 
         # TODO: change this to allow migration of run bundles
         if bundle.state != 'ready':
             # only migrate uploaded bundle, and the bundle state needs to be ready
+            skipped += 1
             continue
 
         # Uploaded bundles does not need has dependencies
-        logging.info(bundle.dependencies)
+        # logging.info(bundle.dependencies)
         # assert len(bundle.dependencies) == 0
 
         if migration.is_linked_bundle(bundle_uuid):
             # Do not migrate link bundle
+            skipped += 1
             continue
 
         # bundle_location is the original bundle location
@@ -353,6 +357,7 @@ if __name__ == '__main__':
 
         if parse_linked_bundle_url(bundle_location).uses_beam:
             # Do not migrate Azure / GCP bundles
+            skipped += 1
             continue
 
         # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
@@ -360,6 +365,7 @@ if __name__ == '__main__':
             bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
         except Exception as e:
             logging.error(f"[migration] Error: {str(e)}")
+            error_cnt += 1
             continue
 
         is_dir = bundle_info['type'] == 'directory'
@@ -371,6 +377,10 @@ if __name__ == '__main__':
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
 
+    logging.info(f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped} bundles, error {error_cnt} bundles. Succeeed {total - skipped - error_cnt} bundles")
+    if args.change_db:
+        logging.info(f"[migration][Change DB] Database migration finished, bundle location changed in database.")
+    
     if args.delete:
-
         migration.delete_original_bundle()
+        logging.info(f"[migration][Deleted] Original bundles deleted from local disk.")
