@@ -85,7 +85,7 @@ class Migration:
 
         return logger
 
-    def get_bundle_uuids(self, worksheet_uuid, max_result=100):
+    def get_bundle_uuids(self, worksheet_uuid, max_result=1e9):
         if worksheet_uuid is None:
             bundle_uuids = self.bundle_manager._model.get_all_bundle_uuids(max_results=max_result)
         else:
@@ -112,7 +112,6 @@ class Migration:
 
     def get_bundle_info(self, bundle_uuid, bundle_location):
         target = BundleTarget(bundle_uuid, subpath='')
-        # logging.info(f"[migration] In get_bundle_info, {bundle_uuid} {bundle_location} {target}")
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
         except Exception as e:
@@ -270,22 +269,21 @@ class Migration:
                         bundle_uuid, origin_bundle_location, None, is_dir, new_location
                     )
                 except FileNotFoundError:
-                    logging.info(f"Bundle {bundle_uuid} already deleted from local disk")
+                    logging.info(f"[migration] Bundle {bundle_uuid} already deleted from local disk")
                     continue
                 except Exception as e:
-                    logging.error(f"[migration] Sanity Check Error: {str(e)}")
+                    logging.error(f"[migration] Sanity Check Error: {str(e)} for bundle {bundle_uuid}")
                     f.write(line)
                     continue
 
                 if not self.get_bundle_location(bundle_uuid).startswith(
                     StorageURLScheme.AZURE_BLOB_STORAGE.value
                 ):
-                    logging.info(f"Bundle {bundle_uuid} info in database is not properly updated")
+                    logging.info(f"[migration] Bundle {bundle_uuid} info in database is not properly updated")
                     raise Exception(
                         f"Bundle {bundle_uuid} info in database is not properly updated"
                     )
                 try:
-                    
                     self.delete_original_bundle_by_uuid(bundle_uuid, origin_bundle_location)
                 except Exception as e:
                     # If the bundle is not deleted, save the information in the file
