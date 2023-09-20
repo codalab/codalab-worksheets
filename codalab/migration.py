@@ -330,7 +330,7 @@ if __name__ == '__main__':
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     total = len(bundle_uuids)
-    skipped, error_cnt = 0, 0 
+    skipped, error_cnt, success_cnt = 0, 0, 0
     logging.info(f"[migration] Start migrating {total} bundles")
     for bundle_uuid in bundle_uuids:
         bundle = migration.get_bundle(bundle_uuid)
@@ -369,13 +369,14 @@ if __name__ == '__main__':
         is_dir = bundle_info['type'] == 'directory'
 
         new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+        success_cnt += 1
         migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
 
         if args.change_db:  # If need to change the database, continue to run
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
 
-    logging.info(f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped} bundles, error {error_cnt} bundles. Succeeed {total - skipped - error_cnt} bundles")
+    logging.info(f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped} bundles, error {error_cnt} bundles. Succeeed {success_cnt} bundles")
     if args.change_db:
         logging.info(f"[migration][Change DB] Database migration finished, bundle location changed in database.")
     
