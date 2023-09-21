@@ -362,7 +362,6 @@ if __name__ == '__main__':
         try:
             bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
         except Exception as e:
-            logging.error(f"[migration] Error: {str(e)}")
             error_cnt += 1
             continue
 
