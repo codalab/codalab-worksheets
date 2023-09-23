@@ -262,24 +262,32 @@ class Migration:
             f.seek(0)
             f.truncate()
             for line in lines:
-                bundle_uuid, origin_bundle_location, new_location = line.replace('\n', '').split(",")
+                bundle_uuid, origin_bundle_location, new_location = line.replace('\n', '').split(
+                    ","
+                )
                 try:
                     is_dir = new_location.endswith("tar.gz")
                     migration.sanity_check(
                         bundle_uuid, origin_bundle_location, None, is_dir, new_location
                     )
                 except FileNotFoundError:
-                    logging.info(f"[migration] Bundle {bundle_uuid} already deleted from local disk")
+                    logging.info(
+                        f"[migration] Bundle {bundle_uuid} already deleted from local disk"
+                    )
                     continue
                 except Exception as e:
-                    logging.error(f"[migration] Sanity Check Error: {str(e)} for bundle {bundle_uuid}")
+                    logging.error(
+                        f"[migration] Sanity Check Error: {str(e)} for bundle {bundle_uuid}"
+                    )
                     f.write(line)
                     continue
 
                 if not self.get_bundle_location(bundle_uuid).startswith(
                     StorageURLScheme.AZURE_BLOB_STORAGE.value
                 ):
-                    logging.info(f"[migration] Bundle {bundle_uuid} info in database is not properly updated")
+                    logging.info(
+                        f"[migration] Bundle {bundle_uuid} info in database is not properly updated"
+                    )
                     raise Exception(
                         f"Bundle {bundle_uuid} info in database is not properly updated"
                     )
@@ -289,7 +297,6 @@ class Migration:
                     # If the bundle is not deleted, save the information in the file
                     logging.error(f"[migration] Delete Original Bundle Error: {str(e)}")
                     f.write(line)
-            
 
 
 if __name__ == '__main__':
@@ -330,7 +337,7 @@ if __name__ == '__main__':
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     total = len(bundle_uuids)
-    skipped_ready, skipped_link, skipped_beam, error_cnt, success_cnt = 0, 0, 0
+    skipped_ready, skipped_link, skipped_beam, error_cnt, success_cnt = 0, 0, 0, 0, 0
     logging.info(f"[migration] Start migrating {total} bundles")
     for bundle_uuid in bundle_uuids:
         bundle = migration.get_bundle(bundle_uuid)
@@ -361,7 +368,7 @@ if __name__ == '__main__':
         # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
         try:
             bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
-        except Exception as e:
+        except Exception:
             error_cnt += 1
             continue
 
@@ -375,10 +382,14 @@ if __name__ == '__main__':
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
 
-    logging.info(f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready} {skipped_link} {skipped_beam} bundles, error {error_cnt} bundles. Succeeed {success_cnt} bundles")
+    logging.info(
+        f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready} {skipped_link} {skipped_beam} bundles, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
+    )
     if args.change_db:
-        logging.info(f"[migration][Change DB] Database migration finished, bundle location changed in database.")
-    
+        logging.info(
+            "[migration][Change DB] Database migration finished, bundle location changed in database."
+        )
+
     if args.delete:
         migration.delete_original_bundle()
-        logging.info(f"[migration][Deleted] Original bundles deleted from local disk.")
+        logging.info("[migration][Deleted] Original bundles deleted from local disk.")
