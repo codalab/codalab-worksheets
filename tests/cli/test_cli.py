@@ -1930,14 +1930,15 @@ def test_search(ctx):
         _run_command([cl, 'work', wuuid])
 
         # Make sure bundle that has no permissions cannot be searched.
-        uuid = _run_command([cl, 'upload', test_path('a.txt')])
-        _run_command([cl, 'perm', uuid, 'public', 'none'])
-        _, current_user_name = current_user()
-        user_name = 'non_root_user_' + random_name()
-        create_user(ctx, user_name, disk_quota='1000000')
-        switch_user(user_name)
-        check_equals('', _run_command([cl, 'search', uuid]))
-        switch_user(current_user_name)
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            uuid = _run_command([cl, 'upload', test_path('a.txt')])
+            _run_command([cl, 'perm', uuid, 'public', 'none'])
+            _, current_user_name = current_user()
+            user_name = 'non_root_user_' + random_name()
+            create_user(ctx, user_name, disk_quota='1000000')
+            switch_user(user_name)
+            check_equals('', _run_command([cl, 'search', uuid]))
+            switch_user(current_user_name)
 
         # Search with groups
         # Empty group
