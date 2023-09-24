@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import closing
 import datetime
 import json
@@ -6,7 +5,8 @@ import logging
 import os
 import socket
 import time
-import websockets
+from websockets.sync.client import connect
+import traceback
 
 from sqlalchemy import and_, select
 
@@ -20,6 +20,8 @@ from codalab.model.tables import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logging.basicConfig(format='%(asctime)s %(message)s %(pathname)s %(lineno)d')
 
 
 class WorkerModel(object):
@@ -35,10 +37,13 @@ class WorkerModel(object):
        listen on these sockets for messages and send messages to these sockets.
     """
 
-    def __init__(self, engine, socket_dir, ws_server):
+    ACK = b'a'
+
+    def __init__(self, engine, socket_dir, ws_server, server_secret):
         self._engine = engine
         self._socket_dir = socket_dir
         self._ws_server = ws_server
+        self._server_secret = server_secret
 
     def worker_checkin(
         self,
@@ -121,7 +126,6 @@ class WorkerModel(object):
                         user_id=user_id, worker_id=worker_id, dependencies=blob
                     )
                 )
-
         return socket_id
 
     @staticmethod
@@ -285,7 +289,7 @@ class WorkerModel(object):
         get_ methods below. as in:
 
             with closing(worker_model.start_listening(socket_id)) as sock:
-                message = worker_model.get_json_message(sock, timeout_secs)
+                message = worker_model.get_json_message_with_unix_socket(sock, timeout_secs)
         """
         self._cleanup_socket(socket_id)
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -293,9 +297,7 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
-    ACK = b'a'
-
-    def get_stream(self, sock, timeout_secs):
+    def recv_stream(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns a file-like
         object that can be used for streaming the message data.
@@ -316,14 +318,14 @@ class WorkerModel(object):
         except socket.timeout:
             return None
 
-    def get_json_message(self, sock, timeout_secs):
+    def recv_json_message_with_unix_socket(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns the message
         data parsed as JSON.
 
         If no messages are received within timeout_secs seconds, returns None.
         """
-        fileobj = self.get_stream(sock, timeout_secs)
+        fileobj = self.recv_stream(sock, timeout_secs)
 
         if fileobj is None:
             return None
@@ -363,18 +365,9 @@ class WorkerModel(object):
 
         return False
 
-    def _ping_worker_ws(self, worker_id):
-        async def ping_ws():
-            async with websockets.connect(f"{self._ws_server}/main") as websocket:
-                await websocket.send(worker_id)
-
-        futures = [ping_ws()]
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(asyncio.wait(futures))
-        logging.warn(f"Pinged worker through websockets, worker id: {worker_id}")
-
-    def send_json_message(self, socket_id, worker_id, message, timeout_secs, autoretry=True):
+    def send_json_message_with_unix_socket(
+        self, socket_id, worker_id, message, timeout_secs, autoretry=True
+    ):
         """
         Sends a JSON message to the given socket, retrying until it is received
         correctly.
@@ -385,7 +378,6 @@ class WorkerModel(object):
         Note, only the worker should call this method with autoretry set to
         False. See comments below.
         """
-        self._ping_worker_ws(worker_id)
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
@@ -409,6 +401,7 @@ class WorkerModel(object):
                         success = True
                 except socket.error as e:
                     logging.error(f"socket error when calling send_json_message: {e}")
+                    logging.error(traceback.print_exc())
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -451,3 +444,44 @@ class WorkerModel(object):
             if row:
                 return True
             return False
+
+    def send_json_message(
+        self, data: dict, worker_id: str, timeout_secs: int = 5, initial_sleep: float = 0.1
+    ):
+        """
+        Send JSON message to the worker.
+
+        :param worker_id: The ID of the worker to send data to
+        :param data: Data to send to worker. Could be a file or a json message.
+        :param timeout_secs: Seconds until send fails due to timeout.
+        :param initial_sleep: Time to sleep before retrying send after a failure.
+                              Note: upon successive failures, exponential backoff is applied.
+
+        :return True if data was sent properly, False otherwise.
+        """
+        start_time = time.time()
+        sleep_time = initial_sleep
+        while time.time() - start_time < timeout_secs:
+            try:
+                with connect(f"{self._ws_server}/send_to_worker/{worker_id}") as websocket:
+                    websocket.send(self._server_secret)  # Authenticate
+                    websocket.send(json.dumps(data).encode())
+                    ack = websocket.recv()
+                    return ack == self.ACK
+            except Exception as e:
+                logger.error(f"Send to worker {worker_id} failed with {e}. Retrying...")
+                time.sleep(sleep_time)
+                sleep_time *= 2  # Exponential backoff
+        return False
+
+    def get_user_id_for_worker(self, worker_id):
+        """Return the user_id corresponding to the worker with ID worker_id
+        """
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                select([cl_worker]).where(cl_worker.c.worker_id == worker_id)
+            ).fetchone()
+
+        if row is None:
+            return None
+        return row.user_id

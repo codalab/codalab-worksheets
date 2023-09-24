@@ -2904,7 +2904,7 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
-    def find_oauth2_token(self, client_id, user_id, expires_after):
+    def find_oauth2_token(self, client_id, user_id, expires_after=datetime.datetime.utcnow()):
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([oauth2_token])
@@ -2922,6 +2922,25 @@ class BundleModel(object):
             return None
 
         return OAuth2Token(self, **row)
+
+    def access_token_exists_for_user(self, client_id: str, user_id: str, access_token: str) -> bool:
+        """Check that the provided access_token exists in the database for the provided user_id.
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([oauth2_token])
+                .where(
+                    and_(
+                        oauth2_token.c.client_id == client_id,
+                        oauth2_token.c.user_id == user_id,
+                        oauth2_token.c.access_token == access_token,
+                        oauth2_token.c.expires > datetime.datetime.utcnow(),
+                    )
+                )
+                .limit(1)
+            ).fetchone()
+
+        return row is not None
 
     def save_oauth2_token(self, token):
         with self.engine.begin() as connection:

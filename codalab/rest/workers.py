@@ -1,7 +1,6 @@
 from __future__ import (
     absolute_import,
 )  # Without this line "from worker.worker import VERSION" doesn't work.
-from contextlib import closing
 import http.client
 import json
 from datetime import datetime
@@ -25,11 +24,9 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    logger.error("worker checking in")
-    WAIT_TIME_SECS = 5.0
 
     # Old workers might not have all the fields, so allow subsets to be missing.
-    socket_id = local.worker_model.worker_checkin(
+    local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
         request.json.get("tag"),
@@ -46,7 +43,6 @@ def checkin(worker_id):
         request.json.get("preemptible", False),
     )
 
-    messages = []
     for run in request.json["runs"]:
         try:
             worker_run = BundleCheckinState.from_dict(run)
@@ -62,21 +58,20 @@ def checkin(worker_id):
                     'Kill requested: User time quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
-                messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
+                local.worker_model.send_json_message(
+                    {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message}, worker_id
+                )
             elif local.model.get_user_disk_quota_left(bundle.owner_id) <= 0:
                 # Then, user has gone over their disk quota and we kill the job.
                 kill_message = (
                     'Kill requested: User disk quota exceeded. To apply for more quota, please visit the following link: '
                     'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/#how-do-i-request-more-disk-quota-or-time-quota'
                 )
-                messages.append({'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message})
+                local.worker_model.send_json_message(
+                    {'type': 'kill', 'uuid': bundle.uuid, 'kill_message': kill_message}, worker_id
+                )
         except Exception as e:
             logger.info("Exception in REST checkin: {}".format(e))
-
-    with closing(local.worker_model.start_listening(socket_id)) as sock:
-        messages.append(local.worker_model.get_json_message(sock, WAIT_TIME_SECS))
-    response.content_type = 'application/json'
-    return json.dumps(messages)
 
 
 def check_reply_permission(worker_id, socket_id):
@@ -98,7 +93,9 @@ def reply(worker_id, socket_id):
     Replies with a single JSON message to the given socket ID.
     """
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, worker_id, request.json, 60, autoretry=False)
+    local.worker_model.send_json_message_with_unix_socket(
+        socket_id, worker_id, request.json, 60, autoretry=False
+    )
 
 
 @post(
@@ -126,7 +123,9 @@ def reply_data(worker_id, socket_id):
         abort(http.client.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
-    local.worker_model.send_json_message(socket_id, worker_id, header_message, 60, autoretry=False)
+    local.worker_model.send_json_message_with_unix_socket(
+        socket_id, worker_id, header_message, 60, autoretry=False
+    )
     local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
 
 
