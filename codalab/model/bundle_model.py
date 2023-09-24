@@ -664,6 +664,7 @@ class BundleModel(object):
                 ),
                 aliased_group_bundle_permission.c.permission
                 >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
+                aliased_group_bundle_permission.c.group_uuid is not None,
             )
 
             where_clause = and_(where_clause, or_(access_via_owner, access_via_group))

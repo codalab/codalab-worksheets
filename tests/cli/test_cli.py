@@ -1916,25 +1916,52 @@ def test_search(ctx):
         _run_command([cl, 'wperm', new_wuuid, 'public', 'n'])  # make worksheet private
         _run_command([cl, 'work', new_wuuid])  # switch to worksheet
         uuid = _run_command([cl, 'upload', test_path('a.txt')])
-        check_equals(uuid, _run_command([cl, 'search', uuid, '-u']))
+        check_equals(
+            uuid, _run_command([cl, 'search', uuid, '-u'])
+        )  # Make sure this user can access bundle
+        _, current_user_name = current_user()
+        user_name = random_name()
+        create_user(ctx, user_name, disk_quota='1000000')
+        switch_user(user_name)
+        check_equals(
+            '', _run_command([cl, 'search', uuid, '-u'])
+        )  # Make sure other users can't access it
+        switch_user(current_user_name)
         _run_command([cl, 'work', wuuid])
+
+        # Make sure bundle that has no permissions cannot be searched.
+        uuid = _run_command([cl, 'upload', test_path('a.txt')])
+        _run_command([cl, 'perm', uuid, 'public', 'none'])
+        _, current_user_name = current_user()
+        user_name = 'non_root_user_' + random_name()
+        create_user(ctx, user_name, disk_quota='1000000')
+        switch_user(user_name)
+        check_equals('', _run_command([cl, 'search', uuid]))
+        switch_user(current_user_name)
 
         # Search with groups
         # Empty group
         check_equals('', _run_command([cl, 'search', '.shared']))
-        group_bname = random_name()
-        group_buuid = _run_command([cl, 'upload', test_path('a.txt'), '-n', group_bname])
-        ctx.collect_bundle(group_buuid)
+        group_bundle_uuid = _run_command([cl, 'upload', test_path('a.txt')])
+        ctx.collect_bundle(group_bundle_uuid)
         user_id, user_name = current_user()
         # Create new group
         group_name = random_name()
         group_uuid = create_group(ctx, group_name)
         # Make bundle unavailable to public but available to the group
-        _run_command([cl, 'perm', group_buuid, 'public', 'n'])
-        _run_command([cl, 'perm', group_buuid, group_name, 'r'])
-        check_contains(group_buuid[:8], _run_command([cl, 'search', '.shared']))
-        check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_uuid)]))
-        check_contains(group_buuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)]))
+        _run_command([cl, 'perm', group_bundle_uuid, 'public', 'n'])
+        _run_command([cl, 'perm', group_bundle_uuid, group_name, 'r'])
+        check_contains(group_bundle_uuid[:8], _run_command([cl, 'search', '.shared']))
+        check_contains(
+            group_bundle_uuid[:8], _run_command([cl, 'search', 'group={}'.format(group_uuid)])
+        )
+        check_contains(
+            group_bundle_uuid[:8], _run_command([cl, 'search', 'group={}'.format(group_name)])
+        )
+        # Check other groups do not have access to it
+        other_group_name = random_name()
+        other_group_uuid = create_group(ctx, other_group_name)
+        check_equals('', _run_command([cl, 'search', 'group={}'.format(other_group_uuid)]))
 
     # Test with root user.
     test_search_helper(ctx)
