@@ -13,6 +13,7 @@ import stat
 import sys
 import psutil
 import requests
+import tempfile
 
 from codalab.common import SingularityError
 from codalab.common import BundleRuntime
@@ -116,6 +117,12 @@ def parse_args():
         help='Limit the amount of memory to a worker in bytes' '(e.g. 3, 3k, 3m, 3g, 3t).',
     )
     parser.add_argument(
+        '--num-coroutines',
+        help='Number of worker threads to have running concurrently waiting for socket messages. Must be a natural number.',
+        type=int,
+        default=10,
+    )
+    parser.add_argument(
         '--password-file',
         help='Path to the file containing the username and '
         'password for logging into the bundle service, '
@@ -217,6 +224,11 @@ def parse_args():
         type=str,
         help='Path to the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes.',
     )
+    parser.add_argument(
+        '--kubernetes-cert',
+        type=str,
+        help='Contents of the SSL cert for the Kubernetes cluster. Only applicable if --bundle-runtime is set to kubernetes and --kubernetes-cert-path is set to /dev/null.',
+    )
     return parser.parse_args()
 
 
@@ -316,11 +328,22 @@ def main():
         docker_runtime = None
     elif args.bundle_runtime == BundleRuntime.KUBERNETES.value:
         image_manager = NoOpImageManager()
+        if args.kubernetes_cert_path == "/dev/null" and args.kubernetes_cert != "/dev/null":
+            # Create temp file to store kubernetes cert, as we need to pass in a file path.
+            # TODO: Delete the file afterwards (upon CodaLab service stop?)
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write(
+                    args.kubernetes_cert.replace(r'\n', '\n')
+                )  # Properly add newlines, which appear as "\n" if specified in the environment variable.
+                kubernetes_cert_path = f.name
+                logger.info('Temporarily writing kubernetes cert to: %s', kubernetes_cert_path)
+        else:
+            kubernetes_cert_path = args.kubernetes_cert_path
         bundle_runtime_class = KubernetesRuntime(
             args.work_dir,
             args.kubernetes_auth_token,
             args.kubernetes_cluster_host,
-            args.kubernetes_cert_path,
+            kubernetes_cert_path,
         )
         docker_runtime = None
     else:
@@ -374,6 +397,7 @@ def main():
         exit_on_exception=args.exit_on_exception,
         shared_memory_size_gb=args.shared_memory_size_gb,
         preemptible=args.preemptible,
+        num_coroutines=args.num_coroutines,
         bundle_runtime=bundle_runtime_class,
     )
 
@@ -436,13 +460,17 @@ def parse_gpuset_args(arg):
 
     try:
         all_gpus = DockerRuntime().get_nvidia_devices()  # Dict[GPU index: GPU UUID]
-    except DockerException:
+    except DockerException as e:
+        logger.error(e)
+        logger.error("Setting all_gpus to be empty...")
         all_gpus = {}
     # Docker socket can't be used
     except requests.exceptions.ConnectionError:
         try:
             all_gpus = DockerRuntime().get_nvidia_devices(use_docker=False)
-        except SingularityError:
+        except SingularityError as e:
+            logger.error(e)
+            logger.error("Setting all_gpus to be empty...")
             all_gpus = {}
 
     if arg == 'ALL':

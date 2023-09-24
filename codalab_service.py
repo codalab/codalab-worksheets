@@ -247,6 +247,10 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
     CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
     CodalabArg(
+        name='server_secret',
+        help='Secret key used to authenticate the REST server with the Websocket server',
+    ),
+    CodalabArg(
         name='shared_file_system', help='Whether worker has access to the bundle mount', type=bool
     ),
     # User
@@ -526,6 +530,11 @@ for worker_manager_type in ['cpu', 'gpu']:
             name=f'worker_manager_{worker_manager_type}_kubernetes_cert_path',
             type=str,
             help='Path to the generated SSL cert for the Kubernetes worker manager',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cert',
+            type=str,
+            help='Contents of the generated SSL cert for the Kubernetes worker manager',
         ),
     ]
 

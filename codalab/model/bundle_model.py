@@ -68,6 +68,7 @@ logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
+EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$')
 
 
 def str_key_dict(row):
@@ -78,6 +79,15 @@ def str_key_dict(row):
     This function converts the keys to strings.
     """
     return dict((str(k), v) for k, v in row.items())
+
+
+def is_academic_email(email):
+    """
+    This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
+    Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
+    """
+    email_suffix = EDU_USER_REGEXES.findall(email.lower())
+    return len(email_suffix) > 0
 
 
 @dataclass
@@ -147,8 +157,7 @@ class BundleModel(object):
         #   - Some dialects do not support multiple inserts in a single statement,
         #     which we deal with by using the DBAPI execute_many pattern.
         if values:
-            with connection.begin():
-                connection.execute(table.insert(), values)
+            connection.execute(table.insert(), values)
 
     @staticmethod
     def make_clause(key, value):
@@ -743,6 +752,12 @@ class BundleModel(object):
 
         return self._execute_query(query)
 
+    def get_all_bundle_uuids(self, max_results):
+        clause = and_(true(), cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+        query = select([cl_bundle.c.uuid]).where(clause)
+        query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+        return self._execute_query(query)
+
     def get_memoized_bundles(self, user_id, command, dependencies):
         """
         Get a list of bundle UUIDs that match with input command and dependencies in the order of they were created.
@@ -1008,8 +1023,10 @@ class BundleModel(object):
             'remote': worker_run.remote,
             'cpu_usage': cpu_usage,
             'memory_usage': memory_usage,
-            'data_size': worker_run.disk_utilization,
         }
+        if self.get_bundle_state(bundle.uuid) != State.FAILED:
+            # If the bundle state is failed, it means it failed on uploading_results and data_size was wiped.
+            metadata_update['data_size'] = worker_run.disk_utilization
 
         # Increment user time and disk as we go to ensure user doesn't go over quota.
         # time increment is the change in running time for this bundle since the last checkin.
@@ -1098,12 +1115,6 @@ class BundleModel(object):
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
-        if user_id == self.root_user_id:
-            time_increment = worker_run.container_time_total - bundle.metadata.time
-            self.increment_user_time_used(bundle.owner_id, time_increment)
-        disk_increment = worker_run.disk_utilization - bundle.metadata.data_size
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
-
         # Build metadata
         metadata = {}
         if failure_message is not None:
@@ -1162,7 +1173,7 @@ class BundleModel(object):
         disk_left = self.get_user_disk_quota_left(bundle.owner_id)
         if data_size > disk_left:
             raise UsageError(
-                "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                "Can't save bundle, user disk quota exceeded. Bundle size %s greater than user's disk quota left: %s"
                 % (data_size, disk_left)
             )
 
@@ -1173,19 +1184,9 @@ class BundleModel(object):
         Only used by bundle_manager when creating make bundles.
         """
         data_size = self.get_data_size(bundle_location)
-        try:
-            if 'data_size' in bundle.metadata.__dict__:
-                current_data_size = bundle.metadata.data_size
-            else:
-                current_data_size = int(
-                    self.get_bundle_metadata([bundle.uuid], 'data_size')[bundle.uuid]
-                )
-        except Exception:
-            current_data_size = 0
-        disk_increment = data_size - current_data_size
         bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
-        self.increment_user_disk_used(bundle.owner_id, disk_increment)
+        self.update_user_disk_used(bundle.owner_id)
 
     def bundle_checkin(self, bundle, worker_run, user_id, worker_id):
         """
@@ -1218,9 +1219,11 @@ class BundleModel(object):
             # State isn't one we can check in for
             return False
 
-    def save_bundle(self, bundle):
+    def save_bundle(self, bundle, bundle_store_uuid=None):
         """
         Save a bundle. On success, sets the Bundle object's id from the result.
+        Parameters:
+        `bundle_store_uuid`: If set, bundle location is set to this value. Optional.
         """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
@@ -1234,6 +1237,12 @@ class BundleModel(object):
             result = connection.execute(cl_bundle.insert().values(bundle_value))
             self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            if bundle_store_uuid:
+                bundle_location_value = {
+                    'bundle_uuid': bundle.uuid,
+                    'bundle_store_uuid': bundle_store_uuid,
+                }
+                connection.execute(cl_bundle_location.insert().values(bundle_location_value))
             bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None, delete=False):
@@ -2483,18 +2492,19 @@ class BundleModel(object):
         :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
+
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex
 
             time_quota = (
                 self.default_user_info['edu_time_quota']
-                if email.endswith(".edu")
+                if is_academic_email(email)
                 else self.default_user_info['time_quota']
             )
             disk_quota = (
                 self.default_user_info['edu_disk_quota']
-                if email.endswith(".edu")
+                if is_academic_email(email)
                 else self.default_user_info['disk_quota']
             )
 
@@ -2785,6 +2795,16 @@ class BundleModel(object):
             user_info = self.get_user_info(user_id)
         return user_info['disk_quota'] - user_info['disk_used']
 
+    def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
+        return self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])['result'] or 0
+
+    def update_user_disk_used(self, user_id):
+        user_info = self.get_user_info(user_id)
+        # Compute from scratch for simplicity
+        user_info['disk_used'] = self._get_disk_used(user_id)
+        self.update_user_info(user_info)
+
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:
             user_info = self.get_user_info(user_id)
@@ -2869,7 +2889,7 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
-    def find_oauth2_token(self, client_id, user_id, expires_after):
+    def find_oauth2_token(self, client_id, user_id, expires_after=datetime.datetime.utcnow()):
         with self.engine.begin() as connection:
             row = connection.execute(
                 select([oauth2_token])
@@ -2887,6 +2907,25 @@ class BundleModel(object):
             return None
 
         return OAuth2Token(self, **row)
+
+    def access_token_exists_for_user(self, client_id: str, user_id: str, access_token: str) -> bool:
+        """Check that the provided access_token exists in the database for the provided user_id.
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([oauth2_token])
+                .where(
+                    and_(
+                        oauth2_token.c.client_id == client_id,
+                        oauth2_token.c.user_id == user_id,
+                        oauth2_token.c.access_token == access_token,
+                        oauth2_token.c.expires > datetime.datetime.utcnow(),
+                    )
+                )
+                .limit(1)
+            ).fetchone()
+
+        return row is not None
 
     def save_oauth2_token(self, token):
         with self.engine.begin() as connection:

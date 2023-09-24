@@ -13,6 +13,7 @@ import uuid
 from argparse import ArgumentParser
 from typing import Any, Dict, List, Optional
 from codalab.common import BundleRuntime
+import tempfile
 
 from urllib3.exceptions import MaxRetryError, NewConnectionError  # type: ignore
 
@@ -48,6 +49,12 @@ class KubernetesWorkerManager(WorkerManager):
             required=True,
         )
         subparser.add_argument(
+            '--cert',
+            type=str,
+            help='Contents of the SSL cert for the Kubernetes cluster',
+            required=True,
+        )
+        subparser.add_argument(
             '--nfs-volume-name', type=str, help='Name of the persistent volume for the NFS server.',
         )
 
@@ -76,13 +83,25 @@ class KubernetesWorkerManager(WorkerManager):
         self.auth_token = args.auth_token
         self.cluster_host = args.cluster_host
         self.cert_path = args.cert_path
+        self.cert = args.cert
 
         # Configure and initialize Kubernetes client
         configuration: client.Configuration = client.Configuration()
         configuration.api_key_prefix['authorization'] = 'Bearer'
         configuration.api_key['authorization'] = args.auth_token
         configuration.host = args.cluster_host
-        configuration.ssl_ca_cert = args.cert_path
+        if args.cert_path == "/dev/null" and args.cert != "/dev/null":
+            # Create temp file to store kubernetes cert, as we need to pass in a file path.
+            # TODO: Delete the file afterwards (upon CodaLab service stop?)
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write(
+                    args.cert.replace(r'\n', '\n')
+                )  # Properly add newlines, which appear as "\n" if specified in the environment variable.
+                cert_path = f.name
+                logger.info('Temporarily writing kubernetes cert to: %s', cert_path)
+        else:
+            cert_path = args.cert_path
+        configuration.ssl_ca_cert = cert_path
         if configuration.host == "https://codalab-control-plane:6443":
             # Don't verify SSL if we are connecting to a local cluster for testing / development.
             configuration.verify_ssl = False
@@ -121,6 +140,7 @@ class KubernetesWorkerManager(WorkerManager):
         command.extend(['--kubernetes-cluster-host', self.cluster_host])
         command.extend(['--kubernetes-auth-token', self.auth_token])
         command.extend(['--kubernetes-cert-path', self.cert_path])
+        command.extend(['--kubernetes-cert', self.cert])
 
         worker_image: str = 'codalab/worker:' + os.environ.get('CODALAB_VERSION', 'latest')
 
@@ -138,7 +158,7 @@ class KubernetesWorkerManager(WorkerManager):
         config: Dict[str, Any] = {
             'apiVersion': 'v1',
             'kind': 'Pod',
-            'metadata': {'name': worker_name},
+            'metadata': {'name': worker_name, 'labels': {'app': 'cl-worker'}},
             'spec': {
                 'containers': [
                     {
@@ -148,6 +168,10 @@ class KubernetesWorkerManager(WorkerManager):
                         'env': [
                             {'name': 'CODALAB_USERNAME', 'value': self.codalab_username},
                             {'name': 'CODALAB_PASSWORD', 'value': self.codalab_password},
+                            {
+                                'name': 'CODALAB_KUBERNETES_NODE_NAME',
+                                'valueFrom': {'fieldRef': {'fieldPath': 'spec.nodeName'}},
+                            },
                         ],
                         'resources': {'limits': limits, 'requests': requests},
                         'volumeMounts': [
@@ -158,6 +182,27 @@ class KubernetesWorkerManager(WorkerManager):
                         ],
                     }
                 ],
+                # Only one worker pod should be scheduled per node.
+                'affinity': {
+                    'podAntiAffinity': {
+                        'requiredDuringSchedulingIgnoredDuringExecution': [
+                            {
+                                'podAffinityTerm': {
+                                    'labelSelector': {
+                                        "matchExpressions": [
+                                            {
+                                                "key": "app",
+                                                "operator": "In",
+                                                "values": ["cl-worker"],
+                                            }
+                                        ]
+                                    },
+                                },
+                                'topologyKey': 'topology.kubernetes.io/hostname',
+                            }
+                        ]
+                    }
+                },
                 'volumes': [
                     {'name': 'certpath', 'hostPath': {'path': self.cert_path}},
                     {

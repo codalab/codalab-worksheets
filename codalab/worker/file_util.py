@@ -17,7 +17,10 @@ from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
-from ratarmountcore import SQLiteIndexedTar, FileInfo
+
+# from ratarmountcore import SQLiteIndexedTar, FileInfo
+from ratarmountcore import FileInfo
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
 from typing import IO, cast
 
 NONE_PLACEHOLDER = '<none>'
@@ -285,9 +288,9 @@ class OpenFile(object):
                         raise IOError("Directories must be gzipped.")
                     return GzipStream(TarSubdirStream(self.path))
                 else:
-                    # Stream a single file from within the archive
                     fs = TarFileStream(tf, finfo)
                     return GzipStream(fs) if self.gzipped else fs
+
         else:
             # Stream a directory or file from disk storage.
             if os.path.isdir(self.path):
@@ -312,18 +315,47 @@ class GzipStream(BytesIO):
         self.__input = fileobj
         self.__buffer = BytesBuffer()
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+        self.__size = 0
+        self.__input_read_size = 0
 
-    def read(self, num_bytes=None) -> bytes:
+    def _fill_buf_bytes(self, num_bytes=None):
         while num_bytes is None or len(self.__buffer) < num_bytes:
             s = self.__input.read(num_bytes)
+            self.__input_read_size += len(s)
             if not s:
                 self.__gzip.close()
                 break
-            self.__gzip.write(s)
-        return self.__buffer.read(num_bytes)
+            self.__gzip.write(s)  # gzip the current file
+
+    def read(self, num_bytes=None):
+        try:
+            self._fill_buf_bytes(num_bytes)
+            data = self.__buffer.read(num_bytes)
+            self.__size += len(data)
+            return data
+        except Exception as e:
+            logging.info("Error in GzipStream read() ", repr(e))
+            return None
 
     def close(self):
         self.__input.close()
+
+    def peek(self, num_bytes):
+        self._fill_buf_bytes(num_bytes)
+        return self.__buffer.peek(num_bytes)
+
+    def tell(self):
+        return self.__size
+
+    def fileobj(self):
+        return self.__input
+
+    def input_file_tell(self):
+        """Gives the location at the original uncompressed file."""
+        if hasattr(self.__input, "tell"):
+            return self.__input.tell()
+        else:
+            return self.__input_read_size
 
 
 def gzip_file(file_path: str) -> IO[bytes]:
@@ -403,6 +435,7 @@ def get_file_size(file_path):
                 with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
                     fileobj.seek(0, os.SEEK_END)
                     return fileobj.tell()
+
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
@@ -423,6 +456,7 @@ def read_file_section(file_path, offset, length):
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
+
     if offset >= get_file_size(file_path):
         return b''
     with OpenFile(file_path, 'rb') as fileobj:
@@ -603,3 +637,37 @@ def sha256(file: str) -> str:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
+
+
+def update_file_size(bundle_path, file_size):
+    """
+    This function is used to update the file size in index.sqlite.
+    Should only be used to update a single file's size.
+    """
+    if (
+        parse_linked_bundle_url(bundle_path).uses_beam
+        and not parse_linked_bundle_url(bundle_path).is_archive_dir
+    ):
+        with OpenIndexedArchiveFile(bundle_path) as tf:
+            # tf is a SQLiteTar file, which is a copy of original index file
+            finfo = tf._getFileInfoRow('/contents')
+            finfo = dict(finfo)
+            finfo['size'] = file_size
+            new_info = tuple([value for _, value in finfo.items()])
+            logging.info(finfo)  # get the result of a fi
+            tf._setFileInfo(new_info)
+            tf.sqlConnection.commit()  # need to mannually commit here
+            logging.info(f"tf.index_file_name: {tf.indexFilePath}")
+
+            # Update the index file stored in blob storage
+            FileSystems.delete([parse_linked_bundle_url(bundle_path).index_path])
+            with FileSystems.create(
+                parse_linked_bundle_url(bundle_path).index_path,
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as f, open(tf.indexFilePath, "rb") as tif:
+                while True:
+                    CHUNK_SIZE = 16 * 1024
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    f.write(to_send)

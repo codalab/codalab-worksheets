@@ -7,12 +7,14 @@ jobs:
   release_to_pypi:
     name: Release to PyPi
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: 3.7
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: pip-${{ hashFiles('requirements.txt') }}
@@ -26,5 +28,6 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
           CODALAB_DOCKER_USERNAME: ${{ secrets.CODALAB_DOCKER_USERNAME }}
           CODALAB_DOCKER_PASSWORD: ${{ secrets.CODALAB_DOCKER_PASSWORD }}
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+      # Uses trusted publishing to authenticate to PyPI: see https://docs.pypi.org/trusted-publishers/using-a-publisher/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
