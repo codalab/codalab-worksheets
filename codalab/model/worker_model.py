@@ -387,7 +387,6 @@ class WorkerModel(object):
         """
         self._ping_worker_ws(worker_id)
         start_time = time.time()
-        time.sleep(0.3)  # Add in a sleep to try and induce the `kill` error every time.
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
