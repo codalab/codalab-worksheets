@@ -371,6 +371,7 @@ class BundleManager(object):
             ):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
                 if self._model.transition_bundle_staged(bundle):
+                    logger.error("transition staged from restage stuck starting")
                     workers.restage(bundle.uuid)
 
     def _acknowledge_recently_finished_bundles(self, workers):
@@ -394,9 +395,15 @@ class BundleManager(object):
                 )
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 # TODO(Ashwin): fix this -- bundle location could be linked.
+                logger.error("-"*80)
+                logger.error(bundle.to_dict())
                 self._model.transition_bundle_finished(bundle, bundle_location)
+<<<<<<< HEAD
+        logger.info("finished acknowledge recently finished bundles.")
+=======
             else:
                 logger.info(f"Bundle {bundle.uuid} could not be finalized.")
+>>>>>>> 5e9725499fb644b85c31ff041ec7d85d02fe5918
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """

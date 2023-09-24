@@ -917,6 +917,9 @@ class BundleModel(object):
             Returns False if the bundle was not in STARTING state.
             Clears the job_handle metadata and removes the worker_run row.
         """
+        logger.error("IN TRANSTIOIN BUNDLE STAGED FOR SOME REASON ... THIS MIGHT BE WHY METADATA GETTING WIPED")
+        logger.error(f"{bundle.metadata.to_dict()}")
+        logger.error(f"state: {bundle.to_dict()['state']}")
         with self.engine.begin() as connection:
             # Make sure it's still starting.
             row = connection.execute(
@@ -928,11 +931,11 @@ class BundleModel(object):
             # Reset all metadata fields that aren't input by user from RunBundle class to be None.
             # Excluding all the fields that can be set by users, which for now is just the "actions" field.
             # Excluding the "created" field to keep track of the original date when the bundle is created
-            metadata_update = {
-                spec.key: None
-                for spec in RunBundle.METADATA_SPECS
-                if spec.generated and spec.key not in ['actions', 'created']
-            }
+            # metadata_update = {
+            #     spec.key: None
+            #     for spec in RunBundle.METADATA_SPECS
+            #     if spec.generated and spec.key not in ['actions', 'created']
+            # }
             metadata_update[
                 'staged_status'
             ] = "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
@@ -1050,9 +1053,13 @@ class BundleModel(object):
                 RunStage.UPLOADING_RESULTS
             ]['elapsed']
 
+        logger.error("-"*80)
+        logger.error("in transition_bundle_running")
+        logger.error(f"metadata_update:{metadata_update}")
         self.update_bundle(
             bundle, {'state': worker_run.state, 'metadata': metadata_update}, connection
         )
+        logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
 
         return True
 
@@ -1108,15 +1115,23 @@ class BundleModel(object):
             failure_message = 'Exit code %d' % exitcode
 
         # Build metadata
+        logger.error("-"*80)
+        logger.error("In transition_bundle_finalizing...")
+        logger.error(worker_run.as_dict)
         metadata = {}
         if failure_message is not None:
             metadata['failure_message'] = failure_message
         if exitcode is not None:
             metadata['exitcode'] = exitcode
+        
+        logger.error(f"failure_message: {failure_message}")
+        logger.error(f"metadata: {metadata}")
 
         bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
 
         self.update_bundle(bundle, bundle_update, connection)
+        logger.error(f"bundle: {bundle.to_dict()}")
+        logger.error(f"bundle metadata: {bundle.metadata.to_dict()}")
         return True
 
     def transition_bundle_finished(self, bundle, bundle_location):
@@ -1125,10 +1140,15 @@ class BundleModel(object):
             The final state is determined by whether a failure message or exitcode
             was recorded during finalization of the bundle.
         """
+        logger.error("-"*80)
+        logger.error("In transition_bundle_finished")
         metadata = bundle.metadata.to_dict()
+        logger.error(f"metadata for bundle {bundle.uuid}: {metadata}")
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
+        actions = metadata.get('actions', None)
         state = State.FAILED if failure_message or exitcode else State.READY
+        #if (failure_message and 'Kill requested' in failure_message) or (actions and 'kill' in actions):
         if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
 
@@ -1245,6 +1265,7 @@ class BundleModel(object):
         This method validates all updates to the bundle, so it is appropriate
         to use this method to update bundles based on user input (eg: cl edit).
         """
+        logger.error(f"in update bundle for bundle {bundle.uuid}")
         message = 'Illegal update: %s' % (update,)
         precondition('id' not in update and 'uuid' not in update, message)
         # Apply the column and metadata updates in memory and validate the result.
@@ -1290,6 +1311,8 @@ class BundleModel(object):
         # Perform the actual updates and deletes.
         def do_update(connection):
             try:
+                logger.error(f"BUNDLE UPDATE: {update}")
+                logger.error(f"BUNDLE METADATA UPDATE: {metadata_update}")
                 if update:
                     connection.execute(cl_bundle.update().where(clause).values(update))
                 if metadata_update:

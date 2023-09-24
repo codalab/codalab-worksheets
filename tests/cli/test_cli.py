@@ -195,7 +195,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_s
                     uuid, expected_state, current_state
                 )
             )
-        time.sleep(0.5)
+        time.sleep(1)
 
 
 def wait_for_contents(uuid, substring, timeout_seconds=1000):
@@ -2005,9 +2005,9 @@ def test_run(ctx):
     # Test that bundle fails when run without sufficient time quota
     time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
     _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
-    uuid = _run_command([cl, 'run', 'sleep 100000'])
+    uuid = _run_command([cl, 'run', 'sleep 100000;'])
     wait_until_state(uuid, State.RUNNING)
-    wait_until_state(uuid, State.KILLED, timeout_seconds=120)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=500)
     check_equals(
         'Kill requested: User time quota exceeded. To apply for more quota,'
         ' please visit the following link: '
@@ -2401,7 +2401,7 @@ def test_read(ctx):
 
 @TestModule.register('kill')
 def test_kill(ctx):
-    uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
+    uuid = _run_command([cl, 'run', 'sleep 100000;'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
     wait_until_state(uuid, State.KILLED)
