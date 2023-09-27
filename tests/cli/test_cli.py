@@ -1919,17 +1919,21 @@ def test_search(ctx):
         check_equals(
             uuid, _run_command([cl, 'search', uuid, '-u'])
         )  # Make sure this user can access bundle
-        _, current_user_name = current_user()
-        user_name = random_name()
-        create_user(ctx, user_name, disk_quota='1000000')
-        switch_user(user_name)
-        check_equals(
-            '', _run_command([cl, 'search', uuid, '-u'])
-        )  # Make sure other users can't access it
-        switch_user(current_user_name)
+
+        # Make sure other users can't access that bundle on the private worksheet.
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            # Make sure other users can't access it.
+            _, current_user_name = current_user()
+            user_name = random_name()
+            create_user(ctx, user_name, disk_quota='1000000')
+            switch_user(user_name)
+            check_equals('', _run_command([cl, 'search', uuid, '-u']))
+            switch_user(current_user_name)
+
+        # Switch back to public worksheet.
         _run_command([cl, 'work', wuuid])
 
-        # Make sure bundle that has no permissions cannot be searched.
+        # Make sure bundle that has no permissions on the public worksheet cannot be searched.
         if not os.getenv('CODALAB_PROTECTED_MODE'):
             uuid = _run_command([cl, 'upload', test_path('a.txt')])
             _run_command([cl, 'perm', uuid, 'public', 'none'])
@@ -1968,8 +1972,9 @@ def test_search(ctx):
     test_search_helper(ctx)
 
     # Test with non-root user.
+    # When protected_mode is True, only root can run many of these commands, so we
+    #  can't run the test with another user.
     if not os.getenv('CODALAB_PROTECTED_MODE'):
-        # This test does not work when protected_mode is True.
         _, current_user_name = current_user()
         user_name = 'non_root_user_' + random_name()
         create_user(ctx, user_name, disk_quota='1000000')
