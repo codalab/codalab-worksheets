@@ -99,8 +99,8 @@ class Migration:
         bundle_link_url = self.bundle_manager._model.get_bundle_metadata(
             [bundle_uuid], "link_url"
         ).get(bundle_uuid)
-        logging.info(f"[migration] bundle {bundle_uuid} bundle_link_url: {bundle_link_url}")
-        return bundle_link_url is None
+        # logging.info(f"[migration] bundle {bundle_uuid} bundle_link_url: {bundle_link_url}")
+        return bundle_link_url is not None
 
     def get_bundle_location(self, bundle_uuid):
         # bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle_uuid)  # this is getting locations from database
