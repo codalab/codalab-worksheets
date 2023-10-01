@@ -327,6 +327,8 @@ if __name__ == '__main__':
 
     migration = Migration(target_store_name)
     migration.setUp()
+    
+    logging.getLogger().setLevel(logging.INFO)
 
     if args.all:
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=None)
