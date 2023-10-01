@@ -210,6 +210,10 @@ class Migration:
             old_file_list.sort()
             assert old_file_list == new_file_list
 
+            old_file_size = path_util.get_path_size(bundle_location)
+            new_file_size = path_util.get_path_size(new_location)
+            logging.info(f"[migration] Old file size: {old_file_size}, new file size: {new_file_size}")
+
         else:
             # For files, check the file has same contents
             old_content = read_file_section(bundle_location, 5, 10)
