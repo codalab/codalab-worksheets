@@ -123,7 +123,6 @@ class Migration:
 
     def upload_to_azure_blob(self, bundle_uuid, bundle_location, is_dir=False):
         # generate target bundle path
-        logging.info(f"[migration] Uploading bundle {bundle_uuid} to Azure storage")
         file_name = "contents.tar.gz" if is_dir else "contents.gz"
         target_location = f"{self.target_store_url}/{bundle_uuid}/{file_name}"
 
@@ -149,9 +148,10 @@ class Migration:
             unpack = False
 
         logging.info(
-            "[migration] Uploading from %s to Azure Blob Storage %s",
+            "[migration] Uploading from %s to Azure Blob Storage %s, uploaded file size is %s",
             bundle_location,
             target_location,
+            path_util.get_path_size(bundle_location)
         )
         # Upload file content and generate index file
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
@@ -209,10 +209,6 @@ class Migration:
             old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
             old_file_list.sort()
             assert old_file_list == new_file_list
-
-            old_file_size = path_util.get_path_size(bundle_location)
-            new_file_size = path_util.get_path_size(new_location)
-            logging.info(f"[migration] Old file size: {old_file_size}, new file size: {new_file_size}")
 
         else:
             # For files, check the file has same contents
