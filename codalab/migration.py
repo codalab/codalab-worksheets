@@ -99,6 +99,7 @@ class Migration:
         bundle_link_url = self.bundle_manager._model.get_bundle_metadata(
             [bundle_uuid], "link_url"
         ).get(bundle_uuid)
+        logging.info(f"[migration] bundle {bundle_uuid} bundle_link_url: {bundle_link_url}")
         return bundle_link_url is None
 
     def get_bundle_location(self, bundle_uuid):
@@ -385,7 +386,7 @@ if __name__ == '__main__':
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
 
     logging.info(
-        f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready} {skipped_link} {skipped_beam} bundles, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
+        f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready}(ready) {skipped_link}(linked bundle) {skipped_beam}(on Azure) bundles, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
     )
     if args.change_db:
         logging.info(
