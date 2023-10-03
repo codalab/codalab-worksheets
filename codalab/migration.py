@@ -66,7 +66,6 @@ class Migration:
         self.target_store_type = StorageType.AZURE_BLOB_STORAGE
 
         # This file is used to log those bundles's location that has been changed in database.
-        self.change_db_records_file = "change_db_records.txt"
         self.logger = self.get_logger()
 
     def get_logger(self):
@@ -100,7 +99,9 @@ class Migration:
             [bundle_uuid], "link_url"
         ).get(bundle_uuid)
         # logging.info(f"[migration] bundle {bundle_uuid} bundle_link_url: {bundle_link_url}")
-        return bundle_link_url is not None
+        if bundle_link_url:
+            return True
+        return False
 
     def get_bundle_location(self, bundle_uuid):
         # bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle_uuid)  # this is getting locations from database
@@ -190,11 +191,6 @@ class Migration:
             },
         )
 
-        # write change database record to a file
-        path = os.path.join(self.codalab_manager.codalab_home, self.change_db_records_file)
-        with open(path, 'a') as f:
-            f.write(f"{bundle_uuid},{original_location},{new_location}\n")
-
     def sanity_check(self, bundle_uuid, bundle_location, bundle_info, is_dir, new_location=None):
         if new_location is None:
             new_location = self.get_bundle_location(bundle_uuid)
@@ -229,75 +225,38 @@ class Migration:
                 assert read_file_section(
                     bundle_location, old_file_size - 10, 10
                 ) == read_file_section(new_location, old_file_size - 10, 10)
+    
+    def delete_original_bundle(self, uuid):
+        if self.get_bundle_location(uuid).startswith(
+                StorageURLScheme.AZURE_BLOB_STORAGE.value
+            ):
+            # Then, it's already on Azure blob. No need to delete.
+            return False
+        
+        # Get the original bundle location.
+        # NOTE: This is hacky, but it appears to work. That super() function
+        # is in the _MultiDiskBundleStore class, and it basically searches through
+        # all the partitions to find the bundle.
+        # However, if it doesn't exist, it just returns a good path to store the bundle
+        # at on disk, so we must check the path exists before deleting.
+        disk_bundle_location = super(type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store).get_bundle_location(uuid)
+        if not path_util.check_isvalid(disk_bundle_location, 'migration.delete_original_bundles'):
+            return False
 
-    def delete_original_bundle_by_uuid(self, bundle_uuid, bundle_location):
-        """
-        Delete original bundle from local disk
-        """
-        if os.path.exists(bundle_location):
-            logging.info(
-                f"[migration] Deleting original bundle {bundle_uuid} from local disk path {bundle_location}"
+        # Now, delete the bundle.
+        deleted_size = path_util.get_path_size(bundle_location)
+        bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
+            bundle_uuid
+        ]
+        path_util.remove(bundle_location)
+        # update user's disk usage: reduce original bundle size
+        user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
+        assert user_info['disk_used'] >= deleted_size
+        new_disk_used = user_info['disk_used'] - deleted_size
+        self.bundle_manager._model.update_user_info(
+            {'user_id': bundle_user_id, 'disk_used': new_disk_used}
             )
-            deleted_size = path_util.get_path_size(bundle_location)
-            bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
-                bundle_uuid
-            ]
-            path_util.remove(bundle_location)
-            # update user's disk usage: reduce original bundle size
-            user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
-            assert user_info['disk_used'] >= deleted_size
-            new_disk_used = user_info['disk_used'] - deleted_size
-            self.bundle_manager._model.update_user_info(
-                {'user_id': bundle_user_id, 'disk_used': new_disk_used}
-            )
-
-    def delete_original_bundle(self):
-        """
-        Delete all the original bundle that has been uploaded to Azure Blob Storage and changed location in database
-        """
-        path = os.path.join(self.codalab_manager.codalab_home, self.change_db_records_file)
-        if not os.path.exists(path):
-            return
-        with open(path, "r+") as f:
-            lines = f.readlines()
-            f.seek(0)
-            f.truncate()
-            for line in lines:
-                bundle_uuid, origin_bundle_location, new_location = line.replace('\n', '').split(
-                    ","
-                )
-                try:
-                    is_dir = new_location.endswith("tar.gz")
-                    migration.sanity_check(
-                        bundle_uuid, origin_bundle_location, None, is_dir, new_location
-                    )
-                except FileNotFoundError:
-                    logging.info(
-                        f"[migration] Bundle {bundle_uuid} already deleted from local disk"
-                    )
-                    continue
-                except Exception as e:
-                    logging.error(
-                        f"[migration] Sanity Check Error: {str(e)} for bundle {bundle_uuid}"
-                    )
-                    f.write(line)
-                    continue
-
-                if not self.get_bundle_location(bundle_uuid).startswith(
-                    StorageURLScheme.AZURE_BLOB_STORAGE.value
-                ):
-                    logging.info(
-                        f"[migration] Bundle {bundle_uuid} info in database is not properly updated"
-                    )
-                    raise Exception(
-                        f"Bundle {bundle_uuid} info in database is not properly updated"
-                    )
-                try:
-                    self.delete_original_bundle_by_uuid(bundle_uuid, origin_bundle_location)
-                except Exception as e:
-                    # If the bundle is not deleted, save the information in the file
-                    logging.error(f"[migration] Delete Original Bundle Error: {str(e)}")
-                    f.write(line)
+        return True
 
 
 if __name__ == '__main__':
@@ -340,7 +299,7 @@ if __name__ == '__main__':
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     total = len(bundle_uuids)
-    skipped_ready, skipped_link, skipped_beam, error_cnt, success_cnt = 0, 0, 0, 0, 0
+    skipped_ready = skipped_link = skipped_beam = skipped_delete_path_dne = error_cnt = success_cnt = 0
     logging.info(f"[migration] Start migrating {total} bundles")
     for bundle_uuid in bundle_uuids:
         bundle = migration.get_bundle(bundle_uuid)
@@ -384,9 +343,14 @@ if __name__ == '__main__':
         if args.change_db:  # If need to change the database, continue to run
             migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
+        
+        if args.delete:
+            deleted = migration.delete_original_bundle(bundle_uuid)
+            if not deleted:
+                skipped_delete_path_dne += 1
 
     logging.info(
-        f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready}(ready) {skipped_link}(linked bundle) {skipped_beam}(on Azure) bundles, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
+        f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready}(ready) {skipped_link}(linked bundle) {skipped_beam}(on Azure) bundles, skipped delete due to path DNE {skipped_delete_path_dne}, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
     )
     if args.change_db:
         logging.info(
@@ -394,5 +358,4 @@ if __name__ == '__main__':
         )
 
     if args.delete:
-        migration.delete_original_bundle()
         logging.info("[migration][Deleted] Original bundles deleted from local disk.")
