@@ -1968,7 +1968,7 @@ def test_search_time(ctx):
 
     # Search param non-ISO time test, should not throw "Unable to parse datetime" error.
     MONTH_FIRST_CHAR_IDX = 5
-    nonIsoTime = time1[:MONTH_FIRST_CHAR_IDX] + time1[MONTH_FIRST_CHAR_IDX+1:]
+    nonIsoTime = time1[:MONTH_FIRST_CHAR_IDX] + time1[MONTH_FIRST_CHAR_IDX + 1 :]
     check_equals('', _run_command([cl, 'search', 'name=' + name, '.before=' + nonIsoTime, '-u']))
 
     # Before
