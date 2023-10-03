@@ -227,12 +227,6 @@ class Migration:
                 ) == read_file_section(new_location, old_file_size - 10, 10)
     
     def delete_original_bundle(self, uuid):
-        if self.get_bundle_location(uuid).startswith(
-                StorageURLScheme.AZURE_BLOB_STORAGE.value
-            ):
-            # Then, it's already on Azure blob. No need to delete.
-            return False
-        
         # Get the original bundle location.
         # NOTE: This is hacky, but it appears to work. That super() function
         # is in the _MultiDiskBundleStore class, and it basically searches through
@@ -240,15 +234,14 @@ class Migration:
         # However, if it doesn't exist, it just returns a good path to store the bundle
         # at on disk, so we must check the path exists before deleting.
         disk_bundle_location = super(type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store).get_bundle_location(uuid)
-        if not path_util.check_isvalid(disk_bundle_location, 'migration.delete_original_bundles'):
-            return False
+        if not os.path.lexists(disk_bundle_location): return False
 
         # Now, delete the bundle.
-        deleted_size = path_util.get_path_size(bundle_location)
+        deleted_size = path_util.get_path_size(disk_bundle_location)
         bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
             bundle_uuid
         ]
-        path_util.remove(bundle_location)
+        path_util.remove(disk_bundle_location)
         # update user's disk usage: reduce original bundle size
         user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
         assert user_info['disk_used'] >= deleted_size
@@ -322,11 +315,6 @@ if __name__ == '__main__':
         # bundle_location is the original bundle location
         bundle_location = migration.get_bundle_location(bundle_uuid)
 
-        if parse_linked_bundle_url(bundle_location).uses_beam:
-            # Do not migrate Azure / GCP bundles
-            skipped_beam += 1
-            continue
-
         # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
         try:
             bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
@@ -336,13 +324,16 @@ if __name__ == '__main__':
 
         is_dir = bundle_info['type'] == 'directory'
 
-        new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
-        success_cnt += 1
-        migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
+        if parse_linked_bundle_url(bundle_location).uses_beam:
+            skipped_beam += 1
+        else:
+            new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+            success_cnt += 1
+            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
 
-        if args.change_db:  # If need to change the database, continue to run
-            migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
-            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
+            if args.change_db:  # If need to change the database, continue to run
+                migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
+                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
         
         if args.delete:
             deleted = migration.delete_original_bundle(bundle_uuid)
