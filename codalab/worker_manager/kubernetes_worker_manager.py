@@ -46,7 +46,7 @@ class KubernetesWorkerManager(WorkerManager):
             '--cert-path',
             type=str,
             help='Path to the SSL cert for the Kubernetes cluster',
-            required=True,
+            required=False,
             default=os.getenv('CODALAB_CERT_PATH', '/dev/null'),
         )
         subparser.add_argument(
