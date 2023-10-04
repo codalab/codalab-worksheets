@@ -244,19 +244,8 @@ class Migration:
         if not os.path.lexists(disk_bundle_location): return False
 
         # Now, delete the bundle.
-        deleted_size = path_util.get_path_size(disk_bundle_location)
-        bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
-            bundle_uuid
-        ]
         path_util.remove(disk_bundle_location)
-        # update user's disk usage: reduce original bundle size
-        user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
-        assert user_info['disk_used'] >= deleted_size
-        new_disk_used = user_info['disk_used'] - deleted_size
-        self.bundle_manager._model.update_user_info(
-            {'user_id': bundle_user_id, 'disk_used': new_disk_used}
-            )
-        return True
+
 
 def print_times(times):
     output_dict = dict()
@@ -352,7 +341,31 @@ if __name__ == '__main__':
                 skipped_beam += 1
             else:
                 start = time.time()
-                new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+
+                # Update user's disk usage: First reduce original bundle size
+                deleted_size = path_util.get_path_size(bundle_location)
+                bundle_user_id = migration.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
+                    bundle_uuid
+                ]
+                user_info = migration.bundle_manager._model.get_user_info(bundle_user_id)
+                assert user_info['disk_used'] >= deleted_size
+                new_disk_used = user_info['disk_used'] - deleted_size
+                migration.bundle_manager._model.update_user_info(
+                    {'user_id': bundle_user_id, 'disk_used': new_disk_used}
+                )
+
+                try: 
+                    # If upload successfully, user's disk usage will change when uploading to Azure
+                    new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+                except Exception as e:
+                    # If upload failed, add user's disk usage back
+                    user_info = migration.bundle_manager._model.get_user_info(bundle_user_id)
+                    new_disk_used = user_info['disk_used'] + deleted_size
+                    migration.bundle_manager._model.update_user_info(
+                        {'user_id': bundle_user_id, 'disk_used': new_disk_used}
+                    )
+                    raise e  # still raise the expcetion to outer try-catch wrapper
+                
                 duration = time.time() - start
                 times["upload_to_azure_blob"].append(duration)
                 success_cnt += 1
