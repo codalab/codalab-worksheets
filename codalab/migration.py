@@ -1,8 +1,6 @@
 # A script to migrate bundles from disk storage to Azure storage (UploadBundles, MakeBundles, RunBundles?)
-import time
-import json
-import numpy as np
-from collections import defaultdict
+from multiprocessing import Pool
+from functools import partial
 import logging
 import argparse
 import os
@@ -30,24 +28,18 @@ from codalab.worker.file_util import (
 )
 
 
-# Steps:
-# 1. Create a database connection. Connecting to local database to get infomations
-# 2. Get bundle locations in local filesystem using CodaLabManager()
-#    Get bundle information using CodaLabManager
-# 3. Find the proporate target bundle_url ([uuid]/contents.gz, [uuid]/contents.gz)
-# 4. Upload all the bundles from local disk to Azure
-# 5. Update database, pointing to new locations
-# 6. Delete the original data
-
-
 class Migration:
     """
     Base class for BundleManager tests with a CodaLab Manager uses local database.
     ATTENTION: this class will modify real bundle database.
     """
 
-    def __init__(self, target_store_name) -> None:
+    def __init__(self, target_store_name, change_db, delete) -> None:
         self.target_store_name = target_store_name
+        self.change_db = change_db
+        self.delete = delete
+
+        self.skipped_ready = self.skipped_link = self.skipped_beam = self.skipped_delete_path_dne = self.error_cnt = self.success_cnt = 0
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -258,11 +250,50 @@ class Migration:
             )
         return True
 
-def print_times(times):
-    output_dict = dict()
-    for k, v in times.items():
-        output_dict[k] = {"mean": np.mean(v), "std": np.std(v), "range": np.ptp(v), "median": np.median(v), "max": np.max(v), "min": np.min(v)}
-    print(json.dumps(output_dict, sort_keys=True, indent=4))
+    def migrate_bundle(args, bundle_uuid):
+        try:
+            bundle = migration.get_bundle(bundle_uuid)
+
+            # TODO: change this to allow migration of run bundles
+            if bundle.state != 'ready':
+                # only migrate uploaded bundle, and the bundle state needs to be ready
+                self.skipped_ready += 1
+                continue
+
+            # Uploaded bundles does not need has dependencies
+            # logging.info(bundle.dependencies)
+            # assert len(bundle.dependencies) == 0
+
+            if migration.is_linked_bundle(bundle_uuid):
+                # Do not migrate link bundle
+                self.skipped_link += 1
+                continue
+
+            # bundle_location is the original bundle location
+            bundle_location = migration.get_bundle_location(bundle_uuid)
+
+            # Get bundle info
+            bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
+
+            is_dir = bundle_info['type'] == 'directory'
+
+            if parse_linked_bundle_url(bundle_location).uses_beam:
+                self.skipped_beam += 1
+            else:
+                new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+                self.success_cnt += 1
+                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
+
+                if self.change_db:  # If need to change the database, continue to run
+                    migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
+
+            if self.delete:
+                deleted = migration.delete_original_bundle(bundle_uuid)
+                if not deleted:
+                    self.skipped_delete_path_dne += 1
+        except Exception as e:
+            self.error_cnt += 1
+            print("Exception: {e}")
 
 if __name__ == '__main__':
     # Command line parser, parse the worksheet id
@@ -273,119 +304,46 @@ if __name__ == '__main__':
         '-a', '--all', help='Run migration on all worksheets and all bundles', action='store_true',
     )
     parser.add_argument(
+        '-k', '--max-result', type=int, help='The worksheet uuid that needs migration', default=1e9
+    )
+    parser.add_argument(
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
     )
     parser.add_argument(
-        '-t', '--target_store_name', type=str, help='The destination bundle store name'
+        '-t', '--target_store_name', type=str, help='The destination bundle store name', default = "azure-store-default"
     )
     parser.add_argument(
         '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
+    )
+    parser.add_argument(
+        '-p', '--num_processes', help='Number of multiprocessing pool to do', action='store_true', default = 10
     )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
 
     args = parser.parse_args()
 
     worksheet_uuid = args.worksheet
-    target_store_name = (
-        "azure-store-default" if args.target_store_name is None else args.target_store_name
-    )
 
-    migration = Migration(target_store_name)
+    migration = Migration(args.target_store_name, args.change_db, args.delete)
     migration.setUp()
 
     logging.getLogger().setLevel(logging.INFO)
 
     if args.all:
-        bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=None)
+        bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=None, max_result=args.max_result)
     else:
         # Must specify worksheet uuid
         if worksheet_uuid is not None and not spec_util.UUID_REGEX.match(worksheet_uuid):
             raise Exception("Input worksheet uuid has wrong format. ")
-        bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
+        bundle_uuids = migration.get_bundle_uuids(worksheet_uuid, max_result=args.max_result)
 
     total = len(bundle_uuids)
-    skipped_ready = skipped_link = skipped_beam = skipped_delete_path_dne = error_cnt = success_cnt = 0
     logging.info(f"[migration] Start migrating {total} bundles")
-    times = defaultdict(list)
-    for i, bundle_uuid in enumerate(bundle_uuids):
-        try:
-            total_start = time.time()
-            start = time.time()
-            bundle = migration.get_bundle(bundle_uuid)
-            duration = time.time() - start
-            times["get_bundle"].append(duration)
+    with Pool(processes=args.num_processes):
+        pool.map(migration.migrate_bundle, bundle_uuids)
 
-            # TODO: change this to allow migration of run bundles
-            if bundle.state != 'ready':
-                # only migrate uploaded bundle, and the bundle state needs to be ready
-                skipped_ready += 1
-                continue
-
-            # Uploaded bundles does not need has dependencies
-            # logging.info(bundle.dependencies)
-            # assert len(bundle.dependencies) == 0
-
-            if migration.is_linked_bundle(bundle_uuid):
-                # Do not migrate link bundle
-                skipped_link += 1
-                continue
-
-            # bundle_location is the original bundle location
-            start = time.time()
-            bundle_location = migration.get_bundle_location(bundle_uuid)
-            duration = time.time() - start
-            times["get_bundle_location"].append(duration)
-
-            # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
-            try:
-                start = time.time()
-                bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
-                duration = time.time() - start
-                times["get_bundle_info"].append(duration)
-            except Exception:
-                error_cnt += 1
-                continue
-
-            is_dir = bundle_info['type'] == 'directory'
-
-            if parse_linked_bundle_url(bundle_location).uses_beam:
-                skipped_beam += 1
-            else:
-                start = time.time()
-                new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
-                duration = time.time() - start
-                times["upload_to_azure_blob"].append(duration)
-                success_cnt += 1
-                start = time.time()
-                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
-                duration = time.time() - start
-                times["sanity_check"].append(duration)
-
-                if args.change_db:  # If need to change the database, continue to run
-                    start = time.time()
-                    migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
-                    duration = time.time() - start
-                    times["change_db"].append(duration)
-
-            if args.delete:
-                start=time.time()
-                deleted = migration.delete_original_bundle(bundle_uuid)
-                duration = time.time() - start
-                times["deleted"].append(duration)
-                if not deleted:
-                    skipped_delete_path_dne += 1
-            total_duration = time.time() - total_start
-            times["total"].append(total_duration)
-
-            if i > 0 and i % 500 == 0: print_times(times)
-        except Exception as e:
-            total_duration = time.time() - total_start
-            times["total"].append(total_duration)
-            error_cnt += 1
-            print(f"Exception: {e}")
-    print_times(times)
     print(
-        f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready}(ready) {skipped_link}(linked bundle) {skipped_beam}(on Azure) bundles, skipped delete due to path DNE {skipped_delete_path_dne}, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
+        f"[migration] Migration finished, total {total} bundles migrated, skipped {migration.skipped_ready}(ready) {migration.skipped_link}(linked bundle) {migration.skipped_beam}(on Azure) bundles, skipped delete due to path DNE {migration.skipped_delete_path_dne}, error {migration.error_cnt} bundles. Succeeed {migration.success_cnt} bundles"
     )
     if args.change_db:
         print(
