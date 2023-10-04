@@ -1,4 +1,8 @@
 # A script to migrate bundles from disk storage to Azure storage (UploadBundles, MakeBundles, RunBundles?)
+import time
+import json
+import numpy as np
+from collections import defaultdict
 import logging
 import argparse
 import os
@@ -81,6 +85,9 @@ class Migration:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+        # Disables logging. Comment out if you want logging
+        logging.disable(logging.CRITICAL)
 
         return logger
 
@@ -225,7 +232,7 @@ class Migration:
                 assert read_file_section(
                     bundle_location, old_file_size - 10, 10
                 ) == read_file_section(new_location, old_file_size - 10, 10)
-    
+
     def delete_original_bundle(self, uuid):
         # Get the original bundle location.
         # NOTE: This is hacky, but it appears to work. That super() function
@@ -251,6 +258,11 @@ class Migration:
             )
         return True
 
+def print_times(times):
+    output_dict = dict()
+    for k, v in times.items():
+        output_dict[k] = {"mean": np.mean(v), "std": np.std(v), "range": np.ptp(v), "median": np.median(v), "max": np.max(v), "min": np.min(v)}
+    print(json.dumps(output_dict, sort_keys=True, indent=4))
 
 if __name__ == '__main__':
     # Command line parser, parse the worksheet id
@@ -280,7 +292,7 @@ if __name__ == '__main__':
 
     migration = Migration(target_store_name)
     migration.setUp()
-    
+
     logging.getLogger().setLevel(logging.INFO)
 
     if args.all:
@@ -294,8 +306,13 @@ if __name__ == '__main__':
     total = len(bundle_uuids)
     skipped_ready = skipped_link = skipped_beam = skipped_delete_path_dne = error_cnt = success_cnt = 0
     logging.info(f"[migration] Start migrating {total} bundles")
-    for bundle_uuid in bundle_uuids:
+    times = defaultdict(list)
+    for i, bundle_uuid in enumerate(bundle_uuids):
+        start = time.time()
+        total_start = start
         bundle = migration.get_bundle(bundle_uuid)
+        duration = time.time() - start
+        times["get_bundle"].append(duration)
 
         # TODO: change this to allow migration of run bundles
         if bundle.state != 'ready':
@@ -313,11 +330,17 @@ if __name__ == '__main__':
             continue
 
         # bundle_location is the original bundle location
+        start = time.time()
         bundle_location = migration.get_bundle_location(bundle_uuid)
+        duration = time.time() - start
+        times["get_bundle_location"].append(duration)
 
         # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
         try:
+            start = time.time()
             bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
+            duration = time.time() - start
+            times["get_bundle_info"].append(duration)
         except Exception:
             error_cnt += 1
             continue
@@ -327,26 +350,42 @@ if __name__ == '__main__':
         if parse_linked_bundle_url(bundle_location).uses_beam:
             skipped_beam += 1
         else:
+            start = time.time()
             new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+            duration = time.time() - start
+            times["upload_to_azure_blob"].append(duration)
             success_cnt += 1
+            start = time.time()
             migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
+            duration = time.time() - start
+            times["sanity_check"].append(duration)
 
             if args.change_db:  # If need to change the database, continue to run
+                start = time.time()
                 migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
-                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir)
-        
+                duration = time.time() - start
+                times["change_db"].append(duration)
+
         if args.delete:
+            start=time.time()
             deleted = migration.delete_original_bundle(bundle_uuid)
+            duration = time.time() - start
+            times["deleted"].append(duration)
             if not deleted:
                 skipped_delete_path_dne += 1
+        total_duration = total_start - time.time()
+        times["total"].append(duration)
 
-    logging.info(
+        if i > 0 and i % 500 == 0: print_times(times)
+    print_times(times)
+    print(
         f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready}(ready) {skipped_link}(linked bundle) {skipped_beam}(on Azure) bundles, skipped delete due to path DNE {skipped_delete_path_dne}, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
     )
     if args.change_db:
-        logging.info(
+        print(
             "[migration][Change DB] Database migration finished, bundle location changed in database."
         )
 
     if args.delete:
-        logging.info("[migration][Deleted] Original bundles deleted from local disk.")
+        print("[migration][Deleted] Original bundles deleted from local disk.")
+
