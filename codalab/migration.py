@@ -159,7 +159,7 @@ class Migration:
             "[migration] Uploading from %s to Azure Blob Storage %s, uploaded file size is %s",
             bundle_location,
             target_location,
-            path_util.get_path_size(bundle_location)
+            path_util.get_path_size(bundle_location),
         )
         # Upload file content and generate index file
         uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
@@ -240,8 +240,11 @@ class Migration:
         # all the partitions to find the bundle.
         # However, if it doesn't exist, it just returns a good path to store the bundle
         # at on disk, so we must check the path exists before deleting.
-        disk_bundle_location = super(type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store).get_bundle_location(uuid)
-        if not os.path.lexists(disk_bundle_location): return False
+        disk_bundle_location = super(
+            type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store
+        ).get_bundle_location(uuid)
+        if not os.path.lexists(disk_bundle_location):
+            return False
 
         # Now, delete the bundle.
         path_util.remove(disk_bundle_location)
@@ -250,8 +253,16 @@ class Migration:
 def print_times(times):
     output_dict = dict()
     for k, v in times.items():
-        output_dict[k] = {"mean": np.mean(v), "std": np.std(v), "range": np.ptp(v), "median": np.median(v), "max": np.max(v), "min": np.min(v)}
+        output_dict[k] = {
+            "mean": np.mean(v),
+            "std": np.std(v),
+            "range": np.ptp(v),
+            "median": np.median(v),
+            "max": np.max(v),
+            "min": np.min(v),
+        }
     print(json.dumps(output_dict, sort_keys=True, indent=4))
+
 
 if __name__ == '__main__':
     # Command line parser, parse the worksheet id
@@ -293,7 +304,9 @@ if __name__ == '__main__':
         bundle_uuids = migration.get_bundle_uuids(worksheet_uuid)
 
     total = len(bundle_uuids)
-    skipped_ready = skipped_link = skipped_beam = skipped_delete_path_dne = error_cnt = success_cnt = 0
+    skipped_ready = (
+        skipped_link
+    ) = skipped_beam = skipped_delete_path_dne = error_cnt = success_cnt = 0
     logging.info(f"[migration] Start migrating {total} bundles")
     times = defaultdict(list)
     for i, bundle_uuid in enumerate(bundle_uuids):
@@ -344,9 +357,9 @@ if __name__ == '__main__':
 
                 # Update user's disk usage: First reduce original bundle size
                 deleted_size = path_util.get_path_size(bundle_location)
-                bundle_user_id = migration.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[
-                    bundle_uuid
-                ]
+                bundle_user_id = migration.bundle_manager._model.get_bundle_owner_ids(
+                    [bundle_uuid]
+                )[bundle_uuid]
                 user_info = migration.bundle_manager._model.get_user_info(bundle_user_id)
                 assert user_info['disk_used'] >= deleted_size
                 new_disk_used = user_info['disk_used'] - deleted_size
@@ -354,9 +367,11 @@ if __name__ == '__main__':
                     {'user_id': bundle_user_id, 'disk_used': new_disk_used}
                 )
 
-                try: 
+                try:
                     # If upload successfully, user's disk usage will change when uploading to Azure
-                    new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+                    new_location = migration.upload_to_azure_blob(
+                        bundle_uuid, bundle_location, is_dir
+                    )
                 except Exception as e:
                     # If upload failed, add user's disk usage back
                     user_info = migration.bundle_manager._model.get_user_info(bundle_user_id)
@@ -365,12 +380,14 @@ if __name__ == '__main__':
                         {'user_id': bundle_user_id, 'disk_used': new_disk_used}
                     )
                     raise e  # still raise the expcetion to outer try-catch wrapper
-                
+
                 duration = time.time() - start
                 times["upload_to_azure_blob"].append(duration)
                 success_cnt += 1
                 start = time.time()
-                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
+                migration.sanity_check(
+                    bundle_uuid, bundle_location, bundle_info, is_dir, new_location
+                )
                 duration = time.time() - start
                 times["sanity_check"].append(duration)
 
@@ -381,7 +398,7 @@ if __name__ == '__main__':
                     times["change_db"].append(duration)
 
             if args.delete:
-                start=time.time()
+                start = time.time()
                 deleted = migration.delete_original_bundle(bundle_uuid)
                 duration = time.time() - start
                 times["deleted"].append(duration)
@@ -390,7 +407,8 @@ if __name__ == '__main__':
             total_duration = time.time() - total_start
             times["total"].append(total_duration)
 
-            if i > 0 and i % 500 == 0: print_times(times)
+            if i > 0 and i % 500 == 0:
+                print_times(times)
         except Exception as e:
             total_duration = time.time() - total_start
             times["total"].append(total_duration)
@@ -407,4 +425,3 @@ if __name__ == '__main__':
 
     if args.delete:
         print("[migration][Deleted] Original bundles deleted from local disk.")
-
