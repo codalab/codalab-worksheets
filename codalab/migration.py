@@ -308,75 +308,81 @@ if __name__ == '__main__':
     logging.info(f"[migration] Start migrating {total} bundles")
     times = defaultdict(list)
     for i, bundle_uuid in enumerate(bundle_uuids):
-        start = time.time()
-        total_start = start
-        bundle = migration.get_bundle(bundle_uuid)
-        duration = time.time() - start
-        times["get_bundle"].append(duration)
-
-        # TODO: change this to allow migration of run bundles
-        if bundle.state != 'ready':
-            # only migrate uploaded bundle, and the bundle state needs to be ready
-            skipped_ready += 1
-            continue
-
-        # Uploaded bundles does not need has dependencies
-        # logging.info(bundle.dependencies)
-        # assert len(bundle.dependencies) == 0
-
-        if migration.is_linked_bundle(bundle_uuid):
-            # Do not migrate link bundle
-            skipped_link += 1
-            continue
-
-        # bundle_location is the original bundle location
-        start = time.time()
-        bundle_location = migration.get_bundle_location(bundle_uuid)
-        duration = time.time() - start
-        times["get_bundle_location"].append(duration)
-
-        # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
         try:
+            total_start = time.time()
             start = time.time()
-            bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
+            bundle = migration.get_bundle(bundle_uuid)
             duration = time.time() - start
-            times["get_bundle_info"].append(duration)
-        except Exception:
-            error_cnt += 1
-            continue
+            times["get_bundle"].append(duration)
 
-        is_dir = bundle_info['type'] == 'directory'
+            # TODO: change this to allow migration of run bundles
+            if bundle.state != 'ready':
+                # only migrate uploaded bundle, and the bundle state needs to be ready
+                skipped_ready += 1
+                continue
 
-        if parse_linked_bundle_url(bundle_location).uses_beam:
-            skipped_beam += 1
-        else:
+            # Uploaded bundles does not need has dependencies
+            # logging.info(bundle.dependencies)
+            # assert len(bundle.dependencies) == 0
+
+            if migration.is_linked_bundle(bundle_uuid):
+                # Do not migrate link bundle
+                skipped_link += 1
+                continue
+
+            # bundle_location is the original bundle location
             start = time.time()
-            new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+            bundle_location = migration.get_bundle_location(bundle_uuid)
             duration = time.time() - start
-            times["upload_to_azure_blob"].append(duration)
-            success_cnt += 1
-            start = time.time()
-            migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
-            duration = time.time() - start
-            times["sanity_check"].append(duration)
+            times["get_bundle_location"].append(duration)
 
-            if args.change_db:  # If need to change the database, continue to run
+            # TODO: Add try-catch wrapper, cuz some bulde will generate "path not found error"
+            try:
                 start = time.time()
-                migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
+                bundle_info = migration.get_bundle_info(bundle_uuid, bundle_location)
                 duration = time.time() - start
-                times["change_db"].append(duration)
+                times["get_bundle_info"].append(duration)
+            except Exception:
+                error_cnt += 1
+                continue
 
-        if args.delete:
-            start=time.time()
-            deleted = migration.delete_original_bundle(bundle_uuid)
-            duration = time.time() - start
-            times["deleted"].append(duration)
-            if not deleted:
-                skipped_delete_path_dne += 1
-        total_duration = total_start - time.time()
-        times["total"].append(duration)
+            is_dir = bundle_info['type'] == 'directory'
 
-        if i > 0 and i % 500 == 0: print_times(times)
+            if parse_linked_bundle_url(bundle_location).uses_beam:
+                skipped_beam += 1
+            else:
+                start = time.time()
+                new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+                duration = time.time() - start
+                times["upload_to_azure_blob"].append(duration)
+                success_cnt += 1
+                start = time.time()
+                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
+                duration = time.time() - start
+                times["sanity_check"].append(duration)
+
+                if args.change_db:  # If need to change the database, continue to run
+                    start = time.time()
+                    migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
+                    duration = time.time() - start
+                    times["change_db"].append(duration)
+
+            if args.delete:
+                start=time.time()
+                deleted = migration.delete_original_bundle(bundle_uuid)
+                duration = time.time() - start
+                times["deleted"].append(duration)
+                if not deleted:
+                    skipped_delete_path_dne += 1
+            total_duration = time.time() - total_start
+            times["total"].append(total_duration)
+
+            if i > 0 and i % 500 == 0: print_times(times)
+        except Exception as e:
+            total_duration = time.time() - total_start
+            times["total"].append(total_duration)
+            error_cnt += 1
+            print(f"Exception: {e}")
     print_times(times)
     print(
         f"[migration] Migration finished, total {total} bundles migrated, skipped {skipped_ready}(ready) {skipped_link}(linked bundle) {skipped_beam}(on Azure) bundles, skipped delete due to path DNE {skipped_delete_path_dne}, error {error_cnt} bundles. Succeeed {success_cnt} bundles"
