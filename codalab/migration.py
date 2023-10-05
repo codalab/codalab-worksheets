@@ -307,8 +307,7 @@ class Migration:
             target_location = self.blob_target_location(bundle_uuid, is_dir)
             disk_location = self.get_bundle_disk_location(bundle_uuid)
             if (
-                not args.change_db and not args.delete
-                or os.path.lexists(disk_location) and not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)
+                os.path.lexists(disk_location) and not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)
             ):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
@@ -359,6 +358,14 @@ class Migration:
         self.print_times()
 
 def job(target_store_name, change_db, delete, worksheet, max_result, num_processes, proc_id):
+    """A function for running the migration in parallel.
+
+    NOTE: I know this is bad styling since we re-create the Migration object and the
+    bundle_uuids in each process. However, we cannot pass the same Migration object in as
+    a parameter to the function given to each process by Pool because the Migration object
+    is not Pickle-able (indeed, it is not even dill-able) due to one of its member objects
+    (BundleManager, CodalabManager, etc.), and so this is the compromise we came up with.
+    """
     # Setup Migration.
     migration = Migration(target_store_name, change_db, delete)
     migration.setUp()
