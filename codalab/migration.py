@@ -3,6 +3,7 @@ import time
 from collections import defaultdict
 import json
 import numpy as np
+import traceback
 import logging
 import argparse
 import os
@@ -236,7 +237,7 @@ class Migration:
                 ):
                     return False
             else:
-                assert read_file_section(
+                if read_file_section(
                     bundle_location, old_file_size - 10, 10
                 ) != read_file_section(new_location, old_file_size - 10, 10):
                     return False
@@ -280,7 +281,7 @@ class Migration:
             raise e  # still raise the expcetion to outer try-catch wrapper
 
 
-    def migrate_bundle(args, bundle_uuid):
+    def migrate_bundle(self, bundle_uuid):
         try:
             total_start_time = time.time()
 
@@ -299,11 +300,6 @@ class Migration:
             if self.is_linked_bundle(bundle_uuid):
                 self.skipped_link += 1
                 return
-
-            # Don't migrate bundles that are already on Azure.
-            if parse_linked_bundle_url(bundle_location).uses_beam:
-                self.skipped_beam += 1
-                return
             
             # Migrate bundle. Only migrate if -c, -d not specifid or sanity check FAILS
             target_location = self.blob_target_location(bundle_uuid, is_dir)
@@ -315,7 +311,7 @@ class Migration:
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
-                if not self.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location):
+                if not self.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, target_location):
                     raise ValueError("SanityCheck failed")
             self.success_cnt += 1
 
@@ -335,10 +331,10 @@ class Migration:
             
             self.times["migrate_bundle"].append(time.time() - total_start_time)
 
-        except Exception as e:
+        except Exception:
             # Catch exceptions and log them.
             self.error_cnt += 1
-            print("Exception: {e}")
+            print(traceback.format_exc())
         
     def print_times(self):
         output_dict = dict()
@@ -379,7 +375,7 @@ if __name__ == '__main__':
         '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
     )
     parser.add_argument(
-        '--disable_logging', help='If set, disable logging', action='store_true', default = False
+        '--disable_logging', help='If set, disable logging', action='store_true'
     )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
     args = parser.parse_args()
@@ -390,12 +386,12 @@ if __name__ == '__main__':
         # Disables logging. Comment out if you want logging
         logging.disable(logging.CRITICAL)
 
-    # Get bundle uuids.
-    bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=args.worksheet, max_result=args.max_result)
-
     # Setup Migration.
     migration = Migration(args.target_store_name, args.change_db, args.delete)
     migration.setUp()
+
+    # Get bundle uuids.
+    bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=args.worksheet, max_result=args.max_result)
 
     # Do the migration.
     total = len(bundle_uuids)
