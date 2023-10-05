@@ -1,4 +1,6 @@
 # A script to migrate bundles from disk storage to Azure storage (UploadBundles, MakeBundles, RunBundles?)
+import multiprocessing
+from functools import partial
 import time
 from collections import defaultdict
 import json
@@ -21,7 +23,7 @@ from codalab.lib import (
 )
 
 from codalab.worker import download_util
-from codalab.worker.download_util import BundleTarget
+from codalab.worker.download_util import BundleTarget, PathException
 from codalab.server.bundle_manager import BundleManager
 from codalab.lib.upload_manager import BlobStorageUploader
 from codalab.lib.codalab_manager import CodaLabManager
@@ -41,7 +43,7 @@ class Migration:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
-        self.skipped_ready = self.skipped_link = self.skipped_beam = self.skipped_delete_path_dne = self.error_cnt = self.success_cnt = 0
+        self.skipped_ready = self.skipped_link = self.skipped_beam = self.skipped_delete_path_dne = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
         self.times = defaultdict(list)
 
     def setUp(self):
@@ -253,29 +255,29 @@ class Migration:
     
     def adjust_quota_and_upload_to_blob(self, bundle_uuid, bundle_location, is_dir):
         # Get user info        
-        bundle_user_id = migration.bundle_manager._model.get_bundle_owner_ids(
+        bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids(
             [bundle_uuid]
         )[bundle_uuid]
-        user_info = migration.bundle_manager._model.get_user_info(bundle_user_id)
+        user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
 
         # Update user disk quota, making sure quota doesn't go negative.
         deleted_size = path_util.get_path_size(bundle_location)
         decrement = deleted_size if user_info['disk_used'] > deleted_size else user_info['disk_used'] 
         new_disk_used = user_info['disk_used'] - decrement
-        migration.bundle_manager._model.update_user_info(
+        self.bundle_manager._model.update_user_info(
             {'user_id': bundle_user_id, 'disk_used': new_disk_used}
         )
 
         try:
             # If upload successfully, user's disk usage will change when uploading to Azure
-            new_location = migration.upload_to_azure_blob(
+            new_location = self.upload_to_azure_blob(
                 bundle_uuid, bundle_location, is_dir
             )
         except Exception as e:
             # If upload failed, add user's disk usage back
-            user_info = migration.bundle_manager._model.get_user_info(bundle_user_id)
+            user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
             new_disk_used = user_info['disk_used'] + decrement
-            migration.bundle_manager._model.update_user_info(
+            self.bundle_manager._model.update_user_info(
                 {'user_id': bundle_user_id, 'disk_used': new_disk_used}
             )
             raise e  # still raise the expcetion to outer try-catch wrapper
@@ -306,7 +308,7 @@ class Migration:
             disk_location = self.get_bundle_disk_location(bundle_uuid)
             if (
                 not args.change_db and not args.delete
-                or disk_location and not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)
+                or os.path.lexists(disk_location) and not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)
             ):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
@@ -330,9 +332,9 @@ class Migration:
                 self.times["delete_original_bundle"].append(time.time() - start_time)
             
             self.times["migrate_bundle"].append(time.time() - total_start_time)
-
+        except PathException:
+            self.path_exception_cnt += 1
         except Exception:
-            # Catch exceptions and log them.
             self.error_cnt += 1
             print(traceback.format_exc())
         
@@ -356,6 +358,36 @@ class Migration:
                 self.print_times()
         self.print_times()
 
+def job(target_store_name, change_db, delete, worksheet, max_result, num_processes, proc_id):
+    # Setup Migration.
+    migration = Migration(target_store_name, change_db, delete)
+    migration.setUp()
+
+    # Get bundle uuids.
+    bundle_uuids = sorted(migration.get_bundle_uuids(worksheet_uuid=worksheet, max_result=max_result))
+
+    # Sort according to what process you are.
+    chunk_size = len(bundle_uuids) // num_processes
+    start_idx = chunk_size * proc_id
+    end_idx = len(bundle_uuids) if proc_id == num_processes - 1 else chunk_size * (proc_id+1)
+    print(f"[migration] ProcessID{proc_id}\tChunk: {chunk_size}\tstart:{start_idx}\tend:{end_idx}")
+    bundle_uuids = bundle_uuids[start_idx:end_idx]
+
+    # Do the migration.
+    total = len(bundle_uuids)
+    print(f"[migration] Start migrating {total} bundles")
+    migration.migrate_bundles(bundle_uuids)
+
+    print(
+        f"[migration] Migration finished, total {total} bundles migrated, skipped {migration.skipped_ready}(ready) {migration.skipped_link}(linked bundle) {migration.skipped_beam}(on Azure) bundles, skipped delete due to path DNE {migration.skipped_delete_path_dne}, PathException {migration.path_exception_cnt}, error {migration.error_cnt} bundles. Succeeed {migration.success_cnt} bundles"
+    )
+    if change_db:
+        print(
+            "[migration][Change DB] Database migration finished, bundle location changed in database."
+        )
+
+    if delete:
+        print("[migration][Deleted] Original bundles deleted from local disk.")
 
 if __name__ == '__main__':
     # Command line args.
@@ -377,6 +409,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--disable_logging', help='If set, disable logging', action='store_true'
     )
+    parser.add_argument(
+        '-p', '--num_processes', help="Number of processes for multiprocessing", default=multiprocessing.cpu_count()
+    )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
     args = parser.parse_args()
 
@@ -386,25 +421,7 @@ if __name__ == '__main__':
         # Disables logging. Comment out if you want logging
         logging.disable(logging.CRITICAL)
 
-    # Setup Migration.
-    migration = Migration(args.target_store_name, args.change_db, args.delete)
-    migration.setUp()
-
-    # Get bundle uuids.
-    bundle_uuids = migration.get_bundle_uuids(worksheet_uuid=args.worksheet, max_result=args.max_result)
-
-    # Do the migration.
-    total = len(bundle_uuids)
-    print(f"[migration] Start migrating {total} bundles")
-    migration.migrate_bundles(bundle_uuids)
-
-    print(
-        f"[migration] Migration finished, total {total} bundles migrated, skipped {migration.skipped_ready}(ready) {migration.skipped_link}(linked bundle) {migration.skipped_beam}(on Azure) bundles, skipped delete due to path DNE {migration.skipped_delete_path_dne}, error {migration.error_cnt} bundles. Succeeed {migration.success_cnt} bundles"
-    )
-    if args.change_db:
-        print(
-            "[migration][Change DB] Database migration finished, bundle location changed in database."
-        )
-
-    if args.delete:
-        print("[migration][Deleted] Original bundles deleted from local disk.")
+    # Run the program with multiprocessing
+    f = partial(job, args.target_store_name, args.change_db, args.delete, args.worksheet, args.max_result, args.num_processes)
+    with multiprocessing.Pool(processes=args.num_processes) as pool:
+        pool.map(f, list(range(args.num_processes)))
