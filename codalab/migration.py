@@ -306,11 +306,7 @@ class Migration:
             # Migrate bundle. Only migrate if -c, -d not specifid or sanity check FAILS
             target_location = self.blob_target_location(bundle_uuid, is_dir)
             disk_location = self.get_bundle_disk_location(bundle_uuid)
-            if (
-                os.path.lexists(disk_location) and
-                not FileSystems.exists(target_location) or
-                FileSystems.exists(target_location) and not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)
-            ):
+            if os.path.lexists(disk_location) and (not FileSystems.exists(target_location) or not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
