@@ -38,7 +38,6 @@ class Migration:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
-
         self.skipped_ready = self.skipped_link = self.skipped_beam = self.skipped_delete_path_dne = self.error_cnt = self.success_cnt = 0
 
     def setUp(self):
@@ -78,9 +77,6 @@ class Migration:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        # Disables logging. Comment out if you want logging
-        logging.disable(logging.CRITICAL)
-
         return logger
 
     def get_bundle_uuids(self, worksheet_uuid, max_result=1e9):
@@ -108,6 +104,9 @@ class Migration:
         bundle_location = self.bundle_manager._bundle_store.get_bundle_location(bundle_uuid)
         return bundle_location
 
+    def get_bundle_disk_location(self, bundle_uuid):
+        return super(type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store).get_bundle_location(bundle_uuid)
+
     def get_bundle(self, bundle_uuid):
         return self.bundle_manager._model.get_bundle(bundle_uuid)
 
@@ -120,11 +119,14 @@ class Migration:
             raise e
 
         return info
+    
+    def blob_target_location(self, bundle_uuid, is_dir=False):
+        file_name = "contents.tar.gz" if is_dir else "contents.gz"
+        return f"{self.target_store_url}/{bundle_uuid}/{file_name}"
 
     def upload_to_azure_blob(self, bundle_uuid, bundle_location, is_dir=False):
         # generate target bundle path
-        file_name = "contents.tar.gz" if is_dir else "contents.gz"
-        target_location = f"{self.target_store_url}/{bundle_uuid}/{file_name}"
+        target_location = self.blob_target_location(bundle_uuid, is_dir)
 
         # TODO: This step might cause repeated upload. Can not check by checking size (Azure blob storage is zipped).
         if FileSystems.exists(target_location):
@@ -203,27 +205,33 @@ class Migration:
             old_file_list = files + dirs
             old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
             old_file_list.sort()
-            assert old_file_list == new_file_list
+            if old_file_list != new_file_list:
+                return False
 
         else:
             # For files, check the file has same contents
             old_content = read_file_section(bundle_location, 5, 10)
             new_content = read_file_section(new_location, 5, 10)
-            assert old_content == new_content
+            if old_content != new_content:
+                return False
 
             old_file_size = path_util.get_path_size(bundle_location)
             new_file_size = path_util.get_path_size(new_location)
-            assert old_file_size == new_file_size
+            if old_file_size != new_file_size:
+                return False
 
             # check file contents of last 10 bytes
             if old_file_size < 10:
-                assert read_file_section(bundle_location, 0, 10) == read_file_section(
+                if read_file_section(bundle_location, 0, 10) != read_file_section(
                     new_location, 0, 10
-                )
+                ):
+                    return False
             else:
                 assert read_file_section(
                     bundle_location, old_file_size - 10, 10
-                ) == read_file_section(new_location, old_file_size - 10, 10)
+                ) != read_file_section(new_location, old_file_size - 10, 10):
+                    return False
+        return True
 
     def delete_original_bundle(self, uuid):
         # Get the original bundle location.
@@ -232,7 +240,7 @@ class Migration:
         # all the partitions to find the bundle.
         # However, if it doesn't exist, it just returns a good path to store the bundle
         # at on disk, so we must check the path exists before deleting.
-        disk_bundle_location = super(type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store).get_bundle_location(uuid)
+        disk_bundle_location = self.get_bundle_disk_location(uuid)
         if not os.path.lexists(disk_bundle_location): return False
 
         # Now, delete the bundle.
@@ -258,7 +266,7 @@ class Migration:
             if bundle.state != 'ready':
                 # only migrate uploaded bundle, and the bundle state needs to be ready
                 self.skipped_ready += 1
-                continue
+                return
 
             # Uploaded bundles does not need has dependencies
             # logging.info(bundle.dependencies)
@@ -267,7 +275,7 @@ class Migration:
             if migration.is_linked_bundle(bundle_uuid):
                 # Do not migrate link bundle
                 self.skipped_link += 1
-                continue
+                return
 
             # bundle_location is the original bundle location
             bundle_location = migration.get_bundle_location(bundle_uuid)
@@ -279,13 +287,18 @@ class Migration:
 
             if parse_linked_bundle_url(bundle_location).uses_beam:
                 self.skipped_beam += 1
-            else:
-                new_location = migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
-                self.success_cnt += 1
-                migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location)
+                return
+            
+            # Migrate bundle. Only migrate if -c, -d not specifid or sanity check FAILS
+            target_location = self.blob_target_location(bundle_uuid, is_dir)
+            if (not args.change_db and not args.delete) or not migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, target_location):
+                migration.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
+                if not migration.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, new_location):
+                    raise ValueError("SanityCheck failed")
+            self.success_cnt += 1
 
-                if self.change_db:  # If need to change the database, continue to run
-                    migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
+            if self.change_db:  # If need to change the database, continue to run
+                migration.modify_bundle_data(bundle, bundle_uuid, is_dir)
 
             if self.delete:
                 deleted = migration.delete_original_bundle(bundle_uuid)
@@ -318,6 +331,14 @@ if __name__ == '__main__':
     parser.add_argument(
         '-p', '--num_processes', help='Number of multiprocessing pool to do', action='store_true', default = 10
     )
+    parser.add_argument(
+        '--disable_logging', help='If set, disable logging', action='store_true', default = False
+    )
+
+    if args.disable_logging:
+        # Disables logging. Comment out if you want logging
+        logging.disable(logging.CRITICAL)
+
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
 
     args = parser.parse_args()
@@ -339,8 +360,8 @@ if __name__ == '__main__':
 
     total = len(bundle_uuids)
     logging.info(f"[migration] Start migrating {total} bundles")
-    with Pool(processes=args.num_processes):
-        pool.map(migration.migrate_bundle, bundle_uuids)
+    for uuid in bundle_uuids:
+        migration.migrate_bundle(uuid)
 
     print(
         f"[migration] Migration finished, total {total} bundles migrated, skipped {migration.skipped_ready}(ready) {migration.skipped_link}(linked bundle) {migration.skipped_beam}(on Azure) bundles, skipped delete due to path DNE {migration.skipped_delete_path_dne}, error {migration.error_cnt} bundles. Succeeed {migration.success_cnt} bundles"
