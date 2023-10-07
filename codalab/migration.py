@@ -14,11 +14,9 @@ from apache_beam.io.filesystems import FileSystems
 from codalab.common import (
     StorageType,
     StorageURLScheme,
-    parse_linked_bundle_url,
 )
 from codalab.lib import (
     path_util,
-    spec_util,
     zip_util,
 )
 
@@ -43,7 +41,13 @@ class Migration:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
-        self.skipped_ready = self.skipped_link = self.skipped_beam = self.skipped_delete_path_dne = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
+        self.skipped_ready = (
+            self.skipped_link
+        ) = (
+            self.skipped_beam
+        ) = (
+            self.skipped_delete_path_dne
+        ) = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
         self.times = defaultdict(list)
 
     def setUp(self):
@@ -117,7 +121,9 @@ class Migration:
         # all the partitions to find the bundle.
         # However, if it doesn't exist, it just returns a good path to store the bundle
         # at on disk, so we must check the path exists before deleting.
-        return super(type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store).get_bundle_location(bundle_uuid)
+        return super(
+            type(self.bundle_manager._bundle_store), self.bundle_manager._bundle_store
+        ).get_bundle_location(bundle_uuid)
 
     def get_bundle(self, bundle_uuid):
         return self.bundle_manager._model.get_bundle(bundle_uuid)
@@ -131,7 +137,7 @@ class Migration:
             raise e
 
         return info
-    
+
     def blob_target_location(self, bundle_uuid, is_dir=False):
         file_name = "contents.tar.gz" if is_dir else "contents.gz"
         return f"{self.target_store_url}/{bundle_uuid}/{file_name}"
@@ -179,9 +185,6 @@ class Migration:
         ATTENTION: this function will modify codalab
         """
         logging.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
-
-        original_location = self.get_bundle_location(bundle_uuid)
-
         # add bundle location: Add bundle location to database
         self.bundle_manager._model.add_bundle_location(bundle_uuid, self.target_store_uuid)
 
@@ -239,30 +242,31 @@ class Migration:
                 ):
                     return False
             else:
-                if read_file_section(
-                    bundle_location, old_file_size - 10, 10
-                ) != read_file_section(new_location, old_file_size - 10, 10):
+                if read_file_section(bundle_location, old_file_size - 10, 10) != read_file_section(
+                    new_location, old_file_size - 10, 10
+                ):
                     return False
         return True
 
     def delete_original_bundle(self, uuid):
         # Get the original bundle location.
         disk_bundle_location = self.get_bundle_disk_location(uuid)
-        if not os.path.lexists(disk_bundle_location): return False
+        if not os.path.lexists(disk_bundle_location):
+            return False
 
         # Now, delete the bundle.
         path_util.remove(disk_bundle_location)
-    
+
     def adjust_quota_and_upload_to_blob(self, bundle_uuid, bundle_location, is_dir):
-        # Get user info        
-        bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids(
-            [bundle_uuid]
-        )[bundle_uuid]
+        # Get user info
+        bundle_user_id = self.bundle_manager._model.get_bundle_owner_ids([bundle_uuid])[bundle_uuid]
         user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
 
         # Update user disk quota, making sure quota doesn't go negative.
         deleted_size = path_util.get_path_size(bundle_location)
-        decrement = deleted_size if user_info['disk_used'] > deleted_size else user_info['disk_used'] 
+        decrement = (
+            deleted_size if user_info['disk_used'] > deleted_size else user_info['disk_used']
+        )
         new_disk_used = user_info['disk_used'] - decrement
         self.bundle_manager._model.update_user_info(
             {'user_id': bundle_user_id, 'disk_used': new_disk_used}
@@ -270,9 +274,7 @@ class Migration:
 
         try:
             # If upload successfully, user's disk usage will change when uploading to Azure
-            new_location = self.upload_to_azure_blob(
-                bundle_uuid, bundle_location, is_dir
-            )
+            self.upload_to_azure_blob(bundle_uuid, bundle_location, is_dir)
         except Exception as e:
             # If upload failed, add user's disk usage back
             user_info = self.bundle_manager._model.get_user_info(bundle_user_id)
@@ -282,7 +284,6 @@ class Migration:
             )
             raise e  # still raise the expcetion to outer try-catch wrapper
 
-
     def migrate_bundle(self, bundle_uuid):
         try:
             total_start_time = time.time()
@@ -291,7 +292,7 @@ class Migration:
             bundle = self.get_bundle(bundle_uuid)
             bundle_location = self.get_bundle_location(bundle_uuid)
             bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
-            is_dir = (bundle_info['type'] == 'directory')
+            is_dir = bundle_info['type'] == 'directory'
 
             # Don't migrate currently running bundles
             if bundle.state != 'ready':
@@ -302,15 +303,22 @@ class Migration:
             if self.is_linked_bundle(bundle_uuid):
                 self.skipped_link += 1
                 return
-            
+
             # Migrate bundle. Only migrate if -c, -d not specifid or sanity check FAILS
             target_location = self.blob_target_location(bundle_uuid, is_dir)
             disk_location = self.get_bundle_disk_location(bundle_uuid)
-            if os.path.lexists(disk_location) and (not FileSystems.exists(target_location) or not self.sanity_check(bundle_uuid, disk_location, bundle_info, is_dir, target_location)):
+            if os.path.lexists(disk_location) and (
+                not FileSystems.exists(target_location)
+                or not self.sanity_check(
+                    bundle_uuid, disk_location, bundle_info, is_dir, target_location
+                )
+            ):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
-                if not self.sanity_check(bundle_uuid, bundle_location, bundle_info, is_dir, target_location):
+                if not self.sanity_check(
+                    bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                ):
                     raise ValueError("SanityCheck failed")
             self.success_cnt += 1
 
@@ -327,14 +335,14 @@ class Migration:
                 if not deleted:
                     self.skipped_delete_path_dne += 1
                 self.times["delete_original_bundle"].append(time.time() - start_time)
-            
+
             self.times["migrate_bundle"].append(time.time() - total_start_time)
         except PathException:
             self.path_exception_cnt += 1
         except Exception:
             self.error_cnt += 1
             print(traceback.format_exc())
-        
+
     def print_times(self):
         output_dict = dict()
         for k, v in self.times.items():
@@ -347,13 +355,14 @@ class Migration:
                 "min": np.min(v),
             }
         print(json.dumps(output_dict, sort_keys=True, indent=4))
-    
+
     def migrate_bundles(self, bundle_uuids, log_interval=1000):
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(uuid)
             if i > 0 and i % log_interval == 0:
                 self.print_times()
         self.print_times()
+
 
 def job(target_store_name, change_db, delete, worksheet, max_result, num_processes, proc_id):
     """A function for running the migration in parallel.
@@ -369,12 +378,14 @@ def job(target_store_name, change_db, delete, worksheet, max_result, num_process
     migration.setUp()
 
     # Get bundle uuids.
-    bundle_uuids = sorted(migration.get_bundle_uuids(worksheet_uuid=worksheet, max_result=max_result))
+    bundle_uuids = sorted(
+        migration.get_bundle_uuids(worksheet_uuid=worksheet, max_result=max_result)
+    )
 
     # Sort according to what process you are.
     chunk_size = len(bundle_uuids) // num_processes
     start_idx = chunk_size * proc_id
-    end_idx = len(bundle_uuids) if proc_id == num_processes - 1 else chunk_size * (proc_id+1)
+    end_idx = len(bundle_uuids) if proc_id == num_processes - 1 else chunk_size * (proc_id + 1)
     print(f"[migration] ProcessID{proc_id}\tChunk: {chunk_size}\tstart:{start_idx}\tend:{end_idx}")
     bundle_uuids = bundle_uuids[start_idx:end_idx]
 
@@ -384,7 +395,14 @@ def job(target_store_name, change_db, delete, worksheet, max_result, num_process
     migration.migrate_bundles(bundle_uuids)
 
     print(
-        f"[migration] Migration finished, total {total} bundles migrated, skipped {migration.skipped_ready}(ready) {migration.skipped_link}(linked bundle) {migration.skipped_beam}(on Azure) bundles, skipped delete due to path DNE {migration.skipped_delete_path_dne}, PathException {migration.path_exception_cnt}, error {migration.error_cnt} bundles. Succeeed {migration.success_cnt} bundles"
+        f"[migration] Migration finished, total {total} bundles migrated, "
+        f"skipped {migration.skipped_ready}(ready) "
+        f"{migration.skipped_link}(linked bundle) "
+        f"{migration.skipped_beam}(on Azure) bundles, "
+        f"skipped delete due to path DNE {migration.skipped_delete_path_dne}, "
+        f"PathException {migration.path_exception_cnt}, "
+        f"error {migration.error_cnt} bundles. "
+        f"Succeeed {migration.success_cnt} bundles"
     )
     if change_db:
         print(
@@ -393,6 +411,7 @@ def job(target_store_name, change_db, delete, worksheet, max_result, num_process
 
     if delete:
         print("[migration][Deleted] Original bundles deleted from local disk.")
+
 
 if __name__ == '__main__':
     # Command line args.
@@ -406,16 +425,21 @@ if __name__ == '__main__':
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
     )
     parser.add_argument(
-        '-t', '--target_store_name', type=str, help='The destination bundle store name', default = "azure-store-default"
+        '-t',
+        '--target_store_name',
+        type=str,
+        help='The destination bundle store name',
+        default="azure-store-default",
     )
     parser.add_argument(
         '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
     )
+    parser.add_argument('--disable_logging', help='If set, disable logging', action='store_true')
     parser.add_argument(
-        '--disable_logging', help='If set, disable logging', action='store_true'
-    )
-    parser.add_argument(
-        '-p', '--num_processes', help="Number of processes for multiprocessing", default=multiprocessing.cpu_count()
+        '-p',
+        '--num_processes',
+        help="Number of processes for multiprocessing",
+        default=multiprocessing.cpu_count(),
     )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
     args = parser.parse_args()
@@ -427,6 +451,14 @@ if __name__ == '__main__':
         logging.disable(logging.CRITICAL)
 
     # Run the program with multiprocessing
-    f = partial(job, args.target_store_name, args.change_db, args.delete, args.worksheet, args.max_result, args.num_processes)
+    f = partial(
+        job,
+        args.target_store_name,
+        args.change_db,
+        args.delete,
+        args.worksheet,
+        args.max_result,
+        args.num_processes,
+    )
     with multiprocessing.Pool(processes=args.num_processes) as pool:
         pool.map(f, list(range(args.num_processes)))
