@@ -2,6 +2,7 @@
 import multiprocessing
 from functools import partial
 import time
+from typing import Dict, List
 from collections import defaultdict
 import json
 import numpy as np
@@ -48,7 +49,7 @@ class Migration:
         ) = (
             self.skipped_delete_path_dne
         ) = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
-        self.times = defaultdict(list)
+        self.times: Dict[str, List[float]] = defaultdict(list)
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
