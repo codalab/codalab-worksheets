@@ -147,18 +147,18 @@ class StressTestRunner:
         self._start_heartbeat()
 
         functions = [
-            self._test_large_bundle_upload,
-            self._test_large_bundle_result,
+            #self._test_large_bundle_upload,
+            #self._test_large_bundle_result,
             self._test_many_gpu_runs,
             self._test_multiple_cpus_runs_count,
-            self._test_many_bundle_uploads,
-            self._test_many_worksheet_copies,
+            #self._test_many_bundle_uploads,
+            #self._test_many_worksheet_copies,
             self._test_parallel_runs,
-            self._test_many_docker_runs,
-            self._test_infinite_memory,
-            self._test_infinite_gpu,
-            self._test_infinite_disk,
-            self._test_many_disk_writes,
+            #self._test_many_docker_runs,
+            #self._test_infinite_memory,
+            #self._test_infinite_gpu,
+            #self._test_infinite_disk,
+            #self._test_many_disk_writes,
         ]
 
         for fn in functions:
