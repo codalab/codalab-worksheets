@@ -19,6 +19,7 @@ from codalab.lib import (
     path_util,
     zip_util,
 )
+from codalab.worker.file_util import zip_directory
 
 from codalab.worker import download_util
 from codalab.worker.download_util import BundleTarget, PathException
@@ -158,8 +159,8 @@ class Migration:
         )
 
         if is_dir:
-            source_fileobj = zip_util.tar_gzip_directory(bundle_location)
-            source_ext = ".tar.gz"
+            source_fileobj = zip_directory(bundle_location)
+            source_ext = ".zip"
             unpack = True
         else:
             # If it's a file, change it into GzipStream
