@@ -356,13 +356,27 @@ class Migration:
                 "min": np.min(v),
             }
         print(json.dumps(output_dict, sort_keys=True, indent=4))
+    
+    def print_other_stats(self, total):
+        print(
+            f"skipped {migration.skipped_ready}(ready) "
+            f"{migration.skipped_link}(linked bundle) "
+            f"{migration.skipped_beam}(on Azure) bundles, "
+            f"skipped delete due to path DNE {migration.skipped_delete_path_dne}, "
+            f"PathException {migration.path_exception_cnt}, "
+            f"error {migration.error_cnt} bundles. "
+            f"Succeeed {migration.success_cnt} bundles "
+            f"Total: {total}"
+        )
 
     def migrate_bundles(self, bundle_uuids, log_interval=1000):
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(uuid)
             if i > 0 and i % log_interval == 0:
                 self.print_times()
+                self.print_other_stats(len(bundle_uuids))
         self.print_times()
+        self.print_other_stats(len(bundle_uuids))
 
 
 def job(target_store_name, change_db, delete, worksheet, max_result, num_processes, proc_id):
@@ -391,20 +405,10 @@ def job(target_store_name, change_db, delete, worksheet, max_result, num_process
     bundle_uuids = bundle_uuids[start_idx:end_idx]
 
     # Do the migration.
-    total = len(bundle_uuids)
-    print(f"[migration] Start migrating {total} bundles")
+    print(f"[migration] Start migrating {len(bundle_uuids)} bundles")
     migration.migrate_bundles(bundle_uuids)
+    print(f"[migration] Finish migrating {len(bundle_uuids)} bundles")
 
-    print(
-        f"[migration] Migration finished, total {total} bundles migrated, "
-        f"skipped {migration.skipped_ready}(ready) "
-        f"{migration.skipped_link}(linked bundle) "
-        f"{migration.skipped_beam}(on Azure) bundles, "
-        f"skipped delete due to path DNE {migration.skipped_delete_path_dne}, "
-        f"PathException {migration.path_exception_cnt}, "
-        f"error {migration.error_cnt} bundles. "
-        f"Succeeed {migration.success_cnt} bundles"
-    )
     if change_db:
         print(
             "[migration][Change DB] Database migration finished, bundle location changed in database."

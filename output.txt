@@ -1,0 +1,1164 @@
+transaction rate 0
+env variable: 0
+[CodaLab] Bringing up rest-server
+(cd /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files; CODALAB_VERSION=add_better_performance_benchmarking CODALAB_INSTANCE_NAME=codalab CODALAB_WORKER_NETWORK_PREFIX=codalab-worker-network CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CODALAB_MYSQL_HOST=mysql CODALAB_MYSQL_PORT=3306 CODALAB_MYSQL_DATABASE=codalab_bundles CODALAB_MYSQL_USERNAME=codalab CODALAB_MYSQL_PASSWORD=codalab CODALAB_MYSQL_ROOT_PASSWORD=codalab CODALAB_UID=501:20 CODALAB_HOME=/Users/agaut/codalab_outputs CODALAB_BUNDLE_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/ CODALAB_MYSQL_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/mysql CODALAB_MONITOR_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/monitor CODALAB_WORKER_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/worker CODALAB_HTTP_PORT=80 CODALAB_HTTPS_PORT=443 CODALAB_FRONTEND_PORT=2700 CODALAB_REST_PORT=2900 CODALAB_WS_PORT=2901 CODALAB_REST_NUM_PROCESSES=1 CODALAB_USER_DISK_QUOTA=100g CODALAB_USER_TIME_QUOTA=100y CODALAB_EDU_USER_DISK_QUOTA=100g CODALAB_EDU_USER_TIME_QUOTA=100y CODALAB_USER_PARALLEL_RUN_QUOTA=100 CODALAB_SENTRY_TRANSACTION_RATE=0 CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=60 CODALAB_WORKER_MANAGER_TYPE=azure-batch CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES=3 CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX=/tmp CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE=10g CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS=5 CODALAB_WORKER_MANAGER_IDLE_SECONDS=600 CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS=5 CODALAB_WORKER_MANAGER_AWS_REGION=us-east-1 CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME=codalab-worker COMPOSE_HTTP_TIMEOUT=600 DOCKER_CLIENT_TIMEOUT=600 CODALAB_LINK_MOUNTS=/tmp/codalab/link-mounts CODALAB_GOOGLE_APPLICATION_CREDENTIALS=./codalab_service.py CODALAB_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI CODALAB_RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=1 CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID=codalab-cpu CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE=codalab-cpu CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS=60 CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS=1 CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID=codalab-gpu CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE=codalab-gpu CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS=60 PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Users/agaut/miniconda3/condabin:/Users/agaut/google-cloud-sdk/bin:/opt/local/bin:/opt/local/sbin:/Library/Frameworks/Python.framework/Versions/3.7/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Users/agaut/anaconda3/bin:/Users/agaut/.nvm/versions/node/v17.0.1/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Library/Frameworks/Python.framework/Versions/3.5/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/bin HOSTNAME=DN0a1e4c22.SUNet docker-compose -p codalab --project-directory /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files -f /Users/agaut/codalab_outputs/docker-compose-custom.yml up --force-recreate -d --no-deps rest-server)
+process: The CODALAB_SERVER variable is not set. Defaulting to a blank string.
+process: The CODALAB_PROTECTED_MODE variable is not set. Defaulting to a blank string.
+process: The CODALAB_ADMIN_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SUPPORT_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_USERNAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_PASSWORD variable is not set. Defaulting to a blank string.
+process: The CODALAB_SHARED_FILE_SYSTEM variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_DEFAULT_GPUS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_PUBLIC_WORKERS variable is not set. Defaulting to a blank string.
+process: The CODALAB_AZURE_BLOB_CONNECTION_STRING variable is not set. Defaulting to a blank string.
+process: The CODALAB_DEFAULT_BUNDLE_STORE_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_ALWAYS_USE_AZURE_BLOB_BETA variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_INGEST_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_ENVIRONMENT variable is not set. Defaulting to a blank string.
+process: Recreating codalab_rest-server_1 ... 
+process: Recreating codalab_rest-server_1 ... done
+
+[CodaLab] Bringing up worker
+(cd /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files; CODALAB_VERSION=add_better_performance_benchmarking CODALAB_INSTANCE_NAME=codalab CODALAB_WORKER_NETWORK_PREFIX=codalab-worker-network CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CODALAB_MYSQL_HOST=mysql CODALAB_MYSQL_PORT=3306 CODALAB_MYSQL_DATABASE=codalab_bundles CODALAB_MYSQL_USERNAME=codalab CODALAB_MYSQL_PASSWORD=codalab CODALAB_MYSQL_ROOT_PASSWORD=codalab CODALAB_UID=501:20 CODALAB_HOME=/Users/agaut/codalab_outputs CODALAB_BUNDLE_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/ CODALAB_MYSQL_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/mysql CODALAB_MONITOR_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/monitor CODALAB_WORKER_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/worker CODALAB_HTTP_PORT=80 CODALAB_HTTPS_PORT=443 CODALAB_FRONTEND_PORT=2700 CODALAB_REST_PORT=2900 CODALAB_WS_PORT=2901 CODALAB_REST_NUM_PROCESSES=1 CODALAB_USER_DISK_QUOTA=100g CODALAB_USER_TIME_QUOTA=100y CODALAB_EDU_USER_DISK_QUOTA=100g CODALAB_EDU_USER_TIME_QUOTA=100y CODALAB_USER_PARALLEL_RUN_QUOTA=100 CODALAB_SENTRY_TRANSACTION_RATE=0 CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=60 CODALAB_WORKER_MANAGER_TYPE=azure-batch CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES=3 CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX=/tmp CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE=10g CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS=5 CODALAB_WORKER_MANAGER_IDLE_SECONDS=600 CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS=5 CODALAB_WORKER_MANAGER_AWS_REGION=us-east-1 CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME=codalab-worker COMPOSE_HTTP_TIMEOUT=600 DOCKER_CLIENT_TIMEOUT=600 CODALAB_LINK_MOUNTS=/tmp/codalab/link-mounts CODALAB_GOOGLE_APPLICATION_CREDENTIALS=./codalab_service.py CODALAB_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI CODALAB_RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=1 CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID=codalab-cpu CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE=codalab-cpu CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS=60 CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS=1 CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID=codalab-gpu CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE=codalab-gpu CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS=60 PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Users/agaut/miniconda3/condabin:/Users/agaut/google-cloud-sdk/bin:/opt/local/bin:/opt/local/sbin:/Library/Frameworks/Python.framework/Versions/3.7/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Users/agaut/anaconda3/bin:/Users/agaut/.nvm/versions/node/v17.0.1/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Library/Frameworks/Python.framework/Versions/3.5/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/bin HOSTNAME=DN0a1e4c22.SUNet docker-compose -p codalab --project-directory /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files -f /Users/agaut/codalab_outputs/docker-compose-custom.yml up --force-recreate -d --no-deps worker)
+process: The CODALAB_SERVER variable is not set. Defaulting to a blank string.
+process: The CODALAB_PROTECTED_MODE variable is not set. Defaulting to a blank string.
+process: The CODALAB_ADMIN_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SUPPORT_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_USERNAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_PASSWORD variable is not set. Defaulting to a blank string.
+process: The CODALAB_SHARED_FILE_SYSTEM variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_DEFAULT_GPUS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_PUBLIC_WORKERS variable is not set. Defaulting to a blank string.
+process: The CODALAB_AZURE_BLOB_CONNECTION_STRING variable is not set. Defaulting to a blank string.
+process: The CODALAB_DEFAULT_BUNDLE_STORE_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_ALWAYS_USE_AZURE_BLOB_BETA variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_INGEST_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_ENVIRONMENT variable is not set. Defaulting to a blank string.
+process: Recreating codalab_worker_1 ... 
+process: Recreating codalab_worker_1 ... done
+
+Connecting to instance localhost...
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1317, in do_open
+    encode_chunked=req.has_header('Transfer-encoding'))
+  File "/opt/conda/lib/python3.7/http/client.py", line 1229, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+  File "/opt/conda/lib/python3.7/http/client.py", line 1275, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+  File "/opt/conda/lib/python3.7/http/client.py", line 1224, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/opt/conda/lib/python3.7/http/client.py", line 1016, in _send_output
+    self.send(msg)
+  File "/opt/conda/lib/python3.7/http/client.py", line 956, in send
+    self.connect()
+  File "/opt/conda/lib/python3.7/http/client.py", line 928, in connect
+    (self.host,self.port), self.timeout, self.source_address)
+  File "/opt/conda/lib/python3.7/socket.py", line 727, in create_connection
+    raise err
+  File "/opt/conda/lib/python3.7/socket.py", line 716, in create_connection
+    sock.connect(sa)
+OSError: [Errno 99] Cannot assign requested address
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 18, in wrapper
+    return f(*args, **kwargs)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 417, in fetch
+    query_params=self._pack_params(params),
+  File "/opt/codalab-worksheets/codalab/worker/rest_client.py", line 66, in _make_request
+    access_token = self._get_access_token()
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 457, in <lambda>
+    lambda: self._authenticate(address, auth_handler),
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 527, in _authenticate
+    token_info = auth_handler.generate_token('credentials', username, password)
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 45, in generate_token
+    {'grant_type': 'password', 'username': username, 'password': key}
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 64, in _make_token_request
+    response = urlopen_with_retry(request)
+  File "/opt/conda/lib/python3.7/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 74, in retry_decorator
+    logger)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 33, in __retry_internal
+    return f()
+  File "/opt/codalab-worksheets/codalab/common.py", line 179, in urlopen_with_retry
+    return urllib.request.urlopen(request, timeout=timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 222, in urlopen
+    return opener.open(url, data, timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 525, in open
+    response = self._open(req, data)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 543, in _open
+    '_open', req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 503, in _call_chain
+    result = func(*args)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1345, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1319, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno 99] Cannot assign requested address>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/conda/bin/cl", line 33, in <module>
+    sys.exit(load_entry_point('codalab', 'console_scripts', 'cl')())
+  File "/opt/codalab-worksheets/codalab/bin/cl.py", line 10, in main
+    cli.do_command(sys.argv[1:])
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 948, in do_command
+    structured_result = command_fn()
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 942, in <lambda>
+    command_fn = lambda: args.function(self, args)
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 3203, in do_work_command
+    client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 794, in parse_client_worksheet_uuid
+    worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, parsed_spec)
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 667, in resolve_worksheet_uuid
+    'worksheets', params={'base': base_worksheet_uuid, 'specs': [worksheet_spec]}
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 427, in fetch_one
+    results = self.fetch(resource_type, resource_id=resource_id, params=params)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 52, in wrapper
+    sys.exc_info()[2],
+  File "/opt/conda/lib/python3.7/site-packages/six.py", line 702, in reraise
+    raise value.with_traceback(tb)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 18, in wrapper
+    return f(*args, **kwargs)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 417, in fetch
+    query_params=self._pack_params(params),
+  File "/opt/codalab-worksheets/codalab/worker/rest_client.py", line 66, in _make_request
+    access_token = self._get_access_token()
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 457, in <lambda>
+    lambda: self._authenticate(address, auth_handler),
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 527, in _authenticate
+    token_info = auth_handler.generate_token('credentials', username, password)
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 45, in generate_token
+    {'grant_type': 'password', 'username': username, 'password': key}
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 64, in _make_token_request
+    response = urlopen_with_retry(request)
+  File "/opt/conda/lib/python3.7/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 74, in retry_decorator
+    logger)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 33, in __retry_internal
+    return f()
+  File "/opt/codalab-worksheets/codalab/common.py", line 179, in urlopen_with_retry
+    return urllib.request.urlopen(request, timeout=timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 222, in urlopen
+    return opener.open(url, data, timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 525, in open
+    response = self._open(req, data)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 543, in _open
+    '_open', req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 503, in _call_chain
+    result = func(*args)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1345, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1319, in do_open
+    raise URLError(err)
+codalab.client.json_api_client.JsonApiException: Unable to fetch worksheets: <urlopen error [Errno 99] Cannot assign requested address>
+Created file /tmp/upload_bundle_file of size 1 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x148a984391cf4f0b92f43c81be010715
+
+>> cl wait 0x148a984391cf4f0b92f43c81be010715
+[36;1m (exit code 0, expected 0)[0m
+
+0x148a984391cf4f0b92f43c81be010715
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 1 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xb6b0074b359c4681aa318f6721869f81
+
+>> cl wait 0xb6b0074b359c4681aa318f6721869f81
+[36;1m (exit code 0, expected 0)[0m
+
+0xb6b0074b359c4681aa318f6721869f81
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 1 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xb404a9099aa544099c056840249c50f4
+
+>> cl wait 0xb404a9099aa544099c056840249c50f4
+[36;1m (exit code 0, expected 0)[0m
+
+0xb404a9099aa544099c056840249c50f4
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 10 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xde4ce0fb9b7a496db92a0e0eca6c4d50
+
+>> cl wait 0xde4ce0fb9b7a496db92a0e0eca6c4d50
+[36;1m (exit code 0, expected 0)[0m
+
+0xde4ce0fb9b7a496db92a0e0eca6c4d50
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 10 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x0a5eb0869ded414ea2d0586fc6ab1ce3
+
+>> cl wait 0x0a5eb0869ded414ea2d0586fc6ab1ce3
+[36;1m (exit code 0, expected 0)[0m
+
+0x0a5eb0869ded414ea2d0586fc6ab1ce3
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 10 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xac6b8096fa714c8eb225ca7e9868cc26
+
+>> cl wait 0xac6b8096fa714c8eb225ca7e9868cc26
+[36;1m (exit code 0, expected 0)[0m
+
+0xac6b8096fa714c8eb225ca7e9868cc26
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 100 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x97f370ec06734b2db5a3d3bcc9c746f0
+
+>> cl wait 0x97f370ec06734b2db5a3d3bcc9c746f0
+[36;1m (exit code 0, expected 0)[0m
+
+0x97f370ec06734b2db5a3d3bcc9c746f0
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 100 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x1eea7ef5ee4047649ef42b0a24346a3b
+
+>> cl wait 0x1eea7ef5ee4047649ef42b0a24346a3b
+[36;1m (exit code 0, expected 0)[0m
+
+0x1eea7ef5ee4047649ef42b0a24346a3b
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 100 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x17c036086c874036af657797c200ef4f
+
+>> cl wait 0x17c036086c874036af657797c200ef4f
+[36;1m (exit code 0, expected 0)[0m
+
+0x17c036086c874036af657797c200ef4f
+
+Deleted file /tmp/upload_bundle_file.
+>> cl search .mine --uuid-only
+[36;1m (exit code 0, expected 0)[0m
+
+0x16462bd0a53e4c4381f1431c0a5f61c4
+0x337436199b434218add345149c3764a6
+0x0b8479c37f124e7f9c66d4ca41fcb99b
+0x70d2e90b875844db8a0bb9cc4f0b0b66
+0x148a984391cf4f0b92f43c81be010715
+0xb6b0074b359c4681aa318f6721869f81
+0xb404a9099aa544099c056840249c50f4
+0xde4ce0fb9b7a496db92a0e0eca6c4d50
+0x0a5eb0869ded414ea2d0586fc6ab1ce3
+0xac6b8096fa714c8eb225ca7e9868cc26
+
+>> cl info 0x148a984391cf4f0b92f43c81be010715 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x148a984391cf4f0b92f43c81be010715 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x148a984391cf4f0b92f43c81be010715 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x0a5eb0869ded414ea2d0586fc6ab1ce3 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x0a5eb0869ded414ea2d0586fc6ab1ce3 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x0a5eb0869ded414ea2d0586fc6ab1ce3 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0xde4ce0fb9b7a496db92a0e0eca6c4d50 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0xde4ce0fb9b7a496db92a0e0eca6c4d50 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0xde4ce0fb9b7a496db92a0e0eca6c4d50 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl search .mine tags=codalab-timing-test --uuid-only
+[36;1m (exit code 0, expected 0)[0m
+
+0x16462bd0a53e4c4381f1431c0a5f61c4
+0x337436199b434218add345149c3764a6
+0x0b8479c37f124e7f9c66d4ca41fcb99b
+0x70d2e90b875844db8a0bb9cc4f0b0b66
+0x148a984391cf4f0b92f43c81be010715
+0xb6b0074b359c4681aa318f6721869f81
+0xb404a9099aa544099c056840249c50f4
+0xde4ce0fb9b7a496db92a0e0eca6c4d50
+0x0a5eb0869ded414ea2d0586fc6ab1ce3
+0xac6b8096fa714c8eb225ca7e9868cc26
+
+>> cl rm 0x16462bd0a53e4c4381f1431c0a5f61c4
+WARNING:retry.api:HTTP Error 400: Bad Request, retrying in 1 seconds...
+[31;1m (exit code 1, expected 0 BAD)[0m
+
+
+>> cl rm 0x337436199b434218add345149c3764a6
+WARNING:retry.api:HTTP Error 400: Bad Request, retrying in 1 seconds...
+[31;1m (exit code 1, expected 0 BAD)[0m
+
+
+>> cl rm 0x0b8479c37f124e7f9c66d4ca41fcb99b
+[36;1m (exit code 0, expected 0)[0m
+
+0x0b8479c37f124e7f9c66d4ca41fcb99b
+
+>> cl rm 0x70d2e90b875844db8a0bb9cc4f0b0b66
+[36;1m (exit code 0, expected 0)[0m
+
+0x70d2e90b875844db8a0bb9cc4f0b0b66
+
+>> cl rm 0x148a984391cf4f0b92f43c81be010715
+[36;1m (exit code 0, expected 0)[0m
+
+0x148a984391cf4f0b92f43c81be010715
+
+>> cl rm 0xb6b0074b359c4681aa318f6721869f81
+[36;1m (exit code 0, expected 0)[0m
+
+0xb6b0074b359c4681aa318f6721869f81
+
+>> cl rm 0xb404a9099aa544099c056840249c50f4
+[36;1m (exit code 0, expected 0)[0m
+
+0xb404a9099aa544099c056840249c50f4
+
+>> cl rm 0xde4ce0fb9b7a496db92a0e0eca6c4d50
+[36;1m (exit code 0, expected 0)[0m
+
+0xde4ce0fb9b7a496db92a0e0eca6c4d50
+
+>> cl rm 0x0a5eb0869ded414ea2d0586fc6ab1ce3
+[36;1m (exit code 0, expected 0)[0m
+
+0x0a5eb0869ded414ea2d0586fc6ab1ce3
+
+>> cl rm 0xac6b8096fa714c8eb225ca7e9868cc26
+[36;1m (exit code 0, expected 0)[0m
+
+0xac6b8096fa714c8eb225ca7e9868cc26
+
+[
+    {
+        "upload_bundle(1)": {
+            "runs": [
+                1.7648663520812988,
+                0.22501230239868164,
+                0.22715067863464355
+            ],
+            "mean": 0.7390097777048746,
+            "exceptions": []
+        }
+    },
+    {
+        "upload_bundle(10)": {
+            "runs": [
+                0.7116620540618896,
+                0.6707937717437744,
+                0.612480640411377
+            ],
+            "mean": 0.664978822072347,
+            "exceptions": []
+        }
+    },
+    {
+        "upload_bundle(100)": {
+            "runs": [
+                4.960570335388184,
+                5.823935031890869,
+                6.616362571716309
+            ],
+            "mean": 5.800289312998454,
+            "exceptions": []
+        }
+    },
+    {
+        "get_info(0x148a984391cf4f0b92f43c81be010715)": {
+            "runs": [
+                0.05311322212219238,
+                0.0762474536895752,
+                0.04866957664489746
+            ],
+            "mean": 0.059343417485555015,
+            "exceptions": []
+        }
+    },
+    {
+        "get_info(0x0a5eb0869ded414ea2d0586fc6ab1ce3)": {
+            "runs": [
+                0.0509488582611084,
+                0.05047440528869629,
+                0.05015826225280762
+            ],
+            "mean": 0.05052717526753744,
+            "exceptions": []
+        }
+    },
+    {
+        "get_info(0xde4ce0fb9b7a496db92a0e0eca6c4d50)": {
+            "runs": [
+                0.0532684326171875,
+                0.05538225173950195,
+                0.06611967086791992
+            ],
+            "mean": 0.05825678507486979,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x16462bd0a53e4c4381f1431c0a5f61c4)": {
+            "runs": [
+                1.0630252361297607
+            ],
+            "mean": 1.0630252361297607,
+            "exceptions": [
+                "Exit codes don't match: got 1, expected 0"
+            ]
+        }
+    },
+    {
+        "rm(0x337436199b434218add345149c3764a6)": {
+            "runs": [
+                1.0646226406097412
+            ],
+            "mean": 1.0646226406097412,
+            "exceptions": [
+                "Exit codes don't match: got 1, expected 0"
+            ]
+        }
+    },
+    {
+        "rm(0x0b8479c37f124e7f9c66d4ca41fcb99b)": {
+            "runs": [
+                0.16784119606018066
+            ],
+            "mean": 0.16784119606018066,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x70d2e90b875844db8a0bb9cc4f0b0b66)": {
+            "runs": [
+                0.16330194473266602
+            ],
+            "mean": 0.16330194473266602,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x148a984391cf4f0b92f43c81be010715)": {
+            "runs": [
+                0.07838153839111328
+            ],
+            "mean": 0.07838153839111328,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xb6b0074b359c4681aa318f6721869f81)": {
+            "runs": [
+                0.0840616226196289
+            ],
+            "mean": 0.0840616226196289,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xb404a9099aa544099c056840249c50f4)": {
+            "runs": [
+                0.10978460311889648
+            ],
+            "mean": 0.10978460311889648,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xde4ce0fb9b7a496db92a0e0eca6c4d50)": {
+            "runs": [
+                0.0827474594116211
+            ],
+            "mean": 0.0827474594116211,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x0a5eb0869ded414ea2d0586fc6ab1ce3)": {
+            "runs": [
+                0.08484125137329102
+            ],
+            "mean": 0.08484125137329102,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xac6b8096fa714c8eb225ca7e9868cc26)": {
+            "runs": [
+                0.08605766296386719
+            ],
+            "mean": 0.08605766296386719,
+            "exceptions": []
+        }
+    }
+]
+transaction rate 1
+env variable: 1
+[CodaLab] Bringing up rest-server
+(cd /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files; CODALAB_VERSION=add_better_performance_benchmarking CODALAB_INSTANCE_NAME=codalab CODALAB_WORKER_NETWORK_PREFIX=codalab-worker-network CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CODALAB_MYSQL_HOST=mysql CODALAB_MYSQL_PORT=3306 CODALAB_MYSQL_DATABASE=codalab_bundles CODALAB_MYSQL_USERNAME=codalab CODALAB_MYSQL_PASSWORD=codalab CODALAB_MYSQL_ROOT_PASSWORD=codalab CODALAB_UID=501:20 CODALAB_HOME=/Users/agaut/codalab_outputs CODALAB_BUNDLE_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/ CODALAB_MYSQL_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/mysql CODALAB_MONITOR_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/monitor CODALAB_WORKER_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/worker CODALAB_HTTP_PORT=80 CODALAB_HTTPS_PORT=443 CODALAB_FRONTEND_PORT=2700 CODALAB_REST_PORT=2900 CODALAB_WS_PORT=2901 CODALAB_REST_NUM_PROCESSES=1 CODALAB_USER_DISK_QUOTA=100g CODALAB_USER_TIME_QUOTA=100y CODALAB_EDU_USER_DISK_QUOTA=100g CODALAB_EDU_USER_TIME_QUOTA=100y CODALAB_USER_PARALLEL_RUN_QUOTA=100 CODALAB_SENTRY_TRANSACTION_RATE=1 CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=60 CODALAB_WORKER_MANAGER_TYPE=azure-batch CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES=3 CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX=/tmp CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE=10g CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS=5 CODALAB_WORKER_MANAGER_IDLE_SECONDS=600 CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS=5 CODALAB_WORKER_MANAGER_AWS_REGION=us-east-1 CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME=codalab-worker COMPOSE_HTTP_TIMEOUT=600 DOCKER_CLIENT_TIMEOUT=600 CODALAB_LINK_MOUNTS=/tmp/codalab/link-mounts CODALAB_GOOGLE_APPLICATION_CREDENTIALS=./codalab_service.py CODALAB_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI CODALAB_RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=1 CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID=codalab-cpu CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE=codalab-cpu CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS=60 CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS=1 CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID=codalab-gpu CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE=codalab-gpu CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS=60 PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Users/agaut/miniconda3/condabin:/Users/agaut/google-cloud-sdk/bin:/opt/local/bin:/opt/local/sbin:/Library/Frameworks/Python.framework/Versions/3.7/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Users/agaut/anaconda3/bin:/Users/agaut/.nvm/versions/node/v17.0.1/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Library/Frameworks/Python.framework/Versions/3.5/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/bin HOSTNAME=DN0a1e4c22.SUNet docker-compose -p codalab --project-directory /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files -f /Users/agaut/codalab_outputs/docker-compose-custom.yml up --force-recreate -d --no-deps rest-server)
+process: The CODALAB_SERVER variable is not set. Defaulting to a blank string.
+process: The CODALAB_PROTECTED_MODE variable is not set. Defaulting to a blank string.
+process: The CODALAB_ADMIN_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SUPPORT_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_USERNAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_PASSWORD variable is not set. Defaulting to a blank string.
+process: The CODALAB_SHARED_FILE_SYSTEM variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_DEFAULT_GPUS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_PUBLIC_WORKERS variable is not set. Defaulting to a blank string.
+process: The CODALAB_AZURE_BLOB_CONNECTION_STRING variable is not set. Defaulting to a blank string.
+process: The CODALAB_DEFAULT_BUNDLE_STORE_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_ALWAYS_USE_AZURE_BLOB_BETA variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_INGEST_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_ENVIRONMENT variable is not set. Defaulting to a blank string.
+process: Recreating codalab_rest-server_1 ... 
+process: Recreating codalab_rest-server_1 ... done
+
+[CodaLab] Bringing up worker
+(cd /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files; CODALAB_VERSION=add_better_performance_benchmarking CODALAB_INSTANCE_NAME=codalab CODALAB_WORKER_NETWORK_PREFIX=codalab-worker-network CODALAB_USERNAME=codalab CODALAB_PASSWORD=codalab CODALAB_MYSQL_HOST=mysql CODALAB_MYSQL_PORT=3306 CODALAB_MYSQL_DATABASE=codalab_bundles CODALAB_MYSQL_USERNAME=codalab CODALAB_MYSQL_PASSWORD=codalab CODALAB_MYSQL_ROOT_PASSWORD=codalab CODALAB_UID=501:20 CODALAB_HOME=/Users/agaut/codalab_outputs CODALAB_BUNDLE_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/ CODALAB_MYSQL_MOUNT=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/mysql CODALAB_MONITOR_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/monitor CODALAB_WORKER_DIR=/Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/var/codalab/worker CODALAB_HTTP_PORT=80 CODALAB_HTTPS_PORT=443 CODALAB_FRONTEND_PORT=2700 CODALAB_REST_PORT=2900 CODALAB_WS_PORT=2901 CODALAB_REST_NUM_PROCESSES=1 CODALAB_USER_DISK_QUOTA=100g CODALAB_USER_TIME_QUOTA=100y CODALAB_EDU_USER_DISK_QUOTA=100g CODALAB_EDU_USER_TIME_QUOTA=100y CODALAB_USER_PARALLEL_RUN_QUOTA=100 CODALAB_SENTRY_TRANSACTION_RATE=1 CODALAB_BUNDLE_MANAGER_WORKER_TIMEOUT_SECONDS=60 CODALAB_WORKER_MANAGER_TYPE=azure-batch CODALAB_WORKER_MANAGER_WORKER_DOWNLOAD_DEPENDENCIES_MAX_RETRIES=3 CODALAB_WORKER_MANAGER_WORKER_WORK_DIR_PREFIX=/tmp CODALAB_WORKER_MANAGER_WORKER_MAX_WORK_DIR_SIZE=10g CODALAB_WORKER_MANAGER_WORKER_CHECKIN_FREQUENCY_SECONDS=5 CODALAB_WORKER_MANAGER_IDLE_SECONDS=600 CODALAB_WORKER_MANAGER_SLEEP_TIME_SECONDS=5 CODALAB_WORKER_MANAGER_AWS_REGION=us-east-1 CODALAB_WORKER_MANAGER_AWS_BATCH_JOB_DEFINITION_NAME=codalab-worker COMPOSE_HTTP_TIMEOUT=600 DOCKER_CLIENT_TIMEOUT=600 CODALAB_LINK_MOUNTS=/tmp/codalab/link-mounts CODALAB_GOOGLE_APPLICATION_CREDENTIALS=./codalab_service.py CODALAB_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI CODALAB_RECAPTCHA_SECRET_KEY=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe CODALAB_WORKER_MANAGER_CPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_CPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_CPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_CPU_WORKERS=1 CODALAB_WORKER_MANAGER_CPU_AZURE_BATCH_JOB_ID=codalab-cpu CODALAB_WORKER_MANAGER_CPU_AWS_BATCH_QUEUE=codalab-cpu CODALAB_WORKER_MANAGER_CPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_CPU_SECONDS_BETWEEN_WORKERS=60 CODALAB_WORKER_MANAGER_GPU_DEFAULT_CPUS=1 CODALAB_WORKER_MANAGER_GPU_DEFAULT_MEMORY_MB=2048 CODALAB_WORKER_MANAGER_MAX_GPU_WORKERS=10 CODALAB_WORKER_MANAGER_MIN_GPU_WORKERS=1 CODALAB_WORKER_MANAGER_GPU_AZURE_BATCH_JOB_ID=codalab-gpu CODALAB_WORKER_MANAGER_GPU_AWS_BATCH_QUEUE=codalab-gpu CODALAB_WORKER_MANAGER_GPU_WORKER_SHARED_MEMORY_SIZE_GB=1 CODALAB_WORKER_MANAGER_GPU_SECONDS_BETWEEN_WORKERS=60 PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Library/Frameworks/Python.framework/Versions/3.6/bin:/Users/agaut/miniconda3/condabin:/Users/agaut/google-cloud-sdk/bin:/opt/local/bin:/opt/local/sbin:/Library/Frameworks/Python.framework/Versions/3.7/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Users/agaut/anaconda3/bin:/Users/agaut/.nvm/versions/node/v17.0.1/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/Library/Frameworks/Python.framework/Versions/3.5/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/bin HOSTNAME=DN0a1e4c22.SUNet docker-compose -p codalab --project-directory /Users/agaut/Documents/stanford_grad_school/second-year/codalabs/codalab-worksheets/docker_config/compose_files -f /Users/agaut/codalab_outputs/docker-compose-custom.yml up --force-recreate -d --no-deps worker)
+process: The CODALAB_SERVER variable is not set. Defaulting to a blank string.
+process: The CODALAB_PROTECTED_MODE variable is not set. Defaulting to a blank string.
+process: The CODALAB_ADMIN_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SUPPORT_EMAIL variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_USERNAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_EMAIL_PASSWORD variable is not set. Defaulting to a blank string.
+process: The CODALAB_SHARED_FILE_SYSTEM variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CHECKIN_FREQUENCY_SECONDS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_DEFAULT_GPUS variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_TAG variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_ACCOUNT_KEY variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_AZURE_BATCH_SERVICE_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_AZURE_LOG_CONTAINER_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_CPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CLUSTER_HOST variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_AUTH_TOKEN variable is not set. Defaulting to a blank string.
+process: The CODALAB_WORKER_MANAGER_GPU_KUBERNETES_CERT_PATH variable is not set. Defaulting to a blank string.
+process: The CODALAB_PUBLIC_WORKERS variable is not set. Defaulting to a blank string.
+process: The CODALAB_AZURE_BLOB_CONNECTION_STRING variable is not set. Defaulting to a blank string.
+process: The CODALAB_DEFAULT_BUNDLE_STORE_NAME variable is not set. Defaulting to a blank string.
+process: The CODALAB_ALWAYS_USE_AZURE_BLOB_BETA variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_INGEST_URL variable is not set. Defaulting to a blank string.
+process: The CODALAB_SENTRY_ENVIRONMENT variable is not set. Defaulting to a blank string.
+process: Recreating codalab_worker_1 ... 
+process: Recreating codalab_worker_1 ... done
+
+Connecting to instance localhost...
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1317, in do_open
+    encode_chunked=req.has_header('Transfer-encoding'))
+  File "/opt/conda/lib/python3.7/http/client.py", line 1229, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+  File "/opt/conda/lib/python3.7/http/client.py", line 1275, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+  File "/opt/conda/lib/python3.7/http/client.py", line 1224, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/opt/conda/lib/python3.7/http/client.py", line 1016, in _send_output
+    self.send(msg)
+  File "/opt/conda/lib/python3.7/http/client.py", line 956, in send
+    self.connect()
+  File "/opt/conda/lib/python3.7/http/client.py", line 928, in connect
+    (self.host,self.port), self.timeout, self.source_address)
+  File "/opt/conda/lib/python3.7/socket.py", line 727, in create_connection
+    raise err
+  File "/opt/conda/lib/python3.7/socket.py", line 716, in create_connection
+    sock.connect(sa)
+OSError: [Errno 99] Cannot assign requested address
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 18, in wrapper
+    return f(*args, **kwargs)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 417, in fetch
+    query_params=self._pack_params(params),
+  File "/opt/codalab-worksheets/codalab/worker/rest_client.py", line 66, in _make_request
+    access_token = self._get_access_token()
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 457, in <lambda>
+    lambda: self._authenticate(address, auth_handler),
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 527, in _authenticate
+    token_info = auth_handler.generate_token('credentials', username, password)
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 45, in generate_token
+    {'grant_type': 'password', 'username': username, 'password': key}
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 64, in _make_token_request
+    response = urlopen_with_retry(request)
+  File "/opt/conda/lib/python3.7/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 74, in retry_decorator
+    logger)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 33, in __retry_internal
+    return f()
+  File "/opt/codalab-worksheets/codalab/common.py", line 179, in urlopen_with_retry
+    return urllib.request.urlopen(request, timeout=timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 222, in urlopen
+    return opener.open(url, data, timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 525, in open
+    response = self._open(req, data)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 543, in _open
+    '_open', req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 503, in _call_chain
+    result = func(*args)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1345, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1319, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno 99] Cannot assign requested address>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/conda/bin/cl", line 33, in <module>
+    sys.exit(load_entry_point('codalab', 'console_scripts', 'cl')())
+  File "/opt/codalab-worksheets/codalab/bin/cl.py", line 10, in main
+    cli.do_command(sys.argv[1:])
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 948, in do_command
+    structured_result = command_fn()
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 942, in <lambda>
+    command_fn = lambda: args.function(self, args)
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 3203, in do_work_command
+    client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 794, in parse_client_worksheet_uuid
+    worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, parsed_spec)
+  File "/opt/codalab-worksheets/codalab/lib/bundle_cli.py", line 667, in resolve_worksheet_uuid
+    'worksheets', params={'base': base_worksheet_uuid, 'specs': [worksheet_spec]}
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 427, in fetch_one
+    results = self.fetch(resource_type, resource_id=resource_id, params=params)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 52, in wrapper
+    sys.exc_info()[2],
+  File "/opt/conda/lib/python3.7/site-packages/six.py", line 702, in reraise
+    raise value.with_traceback(tb)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 18, in wrapper
+    return f(*args, **kwargs)
+  File "/opt/codalab-worksheets/codalab/client/json_api_client.py", line 417, in fetch
+    query_params=self._pack_params(params),
+  File "/opt/codalab-worksheets/codalab/worker/rest_client.py", line 66, in _make_request
+    access_token = self._get_access_token()
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 457, in <lambda>
+    lambda: self._authenticate(address, auth_handler),
+  File "/opt/codalab-worksheets/codalab/lib/codalab_manager.py", line 527, in _authenticate
+    token_info = auth_handler.generate_token('credentials', username, password)
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 45, in generate_token
+    {'grant_type': 'password', 'username': username, 'password': key}
+  File "/opt/codalab-worksheets/codalab/server/auth.py", line 64, in _make_token_request
+    response = urlopen_with_retry(request)
+  File "/opt/conda/lib/python3.7/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 74, in retry_decorator
+    logger)
+  File "/opt/conda/lib/python3.7/site-packages/retry/api.py", line 33, in __retry_internal
+    return f()
+  File "/opt/codalab-worksheets/codalab/common.py", line 179, in urlopen_with_retry
+    return urllib.request.urlopen(request, timeout=timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 222, in urlopen
+    return opener.open(url, data, timeout)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 525, in open
+    response = self._open(req, data)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 543, in _open
+    '_open', req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 503, in _call_chain
+    result = func(*args)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1345, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+  File "/opt/conda/lib/python3.7/urllib/request.py", line 1319, in do_open
+    raise URLError(err)
+codalab.client.json_api_client.JsonApiException: Unable to fetch worksheets: <urlopen error [Errno 99] Cannot assign requested address>
+Created file /tmp/upload_bundle_file of size 1 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x876c1a68158e4a3f82da943e0ca23093
+
+>> cl wait 0x876c1a68158e4a3f82da943e0ca23093
+[36;1m (exit code 0, expected 0)[0m
+
+0x876c1a68158e4a3f82da943e0ca23093
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 1 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xe2d19008dac1415fad3c4c2c6f4454ea
+
+>> cl wait 0xe2d19008dac1415fad3c4c2c6f4454ea
+[36;1m (exit code 0, expected 0)[0m
+
+0xe2d19008dac1415fad3c4c2c6f4454ea
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 1 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x24f62a6b167949918bde555d2f176c4b
+
+>> cl wait 0x24f62a6b167949918bde555d2f176c4b
+[36;1m (exit code 0, expected 0)[0m
+
+0x24f62a6b167949918bde555d2f176c4b
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 10 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xf9c96a59b3ed4320925259991190bc99
+
+>> cl wait 0xf9c96a59b3ed4320925259991190bc99
+[36;1m (exit code 0, expected 0)[0m
+
+0xf9c96a59b3ed4320925259991190bc99
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 10 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xca18ee31077d49dca6d38c62a97bcf82
+
+>> cl wait 0xca18ee31077d49dca6d38c62a97bcf82
+[36;1m (exit code 0, expected 0)[0m
+
+0xca18ee31077d49dca6d38c62a97bcf82
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 10 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xd62d9e51485e4b85a38192f66630668e
+
+>> cl wait 0xd62d9e51485e4b85a38192f66630668e
+[36;1m (exit code 0, expected 0)[0m
+
+0xd62d9e51485e4b85a38192f66630668e
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 100 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xfce1083bfbb84c48ad6cf38e7268a13d
+
+>> cl wait 0xfce1083bfbb84c48ad6cf38e7268a13d
+[36;1m (exit code 0, expected 0)[0m
+
+0xfce1083bfbb84c48ad6cf38e7268a13d
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 100 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0x07a9a2f580814226b07976049353635d
+
+>> cl wait 0x07a9a2f580814226b07976049353635d
+[36;1m (exit code 0, expected 0)[0m
+
+0x07a9a2f580814226b07976049353635d
+
+Deleted file /tmp/upload_bundle_file.
+Created file /tmp/upload_bundle_file of size 100 MB.
+>> cl upload /tmp/upload_bundle_file --tags=codalab-timing-test
+[36;1m (exit code 0, expected 0)[0m
+
+0xdc0c89dc406b45d9b23e674d4e15aa9a
+
+>> cl wait 0xdc0c89dc406b45d9b23e674d4e15aa9a
+[36;1m (exit code 0, expected 0)[0m
+
+0xdc0c89dc406b45d9b23e674d4e15aa9a
+
+Deleted file /tmp/upload_bundle_file.
+>> cl search .mine --uuid-only
+[36;1m (exit code 0, expected 0)[0m
+
+0x16462bd0a53e4c4381f1431c0a5f61c4
+0x337436199b434218add345149c3764a6
+0x97f370ec06734b2db5a3d3bcc9c746f0
+0x1eea7ef5ee4047649ef42b0a24346a3b
+0x17c036086c874036af657797c200ef4f
+0x876c1a68158e4a3f82da943e0ca23093
+0xe2d19008dac1415fad3c4c2c6f4454ea
+0x24f62a6b167949918bde555d2f176c4b
+0xf9c96a59b3ed4320925259991190bc99
+0xca18ee31077d49dca6d38c62a97bcf82
+
+>> cl info 0x17c036086c874036af657797c200ef4f -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x17c036086c874036af657797c200ef4f -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x17c036086c874036af657797c200ef4f -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0x16462bd0a53e4c4381f1431c0a5f61c4 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+run-sleep
+
+>> cl info 0x16462bd0a53e4c4381f1431c0a5f61c4 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+run-sleep
+
+>> cl info 0x16462bd0a53e4c4381f1431c0a5f61c4 -f name
+[36;1m (exit code 0, expected 0)[0m
+
+run-sleep
+
+>> cl info 0xe2d19008dac1415fad3c4c2c6f4454ea -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0xe2d19008dac1415fad3c4c2c6f4454ea -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl info 0xe2d19008dac1415fad3c4c2c6f4454ea -f name
+[36;1m (exit code 0, expected 0)[0m
+
+upload_bundle_file
+
+>> cl search .mine tags=codalab-timing-test --uuid-only
+[36;1m (exit code 0, expected 0)[0m
+
+0x16462bd0a53e4c4381f1431c0a5f61c4
+0x337436199b434218add345149c3764a6
+0x97f370ec06734b2db5a3d3bcc9c746f0
+0x1eea7ef5ee4047649ef42b0a24346a3b
+0x17c036086c874036af657797c200ef4f
+0x876c1a68158e4a3f82da943e0ca23093
+0xe2d19008dac1415fad3c4c2c6f4454ea
+0x24f62a6b167949918bde555d2f176c4b
+0xf9c96a59b3ed4320925259991190bc99
+0xca18ee31077d49dca6d38c62a97bcf82
+
+>> cl rm 0x16462bd0a53e4c4381f1431c0a5f61c4
+WARNING:retry.api:HTTP Error 400: Bad Request, retrying in 1 seconds...
+[31;1m (exit code 1, expected 0 BAD)[0m
+
+
+>> cl rm 0x337436199b434218add345149c3764a6
+WARNING:retry.api:HTTP Error 400: Bad Request, retrying in 1 seconds...
+[31;1m (exit code 1, expected 0 BAD)[0m
+
+
+>> cl rm 0x97f370ec06734b2db5a3d3bcc9c746f0
+[36;1m (exit code 0, expected 0)[0m
+
+0x97f370ec06734b2db5a3d3bcc9c746f0
+
+>> cl rm 0x1eea7ef5ee4047649ef42b0a24346a3b
+[36;1m (exit code 0, expected 0)[0m
+
+0x1eea7ef5ee4047649ef42b0a24346a3b
+
+>> cl rm 0x17c036086c874036af657797c200ef4f
+[36;1m (exit code 0, expected 0)[0m
+
+0x17c036086c874036af657797c200ef4f
+
+>> cl rm 0x876c1a68158e4a3f82da943e0ca23093
+[36;1m (exit code 0, expected 0)[0m
+
+0x876c1a68158e4a3f82da943e0ca23093
+
+>> cl rm 0xe2d19008dac1415fad3c4c2c6f4454ea
+[36;1m (exit code 0, expected 0)[0m
+
+0xe2d19008dac1415fad3c4c2c6f4454ea
+
+>> cl rm 0x24f62a6b167949918bde555d2f176c4b
+[36;1m (exit code 0, expected 0)[0m
+
+0x24f62a6b167949918bde555d2f176c4b
+
+>> cl rm 0xf9c96a59b3ed4320925259991190bc99
+[36;1m (exit code 0, expected 0)[0m
+
+0xf9c96a59b3ed4320925259991190bc99
+
+>> cl rm 0xca18ee31077d49dca6d38c62a97bcf82
+[36;1m (exit code 0, expected 0)[0m
+
+0xca18ee31077d49dca6d38c62a97bcf82
+
+[
+    {
+        "upload_bundle(1)": {
+            "runs": [
+                1.747809886932373,
+                0.2617828845977783,
+                0.2235424518585205
+            ],
+            "mean": 0.744378407796224,
+            "exceptions": []
+        }
+    },
+    {
+        "upload_bundle(10)": {
+            "runs": [
+                0.6470592021942139,
+                0.699420690536499,
+                0.8039224147796631
+            ],
+            "mean": 0.7168007691701254,
+            "exceptions": []
+        }
+    },
+    {
+        "upload_bundle(100)": {
+            "runs": [
+                5.333060026168823,
+                5.993052959442139,
+                5.443897724151611
+            ],
+            "mean": 5.5900035699208575,
+            "exceptions": []
+        }
+    },
+    {
+        "get_info(0x17c036086c874036af657797c200ef4f)": {
+            "runs": [
+                0.06556439399719238,
+                0.05011749267578125,
+                0.04976940155029297
+            ],
+            "mean": 0.05515042940775553,
+            "exceptions": []
+        }
+    },
+    {
+        "get_info(0x16462bd0a53e4c4381f1431c0a5f61c4)": {
+            "runs": [
+                0.0504300594329834,
+                0.053429603576660156,
+                0.05773353576660156
+            ],
+            "mean": 0.0538643995920817,
+            "exceptions": []
+        }
+    },
+    {
+        "get_info(0xe2d19008dac1415fad3c4c2c6f4454ea)": {
+            "runs": [
+                0.05084109306335449,
+                0.05499434471130371,
+                0.05310630798339844
+            ],
+            "mean": 0.05298058191935221,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x16462bd0a53e4c4381f1431c0a5f61c4)": {
+            "runs": [
+                1.1052680015563965
+            ],
+            "mean": 1.1052680015563965,
+            "exceptions": [
+                "Exit codes don't match: got 1, expected 0"
+            ]
+        }
+    },
+    {
+        "rm(0x337436199b434218add345149c3764a6)": {
+            "runs": [
+                1.0929820537567139
+            ],
+            "mean": 1.0929820537567139,
+            "exceptions": [
+                "Exit codes don't match: got 1, expected 0"
+            ]
+        }
+    },
+    {
+        "rm(0x97f370ec06734b2db5a3d3bcc9c746f0)": {
+            "runs": [
+                0.20746135711669922
+            ],
+            "mean": 0.20746135711669922,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x1eea7ef5ee4047649ef42b0a24346a3b)": {
+            "runs": [
+                0.19090628623962402
+            ],
+            "mean": 0.19090628623962402,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x17c036086c874036af657797c200ef4f)": {
+            "runs": [
+                0.146484375
+            ],
+            "mean": 0.146484375,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x876c1a68158e4a3f82da943e0ca23093)": {
+            "runs": [
+                0.07893562316894531
+            ],
+            "mean": 0.07893562316894531,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xe2d19008dac1415fad3c4c2c6f4454ea)": {
+            "runs": [
+                0.08459043502807617
+            ],
+            "mean": 0.08459043502807617,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0x24f62a6b167949918bde555d2f176c4b)": {
+            "runs": [
+                0.09132647514343262
+            ],
+            "mean": 0.09132647514343262,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xf9c96a59b3ed4320925259991190bc99)": {
+            "runs": [
+                0.09992814064025879
+            ],
+            "mean": 0.09992814064025879,
+            "exceptions": []
+        }
+    },
+    {
+        "rm(0xca18ee31077d49dca6d38c62a97bcf82)": {
+            "runs": [
+                0.08760404586791992
+            ],
+            "mean": 0.08760404586791992,
+            "exceptions": []
+        }
+    }
+]
