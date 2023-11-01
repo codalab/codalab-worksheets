@@ -1,10 +1,10 @@
-apache-beam[azure]==2.38.0
+apache-beam[azure]==2.48.0
 
 # GCP requirements for apache-beam. Note: when upgrading
 # apache-beam, make sure these requirements are also upgraded
 # accordingly according to Beam's GCP requirements
 # (https://github.com/apache/beam/blob/master/sdks/python/setup.py).
-cachetools>=3.1.0,<5
+cachetools>=3.1.0,<6
 google-apitools>=0.5.31,<0.5.32
 google-auth>=1.18.0,<3
 
@@ -30,7 +30,7 @@ diffimg==0.2.3
 selenium==3.141.0
 requests==2.25.0
 azure-storage-blob==12.4.0
-azure-core==1.8.0
+azure-core==1.29.5
 sentry-sdk==1.14.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
