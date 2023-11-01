@@ -377,13 +377,13 @@ class Migration:
     
     def print_other_stats(self, total):
         print(
-            f"skipped {migration.skipped_not_final}(ready) "
-            f"{migration.skipped_link}(linked bundle) "
-            f"{migration.skipped_beam}(on Azure) bundles, "
-            f"skipped delete due to path DNE {migration.skipped_delete_path_dne}, "
-            f"PathException {migration.path_exception_cnt}, "
-            f"error {migration.error_cnt} bundles. "
-            f"Succeeed {migration.success_cnt} bundles "
+            f"skipped {self.skipped_not_final}(ready) "
+            f"{self.skipped_link}(linked bundle) "
+            f"{self.skipped_beam}(on Azure) bundles, "
+            f"skipped delete due to path DNE {self.skipped_delete_path_dne}, "
+            f"PathException {self.path_exception_cnt}, "
+            f"error {self.error_cnt} bundles. "
+            f"Succeeed {self.success_cnt} bundles "
             f"Total: {total}"
         )
 
