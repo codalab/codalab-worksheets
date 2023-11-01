@@ -20,6 +20,7 @@ from codalab.lib import (
     zip_util,
 )
 from codalab.worker.file_util import zip_directory
+from codalab.worker.bundle_state import State
 
 from codalab.worker import download_util
 from codalab.worker.download_util import BundleTarget, PathException
@@ -42,7 +43,7 @@ class Migration:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
-        self.skipped_ready = (
+        self.skipped_not_final = (
             self.skipped_link
         ) = (
             self.skipped_beam
@@ -50,6 +51,7 @@ class Migration:
             self.skipped_delete_path_dne
         ) = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
         self.times = defaultdict(list)
+        self.exc_tracker = dict()
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -222,32 +224,32 @@ class Migration:
             old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
             old_file_list.sort()
             if old_file_list != new_file_list:
-                return False
+                return False, "Directory file lists differ."
 
         else:
             # For files, check the file has same contents
             old_content = read_file_section(bundle_location, 5, 10)
             new_content = read_file_section(new_location, 5, 10)
             if old_content != new_content:
-                return False
+                return False, "First 5 bytes differ."
 
             old_file_size = path_util.get_path_size(bundle_location)
             new_file_size = path_util.get_path_size(new_location)
             if old_file_size != new_file_size:
-                return False
+                return False, "File sizes differ"
 
             # check file contents of last 10 bytes
             if old_file_size < 10:
                 if read_file_section(bundle_location, 0, 10) != read_file_section(
                     new_location, 0, 10
                 ):
-                    return False
+                    return False, "First 10 bytes differ."
             else:
                 if read_file_section(bundle_location, old_file_size - 10, 10) != read_file_section(
                     new_location, old_file_size - 10, 10
                 ):
-                    return False
-        return True
+                    return False, "Last 10 bytes differ."
+        return True, ""
 
     def delete_original_bundle(self, uuid):
         # Get the original bundle location.
@@ -296,8 +298,8 @@ class Migration:
             is_dir = bundle_info['type'] == 'directory'
 
             # Don't migrate currently running bundles
-            if bundle.state != 'ready':
-                self.skipped_ready += 1
+            if bundle.state not in State.FINAL_STATES:
+                self.skipped_not_final += 1
                 return
 
             # Don't migrate linked bundles
@@ -312,15 +314,16 @@ class Migration:
                 not FileSystems.exists(target_location)
                 or not self.sanity_check(
                     bundle_uuid, disk_location, bundle_info, is_dir, target_location
-                )
+                )[0]
             ):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
-                if not self.sanity_check(
+                success, reason = self.sanity_check(
                     bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                ):
-                    raise ValueError("SanityCheck failed")
+                )
+                if not success:
+                    raise ValueError(f"SanityCheck failed with {reason}")
             self.success_cnt += 1
 
             # Change bundle metadata to point to the Azure Blob location (not disk)
@@ -340,9 +343,24 @@ class Migration:
             self.times["migrate_bundle"].append(time.time() - total_start_time)
         except PathException:
             self.path_exception_cnt += 1
-        except Exception:
+        except Exception as e:
             self.error_cnt += 1
-            print(traceback.format_exc())
+            tb = traceback.format_exc()
+            print(f"Error for {bundle_uuid}: {tb}")
+            if str(e) in self.exc_tracker:
+                self.exc_tracker[str(e)]["count"] += 1
+                self.exc_tracker[str(e)]["uuid"].append(bundle_uuid)
+            else:
+                self.exc_tracker[str(e)] = {
+                    "uuid": [bundle_uuid],
+                    "traceback": tb,
+                    "count": 1
+                }
+
+    def print_exc_tracker(self):
+        print("-"*80)
+        print(json.dumps(self.exc_tracker, indent=4))
+        print("-"*80)
 
     def print_times(self):
         output_dict = dict()
@@ -359,7 +377,7 @@ class Migration:
     
     def print_other_stats(self, total):
         print(
-            f"skipped {migration.skipped_ready}(ready) "
+            f"skipped {migration.skipped_not_final}(ready) "
             f"{migration.skipped_link}(linked bundle) "
             f"{migration.skipped_beam}(on Azure) bundles, "
             f"skipped delete due to path DNE {migration.skipped_delete_path_dne}, "
@@ -373,13 +391,15 @@ class Migration:
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(uuid)
             if i > 0 and i % log_interval == 0:
+                self.print_exc_tracker()
                 self.print_times()
                 self.print_other_stats(len(bundle_uuids))
+        self.print_exc_tracker()
         self.print_times()
         self.print_other_stats(len(bundle_uuids))
 
 
-def job(target_store_name, change_db, delete, worksheet, max_result, num_processes, proc_id):
+def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_result, num_processes, proc_id):
     """A function for running the migration in parallel.
 
     NOTE: I know this is bad styling since we re-create the Migration object and the
@@ -392,10 +412,11 @@ def job(target_store_name, change_db, delete, worksheet, max_result, num_process
     migration = Migration(target_store_name, change_db, delete)
     migration.setUp()
 
-    # Get bundle uuids.
-    bundle_uuids = sorted(
-        migration.get_bundle_uuids(worksheet_uuid=worksheet, max_result=max_result)
-    )
+    # Get bundle uuids (if not already provided)
+    if not bundle_uuids:
+        bundle_uuids = sorted(
+            migration.get_bundle_uuids(worksheet_uuid=worksheet, max_result=max_result)
+        )
 
     # Sort according to what process you are.
     chunk_size = len(bundle_uuids) // num_processes
@@ -430,6 +451,9 @@ if __name__ == '__main__':
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
     )
     parser.add_argument(
+        '-u', '--bundle-uuids', type=str, nargs='*', default=None, help='List of bundle UUIDs to migrate.'
+    )
+    parser.add_argument(
         '-t',
         '--target_store_name',
         type=str,
@@ -443,6 +467,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-p',
         '--num_processes',
+        type=int,
         help="Number of processes for multiprocessing",
         default=multiprocessing.cpu_count(),
     )
@@ -462,6 +487,7 @@ if __name__ == '__main__':
         args.change_db,
         args.delete,
         args.worksheet,
+        args.bundle_uuids,
         args.max_result,
         args.num_processes,
     )
