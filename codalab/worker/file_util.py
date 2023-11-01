@@ -654,10 +654,8 @@ def update_file_size(bundle_path, file_size):
             finfo = dict(finfo)
             finfo['size'] = file_size
             new_info = tuple([value for _, value in finfo.items()])
-            logging.info(finfo)  # get the result of a fi
             tf._setFileInfo(new_info)
             tf.sqlConnection.commit()  # need to mannually commit here
-            logging.info(f"tf.index_file_name: {tf.indexFilePath}")
 
             # Update the index file stored in blob storage
             FileSystems.delete([parse_linked_bundle_url(bundle_path).index_path])
