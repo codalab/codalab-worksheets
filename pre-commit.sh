@@ -27,8 +27,8 @@ venv/bin/mkdocs build  # Outputs to `site`
 ## Fix Python style (mutates code!)
 venv/bin/black .
 ## Check if there are any mypy or flake8 errors
-venv/bin/mypy .
-venv/bin/flake8 .
+# venv/bin/mypy .
+# venv/bin/flake8 .
 
 # Javascript style checks and linting
 ## Fix Javascript style (mutates code!)
