@@ -6,25 +6,25 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common curl && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
-  amazon-ecr-credential-helper \
-  build-essential \
-  libssl-dev \
-  uuid-dev \
-  libgpgme11-dev \
-  squashfs-tools \
-  libseccomp-dev \
-  pkg-config \
-  zip \ 
-  git \
-  wget \
-  unzip && \
-  rm -rf /var/lib/apt/lists/*;
+    amazon-ecr-credential-helper \
+    build-essential \
+    libssl-dev \
+    uuid-dev \
+    libgpgme11-dev \
+    squashfs-tools \
+    libseccomp-dev \
+    pkg-config \
+    zip \ 
+    git \
+    wget \
+    unzip && \
+    rm -rf /var/lib/apt/lists/*;
 
-# Python 3.9 Version of miniconda 23.5.2
-RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-py39_23.5.2-0-Linux-x86_64.sh && \
-  chmod +x ~/miniconda.sh && \
-  ~/miniconda.sh -b -p /opt/conda && \
-  rm ~/miniconda.sh
+# Miniconda 4.5.11 installs Python 3.7 by default.
+RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
+     chmod +x ~/miniconda.sh && \
+     ~/miniconda.sh -b -p /opt/conda && \
+     rm ~/miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 RUN conda --version
 
@@ -38,8 +38,8 @@ RUN mkdir ${WORKDIR}/scripts
 # Install dependencies
 COPY requirements.txt requirements.txt
 RUN python3 -m pip install --user --upgrade pip==20.3.4; \
-  python3 -m pip install setuptools --upgrade; \
-  python3 -m pip install --no-cache-dir -r requirements.txt;
+    python3 -m pip install setuptools --upgrade; \
+    python3 -m pip install --no-cache-dir -r requirements.txt;
 
 # Install code
 COPY setup.py setup.py
