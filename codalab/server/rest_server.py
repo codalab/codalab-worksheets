@@ -59,7 +59,7 @@ sentry_sdk.init(
     environment=os.getenv('CODALAB_SENTRY_ENVIRONMENT'),
     integrations=[BottleIntegration()],
     traces_sample_rate=transaction_sample_rate,
-    _experiments={"profiles_sample_rate": profiles_sample_rate,},  # type: ignore
+    profiles_sample_rate=profiles_sample_rate,  # type: ignore
 )
 
 
