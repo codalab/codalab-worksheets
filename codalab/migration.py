@@ -10,7 +10,7 @@ cd codalab-worksheets
 wget https://raw.githubusercontent.com/codalab/codalab-worksheets/new-migration/codalab/migration.py -O codalab/migration.py
 docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -t blob-prod"
 
-docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod -k 5"
+docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod -k 1"
 
 
 docker cp codalab_rest-server_1:/opt/codalab-worksheets/migrated-bundles.txt migrated-bundles.txt && cat migrated-bundles.txt 
@@ -464,14 +464,6 @@ def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_resul
     print(f"[migration] Start migrating {len(bundle_uuids)} bundles")
     migration.migrate_bundles(bundle_uuids)
     print(f"[migration] Finish migrating {len(bundle_uuids)} bundles")
-
-    if change_db:
-        print(
-            "[migration][Change DB] Database migration finished, bundle location changed in database."
-        )
-
-    if delete:
-        print("[migration][Deleted] Original bundles deleted from local disk.")
 
 
 if __name__ == '__main__':
