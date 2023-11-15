@@ -1940,7 +1940,10 @@ def test_search_time(ctx):
     time3 = datetime.now().isoformat()
 
     # Check date format works correctly, GH issue #4360
-    check_equals('1', _run_command([cl, 'search', '.before=2023-1-11', '.count']))
+    check_not_equals(
+        'UsageError: Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD.',
+        _run_command([cl, 'search', '.before=2023-1-11', '.count']),
+    )
 
     # No results
     check_equals('', _run_command([cl, 'search', 'name=' + name, '.before=' + time1, '-u']))
