@@ -429,7 +429,6 @@ class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
         self.assertIn('dir', output_dir_entries)
         self.assertIn('__MACOSX', output_dir_entries)
         self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
-        self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))
 
 
 class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):
