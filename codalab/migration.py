@@ -118,8 +118,7 @@ class Migration:
         )
 
         if is_dir:
-            source_fileobj = zip_util.tar_gzip_directory(
-                bundle_location, exclude_patterns=None)
+            source_fileobj = zip_util.tar_gzip_directory(bundle_location, exclude_patterns=None)
             source_ext = ".tar.gz"
             unpack = True
         else:

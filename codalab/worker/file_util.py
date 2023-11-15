@@ -21,7 +21,7 @@ import tempfile
 # from ratarmountcore import SQLiteIndexedTar, FileInfo
 from ratarmountcore import FileInfo
 from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
-from typing import IO, cast, List
+from typing import IO, List, Optional, cast
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -240,9 +240,11 @@ class OpenFile(object):
     path: str
     mode: str
     gzipped: bool
-    exclude_patterns: List[str] | None
+    exclude_patterns: Optional[List[str]]
 
-    def __init__(self, path: str, mode='rb', gzipped=False, exclude_patterns=ALWAYS_IGNORE_PATTERNS):
+    def __init__(
+        self, path: str, mode='rb', gzipped=False, exclude_patterns=ALWAYS_IGNORE_PATTERNS
+    ):
         """Initialize OpenFile.
 
         Args:
