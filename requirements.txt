@@ -32,6 +32,7 @@ selenium==3.141.0
 requests==2.25.0
 azure-storage-blob==12.4.0
 azure-core==1.29.5
+pyopenssl==23.2.0
 sentry-sdk==1.14.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
