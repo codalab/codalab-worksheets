@@ -1,9 +1,20 @@
 # A script to migrate bundles from disk storage to Azure storage (UploadBundles, MakeBundles, RunBundles?)
 
 """
-python migration.py -t blob-prod
-python migration.py -t blob-prod --disable_logging
-python migration.py -t blob-prod --disable_logging -p 5
+python migration.py -c -t blob-prod
+python migration.py -c -t blob-prod --disable_logging
+python migration.py -c -t blob-prod --disable_logging -p 5
+
+To run this on prod:
+cd codalab-worksheets
+vim codalab/migration.py
+docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -t blob-prod"
+
+docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod"
+
+
+docker cp codalab_rest-server_1:/opt/codalab-worksheets/migrated-bundles.txt migrated-bundles.txt && cat migrated-bundles.txt 
+
 """
 
 import multiprocessing
@@ -22,6 +33,7 @@ from codalab.common import (
     StorageType,
     StorageURLScheme,
 )
+from codalab.lib.print_util import FileTransferProgress
 from codalab.lib import (
     path_util,
     zip_util,
@@ -46,7 +58,7 @@ class Migration:
     ATTENTION: this class will modify real bundle database.
     """
 
-    def __init__(self, target_store_name, change_db, delete) -> None:
+    def __init__(self, target_store_name, change_db, delete, proc_id) -> None:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
@@ -59,6 +71,7 @@ class Migration:
         ) = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
         self.times = defaultdict(list)
         self.exc_tracker = dict()
+        self.proc_id = proc_id
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -90,7 +103,7 @@ class Migration:
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
         handler = logging.FileHandler(
-            os.path.join(self.codalab_manager.codalab_home, "migration.log")
+            os.path.join(self.codalab_manager.codalab_home, f"migration-{self.proc_id}.log")
         )
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -107,7 +120,7 @@ class Migration:
                 {'name': None, 'worksheet_uuid': worksheet_uuid, 'user_id': self.root_user_id},
                 max_results=None,  # return all bundles in the worksheets
             )
-        return bundle_uuids
+        return list(set(bundle_uuids))
 
     def is_linked_bundle(self, bundle_uuid):
         bundle_link_url = self.bundle_manager._model.get_bundle_metadata(
@@ -159,12 +172,12 @@ class Migration:
         # TODO: This step might cause repeated upload. Can not check by checking size (Azure blob storage is zipped).
         if FileSystems.exists(target_location):
             path_util.remove(target_location)
-
+        
         uploader = BlobStorageUploader(
             bundle_model=self.bundle_manager._model,
             bundle_store=self.bundle_manager._bundle_store,
             destination_bundle_store=self.bundle_manager._bundle_store,
-            json_api_client=None,
+            json_api_client=None
         )
 
         if is_dir:
@@ -184,7 +197,8 @@ class Migration:
             path_util.get_path_size(bundle_location),
         )
         # Upload file content and generate index file
-        uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
+        with FileTransferProgress(f'\t\tUploading {self.proc_id} ') as progress:
+            uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack, progress_callback=progress.update)
 
         assert FileSystems.exists(target_location)
         return target_location
@@ -314,25 +328,43 @@ class Migration:
                 self.skipped_link += 1
                 return
 
-            # Migrate bundle. Only migrate if -c, -d not specified
+            # Migrate bundle. Only migrate if -c, -d not specified or sanity check FAILS
+            # TODO: Run the whole migration script with sanity checks *enabled* everywhere.
             target_location = self.blob_target_location(bundle_uuid, is_dir)
             disk_location = self.get_bundle_disk_location(bundle_uuid)
-            if os.path.lexists(disk_location) and not FileSystems.exists(target_location):
+            ran_sanity_check = False
+            if os.path.lexists(disk_location) and (
+                not FileSystems.exists(target_location)
+                # or not self.sanity_check(
+                #     bundle_uuid, disk_location, bundle_info, is_dir, target_location
+                # )[0]
+            ):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
                 success, reason = self.sanity_check(
                     bundle_uuid, bundle_location, bundle_info, is_dir, target_location
                 )
+                ran_sanity_check = True
                 if not success:
                     raise ValueError(f"SanityCheck failed with {reason}")
             self.success_cnt += 1
-
+            with open('migrated-bundles.txt', 'a') as f:
+                f.write(bundle_uuid + "\t" + str(self.proc_id) + "\n")
             # Change bundle metadata to point to the Azure Blob location (not disk)
             if self.change_db:
+                if not ran_sanity_check:
+                    success, reason = self.sanity_check(
+                        bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                    )
+                    ran_sanity_check = True
+                    if not success:
+                        raise ValueError(f"SanityCheck failed with {reason}")
                 start_time = time.time()
                 self.modify_bundle_data(bundle, bundle_uuid, is_dir)
                 self.times["modify_bundle_data"].append(time.time() - start_time)
+                # with open('migrated-bundles.txt', 'w+') as f:
+                #     f.write(bundle_uuid + "\n")
 
             # Delete the bundle from disk.
             if self.delete:
@@ -343,6 +375,7 @@ class Migration:
                 self.times["delete_original_bundle"].append(time.time() - start_time)
 
             self.times["migrate_bundle"].append(time.time() - total_start_time)
+        
         except PathException:
             self.path_exception_cnt += 1
         except Exception as e:
@@ -389,9 +422,11 @@ class Migration:
             f"Total: {total}"
         )
 
-    def migrate_bundles(self, bundle_uuids, log_interval=1000):
+    def migrate_bundles(self, bundle_uuids, log_interval=100):
+        total = len(bundle_uuids)
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(uuid)
+            logging.info("[migration] [process %d], status: %d / %d", self.proc_id, i, total)
             if i > 0 and i % log_interval == 0:
                 self.print_exc_tracker()
                 self.print_times()
@@ -411,7 +446,7 @@ def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_resul
     (BundleManager, CodalabManager, etc.), and so this is the compromise we came up with.
     """
     # Setup Migration.
-    migration = Migration(target_store_name, change_db, delete)
+    migration = Migration(target_store_name, change_db, delete, proc_id)
     migration.setUp()
 
     # Get bundle uuids (if not already provided)
