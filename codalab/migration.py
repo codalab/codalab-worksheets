@@ -7,10 +7,10 @@ python migration.py -c -t blob-prod --disable_logging -p 5
 
 To run this on prod:
 cd codalab-worksheets
-vim codalab/migration.py
+wget https://raw.githubusercontent.com/codalab/codalab-worksheets/new-migration/codalab/migration.py -O codalab/migration.py
 docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -t blob-prod"
 
-docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod"
+docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod -k 5"
 
 
 docker cp codalab_rest-server_1:/opt/codalab-worksheets/migrated-bundles.txt migrated-bundles.txt && cat migrated-bundles.txt 
@@ -112,7 +112,7 @@ class Migration:
 
         return logger
 
-    def get_bundle_uuids(self, worksheet_uuid, max_result=1e9):
+    def get_bundle_uuids(self, worksheet_uuid, max_result):
         if worksheet_uuid is None:
             bundle_uuids = self.bundle_manager._model.get_all_bundle_uuids(max_results=max_result)
         else:
@@ -349,8 +349,6 @@ class Migration:
                 if not success:
                     raise ValueError(f"SanityCheck failed with {reason}")
             self.success_cnt += 1
-            with open('migrated-bundles.txt', 'a') as f:
-                f.write(bundle_uuid + "\t" + str(self.proc_id) + "\n")
             # Change bundle metadata to point to the Azure Blob location (not disk)
             if self.change_db:
                 if not ran_sanity_check:
@@ -363,8 +361,8 @@ class Migration:
                 start_time = time.time()
                 self.modify_bundle_data(bundle, bundle_uuid, is_dir)
                 self.times["modify_bundle_data"].append(time.time() - start_time)
-                # with open('migrated-bundles.txt', 'w+') as f:
-                #     f.write(bundle_uuid + "\n")
+                with open('migrated-bundles.txt', 'a') as f:
+                    f.write(bundle_uuid + "\n")
 
             # Delete the bundle from disk.
             if self.delete:
