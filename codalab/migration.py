@@ -8,9 +8,12 @@ python migration.py -c -t blob-prod --disable_logging -p 5
 To run this on prod:
 cd codalab-worksheets
 wget https://raw.githubusercontent.com/codalab/codalab-worksheets/new-migration/codalab/migration.py -O codalab/migration.py
+vim codalab/migration.py
 docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -t blob-prod"
 
-docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod -k 1"
+docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod -k 1000000000"
+
+docker exec codalab_rest-server_1 rm /opt/codalab-worksheets/migrated-bundles.txt
 
 
 docker cp codalab_rest-server_1:/opt/codalab-worksheets/migrated-bundles.txt migrated-bundles.txt && cat migrated-bundles.txt 
