@@ -385,7 +385,10 @@ class BundleManager(object):
                 )
                 self._model.transition_bundle_worker_offline(bundle)
             elif self._worker_model.send_json_message(
-                {'type': 'mark_finalized', 'uuid': bundle.uuid}, worker['worker_id']
+                worker['socket_id'],
+                worker['worker_id'],
+                {'type': 'mark_finalized', 'uuid': bundle.uuid},
+                1,
             ):
                 logger.info(
                     'Acknowledged finalization of run bundle {} on worker {}'.format(
@@ -395,8 +398,6 @@ class BundleManager(object):
                 bundle_location = self._bundle_store.get_bundle_location(bundle.uuid)
                 # TODO(Ashwin): fix this -- bundle location could be linked.
                 self._model.transition_bundle_finished(bundle, bundle_location)
-            else:
-                logger.info(f"Bundle {bundle.uuid} could not be finalized.")
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -741,17 +742,16 @@ class BundleManager(object):
             remove_path(path)
             os.mkdir(path)
         if self._worker_model.send_json_message(
-            self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
+            worker['socket_id'],
             worker['worker_id'],
+            self._construct_run_message(worker['shared_file_system'], bundle, bundle_resources),
+            1,
         ):
             logger.info(
                 'Starting run bundle {} on worker {}'.format(bundle.uuid, worker['worker_id'])
             )
             return True
         else:
-            logger.info(
-                f"Bundle {bundle.uuid} could not be started on worker {worker['worker_id']}"
-            )
             self._model.transition_bundle_staged(bundle)
             workers.restage(bundle.uuid)
             return False
