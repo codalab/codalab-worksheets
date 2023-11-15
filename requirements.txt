@@ -1,4 +1,4 @@
-apache-beam[azure]==2.38.0
+apache-beam[azure]==2.48.0
 
 # GCP requirements for apache-beam. Note: when upgrading
 # apache-beam, make sure these requirements are also upgraded
@@ -31,7 +31,7 @@ diffimg==0.2.3
 selenium==3.141.0
 requests==2.25.0
 azure-storage-blob==12.4.0
-azure-core==1.8.0
+azure-core==1.29.5
 sentry-sdk==1.14.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
