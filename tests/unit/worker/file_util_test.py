@@ -407,8 +407,7 @@ class ArchiveTestBase:
         self.assertNotIn('__MACOSX', output_dir_entries)
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))
-
-
+        
 class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
     """Archive test for tar/gzip methods."""
 
@@ -417,6 +416,21 @@ class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
 
     def unarchive(self, *args, **kwargs):
         return un_tar_directory(*args, **kwargs)
+
+    def test_do_not_always_ignore(self):
+        temp_dir = tempfile.mkdtemp()
+        self.addCleanup(lambda: remove_path(temp_dir))
+        output_dir = os.path.join(temp_dir, 'output')
+
+        self.unarchive(self.archive(IGNORE_TEST_DIR, exclude_patterns=None), output_dir, 'gz')
+        output_dir_entries = os.listdir(output_dir)
+        self.assertNotIn('._ignored', output_dir_entries)
+        self.assertIn('dir', output_dir_entries)
+        self.assertIn('__MACOSX', output_dir_entries)
+        self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
+        self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))
+
+
 
 
 class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):

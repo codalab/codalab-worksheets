@@ -21,7 +21,7 @@ import tempfile
 # from ratarmountcore import SQLiteIndexedTar, FileInfo
 from ratarmountcore import FileInfo
 from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
-from typing import IO, cast
+from typing import IO, cast, List
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -50,7 +50,7 @@ def get_path_exists(path):
 def tar_gzip_directory(
     directory_path,
     follow_symlinks=False,
-    exclude_patterns=None,
+    exclude_patterns=ALWAYS_IGNORE_PATTERNS,
     exclude_names=None,
     ignore_file=None,
 ):
@@ -79,7 +79,6 @@ def tar_gzip_directory(
     if not exclude_patterns:
         exclude_patterns = []
 
-    exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
     for pattern in exclude_patterns:
         args.append('--exclude=' + pattern)
 
@@ -241,8 +240,9 @@ class OpenFile(object):
     path: str
     mode: str
     gzipped: bool
+    exclude_patterns: List[str] | None
 
-    def __init__(self, path: str, mode='rb', gzipped=False):
+    def __init__(self, path: str, mode='rb', gzipped=False, exclude_patterns=ALWAYS_IGNORE_PATTERNS):
         """Initialize OpenFile.
 
         Args:
@@ -255,6 +255,7 @@ class OpenFile(object):
         self.path = path
         self.mode = mode
         self.gzipped = gzipped
+        self.exclude_patterns = exclude_patterns
 
     def __enter__(self) -> IO[bytes]:
         linked_bundle_path = parse_linked_bundle_url(self.path)
@@ -296,7 +297,7 @@ class OpenFile(object):
             if os.path.isdir(self.path):
                 if not self.gzipped:
                     raise IOError("Directories must be gzipped.")
-                return tar_gzip_directory(self.path)
+                return tar_gzip_directory(self.path, exclude_patterns=self.exclude_patterns)
             if self.gzipped:
                 raise IOError(
                     "Gzipping local files from disk from OpenFile is not yet supported. Please use file_util.gzip_file instead."

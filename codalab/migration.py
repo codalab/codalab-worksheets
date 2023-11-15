@@ -118,7 +118,8 @@ class Migration:
         )
 
         if is_dir:
-            source_fileobj = zip_util.tar_gzip_directory(bundle_location)
+            source_fileobj = zip_util.tar_gzip_directory(
+                bundle_location, exclude_patterns=None)
             source_ext = ".tar.gz"
             unpack = True
         else:
@@ -164,7 +165,7 @@ class Migration:
         new_location = self.get_bundle_location(bundle_uuid)
         if is_dir:
             # For dirs, check the folder contains same files
-            with OpenFile(new_location, gzipped=True) as f:
+            with OpenFile(new_location, gzipped=True, exclude_patterns=None) as f:
                 new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
                 new_file_list.sort()
 
