@@ -54,6 +54,8 @@ from codalab.worker.file_util import (
     read_file_section,
 )
 
+from scripts.test_util import Timer
+
 
 class Migration:
     """
@@ -75,6 +77,8 @@ class Migration:
         self.times = defaultdict(list)
         self.exc_tracker = dict()
         self.proc_id = proc_id
+
+        self.already_migrated_bundles = {bundle_uuid for bundle_uuid in open('migrated-bundles.txt', 'r').readlines()}
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -103,6 +107,7 @@ class Migration:
         """
         Create a logger to log the migration process.
         """
+
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
         handler = logging.FileHandler(
@@ -112,6 +117,8 @@ class Migration:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+        logger.propagate = False
 
         return logger
 
@@ -129,7 +136,6 @@ class Migration:
         bundle_link_url = self.bundle_manager._model.get_bundle_metadata(
             [bundle_uuid], "link_url"
         ).get(bundle_uuid)
-        # logging.info(f"[migration] bundle {bundle_uuid} bundle_link_url: {bundle_link_url}")
         if bundle_link_url:
             return True
         return False
@@ -159,7 +165,7 @@ class Migration:
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
         except Exception as e:
-            logging.info(f"[migration] Error: {str(e)}")
+            self.logger.info(f"[migration] Error: {str(e)}")
             raise e
 
         return info
@@ -193,14 +199,15 @@ class Migration:
             source_ext = ''
             unpack = False
 
-        logging.info(
+        self.logger.info(
             "[migration] Uploading from %s to Azure Blob Storage %s, uploaded file size is %s",
             bundle_location,
             target_location,
             path_util.get_path_size(bundle_location),
         )
         # Upload file content and generate index file
-        with FileTransferProgress(f'\t\tUploading {self.proc_id} ') as progress:
+        # NOTE: We added a timeout (using the Timer class) since sometimes bundles just never uploaded
+        with FileTransferProgress(f'\t\tUploading {self.proc_id} ') as progress, Timer(3600):
             uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack, progress_callback=progress.update)
 
         assert FileSystems.exists(target_location)
@@ -211,7 +218,7 @@ class Migration:
         Change the bundle location in the database
         ATTENTION: this function will modify codalab
         """
-        logging.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
+        self.logger.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
         # add bundle location: Add bundle location to database
         self.bundle_manager._model.add_bundle_location(bundle_uuid, self.target_store_uuid)
 
@@ -332,16 +339,10 @@ class Migration:
                 return
 
             # Migrate bundle. Only migrate if -c, -d not specified or sanity check FAILS
-            # TODO: Run the whole migration script with sanity checks *enabled* everywhere.
             target_location = self.blob_target_location(bundle_uuid, is_dir)
             disk_location = self.get_bundle_disk_location(bundle_uuid)
             ran_sanity_check = False
-            if os.path.lexists(disk_location) and (
-                not FileSystems.exists(target_location)
-                # or not self.sanity_check(
-                #     bundle_uuid, disk_location, bundle_info, is_dir, target_location
-                # )[0]
-            ):
+            if bundle_uuid not in self.already_migrated_bundles and os.path.lexists(disk_location) and (not FileSystems.exists(target_location)):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
@@ -352,8 +353,9 @@ class Migration:
                 if not success:
                     raise ValueError(f"SanityCheck failed with {reason}")
             self.success_cnt += 1
+
             # Change bundle metadata to point to the Azure Blob location (not disk)
-            if self.change_db:
+            if self.change_db and bundle_uuid not in self.already_migrated_bundles:
                 if not ran_sanity_check:
                     success, reason = self.sanity_check(
                         bundle_uuid, bundle_location, bundle_info, is_dir, target_location
@@ -382,7 +384,7 @@ class Migration:
         except Exception as e:
             self.error_cnt += 1
             tb = traceback.format_exc()
-            print(f"Error for {bundle_uuid}: {tb}")
+            self.logger.error(f"Error for {bundle_uuid}: {tb}")
             if str(e) in self.exc_tracker:
                 self.exc_tracker[str(e)]["count"] += 1
                 self.exc_tracker[str(e)]["uuid"].append(bundle_uuid)
@@ -394,9 +396,7 @@ class Migration:
                 }
 
     def print_exc_tracker(self):
-        print("-"*80)
-        print(json.dumps(self.exc_tracker, indent=4))
-        print("-"*80)
+        self.logger.info(json.dumps(self.exc_tracker, indent=4))
 
     def print_times(self):
         output_dict = dict()
@@ -409,10 +409,10 @@ class Migration:
                 "max": np.max(v),
                 "min": np.min(v),
             }
-        print(json.dumps(output_dict, sort_keys=True, indent=4))
+        self.logger.info(json.dumps(output_dict, sort_keys=True, indent=4))
     
     def print_other_stats(self, total):
-        print(
+        self.logger.info(
             f"skipped {self.skipped_not_final}(ready) "
             f"{self.skipped_link}(linked bundle) "
             f"{self.skipped_beam}(on Azure) bundles, "
@@ -427,7 +427,7 @@ class Migration:
         total = len(bundle_uuids)
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(uuid)
-            logging.info("[migration] [process %d], status: %d / %d", self.proc_id, i, total)
+            self.logger.info("[migration] [process %d], status: %d / %d", self.proc_id, i, total)
             if i > 0 and i % log_interval == 0:
                 self.print_exc_tracker()
                 self.print_times()
@@ -493,7 +493,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
     )
-    parser.add_argument('--disable_logging', help='If set, disable logging', action='store_true')
     parser.add_argument(
         '-p',
         '--num_processes',
@@ -503,12 +502,6 @@ if __name__ == '__main__':
     )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
     args = parser.parse_args()
-
-    # Configure logging
-    logging.getLogger().setLevel(logging.INFO)
-    if args.disable_logging:
-        # Disables logging. Comment out if you want logging
-        logging.disable(logging.CRITICAL)
 
     # Run the program with multiprocessing
     f = partial(
