@@ -111,7 +111,7 @@ class Migration:
         self.proc_id = proc_id
 
         self.bundle_statuses = list()
-        self.existing_bundle_migration_statuses = pd.read_csv('bundle_statuses_proc_{proc_id}.csv')
+        self.existing_bundle_migration_statuses = self.read_and_clean_duplicate_records()
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -445,12 +445,16 @@ class Migration:
         self.logger.info(json.dumps(output_dict, sort_keys=True, indent=4))
     
     def write_bundle_statuses(self):
-        new_records = pd.DataFrame.from_records(self.bundle_migration_statuses)
-        if self.existing_bundle_migration_statuses
-            self.existing_bundle_migration_statuses = df.update(new_records)
-        else:
-            self.existing_bundle_migration_statuses = new_records
-        self.existing_bundle_migration_statuses.to_csv('bundle_statuses_proc_{proc_id}.csv', index=False)
+        new_records.to_csv('bundle_statuses_proc_{proc_id}.csv', index=False, mode='a')
+    
+    def read_and_clean_duplicate_records(self):
+        """Since it would take too long to do DF updates and write them to file, we just write the updates
+        as new rows and clean the resulting file later.
+        """
+        df = read_csv('bundle_statuses_proc_{proc_id}.csv')
+        df = df.drop_duplicates("uuid", keep="last")
+        df.to_csv('bundle_statuses_proc_{proc_id}.csv', index=False)
+        return df
 
     def migrate_bundles(self, bundle_uuids, log_interval=100):
         total = len(bundle_uuids)
