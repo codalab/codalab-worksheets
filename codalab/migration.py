@@ -26,6 +26,7 @@ import time
 from collections import defaultdict
 import json
 import numpy as np
+import pandas as pd
 import traceback
 import logging
 import argparse
@@ -55,7 +56,46 @@ from codalab.worker.file_util import (
 )
 
 from scripts.test_util import Timer
+from enum import Enum
 
+from typing import Optional
+from dataclass import dataclass
+
+class MigrationStatus(Enum, str):
+    """An enum for tracking the migration status of bundles.
+
+    """
+    NOT_STARTED = "NOT_STARTED"
+    UPLOADED_TO_AZURE = "UPLOADED_TO_AZURE"
+    CHANGED_DB = "CHANGED_DB"
+    FINISHED = "FINISHED"  # Meaning it is uploaded to Azure, DB updated, and deleted from disk.
+    
+    ERROR = "ERROR"
+    SKIPPED_NOT_FINAL = "SKIPPED_NOT_FINAL"
+    SKIPPED_LINKED = "SKIPPED_LINKED"
+
+@dataclass
+class BundleMigrationStatus:
+    """Class for keeping track of an item in inventory."""
+    uuid: str
+    status: MigrationStatus = MigrationStatus.NOT_STARTED
+    error_message: Optional[str] = None
+
+    def to_dict(self) -> float:
+        return {
+            "uuid": self.uuid,
+            "status": self.status,
+            "error_message": self.error_message
+        }
+    
+    def uploaded_to_azure(self):
+        return self.status == MigrationStatus.UPLOADED_TO_AZURE or self.status == MigrationStatus.CHANGED_DB or self.status == MigrationStatus.FINISHED
+
+    def changed_db(self):
+        return self.status == MigrationStatus.CHANGED_DB or self.status == MigrationStatus.FINISHED
+
+    def finished(self):
+        return self.status == MigrationStatus.FINISHED
 
 class Migration:
     """
@@ -67,18 +107,11 @@ class Migration:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
-        self.skipped_not_final = (
-            self.skipped_link
-        ) = (
-            self.skipped_beam
-        ) = (
-            self.skipped_delete_path_dne
-        ) = self.path_exception_cnt = self.error_cnt = self.success_cnt = 0
         self.times = defaultdict(list)
-        self.exc_tracker = dict()
         self.proc_id = proc_id
 
-        self.already_migrated_bundles = {bundle_uuid for bundle_uuid in open('migrated-bundles.txt', 'r').readlines()}
+        self.bundle_statuses = list()
+        self.existing_bundle_migration_statuses = pd.read_csv('bundle_statuses_proc_{proc_id}.csv')
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -142,7 +175,6 @@ class Migration:
 
     def get_bundle_location(self, bundle_uuid):
         # bundle_locations = self.bundle_manager._model.get_bundle_locations(bundle_uuid)  # this is getting locations from database
-        # TODO: why after upload to Azure, this will automatically change to Azure url?
         bundle_location = self.bundle_manager._bundle_store.get_bundle_location(bundle_uuid)
         return bundle_location
 
@@ -178,7 +210,6 @@ class Migration:
         # generate target bundle path
         target_location = self.blob_target_location(bundle_uuid, is_dir)
 
-        # TODO: This step might cause repeated upload. Can not check by checking size (Azure blob storage is zipped).
         if FileSystems.exists(target_location):
             path_util.remove(target_location)
         
@@ -205,6 +236,7 @@ class Migration:
             target_location,
             path_util.get_path_size(bundle_location),
         )
+
         # Upload file content and generate index file
         # NOTE: We added a timeout (using the Timer class) since sometimes bundles just never uploaded
         with FileTransferProgress(f'\t\tUploading {self.proc_id} ') as progress, Timer(3600):
@@ -327,78 +359,79 @@ class Migration:
             bundle_location = self.get_bundle_location(bundle_uuid)
             bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
             is_dir = bundle_info['type'] == 'directory'
+            target_location = self.blob_target_location(bundle_uuid, is_dir)
+            disk_location = self.get_bundle_disk_location(bundle_uuid)
 
             # Don't migrate currently running bundles
             if bundle.state not in State.FINAL_STATES:
-                self.skipped_not_final += 1
+                bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
                 return
 
             # Don't migrate linked bundles
             if self.is_linked_bundle(bundle_uuid):
-                self.skipped_link += 1
+                bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
                 return
+            
+            # Create bundle migration status
+            existing_bundle_migration_status = self.existing_bundle_migration_statuses[
+                self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
+            ].to_dict('records')
+            if existing_bundle_migration_status:
+                bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
+            else:
+                bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
 
-            # Migrate bundle. Only migrate if -c, -d not specified or sanity check FAILS
-            target_location = self.blob_target_location(bundle_uuid, is_dir)
-            disk_location = self.get_bundle_disk_location(bundle_uuid)
-            ran_sanity_check = False
-            if bundle_uuid not in self.already_migrated_bundles and os.path.lexists(disk_location) and (not FileSystems.exists(target_location)):
+            # if db already changed
+            # TODO: Check if bundle_location is azure (see other places in code base.)
+            if bundle_migration_status.status == MigrationStatus.FINISHED:
+                return
+            elif not bundle_migration_status.changed_db() and SOMETHING:
+                bundle_migration_status.status = MigrationStatus.CHANGED_DB
+            elif not bundle_migration_status.uploaded_to_azure() and FileSystems.exists(target_location) and self.sanity_check(
+                    bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                )[0]:
+                bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+
+
+            # Upload to Azure.
+            if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
                 start_time = time.time()
                 self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
                 self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
                 success, reason = self.sanity_check(
                     bundle_uuid, bundle_location, bundle_info, is_dir, target_location
                 )
-                ran_sanity_check = True
                 if not success:
                     raise ValueError(f"SanityCheck failed with {reason}")
-            self.success_cnt += 1
+                bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
 
-            # Change bundle metadata to point to the Azure Blob location (not disk)
-            if self.change_db and bundle_uuid not in self.already_migrated_bundles:
-                if not ran_sanity_check:
-                    success, reason = self.sanity_check(
-                        bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                    )
-                    ran_sanity_check = True
-                    if not success:
-                        raise ValueError(f"SanityCheck failed with {reason}")
+            # Change bundle metadata in database to point to the Azure Blob location (not disk)
+            if self.change_db and not bundle_migration_status.changed_db():
                 start_time = time.time()
                 self.modify_bundle_data(bundle, bundle_uuid, is_dir)
                 self.times["modify_bundle_data"].append(time.time() - start_time)
-                with open('migrated-bundles.txt', 'a') as f:
-                    f.write(bundle_uuid + "\n")
+                bundle_migration_status.status = MigrationStatus.CHANGED_DB
 
             # Delete the bundle from disk.
             if self.delete:
                 start_time = time.time()
-                deleted = self.delete_original_bundle(bundle_uuid)
-                if not deleted:
-                    self.skipped_delete_path_dne += 1
+                if os.path.lexists(disk_location):
+                    # Delete it.
+                    path_util.remove(disk_bundle_location)
                 self.times["delete_original_bundle"].append(time.time() - start_time)
+                bundle_migration_status.status = MigrationStatus.FINISHED
 
             self.times["migrate_bundle"].append(time.time() - total_start_time)
         
-        except PathException:
-            self.path_exception_cnt += 1
         except Exception as e:
-            self.error_cnt += 1
-            tb = traceback.format_exc()
             self.logger.error(f"Error for {bundle_uuid}: {tb}")
-            if str(e) in self.exc_tracker:
-                self.exc_tracker[str(e)]["count"] += 1
-                self.exc_tracker[str(e)]["uuid"].append(bundle_uuid)
-            else:
-                self.exc_tracker[str(e)] = {
-                    "uuid": [bundle_uuid],
-                    "traceback": tb,
-                    "count": 1
-                }
+            bundle_migration_status.error_message = str(e)
+            bundle_migration_status.status = MigrationStatus.ERROR
+        
+        finally:
+            self.bundle_migration_statuses.append(bundle_migration_status)
 
-    def print_exc_tracker(self):
-        self.logger.info(json.dumps(self.exc_tracker, indent=4))
-
-    def print_times(self):
+    def log_times(self):
         output_dict = dict()
         for k, v in self.times.items():
             output_dict[k] = {
@@ -411,30 +444,22 @@ class Migration:
             }
         self.logger.info(json.dumps(output_dict, sort_keys=True, indent=4))
     
-    def print_other_stats(self, total):
-        self.logger.info(
-            f"skipped {self.skipped_not_final}(ready) "
-            f"{self.skipped_link}(linked bundle) "
-            f"{self.skipped_beam}(on Azure) bundles, "
-            f"skipped delete due to path DNE {self.skipped_delete_path_dne}, "
-            f"PathException {self.path_exception_cnt}, "
-            f"error {self.error_cnt} bundles. "
-            f"Succeeed {self.success_cnt} bundles "
-            f"Total: {total}"
-        )
+    def write_bundle_statuses(self):
+        new_records = pd.DataFrame.from_records(self.bundle_migration_statuses)
+        if self.existing_bundle_migration_statuses
+            self.existing_bundle_migration_statuses = df.update(new_records)
+        else:
+            self.existing_bundle_migration_statuses = new_records
+        self.existing_bundle_migration_statuses.to_csv('bundle_statuses_proc_{proc_id}.csv', index=False)
 
     def migrate_bundles(self, bundle_uuids, log_interval=100):
         total = len(bundle_uuids)
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(uuid)
             self.logger.info("[migration] [process %d], status: %d / %d", self.proc_id, i, total)
-            if i > 0 and i % log_interval == 0:
-                self.print_exc_tracker()
-                self.print_times()
-                self.print_other_stats(len(bundle_uuids))
-        self.print_exc_tracker()
-        self.print_times()
-        self.print_other_stats(len(bundle_uuids))
+            if i > 0 and i % log_interval == 0 or i == len(bundle_uuids) - 1:
+                self.log_times()
+                self.write_bundle_statuses()
 
 
 def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_result, num_processes, proc_id):
