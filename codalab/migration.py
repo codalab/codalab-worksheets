@@ -110,10 +110,12 @@ class Migration:
         self.times = defaultdict(list)
         self.proc_id = proc_id
 
+        self.setUp()
+
         self.bundle_migration_statuses = list()
 
-        if os.path.exists(f'bundle_statuses_proc_{self.proc_id}.csv'):
-            self.existing_bundle_migration_statuses = pd.read_csv(f'bundle_statuses_proc_{self.proc_id}.csv')
+        if os.path.exists(self.get_bundle_statuses_path()):
+            self.existing_bundle_migration_statuses = pd.read_csv(self.get_bundle_statuses_path())
         else:
             self.existing_bundle_migration_statuses = None
 
@@ -139,6 +141,11 @@ class Migration:
 
         # This file is used to log those bundles's location that has been changed in database.
         self.logger = self.get_logger()
+    
+    def get_log_file_path(self):
+        return os.path.join(self.codalab_manager.codalab_home, f"migration-{self.proc_id}.log")
+    def get_bundle_statuses_path(self):
+        return os.path.join(self.codalab_manager.codalab_home, f'bundle_statuses_proc_{self.proc_id}.csv')
 
     def get_logger(self):
         """
@@ -147,9 +154,7 @@ class Migration:
 
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
-        handler = logging.FileHandler(
-            os.path.join(self.codalab_manager.codalab_home, f"migration-{self.proc_id}.log")
-        )
+        handler = logging.FileHandler(self.get_log_file_path())
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
@@ -243,8 +248,8 @@ class Migration:
 
         # Upload file content and generate index file
         # NOTE: We added a timeout (using the Timer class) since sometimes bundles just never uploaded
-        with open(f"migration-{self.proc_id}.log", 'r') as f, FileTransferProgress(f'\t\tUploading {self.proc_id} ', f=f) as progress, Timer(3600):
-            uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack, progress_callback=progress.update)
+        with Timer(3600):
+            uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
         assert FileSystems.exists(target_location)
         return target_location
@@ -458,7 +463,7 @@ class Migration:
         else:
             self.existing_bundle_migration_statuses = self.existing_bundle_migration_statuses.merge(new_records, how='outer')
             self.existing_bundle_migration_statuses = self.existing_bundle_migration_statuses.drop_duplicates('uuid', keep='last')
-        self.existing_bundle_migration_statuses.to_csv(f'bundle_statuses_proc_{self.proc_id}.csv', index=False, mode='w')
+        self.existing_bundle_migration_statuses.to_csv(self.get_bundle_statuses_path(), index=False, mode='w')
         self.bundle_migration_statuses = list()
 
     def migrate_bundles(self, bundle_uuids, log_interval=100):
@@ -482,7 +487,6 @@ def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_resul
     """
     # Setup Migration.
     migration = Migration(target_store_name, change_db, delete, proc_id)
-    migration.setUp()
 
     # Get bundle uuids (if not already provided)
     if not bundle_uuids:
