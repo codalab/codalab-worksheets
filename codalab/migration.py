@@ -243,7 +243,7 @@ class Migration:
 
         # Upload file content and generate index file
         # NOTE: We added a timeout (using the Timer class) since sometimes bundles just never uploaded
-        with FileTransferProgress(f'\t\tUploading {self.proc_id} ') as progress, Timer(3600):
+        with open(f"migration-{self.proc_id}.log", 'r') as f, FileTransferProgress(f'\t\tUploading {self.proc_id} ', f=f) as progress, Timer(3600):
             uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack, progress_callback=progress.update)
 
         assert FileSystems.exists(target_location)
@@ -392,11 +392,11 @@ class Migration:
             # TODO: Check if bundle_location is azure (see other places in code base.)
             if bundle_migration_status.status == MigrationStatus.FINISHED:
                 return
-            elif not bundle_migration_status.changed_db() and SOMETHING:
+            elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
                 bundle_migration_status.status = MigrationStatus.CHANGED_DB
-            elif not bundle_migration_status.uploaded_to_azure() and FileSystems.exists(target_location) and self.sanity_check(
+            elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
                     bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                )[0]:
+                )[0]):
                 bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
 
 
