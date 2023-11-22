@@ -59,9 +59,9 @@ from scripts.test_util import Timer
 from enum import Enum
 
 from typing import Optional
-from dataclass import dataclass
+from dataclasses import dataclass
 
-class MigrationStatus(Enum, str):
+class MigrationStatus(str, Enum):
     """An enum for tracking the migration status of bundles.
 
     """
@@ -110,8 +110,12 @@ class Migration:
         self.times = defaultdict(list)
         self.proc_id = proc_id
 
-        self.bundle_statuses = list()
-        self.existing_bundle_migration_statuses = self.read_and_clean_duplicate_records()
+        self.bundle_migration_statuses = list()
+
+        if os.path.exists(f'bundle_statuses_proc_{self.proc_id}.csv'):
+            self.existing_bundle_migration_statuses = pd.read_csv(f'bundle_statuses_proc_{self.proc_id}.csv')
+        else:
+            self.existing_bundle_migration_statuses = None
 
     def setUp(self):
         self.codalab_manager = CodaLabManager()
@@ -354,6 +358,18 @@ class Migration:
         try:
             total_start_time = time.time()
 
+            # Create bundle migration status
+            if self.existing_bundle_migration_statuses is not None: 
+                existing_bundle_migration_status = self.existing_bundle_migration_statuses[
+                    self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
+                ].to_dict('records')
+                if existing_bundle_migration_status:
+                    bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
+                else:
+                    bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
+            else:
+                bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
+
             # Get bundle information
             bundle = self.get_bundle(bundle_uuid)
             bundle_location = self.get_bundle_location(bundle_uuid)
@@ -371,15 +387,6 @@ class Migration:
             if self.is_linked_bundle(bundle_uuid):
                 bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
                 return
-            
-            # Create bundle migration status
-            existing_bundle_migration_status = self.existing_bundle_migration_statuses[
-                self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
-            ].to_dict('records')
-            if existing_bundle_migration_status:
-                bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
-            else:
-                bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
 
             # if db already changed
             # TODO: Check if bundle_location is azure (see other places in code base.)
@@ -424,7 +431,7 @@ class Migration:
             self.times["migrate_bundle"].append(time.time() - total_start_time)
         
         except Exception as e:
-            self.logger.error(f"Error for {bundle_uuid}: {tb}")
+            self.logger.error(f"Error for {bundle_uuid}: {traceback.format_exc()}")
             bundle_migration_status.error_message = str(e)
             bundle_migration_status.status = MigrationStatus.ERROR
         
@@ -445,16 +452,14 @@ class Migration:
         self.logger.info(json.dumps(output_dict, sort_keys=True, indent=4))
     
     def write_bundle_statuses(self):
-        new_records.to_csv('bundle_statuses_proc_{proc_id}.csv', index=False, mode='a')
-    
-    def read_and_clean_duplicate_records(self):
-        """Since it would take too long to do DF updates and write them to file, we just write the updates
-        as new rows and clean the resulting file later.
-        """
-        df = read_csv('bundle_statuses_proc_{proc_id}.csv')
-        df = df.drop_duplicates("uuid", keep="last")
-        df.to_csv('bundle_statuses_proc_{proc_id}.csv', index=False)
-        return df
+        new_records = pd.DataFrame.from_records([b_m_s.to_dict() for b_m_s in self.bundle_migration_statuses])
+        if self.existing_bundle_migration_statuses is None:
+            self.existing_bundle_migration_statuses = new_records
+        else:
+            self.existing_bundle_migration_statuses = self.existing_bundle_migration_statuses.merge(new_records, how='outer')
+            self.existing_bundle_migration_statuses = self.existing_bundle_migration_statuses.drop_duplicates('uuid', keep='last')
+        self.existing_bundle_migration_statuses.to_csv(f'bundle_statuses_proc_{self.proc_id}.csv', index=False, mode='w')
+        self.bundle_migration_statuses = list()
 
     def migrate_bundles(self, bundle_uuids, log_interval=100):
         total = len(bundle_uuids)
