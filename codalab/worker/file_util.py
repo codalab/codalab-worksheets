@@ -98,7 +98,7 @@ def tar_gzip_directory(
 def zip_directory(
     directory_path,
     follow_symlinks=False,
-    exclude_patterns=None,
+    exclude_patterns=ALWAYS_IGNORE_PATTERNS,
     exclude_names=None,
     ignore_file=None,
 ):
@@ -134,7 +134,6 @@ def zip_directory(
         if not exclude_patterns:
             exclude_patterns = []
 
-        exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
         for pattern in exclude_patterns:
             args.append(f'--exclude=*{pattern}*')
 
