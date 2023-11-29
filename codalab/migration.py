@@ -55,7 +55,6 @@ from codalab.worker.file_util import (
     read_file_section,
 )
 
-from scripts.test_util import Timer
 from enum import Enum
 
 from typing import Optional
@@ -73,6 +72,50 @@ class MigrationStatus(str, Enum):
     ERROR = "ERROR"
     SKIPPED_NOT_FINAL = "SKIPPED_NOT_FINAL"
     SKIPPED_LINKED = "SKIPPED_LINKED"
+
+
+class Timer:
+    """
+    Class that uses signal to interrupt functions while they're running
+    if they run for longer than timeout_seconds.
+    Can also be used to time how long functions take within its context manager.
+    Used for the timing tests.
+    """
+
+    def __init__(self, timeout_seconds:int =1, handle_timeouts:bool =True, uuid:Optional[str] =None):
+        """
+        A class that can be used as a context manager to ensure that code within that context manager times out
+        after timeout_seconds time and which times the execution of code within the context manager.
+        Parameters:
+            timeout_seconds (float): Amount of time before execution in context manager is interrupted for timeout
+            handle_timeouts (bool): If True, do not timeout, only return the time taken for execution in context manager.
+            uuid (str): Uuid of bundles running within context manager.
+        """
+        self.handle_timeouts = handle_timeouts
+        self.timeout_seconds = timeout_seconds
+        self.uuid = uuid
+
+    def handle_timeout(self, signum, frame):
+        timeout_message = "Timeout ocurred"
+        if self.uuid:
+            timeout_message += " while waiting for %s to run" % self.uuid
+        raise TimeoutError(timeout_message)
+
+    def time_elapsed(self):
+        return time.time() - self.start_time
+
+    def __enter__(self):
+        self.start_time = time.time()
+        if self.handle_timeouts:
+            signal.signal(signal.SIGALRM, self.handle_timeout)
+            signal.alarm(self.timeout_seconds)
+
+    def __exit__(self, type, value, traceback):
+        self.time_elapsed = time.time() - self.start_time
+        if self.handle_timeouts:
+            signal.alarm(0)
+
+
 
 @dataclass
 class BundleMigrationStatus:
@@ -156,7 +199,7 @@ class Migration:
         logger.setLevel(logging.INFO)
         handler = logging.FileHandler(self.get_log_file_path())
         handler.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(f'%(asctime)s - %(name)s - %(levelname)s - [migration] [{self.proc_id}] %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -206,7 +249,7 @@ class Migration:
         try:
             info = download_util.get_target_info(bundle_location, target, depth=0)
         except Exception as e:
-            self.logger.info(f"[migration] Error: {str(e)}")
+            self.logger.info(f"Error: {str(e)}")
             raise e
 
         return info
@@ -240,7 +283,7 @@ class Migration:
             unpack = False
 
         self.logger.info(
-            "[migration] Uploading from %s to Azure Blob Storage %s, uploaded file size is %s",
+            "Uploading from %s to Azure Blob Storage %s, uploaded file size is %s",
             bundle_location,
             target_location,
             path_util.get_path_size(bundle_location),
@@ -248,7 +291,8 @@ class Migration:
 
         # Upload file content and generate index file
         # NOTE: We added a timeout (using the Timer class) since sometimes bundles just never uploaded
-        with Timer(3600):
+        # SET TO BE VERY AGGRESSIVE TIMEOUT RIGHT NOW so we can get through most bundles pretty quick.
+        with Timer(90, uuid=bundle_uuid):
             uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
 
         assert FileSystems.exists(target_location)
@@ -259,7 +303,7 @@ class Migration:
         Change the bundle location in the database
         ATTENTION: this function will modify codalab
         """
-        self.logger.info(f"[migration] Modifying bundle info {bundle_uuid} in database")
+        self.logger.info(f"Modifying bundle info {bundle_uuid} in database")
         # add bundle location: Add bundle location to database
         self.bundle_manager._model.add_bundle_location(bundle_uuid, self.target_store_uuid)
 
@@ -361,79 +405,86 @@ class Migration:
 
     def migrate_bundle(self, bundle_uuid):
         try:
-            total_start_time = time.time()
+            # TEMPORARY: Wrap with timer.
+            with Timer(300, uuid=bundle_uuid):
+                total_start_time = time.time()
 
-            # Create bundle migration status
-            if self.existing_bundle_migration_statuses is not None: 
-                existing_bundle_migration_status = self.existing_bundle_migration_statuses[
-                    self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
-                ].to_dict('records')
-                if existing_bundle_migration_status:
-                    bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
+                # Create bundle migration status
+                self.logger.info("Getting Bundle Migration Status")
+                if self.existing_bundle_migration_statuses is not None: 
+                    existing_bundle_migration_status = self.existing_bundle_migration_statuses[
+                        self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
+                    ].to_dict('records')
+                    if existing_bundle_migration_status:
+                        bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
+                    else:
+                        bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
                 else:
                     bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
-            else:
-                bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
 
-            # Get bundle information
-            bundle = self.get_bundle(bundle_uuid)
-            bundle_location = self.get_bundle_location(bundle_uuid)
-            bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
-            is_dir = bundle_info['type'] == 'directory'
-            target_location = self.blob_target_location(bundle_uuid, is_dir)
-            disk_location = self.get_bundle_disk_location(bundle_uuid)
+                # Get bundle information
+                self.logger.info("Getting Bundle info")
+                bundle = self.get_bundle(bundle_uuid)
+                bundle_location = self.get_bundle_location(bundle_uuid)
+                bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
+                is_dir = bundle_info['type'] == 'directory'
+                target_location = self.blob_target_location(bundle_uuid, is_dir)
+                disk_location = self.get_bundle_disk_location(bundle_uuid)
 
-            # Don't migrate currently running bundles
-            if bundle.state not in State.FINAL_STATES:
-                bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
-                return
+                # Don't migrate currently running bundles
+                if bundle.state not in State.FINAL_STATES:
+                    bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
+                    return
 
-            # Don't migrate linked bundles
-            if self.is_linked_bundle(bundle_uuid):
-                bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
-                return
+                # Don't migrate linked bundles
+                if self.is_linked_bundle(bundle_uuid):
+                    bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
+                    return
 
-            # if db already changed
-            # TODO: Check if bundle_location is azure (see other places in code base.)
-            if bundle_migration_status.status == MigrationStatus.FINISHED:
-                return
-            elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                bundle_migration_status.status = MigrationStatus.CHANGED_DB
-            elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
-                    bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                )[0]):
-                bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+                # if db already changed
+                # TODO: Check if bundle_location is azure (see other places in code base.)
+                if bundle_migration_status.status == MigrationStatus.FINISHED:
+                    return
+                elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+                    bundle_migration_status.status = MigrationStatus.CHANGED_DB
+                elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
+                        bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                    )[0]):
+                    bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
 
 
-            # Upload to Azure.
-            if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
-                start_time = time.time()
-                self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
-                self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
-                success, reason = self.sanity_check(
-                    bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                )
-                if not success:
-                    raise ValueError(f"SanityCheck failed with {reason}")
-                bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+                # Upload to Azure.
+                if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
+                    self.logger.info("Uploading to Azure")
+                    start_time = time.time()
+                    self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
+                    self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
+                    success, reason = self.sanity_check(
+                        bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                    )
+                    if not success:
+                        raise ValueError(f"SanityCheck failed with {reason}")
+                    bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
 
-            # Change bundle metadata in database to point to the Azure Blob location (not disk)
-            if self.change_db and not bundle_migration_status.changed_db():
-                start_time = time.time()
-                self.modify_bundle_data(bundle, bundle_uuid, is_dir)
-                self.times["modify_bundle_data"].append(time.time() - start_time)
-                bundle_migration_status.status = MigrationStatus.CHANGED_DB
+                # Change bundle metadata in database to point to the Azure Blob location (not disk)
+                if self.change_db and not bundle_migration_status.changed_db():
+                    self.logger.info("Changing DB")
+                    start_time = time.time()
+                    self.modify_bundle_data(bundle, bundle_uuid, is_dir)
+                    self.times["modify_bundle_data"].append(time.time() - start_time)
+                    bundle_migration_status.status = MigrationStatus.CHANGED_DB
 
-            # Delete the bundle from disk.
-            if self.delete:
-                start_time = time.time()
-                if os.path.lexists(disk_location):
-                    # Delete it.
-                    path_util.remove(disk_bundle_location)
-                self.times["delete_original_bundle"].append(time.time() - start_time)
-                bundle_migration_status.status = MigrationStatus.FINISHED
+                # Delete the bundle from disk.
+                if self.delete:
+                    self.logger.info("Deleting from disk")
+                    start_time = time.time()
+                    if os.path.lexists(disk_location):
+                        # Delete it.
+                        path_util.remove(disk_bundle_location)
+                    self.times["delete_original_bundle"].append(time.time() - start_time)
+                    bundle_migration_status.status = MigrationStatus.FINISHED
 
-            self.times["migrate_bundle"].append(time.time() - total_start_time)
+                self.times["migrate_bundle"].append(time.time() - total_start_time)
         
         except Exception as e:
             self.logger.error(f"Error for {bundle_uuid}: {traceback.format_exc()}")
@@ -469,8 +520,9 @@ class Migration:
     def migrate_bundles(self, bundle_uuids, log_interval=100):
         total = len(bundle_uuids)
         for i, uuid in enumerate(bundle_uuids):
+            self.logger.info(f"migrating {uuid}")
             self.migrate_bundle(uuid)
-            self.logger.info("[migration] [process %d], status: %d / %d", self.proc_id, i, total)
+            self.logger.info("status: %d / %d", i, total)
             if i > 0 and i % log_interval == 0 or i == len(bundle_uuids) - 1:
                 self.log_times()
                 self.write_bundle_statuses()
