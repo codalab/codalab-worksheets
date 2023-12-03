@@ -11,7 +11,7 @@ wget https://raw.githubusercontent.com/codalab/codalab-worksheets/new-migration/
 vim codalab/migration.py
 docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -t blob-prod"
 
-docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod -k 1000000000"
+docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod"
 
 docker exec codalab_rest-server_1 rm /opt/codalab-worksheets/migrated-bundles.txt
 
@@ -42,7 +42,7 @@ from codalab.lib import (
     path_util,
     zip_util,
 )
-from codalab.worker.file_util import zip_directory
+from codalab.worker.file_util import tar_gzip_directory
 from codalab.worker.bundle_state import State
 
 from codalab.worker import download_util
@@ -59,6 +59,8 @@ from enum import Enum
 
 from typing import Optional
 from dataclasses import dataclass
+
+import signal
 
 class MigrationStatus(str, Enum):
     """An enum for tracking the migration status of bundles.
@@ -273,8 +275,8 @@ class Migration:
         )
 
         if is_dir:
-            source_fileobj = zip_directory(bundle_location)
-            source_ext = ".zip"
+            source_fileobj = tar_gzip_directory(bundle_location)
+            source_ext = ".tar.gz"
             unpack = True
         else:
             # If it's a file, change it into GzipStream
@@ -411,16 +413,13 @@ class Migration:
 
                 # Create bundle migration status
                 self.logger.info("Getting Bundle Migration Status")
+                bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
                 if self.existing_bundle_migration_statuses is not None: 
                     existing_bundle_migration_status = self.existing_bundle_migration_statuses[
                         self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
                     ].to_dict('records')
                     if existing_bundle_migration_status:
                         bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
-                    else:
-                        bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
-                else:
-                    bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
 
                 # Get bundle information
                 self.logger.info("Getting Bundle info")
