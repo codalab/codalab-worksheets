@@ -126,7 +126,7 @@ def zip_directory(
             # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
             '.',
             '-i',
-            '.'
+            '.',
         ]
 
         if ignore_file:
