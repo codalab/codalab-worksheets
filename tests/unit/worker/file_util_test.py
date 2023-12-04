@@ -408,16 +408,6 @@ class ArchiveTestBase:
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
         self.assertFalse(os.path.exists(os.path.join(output_dir, 'dir', '._ignored2')))
 
-
-class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
-    """Archive test for tar/gzip methods."""
-
-    def archive(self, *args, **kwargs):
-        return tar_gzip_directory(*args, **kwargs)
-
-    def unarchive(self, *args, **kwargs):
-        return un_tar_directory(*args, **kwargs)
-
     def test_do_not_always_ignore(self):
         temp_dir = tempfile.mkdtemp()
         self.addCleanup(lambda: remove_path(temp_dir))
@@ -429,6 +419,16 @@ class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
         self.assertIn('dir', output_dir_entries)
         self.assertIn('__MACOSX', output_dir_entries)
         self.assertTrue(os.path.exists(os.path.join(output_dir, 'dir', '__MACOSX')))
+
+
+class TarArchiveTest(ArchiveTestBase, unittest.TestCase):
+    """Archive test for tar/gzip methods."""
+
+    def archive(self, *args, **kwargs):
+        return tar_gzip_directory(*args, **kwargs)
+
+    def unarchive(self, *args, **kwargs):
+        return un_tar_directory(*args, **kwargs)
 
 
 class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):
@@ -443,10 +443,6 @@ class ZipArchiveTest(ArchiveTestBase, unittest.TestCase):
 
     def unarchive(self, *args, **kwargs):
         return unzip_directory(*args, **kwargs)
-
-    def test_empty(self):
-        # zip doesn't create files when it's supposed to create an empty zip file.
-        pass
 
     def test_exclude_ignore(self):
         # TODO(Ashwin): make zip files properly work with exclude ignore.

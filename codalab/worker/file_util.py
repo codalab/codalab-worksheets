@@ -8,6 +8,7 @@ import subprocess
 import bz2
 import hashlib
 import stat
+import zipfile
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
 from codalab.common import parse_linked_bundle_url
@@ -124,6 +125,8 @@ def zip_directory(
             # zip needs to be used with relative paths, so that the final directory structure
             # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
             '.',
+            '-i',
+            '.'
         ]
 
         if ignore_file:
@@ -177,6 +180,12 @@ def unzip_directory(fileobj: IO[bytes], directory_path: str, force: bool = False
     with tempfile.NamedTemporaryFile() as f:
         shutil.copyfileobj(fileobj, f)
         f.flush()
+
+        with zipfile.ZipFile(f.name, 'r') as zip_file:
+            # Empty zip files cannot be unzipped: return early.
+            if len(zip_file.infolist()) == 0:
+                return
+
         proc = subprocess.Popen(
             ['unzip', '-q', f.name, '-d', directory_path],
             stdout=subprocess.PIPE,
