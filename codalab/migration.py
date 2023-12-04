@@ -31,6 +31,7 @@ import traceback
 import logging
 import argparse
 import os
+import signal
 import tarfile
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import (
@@ -213,7 +214,7 @@ class Migration:
         else:
             bundle_uuids = self.bundle_manager._model.get_bundle_uuids(
                 {'name': None, 'worksheet_uuid': worksheet_uuid, 'user_id': self.root_user_id},
-                max_results=None,  # return all bundles in the worksheets
+                max_results=max_result,  # return all bundles in the worksheets
             )
         return list(set(bundle_uuids))
 
@@ -452,6 +453,10 @@ class Migration:
                     )[0]):
                     bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
 
+                siz = path_util.get_path_size(bundle_location)
+                if siz > 5e8:
+                    self.logger.info("Skipping bundle %s with size %s", bundle_uuid, siz)
+                    return
 
                 # Upload to Azure.
                 if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
