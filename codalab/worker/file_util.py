@@ -125,8 +125,9 @@ def zip_directory(
             # zip needs to be used with relative paths, so that the final directory structure
             # is correct -- https://stackoverflow.com/questions/11249624/zip-stating-absolute-paths-but-only-keeping-part-of-them.
             '.',
+            # -i . is needed for empty folders; -i ./\* so zip recursively.
             '-i',
-            '.',
+            './\*',
         ]
 
         if ignore_file:
