@@ -426,7 +426,16 @@ class Migration:
                 self.logger.info("Getting Bundle info")
                 bundle = self.get_bundle(bundle_uuid)
                 bundle_location = self.get_bundle_location(bundle_uuid)
-                bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
+
+                # This is for handling cases where rm -d was run on the bundle
+                try:
+                    bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
+                except Exception as e:
+                    if "Path ''" in str(e):
+                        pass
+                    else:
+                        raise e
+
                 is_dir = bundle_info['type'] == 'directory'
                 target_location = self.blob_target_location(bundle_uuid, is_dir)
                 disk_location = self.get_bundle_disk_location(bundle_uuid)
