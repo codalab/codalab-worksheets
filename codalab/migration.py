@@ -41,9 +41,8 @@ from codalab.common import (
 from codalab.lib.print_util import FileTransferProgress
 from codalab.lib import (
     path_util,
-    zip_util,
+    tar_gzip_directory,
 )
-from codalab.worker.file_util import zip_directory
 from codalab.worker.bundle_state import State
 
 from codalab.worker import download_util
@@ -276,8 +275,8 @@ class Migration:
         )
 
         if is_dir:
-            source_fileobj = zip_directory(bundle_location, exclude_patterns=None)
-            source_ext = ".zip"
+            source_fileobj = tar_gzip_directory(bundle_location, exclude_patterns=None)
+            source_ext = ".tar.gz"
             unpack = True
         else:
             # If it's a file, change it into GzipStream
