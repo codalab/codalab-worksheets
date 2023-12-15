@@ -126,7 +126,7 @@ class BundleMigrationStatus:
     status: MigrationStatus = MigrationStatus.NOT_STARTED
     error_message: Optional[str] = None
 
-    def to_dict(self) -> float:
+    def to_dict(self):
         return {
             "uuid": self.uuid,
             "status": self.status,
