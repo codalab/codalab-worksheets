@@ -41,9 +41,7 @@ from codalab.common import (
 from codalab.lib.print_util import FileTransferProgress
 from codalab.lib import (
     path_util,
-    zip_util,
 )
-from codalab.worker.file_util import zip_directory
 from codalab.worker.bundle_state import State
 
 from codalab.worker import download_util
@@ -54,6 +52,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.file_util import (
     OpenFile,
     read_file_section,
+    tar_gzip_directory,
 )
 
 from enum import Enum
@@ -127,7 +126,7 @@ class BundleMigrationStatus:
     status: MigrationStatus = MigrationStatus.NOT_STARTED
     error_message: Optional[str] = None
 
-    def to_dict(self) -> float:
+    def to_dict(self):
         return {
             "uuid": self.uuid,
             "status": self.status,
@@ -192,6 +191,9 @@ class Migration:
         return os.path.join(self.codalab_manager.codalab_home, f"migration-{self.proc_id}.log")
     def get_bundle_statuses_path(self):
         return os.path.join(self.codalab_manager.codalab_home, f'bundle_statuses_proc_{self.proc_id}.csv')
+    def get_bundle_ids_path(self):
+        return os.path.join(self.codalab_manager.codalab_home, f'bundle_ids_{self.proc_id}.csv')
+
 
     def get_logger(self):
         """
@@ -276,8 +278,8 @@ class Migration:
         )
 
         if is_dir:
-            source_fileobj = zip_directory(bundle_location, exclude_patterns=None)
-            source_ext = ".zip"
+            source_fileobj = tar_gzip_directory(bundle_location)
+            source_ext = ".tar.gz"
             unpack = True
         else:
             # If it's a file, change it into GzipStream
@@ -334,7 +336,7 @@ class Migration:
             new_location = self.get_bundle_location(bundle_uuid)
         if is_dir:
             # For dirs, check the folder contains same files
-            with OpenFile(new_location, gzipped=True, exclude_patterns=None) as f:
+            with OpenFile(new_location, gzipped=True) as f:
                 new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
                 new_file_list.sort()
 
@@ -426,60 +428,45 @@ class Migration:
                 self.logger.info("Getting Bundle info")
                 bundle = self.get_bundle(bundle_uuid)
                 bundle_location = self.get_bundle_location(bundle_uuid)
+                bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
+                is_dir = bundle_info['type'] == 'directory'
+                target_location = self.blob_target_location(bundle_uuid, is_dir)
+                disk_location = self.get_bundle_disk_location(bundle_uuid)
 
-                # This is for handling cases where rm -d was run on the bundle
-                is_bundle_rm = False
-                try:
-                    bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
-                except Exception as e:
-                    if "Path ''" in str(e):
-                        self.logger.info(f"{bundle_uuid} will have database metadata changed to blob without migration")
-                        is_bundle_rm = True
-                    
-                # Normal Migration
-                if not is_bundle_rm:
-                    is_dir = bundle_info['type'] == 'directory'
-                    target_location = self.blob_target_location(bundle_uuid, is_dir)
-                    disk_location = self.get_bundle_disk_location(bundle_uuid)
+                # Don't migrate currently running bundles
+                if bundle.state not in State.FINAL_STATES:
+                    bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
+                    return
 
-                    # Don't migrate currently running bundles
-                    if bundle.state not in State.FINAL_STATES:
-                        bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
-                        return
+                # Don't migrate linked bundles
+                if self.is_linked_bundle(bundle_uuid):
+                    bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
+                    return
 
-                    # Don't migrate linked bundles
-                    if self.is_linked_bundle(bundle_uuid):
-                        bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
-                        return
+                # if db already changed
+                # TODO: Check if bundle_location is azure (see other places in code base.)
+                if bundle_migration_status.status == MigrationStatus.FINISHED:
+                    return
+                elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+                    bundle_migration_status.status = MigrationStatus.CHANGED_DB
+                elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
+                        bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                    )[0]):
+                    bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
 
-                    # if db already changed
-                    # TODO: Check if bundle_location is azure (see other places in code base.)
-                    if bundle_migration_status.status == MigrationStatus.FINISHED:
-                        return
-                    elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                        bundle_migration_status.status = MigrationStatus.CHANGED_DB
-                    elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
-                            bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                        )[0]):
-                        bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
-
-                    siz = path_util.get_path_size(bundle_location)
-                    if siz > 5e8:
-                        self.logger.info("Skipping bundle %s with size %s", bundle_uuid, siz)
-                        return
-
-                    # Upload to Azure.
-                    if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
-                        self.logger.info("Uploading to Azure")
-                        start_time = time.time()
-                        self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
-                        self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
-                        success, reason = self.sanity_check(
-                            bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                        )
-                        if not success:
-                            raise ValueError(f"SanityCheck failed with {reason}")
-                        bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+                # Upload to Azure.
+                if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
+                    self.logger.info("Uploading to Azure")
+                    start_time = time.time()
+                    self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
+                    self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
+                    success, reason = self.sanity_check(
+                        bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                    )
+                    if not success:
+                        raise ValueError(f"SanityCheck failed with {reason}")
+                    bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+                    bundle_migration_status.error_message = None
 
                 # Change bundle metadata in database to point to the Azure Blob location (not disk)
                 if self.change_db and not bundle_migration_status.changed_db():
@@ -490,16 +477,13 @@ class Migration:
                     bundle_migration_status.status = MigrationStatus.CHANGED_DB
 
                 # Delete the bundle from disk.
-                if self.delete and not is_bundle_rm:
+                if self.delete:
                     self.logger.info("Deleting from disk")
                     start_time = time.time()
                     if os.path.lexists(disk_location):
                         # Delete it.
                         path_util.remove(disk_bundle_location)
                     self.times["delete_original_bundle"].append(time.time() - start_time)
-                    bundle_migration_status.status = MigrationStatus.FINISHED
-
-                if is_bundle_rm:
                     bundle_migration_status.status = MigrationStatus.FINISHED
 
                 self.times["migrate_bundle"].append(time.time() - total_start_time)
@@ -563,6 +547,9 @@ def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_resul
         bundle_uuids = sorted(
             migration.get_bundle_uuids(worksheet_uuid=worksheet, max_result=max_result)
         )
+        bundle_uuids_df = pd.DataFrame(bundle_uuids)
+        bundle_uuids_df.to_csv(migration.get_bundle_ids_path(), index=False, mode='w')
+        print(f"[migration] Recorded all bundle ids to be migrated")
 
     # Sort according to what process you are.
     chunk_size = len(bundle_uuids) // num_processes
