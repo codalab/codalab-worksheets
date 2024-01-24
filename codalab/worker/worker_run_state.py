@@ -1,16 +1,16 @@
-import docker
 import glob
 import logging
 import os
 import threading
 import time
 import traceback
-
-import codalab.worker.docker_utils as docker_utils
+from typing import Dict
 
 from collections import namedtuple
+from .docker_utils import DockerException, DockerUserErrorException
 from pathlib import Path
 
+from codalab.worker.runtime import RuntimeAPIError
 from codalab.lib.formatting import size_str, duration_str
 from codalab.worker.file_util import remove_path, get_path_size, path_is_parent
 from codalab.worker.bundle_state import State, DependencyKey
@@ -88,7 +88,7 @@ RunState = namedtuple(
         'container_time_total',  # int
         'container_time_user',  # int
         'container_time_system',  # int
-        'container',  # Optional[docker.Container]
+        'container',  # Optional[docker.Container]. Deprecated, all container data is handled by container_id now.
         'container_id',  # Optional[str]
         'docker_image',  # Optional[str]
         'is_killed',  # bool
@@ -170,6 +170,7 @@ class RunStateMachine(StateTransitioner):
         assign_cpu_and_gpu_sets_fn,  # Function to call to assign CPU and GPU resources to each run
         shared_file_system,  # If True, bundle mount is shared with server
         shared_memory_size_gb,  # Shared memory size for the run container (in GB)
+        bundle_runtime,  # Runtime used to run bundles (docker or kubernetes)
     ):
         super(RunStateMachine, self).__init__()
         self.add_transition(RunStage.PREPARING, self._transition_from_PREPARING)
@@ -185,10 +186,10 @@ class RunStateMachine(StateTransitioner):
         self.worker_docker_network = worker_docker_network
         self.docker_network_external = docker_network_external
         self.docker_network_internal = docker_network_internal
-        # todo aditya: docker_runtime will be None if the worker is a singularity worker. handle this.
         self.docker_runtime = docker_runtime
+        self.bundle_runtime = bundle_runtime
         # bundle.uuid -> {'thread': Thread, 'run_status': str}
-        self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
+        self.uploading = ThreadDict(fields={'run_status': 'Upload started.', 'success': False})
         # bundle.uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
         self.disk_utilization = ThreadDict(
             fields={'disk_utilization': 0, 'running': True, 'lock': None}
@@ -251,13 +252,26 @@ class RunStateMachine(StateTransitioner):
 
         dependencies_ready = True
         status_messages = []
+        dependency_keys_to_paths: Dict[DependencyKey, str] = dict()
 
         if not self.shared_file_system:
             # No need to download dependencies if we're in the shared FS,
             # since they're already in our FS
             for dep in run_state.bundle.dependencies:
                 dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
-                dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
+
+                try:
+                    # Fetching dependencies from the Dependency Manager can fail.
+                    # Just update the download status on the next iteration of this transition function.
+                    dependency_state = self.dependency_manager.get(run_state.bundle.uuid, dep_key)
+                    dependency_keys_to_paths[dep_key] = os.path.join(
+                        self.dependency_manager.dependencies_dir, dependency_state.path
+                    )
+                except Exception:
+                    status_messages.append(f'Downloading dependency {dep.child_path} failed')
+                    dependencies_ready = False
+                    continue
+
                 if dependency_state.stage == DependencyStage.DOWNLOADING:
                     status_messages.append(
                         'Downloading dependency %s: %s done (archived size)'
@@ -283,7 +297,7 @@ class RunStateMachine(StateTransitioner):
         image_state = self.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
-                'Pulling docker image %s %s' % (docker_image, image_state.message)
+                'Pulling docker image %s. %s' % (docker_image, image_state.message)
             )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
@@ -311,7 +325,7 @@ class RunStateMachine(StateTransitioner):
                 if run_state.bundle_dir_wait_num_tries == 0:
                     message = (
                         "Bundle directory cannot be found on the shared filesystem. "
-                        "Please ensure the shared fileystem between the server and "
+                        "Please ensure the shared filesystem between the server and "
                         "your worker is mounted properly or contact your administrators."
                     )
                     log_bundle_transition(
@@ -330,8 +344,7 @@ class RunStateMachine(StateTransitioner):
                     bundle_dir_wait_num_tries=next_bundle_dir_wait_num_tries,
                 )
         else:
-            remove_path(run_state.bundle_path)
-            os.makedirs(run_state.bundle_path)
+            os.makedirs(run_state.bundle_path, exist_ok=True)
 
         # 2) Set up symlinks
         docker_dependencies = []
@@ -344,7 +357,13 @@ class RunStateMachine(StateTransitioner):
         for dep in run_state.bundle.dependencies:
             full_child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep.child_path))
             to_mount = []
-            dependency_path = self._get_dependency_path(run_state, dep)
+            if self.shared_file_system:
+                # TODO(Ashwin): make this not fs-specific.
+                # On a shared FS, we know where the dependency is stored and can get the contents directly
+                dependency_path = os.path.realpath(os.path.join(dep.location, dep.parent_path))
+            else:
+                dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
+                dependency_path = dependency_keys_to_paths[dep_key]
 
             if dep.child_path == RunStateMachine._CURRENT_DIRECTORY:
                 # Mount all the content of the dependency_path to the top-level of the bundle
@@ -400,7 +419,7 @@ class RunStateMachine(StateTransitioner):
 
         # 3) Start container
         try:
-            container = docker_utils.start_bundle_container(
+            container_id = self.bundle_runtime.start_bundle_container(
                 run_state.bundle_path,
                 run_state.bundle.uuid,
                 docker_dependencies,
@@ -409,12 +428,14 @@ class RunStateMachine(StateTransitioner):
                 network=docker_network,
                 cpuset=cpuset,
                 gpuset=gpuset,
+                request_cpus=run_state.resources.cpus,
+                request_gpus=run_state.resources.gpus,
                 memory_bytes=run_state.resources.memory,
                 runtime=self.docker_runtime,
                 shared_memory_size_gb=self.shared_memory_size_gb,
             )
-            self.worker_docker_network.connect(container)
-        except docker_utils.DockerUserErrorException as e:
+            self.worker_docker_network.connect(container_id)
+        except DockerUserErrorException as e:
             message = 'Cannot start Docker container: {}'.format(e)
             log_bundle_transition(
                 bundle_uuid=run_state.bundle.uuid,
@@ -432,27 +453,14 @@ class RunStateMachine(StateTransitioner):
 
         return run_state._replace(
             stage=RunStage.RUNNING,
-            run_status='Running job in container',
-            container_id=container.id,
-            container=container,
+            run_status='Running job in container.',
+            container_id=container_id,
+            container=None,
             docker_image=image_state.digest,
             has_contents=True,
             cpuset=cpuset,
             gpuset=gpuset,
         )
-
-    def _get_dependency_path(self, run_state, dependency):
-        if self.shared_file_system:
-            # TODO(Ashwin): make this not fs-specific.
-            # On a shared FS, we know where the dependency is stored and can get the contents directly
-            return os.path.realpath(os.path.join(dependency.location, dependency.parent_path))
-        else:
-            # On a dependency_manager setup, ask the manager where the dependency is
-            dep_key = DependencyKey(dependency.parent_uuid, dependency.parent_path)
-            return os.path.join(
-                self.dependency_manager.dependencies_dir,
-                self.dependency_manager.get(run_state.bundle.uuid, dep_key).path,
-            )
 
     def _transition_from_RUNNING(self, run_state):
         """
@@ -463,8 +471,10 @@ class RunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = docker_utils.check_finished(run_state.container)
-            except docker_utils.DockerException:
+                finished, exitcode, failure_msg = self.bundle_runtime.check_finished(
+                    run_state.container_id
+                )
+            except DockerException:
                 logger.error(traceback.format_exc())
                 finished, exitcode, failure_msg = False, None, None
             return run_state._replace(
@@ -472,16 +482,15 @@ class RunStateMachine(StateTransitioner):
             )
 
         def check_resource_utilization(run_state: RunState):
-            logger.info(f'Checking resource utilization for bundle. uuid: {run_state.bundle.uuid}')
-            cpu_usage, memory_usage = docker_utils.get_container_stats_with_docker_stats(
-                run_state.container
+            cpu_usage, memory_usage = self.bundle_runtime.get_container_stats_with_docker_stats(
+                run_state.container_id
             )
             run_state = run_state._replace(cpu_usage=cpu_usage, memory_usage=memory_usage)
             run_state = run_state._replace(memory_usage=memory_usage)
 
             kill_messages = []
 
-            run_stats = docker_utils.get_container_stats(run_state.container)
+            run_stats = self.bundle_runtime.get_container_stats(run_state.container_id)
 
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
@@ -490,7 +499,9 @@ class RunStateMachine(StateTransitioner):
                 disk_utilization=self.disk_utilization[run_state.bundle.uuid]['disk_utilization']
             )
 
-            container_time_total = docker_utils.get_container_running_time(run_state.container)
+            container_time_total = self.bundle_runtime.get_container_running_time(
+                run_state.container_id
+            )
             run_state = run_state._replace(
                 container_time_total=container_time_total,
                 container_time_user=run_stats.get(
@@ -522,7 +533,6 @@ class RunStateMachine(StateTransitioner):
             return run_state
 
         def check_disk_utilization():
-            logger.info(f'Checking disk utilization for bundle. uuid: {run_state.bundle.uuid}')
             running = True
             while running:
                 start_time = time.time()
@@ -553,11 +563,11 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.CLEANING_UP,
                 reason=f'the bundle was {"killed" if run_state.is_killed else "restaged"}',
             )
-            if docker_utils.container_exists(run_state.container):
+            if self.bundle_runtime.container_exists(run_state.container_id):
                 try:
-                    run_state.container.kill()
-                except docker.errors.APIError:
-                    finished, _, _ = docker_utils.check_finished(run_state.container)
+                    self.bundle_runtime.remove(run_state.container_id)
+                except RuntimeAPIError:
+                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container_id)
                     if not finished:
                         logger.error(traceback.format_exc())
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
@@ -565,14 +575,15 @@ class RunStateMachine(StateTransitioner):
             return run_state._replace(stage=RunStage.CLEANING_UP)
         if run_state.finished:
             logger.debug(
-                'Finished run with UUID %s, exitcode %s, failure_message %s',
+                'Finished run with UUID %s, container_id %s, exitcode %s, failure_message %s',
                 run_state.bundle.uuid,
+                run_state.container_id,
                 run_state.exitcode,
                 run_state.failure_message,
             )
             self.disk_utilization[run_state.bundle.uuid]['running'] = False
             self.disk_utilization.remove(run_state.bundle.uuid)
-            return run_state._replace(stage=RunStage.CLEANING_UP, run_status='Uploading results')
+            return run_state._replace(stage=RunStage.CLEANING_UP, run_status='Uploading results.')
         else:
             return run_state
 
@@ -593,27 +604,36 @@ class RunStateMachine(StateTransitioner):
                 logger.error(traceback.format_exc())
 
         if run_state.container_id is not None:
-            while docker_utils.container_exists(run_state.container):
+            while self.bundle_runtime.container_exists(run_state.container_id):
                 try:
-                    finished, _, _ = docker_utils.check_finished(run_state.container)
+                    finished, _, _ = self.bundle_runtime.check_finished(run_state.container_id)
                     if finished:
-                        run_state.container.remove(force=True)
+                        self.bundle_runtime.remove(run_state.container_id)
                         run_state = run_state._replace(container=None, container_id=None)
                         break
                     else:
                         try:
-                            run_state.container.kill()
-                        except docker.errors.APIError:
+                            self.bundle_runtime.kill(run_state.container_id)
+                        except RuntimeAPIError:
                             logger.error(traceback.format_exc())
                             time.sleep(1)
-                except docker.errors.APIError:
+                except RuntimeAPIError:
                     logger.error(traceback.format_exc())
                     time.sleep(1)
 
-        for dep in run_state.bundle.dependencies:
-            if not self.shared_file_system:  # No dependencies if shared fs worker
-                dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
-                self.dependency_manager.release(run_state.bundle.uuid, dep_key)
+        try:
+            # Fetching dependencies from the Dependency Manager can fail.
+            # Finish cleaning up on the next iteration of this transition function.
+            for dep in run_state.bundle.dependencies:
+                if not self.shared_file_system:  # No dependencies if shared fs worker
+                    dep_key = DependencyKey(dep.parent_uuid, dep.parent_path)
+                    self.dependency_manager.release(run_state.bundle.uuid, dep_key)
+        except (ValueError, EnvironmentError):
+            # Do nothing if an error is thrown while reading from the state file
+            logging.exception(
+                f"Error reading from dependencies state file while releasing a dependency from {run_state.bundle.uuid}"
+            )
+            return run_state
 
         # Clean up dependencies paths
         for path in run_state.paths_to_remove or []:
@@ -636,7 +656,7 @@ class RunStateMachine(StateTransitioner):
                 next_stage=RunStage.UPLOADING_RESULTS,
             )
             return run_state._replace(
-                stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
+                stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results.', container=None
             )
         else:
             # No need to upload results since results are directly written to bundle store
@@ -676,8 +696,8 @@ class RunStateMachine(StateTransitioner):
                 logger.debug('Uploading results for run with UUID %s', run_state.bundle.uuid)
 
                 def progress_callback(bytes_uploaded):
-                    run_status = 'Uploading results: %s done (archived size)' % size_str(
-                        bytes_uploaded
+                    run_status = 'Uploading results: %s uploaded (archived size).' % size_str(
+                        bytes_uploaded, include_bytes=True,
                     )
                     self.uploading[run_state.bundle.uuid]['run_status'] = run_status
                     return True
@@ -745,7 +765,7 @@ class RunStateMachine(StateTransitioner):
                 previous_stage=run_state.stage,
                 next_stage=RunStage.FINALIZING,
             )
-        return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle")
+        return run_state._replace(stage=RunStage.FINALIZING, run_status="Finalizing bundle.")
 
     def _transition_from_FINALIZING(self, run_state):
         """

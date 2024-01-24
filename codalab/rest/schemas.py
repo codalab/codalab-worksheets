@@ -8,7 +8,7 @@ from marshmallow import Schema as PlainSchema, ValidationError, validate, valida
 from marshmallow_jsonapi import Schema, fields
 from marshmallow.fields import Field
 
-from codalab.common import UsageError
+from codalab.common import UsageError, NotFoundError
 from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib.spec_util import SUB_PATH_REGEX, NAME_REGEX, UUID_REGEX
@@ -19,7 +19,8 @@ from codalab.objects.permission import parse_permission, permission_str
 
 class CompatibleInteger(fields.Integer):
     def serialize(self, attr, obj, accessor=None):
-        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed."""
+        """Overrides change done from 2.10.2->2.10.3 in https://github.com/marshmallow-code/marshmallow/commit/d81cab413e231ec40123020f110a8c0af22163ed.
+        """
         ret = Field.serialize(self, attr, obj, accessor=accessor)
         return self._to_string(ret) if (self.as_string and ret is not None) else ret
 
@@ -154,10 +155,18 @@ class BundleDependencySchema(PlainSchema):
     parent_uuid = fields.String(validate=validate_uuid)
     parent_path = fields.String(missing="")
     parent_name = fields.Method('get_parent_name', dump_only=True)  # for convenience
+    parent_state = fields.Method('get_parent_state', dump_only=True)  # for convenience
 
     def get_parent_name(self, dep):
         uuid = dep['parent_uuid']
         return local.model.get_bundle_names([uuid]).get(uuid)
+
+    def get_parent_state(self, dep):
+        uuid = dep['parent_uuid']
+        try:
+            return local.model.get_bundle_state(uuid)
+        except NotFoundError:
+            return None
 
 
 class BundlePermissionSchema(Schema):
@@ -192,8 +201,8 @@ class BundleSchema(Schema):
         validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES})
     )
     command = fields.String(allow_none=True, validate=validate_ascii)
-    data_hash = fields.String()
     state = fields.String()
+    state_details = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
@@ -236,8 +245,9 @@ class BundleStoreSchema(Schema):
 
 
 class BundleLocationSchema(Schema):
-    bundle_uuid = fields.String(validate=validate_uuid, attribute='uuid')
-    bundle_store_uuid = fields.String(validate=validate_uuid, attribute='uuid')
+    id = fields.String(validate=validate_uuid, attribute='uuid')
+    bundle_uuid = fields.String(validate=validate_uuid, attribute='bundle_uuid')
+    bundle_store_uuid = fields.String(validate=validate_uuid, attribute='bundle_store_uuid')
 
     class Meta:
         type_ = 'bundle_locations'
@@ -259,7 +269,6 @@ class BundleLocationListSchema(Schema):
 # restrictions differ depending on the action
 
 BUNDLE_CREATE_RESTRICTED_FIELDS = (
-    'data_hash',
     'state',
     'owner',
     'children',
@@ -273,7 +282,6 @@ BUNDLE_CREATE_RESTRICTED_FIELDS = (
 
 BUNDLE_UPDATE_RESTRICTED_FIELDS = (
     'command',
-    'data_hash',
     'state',
     'dependencies',
     'children',

@@ -3,10 +3,11 @@ import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import _ from 'underscore';
 import 'jquery.terminal';
+import { withStyles } from '@material-ui/core';
 import { apiWrapper } from '../../util/apiWrapper';
 
 const TERMINAL_MINIMIZE_HEIGHT = 30;
-let TERMINAL_DRAGHEIGHT = 350;
+const TERMINAL_DRAGHEIGHT = 350;
 class WorksheetTerminal extends React.Component {
     /** Constructor. */
 
@@ -17,9 +18,6 @@ class WorksheetTerminal extends React.Component {
 
     componentDidMount() {
         var self = this;
-        $('#dragbar_horizontal').mousedown(function(e) {
-            self.resizePanel(e);
-        });
 
         // really hacky way of making it so that the mousemove listener gets removed on mouseup
         $(document).mouseup(function(e) {
@@ -86,10 +84,11 @@ class WorksheetTerminal extends React.Component {
                         self.props.handleFocus();
                         return false;
                     }
-                    if (term.enabled()) {
-                        term.resize(term.width(), TERMINAL_MINIMIZE_HEIGHT);
-                        self.props.handleBlur();
-                    }
+                    // TODO: Allow clicking outside Web CLI to close it (https://github.com/codalab/codalab-worksheets/issues/4378).
+                    // if (term.enabled()) {
+                    //     term.resize(term.width(), TERMINAL_MINIMIZE_HEIGHT);
+                    //     self.props.handleBlur();
+                    // }
                 },
                 onFocus: function(term) {
                     if (!term.data('resizing')) {
@@ -193,34 +192,33 @@ class WorksheetTerminal extends React.Component {
     }
     componentWillUnmount() {}
     componentDidUpdate() {}
-    resizePanel(e) {
-        var terminal = $('#ws_search');
-        var topOffset = terminal.offset().top;
-        var worksheetHeight = $('#worksheet').height();
-        var commandLine = $('#command_line');
-        $(document).mousemove(function(e) {
-            e.preventDefault();
-            $('#command_line').data('resizing', 'true');
-            var terminalHeight = e.pageY - topOffset;
-            var terminalHeightPercentage = (terminalHeight / worksheetHeight) * 100;
-            if (65 < terminalHeight && terminalHeightPercentage < 90) {
-                // minimum height: 65px; maximum height: 90% of worksheet height
-                terminal.css('height', terminalHeight);
-                TERMINAL_DRAGHEIGHT = terminalHeight - 20;
-                commandLine.terminal().resize(commandLine.width(), TERMINAL_DRAGHEIGHT);
-            }
-        });
-    }
     render() {
+        const { classes, hidden } = this.props;
+        const activeClass = !hidden ? classes.terminalActive : '';
         return (
-            <div id='ws_search' className={this.props.hidden ? 'search-hidden' : ''}>
-                <div className=''>
-                    <div id='command_line' />
-                </div>
+            <div id='ws_search' className={`${classes.terminalContainer} ${activeClass}`}>
+                <div id='command_line' />
                 <div id='dragbar_horizontal' className='dragbar' />
             </div>
         );
     }
 }
 
-export default WorksheetTerminal;
+const styles = () => ({
+    terminalContainer: {
+        position: 'fixed',
+        zIndex: 10,
+        width: '100%',
+        height: 400,
+        padding: '10px 0',
+        marginTop: '-410px',
+        background: 'rgba(245, 245, 245, 0.9)',
+        boxShadow: '0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.4)',
+        transition: 'margin-top 800ms',
+    },
+    terminalActive: {
+        marginTop: 0,
+    },
+});
+
+export default withStyles(styles)(WorksheetTerminal);

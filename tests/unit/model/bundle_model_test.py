@@ -1,3 +1,44 @@
+import unittest
+from tests.unit.server.bundle_manager import TestBase
+from codalab.worker.bundle_state import State
+from codalab.model.bundle_model import is_academic_email
+
+
+class BundleModelTest(TestBase, unittest.TestCase):
+    def test_ready_bundle_should_not_transition_worker_offline(self):
+        """transition_bundle_worker_offline should not transition a READY bundle to worker_offline."""
+        bundle = self.create_run_bundle(State.READY)
+        self.save_bundle(bundle)
+        result = self.bundle_manager._model.transition_bundle_worker_offline(bundle)
+        self.assertEqual(result, False)
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.READY)
+
+    def test_finalizing_bundle_should_not_transition_worker_offline(self):
+        """transition_bundle_worker_offline should transition a FINALIZING bundle to worker_offline."""
+        bundle = self.create_run_bundle(State.FINALIZING)
+        self.save_bundle(bundle)
+        result = self.bundle_manager._model.transition_bundle_worker_offline(bundle)
+        self.assertEqual(result, True)
+        bundle = self.bundle_manager._model.get_bundle(bundle.uuid)
+        self.assertEqual(bundle.state, State.WORKER_OFFLINE)
+
+    def test_is_academic_email(self):
+        """Unit test to check is_academic_email function."""
+        test_cases = {
+            "abc@stanford.edu": True,
+            "abc@xyz.edu.cn": True,
+            "abc@xyz.edu.sg": True,
+            "abc.edu.cn@xyz.mail": False,
+            "abc@xyz.edu.xyz": False,
+            "abc@xyz.ac.cn": True,
+            "abc@xyz.ac.sg": True,
+            "abc@xyz.ac.xyz": False,
+        }
+        for key, value in test_cases.items():
+            self.assertEqual(is_academic_email(key), value)
+
+
 def metadata_to_dicts(uuid, metadata):
     return [
         {'bundle_uuid': uuid, 'metadata_key': key, 'metadata_value': value}
@@ -41,7 +82,6 @@ class MockBundle(object):
     _fields = {
         'uuid': 'my_uuid',
         'bundle_type': 'my_bundle_type',
-        'data_hash': 'my_data_hash',
         'state': 'my_state',
         'metadata': {'key_1': 'value_1', 'key_2': 'value_2'},
         'dependencies': [MockDependency().to_dict()],

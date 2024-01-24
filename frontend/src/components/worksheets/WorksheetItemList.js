@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Immutable from 'seamless-immutable';
 import $ from 'jquery';
+import Dialog from '@material-ui/core/Dialog';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import { getAfterSortKey, getIds } from '../../util/worksheet_utils';
 import ContentsItem from './items/ContentsItem';
@@ -96,9 +97,11 @@ const addWorksheetItems = function(props, worksheet_items, prevItem, afterItem) 
             showNewSchema={
                 !props.showNewButtonsAfterEachBundleRow && props.focused && props.showNewSchema
             }
+            onError={props.onError}
             onHideNewRun={props.onHideNewRun}
             onHideNewText={props.onHideNewText}
             onHideNewSchema={props.onHideNewSchema}
+            openBundle={props.openBundle}
             updateSchemaItem={props.updateSchemaItem}
             saveAndUpdateWorksheet={props.saveAndUpdateWorksheet}
             key={props.key}
@@ -136,9 +139,6 @@ class WorksheetItemList extends React.Component {
         Mousetrap.bind(
             ['g g'],
             function() {
-                $('body')
-                    .stop(true)
-                    .animate({ scrollTop: 0 }, 'fast');
                 this.props.setFocus(-1, 0);
             }.bind(this),
             'keydown',
@@ -149,7 +149,6 @@ class WorksheetItemList extends React.Component {
             ['shift+g'],
             function() {
                 this.props.setFocus(this.props.ws.info.blocks.length - 1, 'end');
-                window.scrollTo(0, document.body.scrollHeight);
             }.bind(this),
             'keydown',
         );
@@ -229,6 +228,7 @@ class WorksheetItemList extends React.Component {
                         setFocus: this.props.setFocus,
                         focusTerminal: this.props.focusTerminal,
                         openWorksheet: this.props.openWorksheet,
+                        openBundle: this.props.openBundle,
                         reloadWorksheet: this.props.reloadWorksheet,
                         ws: this.props.ws,
                         showNewRun: this.props.showNewRun,
@@ -240,6 +240,7 @@ class WorksheetItemList extends React.Component {
                         onHideNewRerun: this.props.onHideNewRerun,
                         onHideNewSchema: this.props.onHideNewSchema,
                         onHideNewImage: this.props.onHideNewImage,
+                        onError: this.props.onError,
                         handleCheckBundle: this.props.handleCheckBundle,
                         confirmBundleRowAction: this.props.confirmBundleRowAction,
                         setDeleteItemCallback: this.props.setDeleteItemCallback,
@@ -276,18 +277,6 @@ class WorksheetItemList extends React.Component {
                             }}
                         />
                     )}
-                    {this.props.showNewRun && !focusedItem && (
-                        <div className={this.props.classes.insertBox}>
-                            <NewRun
-                                after_sort_key={-1}
-                                ws={this.props.ws}
-                                onSubmit={() => this.props.onHideNewRun()}
-                                reloadWorksheet={() =>
-                                    this.props.reloadWorksheet(undefined, (0, 0))
-                                }
-                            />
-                        </div>
-                    )}
                     {this.props.showNewSchema && !focusedItem && (
                         <SchemaItem
                             after_sort_key={-1}
@@ -308,7 +297,7 @@ class WorksheetItemList extends React.Component {
                             subFocusIndex={this.props.subFocusIndex}
                         />
                     )}
-                    {worksheet_items}
+                    <div className={this.props.classes.wsItemListContainer}>{worksheet_items}</div>
                     <NewUpload
                         key={this.state.newUploadKey}
                         after_sort_key={getAfterSortKey(focusedItem, this.props.subFocusIndex)}
@@ -331,6 +320,19 @@ class WorksheetItemList extends React.Component {
                         focusIndex={this.props.focusIndex}
                         subFocusIndex={this.props.subFocusIndex}
                     />
+                    <Dialog
+                        open={!focusedItem && this.props.showNewRun}
+                        onClose={this.props.onHideNewRun}
+                        maxWidth='lg'
+                    >
+                        <NewRun
+                            after_sort_key={-1}
+                            ws={this.props.ws}
+                            onSubmit={() => this.props.onHideNewRun()}
+                            onError={this.props.onError}
+                            reloadWorksheet={() => this.props.reloadWorksheet(undefined, (0, 0))}
+                        />
+                    </Dialog>
                 </>
             );
         } else {
@@ -339,7 +341,10 @@ class WorksheetItemList extends React.Component {
         if (info && info.error)
             items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
         return (
-            <div id='worksheet_items' onClick={this.handleClickForDeselect}>
+            <div
+                className={this.props.classes.wsItemsDisplayContainer}
+                onClick={this.handleClickForDeselect}
+            >
                 {items_display}
             </div>
         );
@@ -350,6 +355,17 @@ const styles = (theme) => ({
     insertBox: {
         border: `2px solid ${theme.color.primary.base}`,
         margin: '32px 64px !important',
+    },
+    wsItemsDisplayContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+    },
+    wsItemListContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        padding: 25,
     },
 });
 

@@ -1,10 +1,16 @@
 import { Semaphore } from 'await-semaphore';
 import axios from 'axios';
-import { createDefaultBundleName, pathIsArchive, getArchiveExt } from './worksheet_utils';
+import {
+    createDefaultBundleName,
+    pathIsArchive,
+    getArchiveExt,
+    parseError,
+} from './worksheet_utils';
 
-export const get = (url, params) => {
+export const get = (url, params, options = {}) => {
     const requestOptions = {
         params,
+        ...options,
     };
     return axios.get(url, requestOptions).then((res) => res.data);
 };
@@ -31,7 +37,9 @@ export const defaultErrorHandler = (error) => {
 };
 
 export const updateEditableField = (url, data) => {
-    return patch(url, data);
+    return patch(url, data).catch((error) => {
+        throw parseError(error);
+    });
 };
 
 export const getUser = () => {
@@ -65,9 +73,7 @@ export const executeCommand = (command, worksheet_uuid) => {
         worksheet_uuid: worksheet_uuid || null,
         command: command,
     }).catch((error) => {
-        const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
-        const exception = htmlDoc.getElementsByTagName('pre')[0].innerHTML;
-        throw exception;
+        throw parseError(error);
     });
 };
 
@@ -129,7 +135,14 @@ export const fetchFileSummary = (uuid, path) => {
     };
     const url =
         '/rest/bundles/' + uuid + '/contents/blob' + path + '?' + new URLSearchParams(params);
-    return get(url, { headers: { Accept: 'text/plain' } });
+    return get(
+        url,
+        {
+            headers: { Accept: 'text/plain' },
+        },
+        // Get the raw text response and don't parse JSON. Need to define transformResponse to prevent JSON being parsed due to the issue discussed in: https://github.com/axios/axios/issues/811
+        { responseType: 'text', transformResponse: (data) => data },
+    );
 };
 
 export async function createFileBundle(url, data, errorHandler) {

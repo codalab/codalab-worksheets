@@ -349,8 +349,13 @@ class DownloadManager(object):
         except download_util.PathException as e:
             raise UsageError(str(e))
 
-    def get_target_sas_url(self, target, **kwargs):
-        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_sas_url(**kwargs)
+    def get_target_bypass_url(self, target, **kwargs):
+        """
+        Get SAS url with read permission. Used for bypass server downloading from Azure blob storage.
+        """
+        return parse_linked_bundle_url(self._get_target_path(target)).bundle_path_bypass_url(
+            permission='r', **kwargs
+        )
 
     def _send_read_message(self, worker, response_socket_id, target, read_args):
         message = {
@@ -361,7 +366,7 @@ class DownloadManager(object):
             'read_args': read_args,
         }
         if not self._worker_model.send_json_message(
-            worker['socket_id'], message, 60
+            worker['socket_id'], worker['worker_id'], message, 60
         ):  # dead workers are a fact of life now
             logging.info('Unable to reach worker')
 
@@ -374,7 +379,7 @@ class DownloadManager(object):
             'message': message,
         }
         if not self._worker_model.send_json_message(
-            worker['socket_id'], message, 60
+            worker['socket_id'], worker['worker_id'], message, 60
         ):  # dead workers are a fact of life now
             logging.info('Unable to reach worker')
 

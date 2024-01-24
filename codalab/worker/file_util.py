@@ -17,8 +17,11 @@ from codalab.worker.tar_file_stream import TarFileStream
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 import tempfile
-from ratarmountcore import SQLiteIndexedTar, FileInfo
-from typing import IO, cast
+
+# from ratarmountcore import SQLiteIndexedTar, FileInfo
+from ratarmountcore import FileInfo
+from codalab.lib.beam.SQLiteIndexedTar import SQLiteIndexedTar  # type: ignore
+from typing import IO, List, Optional, cast
 
 NONE_PLACEHOLDER = '<none>'
 
@@ -47,7 +50,7 @@ def get_path_exists(path):
 def tar_gzip_directory(
     directory_path,
     follow_symlinks=False,
-    exclude_patterns=None,
+    exclude_patterns=ALWAYS_IGNORE_PATTERNS,
     exclude_names=None,
     ignore_file=None,
 ):
@@ -76,7 +79,6 @@ def tar_gzip_directory(
     if not exclude_patterns:
         exclude_patterns = []
 
-    exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
     for pattern in exclude_patterns:
         args.append('--exclude=' + pattern)
 
@@ -96,7 +98,7 @@ def tar_gzip_directory(
 def zip_directory(
     directory_path,
     follow_symlinks=False,
-    exclude_patterns=None,
+    exclude_patterns=ALWAYS_IGNORE_PATTERNS,
     exclude_names=None,
     ignore_file=None,
 ):
@@ -132,7 +134,6 @@ def zip_directory(
         if not exclude_patterns:
             exclude_patterns = []
 
-        exclude_patterns.extend(ALWAYS_IGNORE_PATTERNS)
         for pattern in exclude_patterns:
             args.append(f'--exclude=*{pattern}*')
 
@@ -238,8 +239,11 @@ class OpenFile(object):
     path: str
     mode: str
     gzipped: bool
+    exclude_patterns: Optional[List[str]]
 
-    def __init__(self, path: str, mode='rb', gzipped=False):
+    def __init__(
+        self, path: str, mode='rb', gzipped=False, exclude_patterns=ALWAYS_IGNORE_PATTERNS
+    ):
         """Initialize OpenFile.
 
         Args:
@@ -252,6 +256,7 @@ class OpenFile(object):
         self.path = path
         self.mode = mode
         self.gzipped = gzipped
+        self.exclude_patterns = exclude_patterns
 
     def __enter__(self) -> IO[bytes]:
         linked_bundle_path = parse_linked_bundle_url(self.path)
@@ -285,15 +290,15 @@ class OpenFile(object):
                         raise IOError("Directories must be gzipped.")
                     return GzipStream(TarSubdirStream(self.path))
                 else:
-                    # Stream a single file from within the archive
                     fs = TarFileStream(tf, finfo)
                     return GzipStream(fs) if self.gzipped else fs
+
         else:
             # Stream a directory or file from disk storage.
             if os.path.isdir(self.path):
                 if not self.gzipped:
                     raise IOError("Directories must be gzipped.")
-                return tar_gzip_directory(self.path)
+                return tar_gzip_directory(self.path, exclude_patterns=self.exclude_patterns)
             if self.gzipped:
                 raise IOError(
                     "Gzipping local files from disk from OpenFile is not yet supported. Please use file_util.gzip_file instead."
@@ -312,18 +317,47 @@ class GzipStream(BytesIO):
         self.__input = fileobj
         self.__buffer = BytesBuffer()
         self.__gzip = gzip.GzipFile(None, mode='wb', fileobj=self.__buffer)
+        self.__size = 0
+        self.__input_read_size = 0
 
-    def read(self, num_bytes=None) -> bytes:
+    def _fill_buf_bytes(self, num_bytes=None):
         while num_bytes is None or len(self.__buffer) < num_bytes:
             s = self.__input.read(num_bytes)
+            self.__input_read_size += len(s)
             if not s:
                 self.__gzip.close()
                 break
-            self.__gzip.write(s)
-        return self.__buffer.read(num_bytes)
+            self.__gzip.write(s)  # gzip the current file
+
+    def read(self, num_bytes=None):
+        try:
+            self._fill_buf_bytes(num_bytes)
+            data = self.__buffer.read(num_bytes)
+            self.__size += len(data)
+            return data
+        except Exception as e:
+            logging.info("Error in GzipStream read() ", repr(e))
+            return None
 
     def close(self):
         self.__input.close()
+
+    def peek(self, num_bytes):
+        self._fill_buf_bytes(num_bytes)
+        return self.__buffer.peek(num_bytes)
+
+    def tell(self):
+        return self.__size
+
+    def fileobj(self):
+        return self.__input
+
+    def input_file_tell(self):
+        """Gives the location at the original uncompressed file."""
+        if hasattr(self.__input, "tell"):
+            return self.__input.tell()
+        else:
+            return self.__input_read_size
 
 
 def gzip_file(file_path: str) -> IO[bytes]:
@@ -403,6 +437,7 @@ def get_file_size(file_path):
                 with OpenFile(linked_bundle_path.bundle_path, 'rb') as fileobj:
                     fileobj.seek(0, os.SEEK_END)
                     return fileobj.tell()
+
         # If the archive file is a .tar.gz file on Azure, open the specified archive subpath within the archive.
         # If it is a .gz file on Azure, open the "/contents" entry, which represents the actual gzipped file.
         with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
@@ -423,6 +458,7 @@ def read_file_section(file_path, offset, length):
     Reads length bytes of the given file from the given offset.
     Return bytes.
     """
+
     if offset >= get_file_size(file_path):
         return b''
     with OpenFile(file_path, 'rb') as fileobj:
@@ -531,14 +567,28 @@ def get_path_size(path, exclude_names=[], ignore_nonexistent_path=False):
             return 0
         # Raise the FileNotFoundError
         raise
+
+    # Detect and ignore Stale file handler. Please see: https://www.baeldung.com/linux/stale-file-handles
     if not os.path.islink(path) and os.path.isdir(path):
-        for child in os.listdir(path):
-            if child not in exclude_names:
-                try:
-                    full_child_path = os.path.join(path, child)
-                except UnicodeDecodeError:
-                    full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
-                result += get_path_size(full_child_path, ignore_nonexistent_path=True)
+        try:
+            child_paths = os.listdir(path)
+        except OSError:
+            if ignore_nonexistent_path:
+                # If we have trouble list the dir, return the size of this path as 0
+                # Do not raise error and just ignore the stale file handler/
+                logging.warning(
+                    f"Error when list the child path. Ignore the files under path: {path}"
+                )
+                return 0
+            raise
+        else:
+            for child in child_paths:
+                if child not in exclude_names:
+                    try:
+                        full_child_path = os.path.join(path, child)
+                    except UnicodeDecodeError:
+                        full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
+                    result += get_path_size(full_child_path, ignore_nonexistent_path=True)
     return result
 
 
@@ -589,3 +639,35 @@ def sha256(file: str) -> str:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
+
+
+def update_file_size(bundle_path, file_size):
+    """
+    This function is used to update the file size in index.sqlite.
+    Should only be used to update a single file's size.
+    """
+    if (
+        parse_linked_bundle_url(bundle_path).uses_beam
+        and not parse_linked_bundle_url(bundle_path).is_archive_dir
+    ):
+        with OpenIndexedArchiveFile(bundle_path) as tf:
+            # tf is a SQLiteTar file, which is a copy of original index file
+            finfo = tf._getFileInfoRow('/contents')
+            finfo = dict(finfo)
+            finfo['size'] = file_size
+            new_info = tuple([value for _, value in finfo.items()])
+            tf._setFileInfo(new_info)
+            tf.sqlConnection.commit()  # need to mannually commit here
+
+            # Update the index file stored in blob storage
+            FileSystems.delete([parse_linked_bundle_url(bundle_path).index_path])
+            with FileSystems.create(
+                parse_linked_bundle_url(bundle_path).index_path,
+                compression_type=CompressionTypes.UNCOMPRESSED,
+            ) as f, open(tf.indexFilePath, "rb") as tif:
+                while True:
+                    CHUNK_SIZE = 16 * 1024
+                    to_send = tif.read(CHUNK_SIZE)
+                    if not to_send:
+                        break
+                    f.write(to_send)

@@ -2,7 +2,8 @@ import os
 import re
 import sys
 from collections import OrderedDict
-from typing import Callable, Any
+from typing import Callable, Any, Tuple
+from typing_extensions import TypedDict
 
 from codalab.lib import path_util, spec_util
 from codalab.worker.bundle_state import State
@@ -47,7 +48,7 @@ class BundleStore(object):
     def get_bundle_location(self, uuid, bundle_store_uuid=None):
         raise NotImplementedError
 
-    def cleanup(self, uuid, dry_run):
+    def cleanup(self, bundle_location, dry_run):
         raise NotImplementedError
 
 
@@ -225,16 +226,16 @@ class _MultiDiskBundleStoreBase(BundleStore):
                 )
             )
 
-    def cleanup(self, uuid, dry_run):
+    def cleanup(self, bundle_location, dry_run):
         '''
         Remove the bundle with given UUID from on-disk storage.
         '''
-        absolute_path = self.get_bundle_location(uuid)
-        print("cleanup: data %s" % absolute_path, file=sys.stderr)
-        if not dry_run:
-            path_util.remove(absolute_path)
+        print("cleanup: data %s" % bundle_location, file=sys.stderr)
+        if dry_run:
+            return False
+        return path_util.remove(bundle_location)
 
-    def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
+    def health_check(self, model, force=False):
         """
         MultiDiskBundleStore.health_check(): In the MultiDiskBundleStore, bundle contents are stored on disk, and
         occasionally the disk gets out of sync with the database, in which case we make repairs in the following ways:
@@ -246,8 +247,7 @@ class _MultiDiskBundleStoreBase(BundleStore):
             5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
                should not exist.
         |force|: Perform any destructive operations on the bundle store the health check determines are necessary. False by default
-        |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's consistent with what's in
-                             the database. False by default.
+
         """
         UUID_REGEX = re.compile(r'^(%s)' % spec_util.UUID_STR)
 
@@ -344,52 +344,16 @@ class _MultiDiskBundleStoreBase(BundleStore):
                 trash_count += 1
                 _delete_path(to_delete)
 
-            # Check for each bundle if we need to compute its data_hash
-            data_hash_recomputed = 0
-
-            print('Checking data_hash of bundles in partition %s...' % partition, file=sys.stderr)
-            for bundle_path in bundle_paths:
-                uuid = _get_uuid(bundle_path)
-                bundle = db_bundle_by_uuid.get(uuid, None)
-                if bundle is None:
-                    continue
-                if compute_data_hash or bundle.data_hash is None:
-                    dirs_and_files = (
-                        path_util.recursive_ls(bundle_path)
-                        if os.path.isdir(bundle_path)
-                        else ([], [bundle_path])
-                    )
-                    data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
-                    if bundle.data_hash is None:
-                        data_hash_recomputed += 1
-                        print(
-                            'Giving bundle %s data_hash %s' % (bundle_path, data_hash),
-                            file=sys.stderr,
-                        )
-                        if force:
-                            db_update = dict(data_hash=data_hash)
-                            model.update_bundle(bundle, db_update)
-                    elif compute_data_hash and data_hash != bundle.data_hash:
-                        data_hash_recomputed += 1
-                        print(
-                            'Bundle %s should have data_hash %s, actual digest is %s'
-                            % (bundle_path, bundle.data_hash, data_hash),
-                            file=sys.stderr,
-                        )
-                        if repair_hashes and force:
-                            db_update = dict(data_hash=data_hash)
-                            model.update_bundle(bundle, db_update)
-
         if force:
             print('\tDeleted %d objects from the bundle store' % trash_count, file=sys.stderr)
-            print('\tRecomputed data_hash for %d bundles' % data_hash_recomputed, file=sys.stderr)
         else:
             print('Dry-Run Statistics, re-run with --force to perform updates:', file=sys.stderr)
             print('\tObjects marked for deletion: %d' % trash_count, file=sys.stderr)
-            print(
-                '\tBundles that need data_hash recompute: %d' % data_hash_recomputed,
-                file=sys.stderr,
-            )
+
+
+BundleLocation = TypedDict(
+    'BundleLocation', {"storage_type": str, "storage_format": str,}, total=False,
+)
 
 
 class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
@@ -422,19 +386,22 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
 
         self._azure_blob_account_name = azure_blob_account_name
 
-    def get_bundle_location(self, uuid, bundle_store_uuid=None):
+    def get_bundle_location_full_info(
+        self, uuid, bundle_store_uuid=None
+    ) -> Tuple[BundleLocation, str]:
         """
         Get the bundle location.
         Arguments:
             uuid (str): uuid of the bundle.
             bundle_store_uuid (str): uuid of a specific BundleLocation to use when retrieving the bundle's location.
                 If unspecified, will pick an optimal location.
-        Returns: a string with the path to the bundle.
+        Returns: Tuple (BundleLocation object with location info for the bundle, resolved path to access bundle)
         """
         bundle_locations = self._bundle_model.get_bundle_locations(uuid)
         if bundle_store_uuid:
             assert len(bundle_locations) >= 1
         storage_type, is_dir = self._bundle_model.get_bundle_storage_info(uuid)
+
         if len(bundle_locations) >= 1:
             # Use the BundleLocations stored with the bundle, along with some
             # precedence rules, to determine where the bundle is stored.
@@ -474,7 +441,7 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
                 file_name = "contents.tar.gz" if is_dir else "contents.gz"
                 url = selected_location["url"]  # Format: "azfs://[container name]/bundles"
                 assert url.startswith("azfs://")
-                return f"{url}/{uuid}/{file_name}"
+                return selected_location, f"{url}/{uuid}/{file_name}"
             elif selected_location["storage_type"] == StorageType.GCS_STORAGE.value:
                 assert (
                     selected_location["storage_format"] == StorageFormat.COMPRESSED_V1.value
@@ -482,14 +449,39 @@ class MultiDiskBundleStore(_MultiDiskBundleStoreBase):
                 file_name = "contents.tar.gz" if is_dir else "contents.gz"
                 url = selected_location["url"]  # Format: "gs://[bucket name]"
                 assert url.startswith("gs://")
-                return f"{url}/{uuid}/{file_name}"
+                return selected_location, f"{url}/{uuid}/{file_name}"
             else:
                 assert (
                     selected_location["storage_format"] == StorageFormat.UNCOMPRESSED.value
                 )  # Only supported format on disk
-                return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
+                return selected_location, _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
         # If no BundleLocations are available, use the legacy "storage_type" column to determine where the bundle is stored.
         elif storage_type == StorageType.AZURE_BLOB_STORAGE.value:
             file_name = "contents.tar.gz" if is_dir else "contents.gz"
-            return f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}"
-        return _MultiDiskBundleStoreBase.get_bundle_location(self, uuid)
+            return (
+                {
+                    "storage_type": StorageType.AZURE_BLOB_STORAGE.value,
+                    "storage_format": StorageFormat.COMPRESSED_V1.value,
+                },
+                f"azfs://{self._azure_blob_account_name}/bundles/{uuid}/{file_name}",
+            )
+        # Otherwise, we're on the default disk storage.
+        return (
+            {
+                "storage_type": StorageType.DISK_STORAGE.value,
+                "storage_format": StorageFormat.UNCOMPRESSED.value,
+            },
+            _MultiDiskBundleStoreBase.get_bundle_location(self, uuid),
+        )
+
+    def get_bundle_location(self, uuid, bundle_store_uuid=None):
+        """
+        Get the path to the specified bundle location.
+        Arguments:
+            uuid (str): uuid of the bundle.
+            bundle_store_uuid (str): uuid of a specific BundleLocation to use when retrieving the bundle's location.
+                If unspecified, will pick an optimal location.
+        Returns: a string with the path to the bundle.
+        """
+        _, path = self.get_bundle_location_full_info(uuid, bundle_store_uuid)
+        return path

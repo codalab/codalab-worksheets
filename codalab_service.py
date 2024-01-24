@@ -30,6 +30,7 @@ DEFAULT_SERVICES = [
     'nginx',
     'frontend',
     'rest-server',
+    'ws-server',
     'bundle-manager',
     'worker',
     'init',
@@ -41,6 +42,8 @@ ALL_SERVICES = DEFAULT_SERVICES + [
     'worker-manager-cpu',
     'worker-manager-gpu',
     'worker2',
+    'worker-preemptible',
+    'worker-preemptible2',
 ]
 
 ALL_NO_SERVICES = [
@@ -53,12 +56,15 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 SERVICE_TO_IMAGE = {
     'frontend': 'frontend',
     'rest-server': 'server',
+    'ws-server': 'server',
     'bundle-manager': 'server',
     'worker-manager-cpu': 'server',
     'worker-manager-gpu': 'server',
     'monitor': 'server',
     'worker': 'worker',
     'worker2': 'worker',
+    'worker-preemptible': 'worker',
+    'worker-preemptible2': 'worker',
 }
 
 # Max timeout in seconds to wait for request to a service to get through
@@ -237,6 +243,7 @@ CODALAB_ARGUMENTS = [
     CodalabArg(name='https_port', help='Port for nginx (when using SSL)', type=int, default=443),
     CodalabArg(name='frontend_port', help='Port for frontend', type=int, default=2700),
     CodalabArg(name='rest_port', help='Port for REST server', type=int, default=2900),
+    CodalabArg(name='ws_port', help='Port for websocket server', type=int, default=2901),
     CodalabArg(name='rest_num_processes', help='Number of processes', type=int, default=1),
     CodalabArg(name='server', help='URL to server (used by external worker to connect to)'),
     CodalabArg(
@@ -245,6 +252,16 @@ CODALAB_ARGUMENTS = [
     # User
     CodalabArg(name='user_disk_quota', help='How much space a user can use', default='100g'),
     CodalabArg(name='user_time_quota', help='How much total time a user can use', default='100y'),
+    CodalabArg(
+        name='edu_user_disk_quota',
+        help='How much space a user with edu email can use',
+        default='100g',
+    ),
+    CodalabArg(
+        name='edu_user_time_quota',
+        help='How much total time a user with edu email can use',
+        default='100y',
+    ),
     CodalabArg(
         name='user_parallel_run_quota',
         help='How many simultaneous runs a user can have',
@@ -275,6 +292,20 @@ CODALAB_ARGUMENTS = [
             'Environment for logging exceptions with Sentry. If not provided, Sentry is not used.'
         ),
         frontend=True,
+    ),
+    CodalabArg(
+        name='sentry_transaction_rate',
+        help=(
+            'Percentage of transactions we want to have Sentry sample. Only used if sentry-ingest-url and sentry-environment are provided.'
+        ),
+        default=0,
+    ),
+    CodalabArg(
+        name='sentry_profiles_rate',
+        help=(
+            'Percentage of transactions we want to have Sentry profile. Only used if sentry-ingest-url and sentry-environment are provided.'
+        ),
+        default=0,
     ),
     # Bundle Manager
     CodalabArg(
@@ -309,6 +340,8 @@ CODALAB_ARGUMENTS = [
         name='worker_manager_worker_checkin_frequency_seconds',
         help='Number of seconds to wait between check-ins for a worker of the worker manager',
         type=int,
+        # TODO (Ashwin): Temporarily changed from 20 to 5 to get the CLI "time" tests to pass with kubernetes.
+        # Revert this once the root issue is fixed.
         default=5,
     ),
     CodalabArg(
@@ -316,12 +349,6 @@ CODALAB_ARGUMENTS = [
         help='Number of seconds workers wait idle before exiting',
         type=int,
         default=10 * 60,
-    ),
-    CodalabArg(
-        name='worker_manager_seconds_between_workers',
-        help='Number of seconds to wait between launching two workers',
-        type=int,
-        default=60,
     ),
     CodalabArg(
         name='worker_manager_sleep_time_seconds',
@@ -349,21 +376,6 @@ CODALAB_ARGUMENTS = [
         name='worker_manager_azure_batch_service_url',
         type=str,
         help='Azure Batch service url for the Azure Batch worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_kubernetes_cluster_host',
-        type=str,
-        help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_kubernetes_auth_token',
-        type=str,
-        help='Kubernetes cluster authorization token for the Kubernetes worker manager',
-    ),
-    CodalabArg(
-        name='worker_manager_kubernetes_cert_path',
-        type=str,
-        help='Path to the generated SSL cert for the Kubernetes worker manager',
     ),
     CodalabArg(
         name='worker_manager_aws_region',
@@ -449,7 +461,7 @@ for worker_manager_type in ['cpu', 'gpu']:
         CodalabArg(
             name='worker_manager_{}_tag'.format(worker_manager_type),
             help='Tag of worker for {} jobs'.format(worker_manager_type),
-            default='codalab-{}'.format(worker_manager_type),
+            default='',
         ),
         CodalabArg(
             name='worker_manager_max_{}_workers'.format(worker_manager_type),
@@ -489,6 +501,37 @@ for worker_manager_type in ['cpu', 'gpu']:
             type=int,
             default=1,
         ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_seconds_between_workers',
+            help=f'Number of seconds to wait between launching two {worker_manager_type} workers',
+            type=int,
+            default=60,
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_bundle_runtime',
+            type=str,
+            help='The runtime through which the worker manager\'s workers will run bundles. The options are docker (default) or kubernetes.',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cluster_host',
+            type=str,
+            help='Host address of the Kubernetes cluster for the Kubernetes worker manager',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_auth_token',
+            type=str,
+            help='Kubernetes cluster authorization token for the Kubernetes worker manager',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cert_path',
+            type=str,
+            help='Path to the generated SSL cert for the Kubernetes worker manager',
+        ),
+        CodalabArg(
+            name=f'worker_manager_{worker_manager_type}_kubernetes_cert',
+            type=str,
+            help='Contents of the generated SSL cert for the Kubernetes worker manager',
+        ),
     ]
 
 
@@ -513,9 +556,21 @@ class CodalabArgs(object):
             'delete',
             help='Bring down any existing CodaLab service instances (and delete all non-external data!)',
         )
+        version_cmd = subparsers.add_parser(
+            'version', help='Print current version of CodaLab that will be run.',
+        )
 
         # Arguments for every subcommand
-        for cmd in [start_cmd, logs_cmd, pull_cmd, build_cmd, run_cmd, stop_cmd, delete_cmd]:
+        for cmd in [
+            start_cmd,
+            logs_cmd,
+            pull_cmd,
+            build_cmd,
+            run_cmd,
+            stop_cmd,
+            delete_cmd,
+            version_cmd,
+        ]:
             cmd.add_argument(
                 '--dry-run',
                 action='store_true',
@@ -746,6 +801,8 @@ class CodalabServiceManager(object):
             self._run_compose_cmd('stop')
         elif command == 'delete':
             self._run_compose_cmd('down --remove-orphans -v')
+        elif command == 'version':
+            print(self.args.version)
         else:
             raise Exception('Bad command: ' + command)
 
@@ -899,6 +956,8 @@ class CodalabServiceManager(object):
                     ('server/support_email', self.args.support_email),  # Use support_email
                     ('server/default_user_info/disk_quota', self.args.user_disk_quota),
                     ('server/default_user_info/time_quota', self.args.user_time_quota),
+                    ('server/default_user_info/edu_disk_quota', self.args.edu_user_disk_quota),
+                    ('server/default_user_info/edu_time_quota', self.args.edu_user_time_quota),
                     (
                         'server/default_user_info/parallel_run_quota',
                         self.args.user_parallel_run_quota,
@@ -906,6 +965,7 @@ class CodalabServiceManager(object):
                     ('email/host', self.args.email_host),
                     ('email/username', self.args.email_username),
                     ('email/password', self.args.email_password),
+                    ('ws-server/ws_port', self.args.ws_port),
                 ]
                 if value
             ]
@@ -935,6 +995,7 @@ class CodalabServiceManager(object):
             print_header('Setting up Azurite')
             self.run_service_cmd('python3 scripts/initialize-azurite.py')
 
+        self.bring_up_service('ws-server')
         self.bring_up_service('rest-server')
 
         if should_run_service(self.args, 'init'):
@@ -953,6 +1014,8 @@ class CodalabServiceManager(object):
         else:
             self.bring_up_service('worker')
         self.bring_up_service('worker2')
+        self.bring_up_service('worker-preemptible')
+        self.bring_up_service('worker-preemptible2')
 
         self.bring_up_service('monitor')
 

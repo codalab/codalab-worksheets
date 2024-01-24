@@ -1,7 +1,5 @@
 import * as React from 'react';
 import * as Mousetrap from '../../../util/ws_mousetrap_fork';
-import BundleDetail from '../BundleDetail';
-import NewRun from '../NewRun';
 import { useEffect } from 'react';
 import { FETCH_STATUS_SCHEMA } from '../../../constants';
 import { fetchAsyncBundleContents } from '../../../util/apiWrapper';
@@ -18,11 +16,6 @@ class RecordItem extends React.Component {
         };
     }
 
-    handleClick = () => {
-        this.props.setFocus(this.props.focusIndex, 0);
-        this.setState({ showDetail: !this.state.showDetail });
-    };
-
     receiveBundleInfoUpdates = (update) => {
         let { bundleInfoUpdates } = this.state;
         // Use object spread to update.
@@ -30,25 +23,8 @@ class RecordItem extends React.Component {
         this.setState({ bundleInfoUpdates: { ...bundleInfoUpdates, ...update } });
     };
 
-    rerunItem = (runProp) => {
-        this.setState({
-            showDetail: false,
-            showNewRun: 1,
-            runProp: runProp,
-        });
-    };
-
     render() {
-        const {
-            item,
-            reloadWorksheet,
-            showNewRerun,
-            onHideNewRerun,
-            editPermission,
-            focusIndex,
-            focused,
-            ws,
-        } = this.props;
+        const { item, focusIndex, focused } = this.props;
         if (focused) {
             // Use e.preventDefault to avoid openning selected link
             Mousetrap.bind(
@@ -64,6 +40,7 @@ class RecordItem extends React.Component {
         }
         let className = 'table table-record' + (focused ? ' focused' : '');
         let bundleInfo = item.bundles_spec.bundle_infos[0];
+        const uuid = bundleInfo.uuid;
         let header = item.header;
         let k = header[0];
         let v = header[1];
@@ -83,44 +60,16 @@ class RecordItem extends React.Component {
 
         return (
             <div className='ws-item'>
-                <div className='type-record' onClick={this.handleClick}>
+                <div
+                    className='type-record'
+                    onClick={() => {
+                        this.props.openBundle(uuid);
+                    }}
+                >
                     <table className={className}>
                         <tbody>{items}</tbody>
                     </table>
                 </div>
-                {this.state.showDetail && (
-                    <BundleDetail
-                        uuid={bundleInfo.uuid}
-                        bundleMetadataChanged={reloadWorksheet}
-                        onUpdate={this.receiveBundleInfoUpdates}
-                        onClose={() => {
-                            this.setState({
-                                showDetail: false,
-                            });
-                        }}
-                        rerunItem={this.rerunItem}
-                        isFocused={focused}
-                        focusIndex={focusIndex}
-                        showNewRerun={showNewRerun}
-                        showDetail={this.state.showDetail}
-                        editPermission={editPermission}
-                    />
-                )}
-                {/** ---------------------------------------------------------------------------------------------------
-                 *  Rerun
-                 */}
-                {this.state.showNewRun === 1 && (
-                    <NewRun
-                        ws={ws}
-                        onSubmit={() => {
-                            this.setState({ showNewRun: 0, showDetail: false });
-                            onHideNewRerun();
-                        }}
-                        after_sort_key={bundleInfo.sort_key}
-                        reloadWorksheet={reloadWorksheet}
-                        defaultRun={this.state.runProp}
-                    />
-                )}
             </div>
         );
     }

@@ -28,11 +28,10 @@ class UtilTest(unittest.TestCase):
         metadata_mock.to_dict.side_effect = lambda: dict()
         return Mock(
             uuid=uuid,
-            bundle_type=None,
+            bundle_type='run',
             owner_id=None,
             command=None,
-            data_hash=None,
-            state=None,
+            state='created',
             frozen=None,
             is_anonymous=False,
             metadata=metadata_mock,

@@ -15,6 +15,7 @@ class BundlesTest(BaseTestCase):
                         'command': 'echo TEST',
                         'metadata': {
                             'name': 'run-echo',
+                            'remote_history': [],
                             'description': '',
                             'tags': [''],
                             'allow_failed_dependencies': False,
@@ -40,6 +41,8 @@ class BundlesTest(BaseTestCase):
         data = response.json["data"]
         bundle_id = data[0]["id"]
         data[0]["attributes"].pop("state")
+        data[0]["attributes"].pop("state_details")
+        data[0]["attributes"]["metadata"].pop("staged_status", None)
         data[0]["attributes"]["metadata"].pop("failure_message", None)
         # This field is only populated sometimes, but nondeterministically.
         data[0]["attributes"]["metadata"].pop("last_updated", None)
@@ -50,7 +53,6 @@ class BundlesTest(BaseTestCase):
                     "type": "bundles",
                     "attributes": {
                         "permission": 2,
-                        "data_hash": None,
                         "uuid": bundle_id,
                         "args": "run \"echo TEST\" --request-cpus 1 --request-docker-image codalab/default-cpu:latest --request-memory 4g",
                         "metadata": {
@@ -60,6 +62,7 @@ class BundlesTest(BaseTestCase):
                             "actions": [],
                             "created": 1326499200,
                             "name": "run-echo",
+                            "remote_history": [],
                             "request_time": "",
                             "request_cpus": 1,
                             "request_gpus": 0,

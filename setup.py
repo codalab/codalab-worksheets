@@ -7,7 +7,7 @@ import sys
 
 
 # should match codalab/common.py#CODALAB_VERSION
-CODALAB_VERSION = "1.4.2"
+CODALAB_VERSION = "1.7.1"
 
 
 class Install(install):
@@ -94,6 +94,7 @@ setup(
         'console_scripts': [
             'cl=codalab.bin.cl:main',
             'cl-server=codalab.bin.server:main',
+            'cl-ws-server=codalab.bin.ws_server:main',
             'cl-bundle-manager=codalab.bin.bundle_manager:main',
             'codalab-service=codalab_service:main',
             'cl-worker=codalab.worker.main:main',

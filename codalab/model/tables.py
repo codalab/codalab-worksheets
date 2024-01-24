@@ -41,8 +41,6 @@ bundle = Table(
     Column('bundle_type', String(63), nullable=False),
     # The command will be NULL except for run bundles.
     Column('command', Text, nullable=True),
-    # The data_hash will be NULL if the bundle's value is still being computed.
-    Column('data_hash', String(63), nullable=True),
     Column('state', String(63), nullable=False),
     Column('owner_id', String(255), nullable=True),
     Column('frozen', DateTime, nullable=True),  # When the bundle was frozen, if it is.
@@ -57,7 +55,6 @@ bundle = Table(
         'is_dir', Boolean, nullable=True,
     ),  # Whether the bundle is a directory or just a single file. If set to null, nothing has been uploaded for the bundle yet.
     UniqueConstraint('uuid', name='uix_1'),
-    Index('bundle_data_hash_index', 'data_hash'),
     Index('state_index', 'state'),  # Needed for the bundle manager.
     mysql_charset=TABLE_DEFAULT_CHARSET,
 )
@@ -350,7 +347,6 @@ user = Table(
     Column('date_joined', DateTime, nullable=False),
     Column('has_access', Boolean, default=False, nullable=True),
     Column('is_verified', Boolean, nullable=False, default=False),
-    Column('is_superuser', Boolean, nullable=False, default=False),
     Column('password', String(128), nullable=False),
     # Additional information
     Column('affiliation', String(255, convert_unicode=True), nullable=True),
@@ -521,6 +517,7 @@ worker = Table(
         'exit_after_num_runs', Integer, nullable=False
     ),  # Number of jobs allowed to run on worker.
     Column('is_terminating', Boolean, nullable=False),
+    Column('preemptible', Boolean, nullable=False),  # Whether worker is preemptible.
     mysql_charset=TABLE_DEFAULT_CHARSET,
 )
 

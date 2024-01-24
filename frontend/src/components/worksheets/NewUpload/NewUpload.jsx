@@ -214,9 +214,20 @@ class NewUpload extends React.Component<{
         this.setState({ numeratorComplete: 0, denominatorComplete: 0, uploading: false });
     };
 
+    getUploadingText(percentComplete) {
+        if (percentComplete === 0) {
+            return 'preparing...';
+        }
+        if (percentComplete === 100) {
+            return 'finalizing...';
+        }
+        return `${percentComplete}% uploaded`;
+    }
+
     render() {
         const { classes } = this.props;
         const { percentComplete, uploading } = this.state;
+        const uploadingText = this.getUploadingText(percentComplete);
 
         return (
             <React.Fragment>
@@ -244,7 +255,7 @@ class NewUpload extends React.Component<{
                         className={classes.progress}
                         variant='determinate'
                         value={percentComplete}
-                        text={`${percentComplete}% uploaded`}
+                        text={uploadingText}
                         styles={buildStyles({
                             textSize: '12px',
                         })}

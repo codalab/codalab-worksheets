@@ -14,8 +14,8 @@ export function renderDuration(s) {
         return Math.round(duration) === 0 ? '' : Math.round(duration) + unit;
     }
 
-    if (s == null) {
-        return '<none>';
+    if (!s) {
+        return '';
     }
 
     var m = Math.floor(s / 60);
@@ -71,17 +71,34 @@ export function renderSize(size) {
     // Return a human-readable string.
     var units = ['', 'k', 'm', 'g', 't'];
     for (var i = 0; i < units.length; i++) {
-        var unit = units[i];
+        const unit = units[i] === '' ? ' bytes' : units[i];
         if (size < 100 && size !== Math.floor(size)) return Math.round(size * 10) / 10.0 + unit;
         if (size < 1024) return Math.round(size) + unit;
         size /= 1024.0;
     }
 }
 
+/**
+ * Converts a list to a single string containing its values.
+ * Note: some fields like 'tags' return [''].
+ *
+ * @param {array} list
+ * @returns {string} joined list values
+ */
+export function renderList(list) {
+    if (!list?.length || !list[0]) {
+        return '';
+    }
+    return list.join(' ');
+}
+
 export function renderFormat(value, type) {
+    if (value === null || value === undefined) {
+        return '';
+    }
     switch (type) {
         case 'list':
-            return value.join(' ');
+            return renderList(value);
         case 'date':
             return renderDate(value);
         case 'size':
@@ -122,10 +139,11 @@ export function serializeFormat(formatted, type) {
     }
 }
 
-export function renderPermissions(state) {
+export function renderPermissions(state, style = {}) {
     // Render permissions:
     // - state.permission_spec (what user has)
     // - state.group_permissions (what other people have)
+    // - style (optional container styles)
     if (!state.permission_spec) return;
 
     function permissionToClass(permission) {
@@ -147,7 +165,7 @@ export function renderPermissions(state) {
     }
 
     return (
-        <div>
+        <div style={style}>
             &#91;you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
@@ -325,4 +343,105 @@ export function getIds(item) {
         }
     }
     return [];
+}
+
+/**
+ * Initializes missing metadata fields with a null value.
+ *
+ * This allows the frontend to reference info about a field (e.g. the field's
+ * description) even if the given bundle doesn't have a value for that field.
+ *
+ * @param {object} bundleInfo
+ * @returns {object} metadata
+ */
+export function fillMissingMetadata(bundleInfo = {}) {
+    const { metadata, metadataDescriptions } = bundleInfo;
+    Object.keys(metadataDescriptions).forEach((key) => {
+        if (!metadata.hasOwnProperty(key)) {
+            metadata[key] = null;
+        }
+    });
+    return metadata;
+}
+
+/**
+ * The way that the backend returns bundle metadata is not particularly
+ * conducive to rendering bundle information in the CodaLab UI.
+ *
+ * Often when we're rendering a bundle field, we want to have certain pieces
+ * of information about that field readily available.
+ *
+ * E.g. we might be interested in the field's name, value, description, type,
+ * whether or not its editable, etc.
+ *
+ * This helper takes in unformatted bundle data and returns an object in which
+ * each field name is a key, and each key's value has the following shape:
+ *
+ * <field_name>: {
+ *     name:        <field_name>,
+ *     value:       <field_value>,
+ *     description: <field_description>,
+ *     editable:    <field_is_editable>,
+ *     type:        <field_type>,
+ *     bundle_uuid: <bundle_uuid>,
+ * }
+ *
+ * @param {object} bundleInfo
+ * @returns {object} formattedBundle
+ */
+export function formatBundle(bundleInfo = {}) {
+    const hasPermission = bundleInfo.permission > 1;
+    const metadata = fillMissingMetadata(bundleInfo);
+    const metadataDescriptions = bundleInfo.metadataDescriptions;
+    const metadataTypes = bundleInfo.metadataTypes;
+    const editableMetadataFields = bundleInfo.editableMetadataFields;
+    const owner = bundleInfo.owner;
+    const mergedBundle = { ...bundleInfo, ...metadata, ...owner };
+    const formattedBundle = {};
+
+    // delete redundant fields
+    delete mergedBundle.metadata;
+    delete mergedBundle.editableMetadataFields;
+    delete mergedBundle.metadataDescriptions;
+    delete mergedBundle.metadataTypes;
+
+    Object.keys(mergedBundle).forEach((key) => {
+        formattedBundle[key] = {};
+        formattedBundle[key].name = key;
+        formattedBundle[key].description = metadataDescriptions[key];
+        formattedBundle[key].editable = hasPermission && editableMetadataFields.includes(key);
+        formattedBundle[key].bundle_uuid = bundleInfo.uuid;
+        formattedBundle[key].type = metadataTypes[key];
+        formattedBundle[key].value = renderFormat(mergedBundle[key], metadataTypes[key]);
+    });
+
+    return formattedBundle;
+}
+
+/**
+ * Parses error data and returns an error message.
+ *
+ * @param {object} error
+ * @returns {string} error message
+ */
+export function parseError(error) {
+    const htmlDoc = new DOMParser().parseFromString(error.response.data, 'text/html');
+    return htmlDoc.getElementsByTagName('pre')[0].innerHTML;
+}
+
+/**
+ * Returns true if given element is visible in the viewport.
+ * Returns false otherwise.
+ *
+ * @param {object} element - DOM node
+ * @returns {boolean}
+ */
+export function isOnScreen(element) {
+    const bounding = element.getBoundingClientRect();
+    return (
+        bounding.top >= 0 &&
+        bounding.left >= 0 &&
+        bounding.right <= window.innerWidth &&
+        bounding.bottom <= window.innerHeight
+    );
 }

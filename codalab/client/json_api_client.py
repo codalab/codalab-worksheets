@@ -490,7 +490,7 @@ class JsonApiClient(RestClient):
             )
         )
         # Return list iff original data was list
-        return result if isinstance(data, list) else result[0]
+        return result if isinstance(data, list) or result is None else result[0]
 
     @wrap_exception('Unable to delete {1}')
     def delete(self, resource_type, resource_ids, params=None):
@@ -633,7 +633,15 @@ class JsonApiClient(RestClient):
         )
 
     @wrap_exception('Unable to upload contents of bundle {1}')
-    def upload_contents_blob(self, bundle_id, fileobj=None, params=None, progress_callback=None):
+    def upload_contents_blob(
+        self,
+        bundle_id,
+        fileobj=None,
+        pass_self=False,
+        bundle_uuid=None,
+        params=None,
+        progress_callback=None,
+    ):
         """
         Uploads the contents of the given fileobj as the contents of specified
         bundle.
@@ -657,6 +665,8 @@ class JsonApiClient(RestClient):
                 url=request_path,
                 query_params=params,
                 fileobj=fileobj,
+                pass_self=pass_self,
+                bundle_uuid=bundle_uuid,
                 progress_callback=progress_callback,
             )
 
@@ -711,5 +721,27 @@ class JsonApiClient(RestClient):
     def get_bundle_locations(self, bundle_uuid):
         response = self._make_request(
             method='GET', path='/bundles/{}/locations/'.format(bundle_uuid),
+        )
+        return response['data']
+
+    @wrap_exception('Unable to create the location of bundles')
+    def add_bundle_location(self, bundle_uuid, bundle_store_uuid, params):
+        response = self._make_request(
+            method='POST',
+            path='/bundles/{}/locations/'.format(bundle_uuid),
+            data=self._pack_document(
+                [{'bundle_uuid': bundle_uuid, 'bundle_store_uuid': bundle_store_uuid}],
+                'bundle_locations',
+            ),
+            query_params=self._pack_params(params),
+        )
+        return response['data']
+
+    @wrap_exception("Unable to finalize the state of blob storage bundles")
+    def update_bundle_state(self, bundle_uuid, params):
+        response = self._make_request(
+            method='POST',
+            path='/bundles/{}/state'.format(bundle_uuid),
+            query_params=self._pack_params(params),
         )
         return response['data']

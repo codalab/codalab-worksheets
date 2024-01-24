@@ -20,11 +20,11 @@ jobs:
       matrix:
         service: [default-cpu, default-gpu]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: 3.6
-      - uses: actions/cache@v2
+          python-version: 3.7
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: pip-${{ hashFiles('requirements.txt') }}

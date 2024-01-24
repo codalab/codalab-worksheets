@@ -43,6 +43,7 @@ Docker Container | Docker Image Used            | Purpose
  frontend        | `codalab/frontend:<version>` | Website (serves static pages)
  rest-server     | `codalab/server:<version>`   | REST API endpoint (used by website and CLI)
  bundle-manager  | `codalab/server:<version>`   | Schedules bundles to workers in the background
+ ws-server     | `codalab/server:<version>`   | Websocket API endpoint (used by workers)
  nginx           | `nginx:1.12.0`               | Routes requests to frontend or rest-server
  mysql           | `mysql/mysql:5.53`           | Database for users/bundles/worksheets
  worker          | `codalab/worker:<version>`   | Runs bundle in a Docker container
@@ -51,6 +52,7 @@ If you run `docker ps`, you should see a list of Docker containers like this
 (by default, we have `--instance-name codalab`):
 
 * `codalab_rest-server_1`
+* `codalab_ws-server_1`
 * `codalab_bundle-manager_1`
 * `codalab_frontend_1`
 * `codalab_mysql_1`
@@ -72,19 +74,19 @@ restart all the CodaLab services.  Any ongoing runs should not be affected.
 
 # Protected Mode
 
-Starting a CodaLab instance in protected mode will place the instance on lockdown. Anyone can 
-still sign up for account, but only an admin can grant access to a user with an account. Users 
-without granted access will be denied access to all REST endpoints, except a few basic 
+Starting a CodaLab instance in protected mode will place the instance on lockdown. Anyone can
+still sign up for account, but only an admin can grant access to a user with an account. Users
+without granted access will be denied access to all REST endpoints, except a few basic
 account management endpoints.
 
 In order to run an instance in protected mode, start the CodaLab service as follows:
-    
+
     ./codalab_service.py start -p
-    
+
 As an admin, grant access to a user by running the following CLI command:
 
     cl uedit <username> --grant-access
-    
+
 Remove a user's access by running:
 
     cl uedit <username> --remove-access
@@ -103,8 +105,8 @@ Start the CodaLab service as follows:
 
     ./codalab_service.py start -bd
 
-If you modify the frontend, you can do so without restarting.  If you would
-like to modify the rest server, bundle manager, or worker, then you can edit
+If you modify the frontend or the rest server, you can do so without restarting.
+If you would like to modify the bundle manager, or worker, then you can edit
 the code and then start only that single Docker container.  For example, for
 the worker, the command would be:
 
@@ -124,6 +126,14 @@ Sometimes you may want to run two workers locally. In that case, you should run:
 
     ./codalab_service.py start -bds default worker2
 
+
+## Run a preemptible worker (for development / testing)
+
+If you want to run a preemptible worker locally (for development / testing), you should run:
+
+    ./codalab_service.py start -bds worker-preemptible
+
+This worker will automatically run bundles with tag `preemptible`.
 
 ## Azure Blob Storage
 
@@ -156,7 +166,7 @@ hour because lots of packages have to be installed):
 
 Run test-setup.sh first to set up required files and directories.
 
-    sh ./tests/test-setup.sh 
+    sh ./tests/test-setup.sh
 
 Since tests run against an existing instance, make sure you update your instance.
 
@@ -166,9 +176,16 @@ To run the tests against an instance that you've already set up:
 
     python test_runner.py default
 
-Or to run a specific test (e.g., basic):
+Or to run a specific test module by its name (e.g., basic), you can use one of the following methods:
+
+### Method 1
 
     docker exec codalab_rest-server_1 python3 tests/cli/test_cli.py basic
+
+### Method 2
+
+    docker exec -it codalab_rest-server_1 /bin/bash
+    python3 tests/cli/test_cli.py basic
 
 In sum, to start an instance and run tests on it:
 
@@ -313,9 +330,9 @@ The image below shows where the file sharing pane is.
 ## Sending Slack notifications from the monitor.py service
 If you need to send Slack notifications from monitor.py service, you can configure your system by Slack Email App as follows:
 
-* Go to [Slack Email App](https://slack.com/apps/A0F81496D-email) 
+* Go to [Slack Email App](https://slack.com/apps/A0F81496D-email)
 * Sign in to install and follow instructions listed on the above web page to generate your special Slack email address.
-* Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special 
+* Since the system notifications from monitor.py are sent to $CODALAB_ADMIN_EMAIL, you can set $CODALAB_ADMIN_EMAIL to your special
    Slack email address which will show up in a designated Slack channel.
 * Note that this integration only works with workspaces on *the Slack Standard Plan and above*.
 

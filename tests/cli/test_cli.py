@@ -21,14 +21,18 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict
 
+from codalab.lib import path_util
+from codalab.lib.zip_util import pack_files_for_upload
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State
 from scripts.create_sample_worksheet import SampleWorksheet
-from scripts.test_util import Colorizer, run_command
+from scripts.test_util import Colorizer, Timer, run_command
 
 import argparse
+import hashlib
 import json
+import multiprocessing
 import os
 import random
 import re
@@ -141,7 +145,7 @@ def create_worker(context, user_id, worker_id, tag=None, group_name=None):
     # Creating a worker through cl-worker on the same instance can cause conflicts with existing workers, so instead
     # mimic the behavior of cl-worker --id [worker_id] --group [group_name], by leveraging the worker check-in.
     worker_model.worker_checkin(
-        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False
+        user_id, worker_id, tag, group_name, 1, 0, 1000, 1000, {}, False, False, 100, False, False
     )
     context.collect_worker(user_id, worker_id)
 
@@ -163,7 +167,7 @@ def get_info(uuid, key):
     return _run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_state(uuid, expected_state, timeout_seconds=1000):
+def wait_until_state(uuid, expected_state, timeout_seconds=1000, exclude_final_states=False):
     """
     Waits until a bundle in in the expected state or one of the final states. If a bundle is
     in one of the final states that is not the expected_state, fail earlier than the timeout.
@@ -172,6 +176,8 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         uuid: UUID of bundle to check state for
         expected_state: Expected state of bundle
         timeout_seconds: Maximum timeout to wait for the bundle. Default is 100 seconds.
+        exclude_final_states: If True, final states will be ignored and function will loop until
+            desired state is reached or timeout occurs.
     """
     start_time = time.time()
     while True:
@@ -182,7 +188,7 @@ def wait_until_state(uuid, expected_state, timeout_seconds=1000):
         # Stop waiting when the bundle is in the expected state or one of the final states
         if current_state == expected_state:
             return
-        elif current_state in State.FINAL_STATES:
+        elif not exclude_final_states and current_state in State.FINAL_STATES:
             raise AssertionError(
                 "For bundle with uuid {}, waited for '{}' state, but got '{}'.".format(
                     uuid, expected_state, current_state
@@ -263,6 +269,56 @@ def wait_until_substring(fp, substr):
         line = fp.readline()
         if substr in line:
             return
+
+
+"""
+Hash helpers for mimic and copy
+"""
+
+
+def recursive_ls(path):
+    """
+    Return a (list of directories, list of files) in the given directory and
+    all of its nested subdirectories. All paths returned are absolute.
+    Symlinks are returned in the list of files, even if they point to directories.
+    This makes it possible to distinguish between real and symlinked directories
+    when computing the hash of a directory. This function will NOT descend into
+    symlinked directories.
+    """
+    (directories, files) = ([], [])
+    for (root, _, file_names) in os.walk(path):
+        directories.append(root)
+        for file_name in file_names:
+            files.append(os.path.join(root, file_name))
+        # os.walk ignores symlinks to directories, but we should count them as files.
+        # However, we can't used the followlinks parameter, because a) we don't want
+        # to descend into directories and b) we could end up in an infinite loop if
+        # we were to pass that flag. Instead, we handle symlinks here:
+        for subpath in os.listdir(root):
+            full_subpath = os.path.join(root, subpath)
+            if os.path.islink(full_subpath) and os.path.isdir(full_subpath):
+                files.append(full_subpath)
+    return (directories, files)
+
+
+def data_hash(uuid, worksheet=None):
+    """Temporarily download bundle contents.
+    Return a hash of those contents.
+    """
+    _run_command([cl, 'wait', uuid])
+    path = temp_path(uuid)
+    if not os.path.exists(path):
+        # Download the bundle to that path.
+        command = [cl, 'download', uuid, '-o', path]
+        if worksheet is not None:
+            command += ['-w', worksheet]
+        _run_command(command)
+    sha1 = hashlib.sha1()
+    files = recursive_ls(path)[1]
+    for f in files:
+        sha1.update(open(f, 'r').read().encode())
+    shutil.rmtree(path)
+    return sha1.hexdigest()
 
 
 def _run_command(
@@ -375,6 +431,7 @@ class ModuleContext(object):
         self.worker_to_user = {}
         self.error = None
         self.disk_quota = None
+        self.time_quota = None
 
         # Allow for making REST calls
         from codalab.lib.codalab_manager import CodaLabManager
@@ -392,7 +449,8 @@ class ModuleContext(object):
         temp_worksheet = _run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
         _run_command([cl, 'work', temp_worksheet])
-        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk']).split(' ')[2]
+        self.disk_quota = _run_command([cl, 'uinfo', '-f', 'disk_quota'])
+        self.time_quota = _run_command([cl, 'uinfo', '-f', 'time_quota'])
 
         print("[*][*] BEGIN TEST")
 
@@ -441,9 +499,11 @@ class ModuleContext(object):
                     pass
                 _run_command([cl, 'rm', '--force', bundle])
 
-        # Reset disk quota
+        # Reset quotas
         if self.disk_quota is not None:
             _run_command([cl, 'uedit', 'codalab', '--disk-quota', self.disk_quota])
+        if self.time_quota is not None:
+            _run_command([cl, 'uedit', 'codalab', '--time-quota', self.time_quota])
 
         # Delete all extra workers created
         worker_model = self.manager.worker_model()
@@ -666,9 +726,7 @@ def test_basic(ctx):
 
     # rm
     _run_command([cl, 'rm', '--dry-run', uuid])
-    check_contains('0x', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', '--data-only', uuid])
-    check_equals('None', get_info(uuid, 'data_hash'))
     _run_command([cl, 'rm', uuid])
 
 
@@ -700,91 +758,131 @@ def test_auth(ctx):
 
 @TestModule.register('upload1')
 def test_upload1(ctx):
-    # Upload contents
-    uuid = _run_command([cl, 'upload', '-c', 'hello'])
-    check_equals('hello', _run_command([cl, 'cat', uuid]))
-
-    # Upload binary file
-    uuid = _run_command([cl, 'upload', test_path('echo')])
-    check_equals(
-        test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
-    )
-
-    # Upload file with crazy name
-    uuid = _run_command([cl, 'upload', test_path(crazy_name)])
-    check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
-
-    # Upload directory with a symlink
-    uuid = _run_command([cl, 'upload', test_path('')])
-    check_equals(' -> /etc/passwd', _run_command([cl, 'cat', uuid + '/passwd']))
-
-    # Upload symlink without following it.
-    uuid = _run_command([cl, 'upload', test_path('a-symlink.txt')], 1)
-
-    # Upload symlink, follow link
-    uuid = _run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
-    check_equals(test_path_contents('a-symlink.txt'), _run_command([cl, 'cat', uuid]))
-    _run_command([cl, 'cat', uuid])  # Should have the full contents
-
-    # Upload broken symlink (should not be possible)
-    uuid = _run_command([cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'], 1)
-
-    # Upload directory with excluded files
-    uuid = _run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
-    check_num_lines(
-        2 + 2, _run_command([cl, 'cat', uuid])
-    )  # 2 header lines, Only two files left after excluding and extracting.
-
-    # Upload multiple files with excluded files
-    uuid = _run_command(
-        [
-            cl,
-            'upload',
-            test_path('dir1'),
-            test_path('echo'),
-            test_path(crazy_name),
-            '--exclude-patterns',
-            'f*',
-        ]
-    )
-    check_num_lines(
-        2 + 3, _run_command([cl, 'cat', uuid])
-    )  # 2 header lines, 3 items at bundle target root
-    check_num_lines(
-        2 + 2, _run_command([cl, 'cat', uuid + '/dir1'])
-    )  # 2 header lines, Only two files left after excluding and extracting.
-
-    # Upload directory with only one file, should not simplify directory structure
-    uuid = _run_command([cl, 'upload', test_path('dir2')])
-    check_num_lines(
-        2 + 1, _run_command([cl, 'cat', uuid])
-    )  # Directory listing with 2 headers lines and one file
-
-    # Upload a file that exceeds the disk quota
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
-    # expect to fail when we upload something more than 2 bytes
-    _run_command([cl, 'upload', test_path('codalab.png')], expected_exit_code=1)
-    # Reset disk quota
-    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
-
-    # Run the same tests when on a non root user
-    user_name = 'non_root_user_' + random_name()
-    create_user(ctx, user_name, disk_quota='2000')
-    switch_user(user_name)
-    # expect to fail when we upload something more than 2k bytes
-    check_contains(
-        "Attempted to upload bundle of size 10.0k with only 2.0k remaining in user\'s disk quota",
+    upload_suffix = [[]]
+    # If the test workflow start azurite docker
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        bundle_store_name = "azure-" + random_name()
         _run_command(
-            [cl, 'upload', test_path('codalab.png')],
-            expected_exit_code=1,
-            # To return stderr, we need to include
-            # the following two arguments:
-            include_stderr=True,
-            force_subprocess=True,
-        ),
-    )
-    # Switch back to root user
-    switch_user('codalab')
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--storage-type',
+                'azure_blob',
+                '--url',
+                'azfs://devstoreaccount1/bundles',
+            ]
+        )
+        upload_suffix.append(['--store', bundle_store_name])
+
+    if os.environ.get("CODALAB_GOOGLE_APPLICATION_CREDENTIALS") is not None:
+        bundle_store_name = "gcs-" + random_name()
+        _run_command(
+            [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
+        )
+        upload_suffix.append(['--store', bundle_store_name])
+
+    for suffix in upload_suffix:
+        # Upload contents
+        uuid = _run_command([cl, 'upload', '-c', 'hello'] + suffix)
+        check_equals('hello', _run_command([cl, 'cat', uuid]))
+
+        # Upload binary file
+        uuid = _run_command([cl, 'upload', test_path('echo')] + suffix)
+        check_equals(
+            test_path_contents('echo', binary=True), _run_command([cl, 'cat', uuid], binary=True)
+        )
+
+        # Upload file with crazy name
+        uuid = _run_command([cl, 'upload', test_path(crazy_name)] + suffix)
+        check_equals(test_path_contents(crazy_name), _run_command([cl, 'cat', uuid]))
+
+        # Upload directory with a symlink
+        uuid = _run_command([cl, 'upload', test_path('')] + suffix)
+        check_equals(' -> /etc/passwd', _run_command([cl, 'cat', uuid + '/passwd']))
+
+        # Upload symlink without following it.
+        uuid = _run_command([cl, 'upload', test_path('a-symlink.txt')] + suffix, 1)
+
+        # Upload symlink, follow link
+        uuid = _run_command(
+            [cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'] + suffix
+        )
+        check_equals(test_path_contents('a-symlink.txt'), _run_command([cl, 'cat', uuid]))
+        _run_command([cl, 'cat', uuid])  # Should have the full contents
+
+        # Upload broken symlink (should not be possible)
+        uuid = _run_command(
+            [cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'] + suffix, 1
+        )
+
+        # Upload directory with excluded files
+        uuid = _run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'] + suffix)
+        check_num_lines(
+            2 + 2, _run_command([cl, 'cat', uuid])
+        )  # 2 header lines, Only two files left after excluding and extracting.
+
+        # Upload multiple files with excluded files
+        uuid = _run_command(
+            [
+                cl,
+                'upload',
+                test_path('dir1'),
+                test_path('echo'),
+                test_path(crazy_name),
+                '--exclude-patterns',
+                'f*',
+            ]
+            + suffix
+        )
+        check_num_lines(
+            2 + 3, _run_command([cl, 'cat', uuid])
+        )  # 2 header lines, 3 items at bundle target root
+        check_num_lines(
+            2 + 2, _run_command([cl, 'cat', uuid + '/dir1'])
+        )  # 2 header lines, Only two files left after excluding and extracting.
+
+        # Upload directory with only one file, should not simplify directory structure
+        uuid = _run_command([cl, 'upload', test_path('dir2')] + suffix)
+        check_num_lines(
+            2 + 1, _run_command([cl, 'cat', uuid])
+        )  # Directory listing with 2 headers lines and one file
+
+        # Upload a file that exceeds the disk quota
+        _run_command([cl, 'uedit', 'codalab', '--disk-quota', '2'])
+        # expect to fail when we upload something more than 2 bytes
+        _run_command([cl, 'upload', test_path('codalab.png')] + suffix, expected_exit_code=1)
+        # Reset disk quota
+        _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])
+
+        # Run the same tests when on a non root user
+        if not os.getenv('CODALAB_PROTECTED_MODE'):
+            # This test does not work when protected_mode is True.
+            user_name = 'non_root_user_' + random_name()
+            create_user(ctx, user_name, disk_quota='10')
+            # group_uuid = _run_command([cl, 'gnew', user_name])
+            switch_user(user_name)
+            worksheet_uuid = _run_command([cl, 'work', '-u'])
+            switch_user('codalab')
+            _run_command([cl, 'wperm', worksheet_uuid, 'public', 'a'])
+            switch_user(user_name)
+            _run_command([cl, 'work', worksheet_uuid])
+            # expect to fail when we upload something more than 2k bytes
+            check_contains(
+                'disk quota exceeded',
+                _run_command(
+                    [cl, 'upload', '-w', worksheet_uuid, test_path('codalab.png')] + suffix,
+                    expected_exit_code=1,
+                    # To return stderr, we need to include
+                    # the following two arguments:
+                    include_stderr=True,
+                    force_subprocess=True,
+                ),
+            )
+            # Switch back to root user
+            switch_user('codalab')
 
 
 @TestModule.register('upload2')
@@ -1023,6 +1121,20 @@ def test_blob(ctx):
             },
         )
 
+    # Uploads multiple archives at the same time and goes over disk quota on the second
+    # upload. Check to make sure the uploads fail.
+    # Note: In upload_manager, after being zipped, codalab.png has size 9482 bytes.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 15000}'])
+    pool = multiprocessing.Pool(processes=2)
+    # Set the expected exit code to be 1 for both processes.
+    args = [
+        [[cl, 'upload', test_path('codalab.png')], 1],
+        [[cl, 'upload', test_path('codalab.png')], 1],
+    ]
+    pool.starmap(_run_command, args)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+
     # Upload file and directory
     for (uuid, target_type) in [
         (_run_command([cl, 'upload', '-a', test_path('echo')]), "file"),
@@ -1051,6 +1163,173 @@ def test_blob(ctx):
         # When client is from a web browser, should redirect
         response = fetch_contents_blob_from_web_browser(uuid)
         assert response.headers['Location'].startswith("http://localhost")
+
+
+@TestModule.register('preemptible')
+def test_preemptible(ctx):
+    """Tests preemptible workers to ensure they are functioning properly. A bundle
+    that is preemptible should be run on a preemptible worker, and when that worker is killed,
+    should go back to staged and transfer to another worker.
+
+    This test should only be called when the "worker-preemptible" and "worker-preemptible2" services are
+    running locally, and test-setup-preemptible.sh should be run first. See the GitHub Actions test file
+    "preemptible" test for an example of how to set up this test.
+    """
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'bash -c "(mkdir checkpoint1 || mkdir checkpoint2) && sleep 120"',
+            '--request-queue',
+            'preemptible',
+        ]
+    )
+    # We run (mkdir checkpoint1 || mkdir checkpoint2) to ensure that the working directory is shared between
+    # worker runs for a preemptible bundle. The first worker this runs on, the directory "checkpoint1" should be created.
+    # The second worker should create the directory "checkpoint2" because "checkpoint1" should already exist in
+    # the working directory (so mkdir checkpoint1 will fail and thus mkdir checkpoint2 will run).
+
+    wait_until_state(uuid, State.RUNNING)
+    remote_preemptible_worker = get_info(uuid, 'remote')
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    # Bundle should be killed by the test-setup-preemptible.sh script now.
+    # Wait for bundle to be re-assigned
+
+    wait_until_state(uuid, State.READY)
+    # Bundle should have resumed on the other worker
+    check_not_equals(remote_preemptible_worker, get_info(uuid, 'remote'))
+    check_equals("True", get_info(uuid, 'on_preemptible_worker'))
+    check_contains("checkpoint1", _run_command([cl, 'cat', uuid]))
+    check_contains("checkpoint2", _run_command([cl, 'cat', uuid]))
+
+
+@TestModule.register('default_bundle_store')
+def test_upload_default_bundle_store(ctx):
+    """Tests the CODALAB_DEFAULT_BUNDLE_STORE_NAME environment
+    variable. Should only be called when
+    CODALAB_DEFAULT_BUNDLE_STORE_NAME is set."""
+    # Create a new bundle store and upload to it
+    bundle_store_name = os.getenv('CODALAB_DEFAULT_BUNDLE_STORE_NAME')
+    _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',
+            '--storage-format',
+            'uncompressed',
+        ]
+    )
+    # Upload a bundle, which should output to bundle store by default
+    uuid = _run_command([cl, 'upload', '-c', 'hello'])
+    check_contains(bundle_store_name, _run_command([cl, "info", uuid]))
+
+
+@TestModule.register('parallel')
+def test_parallel(ctx):
+    """Ensures bundles can run in parallel."""
+    uuid = _run_command([cl, 'run', 'sleep 60'])
+    wait_until_state(uuid, State.RUNNING)
+    uuid2 = _run_command([cl, 'run', 'sleep 60'])
+    wait_until_state(uuid2, State.RUNNING)
+    check_equals(get_info(uuid, "state"), State.RUNNING)
+    wait(uuid)
+    wait(uuid2)
+
+
+@TestModule.register('store_add')
+def test_store_add(ctx):
+    """
+    Tests of command `cl store add` on different bundle stores. (Not testing --storage-format yet)
+    """
+    # Create a new azure_blob bundle store, then delete it
+    bundle_store_name = "blob_test"
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # create a new azure_blob but not specify storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ]
+    )
+    check_contains("azure_blob", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    # Create a new azure_blob bundle store and specify the wrong storage type
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'disk',  # the type does not align with url
+            '--url',
+            'azfs://devstoreaccount1/bundles',
+        ],
+        expected_exit_code=1,
+    )
+    # Test these 3 conditions on GCS
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'gcs',
+            '--url',
+            'gs://codalab-test',
+        ]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [cl, "store", "add", "--name", bundle_store_name, '--url', 'gs://codalab-test',]
+    )
+    check_contains("gcs", _run_command([cl, "store", "ls"]))
+    _run_command([cl, "store", "rm", blob_id])
+
+    blob_id = _run_command(
+        [
+            cl,
+            "store",
+            "add",
+            "--name",
+            bundle_store_name,
+            '--storage-type',
+            'azure_blob',  # the type does not align with url
+            '--url',
+            'gs://codalab-test',
+        ],
+        expected_exit_code=1,
+    )
 
 
 @TestModule.register('download')
@@ -1122,10 +1401,138 @@ def test_binary(ctx):
 
 @TestModule.register('rm')
 def test_rm(ctx):
+    # Check rm functions correctly
     uuid = _run_command([cl, 'upload', test_path('a.txt')])
     _run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     _run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
     _run_command([cl, 'rm', ''], expected_exit_code=1)  # Empty parameter should give an Usage error
+
+    # Make sure disk quota is adjusted correctly.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+
+@TestModule.register('disk')
+def test_disk(ctx):
+    # Basic test.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with directory upload
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('dir1')])
+    wait_until_state(uuid, State.READY)
+    # Directories are stored in their gzipped format when uploaded to Azure/GCS
+    # but are stored in their full file size format on disk.
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        tarred_dir = pack_files_for_upload([test_path('dir1')], True, False)['fileobj']
+        file_size = len(tarred_dir.read())
+    else:
+        file_size = path_util.get_size(test_path('dir1'))
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test rm --data-only.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt')])
+    wait_until_state(uuid, State.READY)
+    file_size = path_util.get_size(test_path('b.txt'))
+    check_equals(
+        str(int(disk_used) + file_size), _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    )
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with symlinks
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'upload', test_path('b.txt'), '--link'])
+    wait_until_state(uuid, State.READY)
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', '-d', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with running bundle
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid = _run_command([cl, 'run', 'head -c 50 /dev/zero > test.txt'])
+    wait_until_state(uuid, State.READY)
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(
+        str(int(data_size) + int(disk_used)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with archive upload
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    archive_paths = [temp_path(''), temp_path('')]
+    archive_exts = [p + '.tar.gz' for p in archive_paths]
+    contents_paths = [test_path('dir1'), test_path('a.txt')]
+    for (archive, content) in zip(archive_exts, contents_paths):
+        _run_command(
+            ['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)]
+        )
+    uuid = _run_command([cl, 'upload'] + archive_exts)
+    wait_until_state(uuid, State.READY)
+    data_size = _run_command([cl, 'info', uuid, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size)),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test with make.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    uuid1 = _run_command([cl, 'upload', test_path('a.txt')])
+    uuid2 = _run_command([cl, 'upload', test_path('b.txt')])
+    uploaded_files_size = path_util.get_size(test_path('a.txt')) + path_util.get_size(
+        test_path('b.txt')
+    )
+    uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2])
+    wait_until_state(uuid3, State.READY)
+    data_size = _run_command([cl, 'info', uuid3, '-f', 'data_size'])
+    check_equals(
+        str(int(disk_used) + int(data_size) + uploaded_files_size),
+        _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']),
+    )
+    _run_command([cl, 'rm', uuid3])
+    _run_command([cl, 'rm', uuid2])
+    _run_command([cl, 'rm', uuid1])
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
+
+    # Test cleanup_existing_contents.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 10}'])
+    uuid = _run_command(
+        [cl, 'run', 'head -c 1000 /dev/zero > test.txt',], request_disk=None, request_memory='10m',
+    )
+    wait_until_state(uuid, State.FAILED)
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+    check_equals(disk_used, _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used']))
 
 
 @TestModule.register('make')
@@ -1144,6 +1551,52 @@ def test_make(ctx):
     _run_command([cl, 'rm', uuid1], 1)  # should fail
     _run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+
+    # test using make to replicate bundles between bundle stores
+    if os.environ.get("CODALAB_ALWAYS_USE_AZURE_BLOB_BETA") == '1':
+        bundle_store_name = random_name()
+        bundle_store_uuid = _run_command(
+            [
+                cl,
+                "store",
+                "add",
+                "--name",
+                bundle_store_name,
+                '--url',
+                'azfs://devstoreaccount1/bundles',
+            ]
+        )
+
+        parent_child_store = [
+            # parent 1, parent 2, child
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 1) blob storage -> local filesystem
+            [[], [], ['--store', bundle_store_name]],  # 2) local filesystem -> blob storage
+            [
+                ['--store', bundle_store_name],
+                ['--store', bundle_store_name],
+                [],
+            ],  # 3) blob storage -> blob storage
+        ]
+        for store in parent_child_store:
+            uuid1 = _run_command([cl, 'upload', test_path('a.txt')] + store[0])
+            uuid2 = _run_command([cl, 'upload', test_path('b.txt')] + store[1])
+            # make
+            uuid3 = _run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2] + store[2])
+            wait(uuid3)
+            check_contains(['dep1', uuid1, 'dep2', uuid2], _run_command([cl, 'info', uuid3]))
+            uuid4 = _run_command([cl, 'make', 'dep:' + uuid1] + store[2])
+            wait(uuid4)
+            check_equals(
+                test_path_contents('a.txt'), _run_command([cl, 'cat', uuid4 + '/dep']),
+            )
+            # clean up
+            _run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+            _run_command([cl, 'rm', '-r', uuid2])
+        _run_command([cl, 'store', 'rm', bundle_store_uuid])
 
 
 @TestModule.register('worksheet')
@@ -1166,7 +1619,6 @@ def test_worksheet(ctx):
     _run_command([cl, 'add', 'text', '// comment'])
     _run_command([cl, 'add', 'text', '% schema foo'])
     _run_command([cl, 'add', 'text', '% add uuid'])
-    _run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
     _run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
     _run_command([cl, 'add', 'text', '% display table foo'])
     _run_command([cl, 'add', 'bundle', uuid])
@@ -1339,9 +1791,8 @@ def test_worksheet_freeze_unfreeze(ctx):
 @TestModule.register('bundle_freeze_unfreeze')
 def test_bundle_freeze_unfreeze(ctx):
     name = random_name()
-    uuid = _run_command([cl, 'run', 'date', '-n', name])
+    uuid = _run_command([cl, 'run', 'sleep 10 && date', '-n', name])
     # Check that we can't freeze a run bundle if it's not in a final state
-    wait_until_state(uuid, State.RUNNING)
     _run_command([cl, 'edit', uuid, '--freeze'], 1)
     wait(uuid)
     # Check that we can freeze and unfreeze a run bundle (since now it should be in a final state)
@@ -1426,6 +1877,32 @@ def test_search(ctx):
     check_equals(
         size1 + size2, float(_run_command([cl, 'search', 'name=' + name, 'data_size=.sum']))
     )
+    # Check floating
+    check_equals('', _run_command([cl, 'search', '.floating', '-u']))
+    uuid3 = _run_command([cl, 'upload', test_path('a.txt')])
+    _run_command([cl, 'detach', uuid3], 0)
+    check_equals(uuid3, _run_command([cl, 'search', '.floating', '-u']))
+    _run_command([cl, 'rm', uuid3])  # need to remove since not on main worksheet
+    # Check search when groups empty
+    check_equals('', _run_command([cl, 'search', '.shared']))
+    # Check search with non-root user.
+    if not os.getenv('CODALAB_PROTECTED_MODE'):
+        # This test does not work when protected_mode is True.
+        _, current_user_name = current_user()
+        user_name = 'non_root_user_' + random_name()
+        create_user(ctx, user_name, disk_quota='2000')
+        switch_user(user_name)
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', uuid1, '-u']))
+        check_equals(
+            uuid1[:8], _run_command([cl, 'search', 'uuid=' + uuid1, '-f', 'uuid']).split("\n")[2]
+        )
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+        check_equals('', _run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '%', '-u']))
+        check_equals(uuid1, _run_command([cl, 'search', 'uuid=' + uuid1, 'name=' + name, '-u']))
+        switch_user(current_user_name)
     # Check search by group
     group_bname = random_name()
     group_buuid = _run_command([cl, 'run', 'echo hello', '-n', group_bname])
@@ -1502,10 +1979,47 @@ def test_search_time(ctx):
 
 @TestModule.register('run')
 def test_run(ctx):
+    # Test that bundle fails when run without sufficient time quota
+    time_used = int(_run_command([cl, 'uinfo', 'codalab', '-f', 'time_used']))
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', str(time_used + 2)])
+    uuid = _run_command([cl, 'run', 'sleep 100000'])
+    wait_until_state(uuid, State.RUNNING)
+    wait_until_state(uuid, State.KILLED, timeout_seconds=120)
+    check_equals(
+        'Kill requested: User time quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'),
+    )
+    _run_command([cl, 'uedit', 'codalab', '--time-quota', ctx.time_quota])  # reset time quota
+
+    # Test that bundle fails when run without sufficient disk quota
+    # Note: We add 1MB to the disk quota since that's the minimum disk allowed to be requested
+    # by a container.
+    # We then create a file with size 1MB + 10 bytes, since that should now violate the disk quota.
+    disk_used = _run_command([cl, 'uinfo', 'codalab', '-f', 'disk_used'])
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', f'{int(disk_used) + 1000000}'])
+    uuid = _run_command(
+        [cl, 'run', 'head -c 1000010 /dev/zero > test.txt; sleep 100000',],
+        request_disk=None,
+        request_memory=None,
+    )
+    wait_until_state(
+        uuid, State.KILLED, timeout_seconds=500, exclude_final_states=True
+    )  # exclude final states because upon the initial upload attempt, the bundle state is set to FAILED
+    check_contains(
+        'Kill requested: User disk quota exceeded. To apply for more quota,'
+        ' please visit the following link: '
+        'https://codalab-worksheets.readthedocs.io/en/latest/FAQ/'
+        '#how-do-i-request-more-disk-quota-or-time-quota',
+        get_info(uuid, 'failure_message'),
+    )
+    _run_command([cl, 'uedit', 'codalab', '--disk-quota', ctx.disk_quota])  # reset disk quota
+
     name = random_name()
     uuid = _run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
-    check_contains('0x', get_info(uuid, 'data_hash'))
     check_not_equals('0s', get_info(uuid, 'time_preparing'))
     check_not_equals('0s', get_info(uuid, 'time_running'))
     check_not_equals('0s', get_info(uuid, 'time_cleaning_up'))
@@ -1629,6 +2143,64 @@ def test_run(ctx):
     )  # 2 header lines, 1 stdout file, 1 stderr file, 1 item at bundle target root
 
 
+@TestModule.register('time')
+def test_time(ctx, timeout=True):
+    """ Basic tests. """
+    # Uploading. Sweep file sizes.
+    FILE_SIZES = [50, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
+    TIMEOUTS = [0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 3, 28]
+    temp_file_path = temp_path(random_name())
+    f = open(temp_file_path, 'w+')
+    for i, size in enumerate(FILE_SIZES):
+        # Have to use subprocess because redirection is impossible with _run_command.
+        subprocess.run(['head', '-c', str(int(size)), '/dev/zero'], stdout=f)
+        with Timer(TIMEOUTS[i]):
+            start = time.time()
+            uuid = _run_command([cl, 'upload', temp_file_path])
+            wait_until_state(uuid, State.READY, timeout_seconds=1)
+            duration = time.time() - start
+            print(f"{duration}")
+    _run_command(['rm', temp_file_path])
+
+    # Run simple bundle.
+    start = time.time()
+    uuid = _run_command([cl, 'run', 'echo hello'])
+    wait_until_state(uuid, State.READY, timeout_seconds=20)
+    duration = time.time() - start
+    print(f"{duration}")
+
+    # Loading bundle info
+    with Timer(0.1):
+        start = time.time()
+        get_info(uuid, 'name')
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Loading a worksheet and getting worksheet info
+    with Timer(0.1):
+        start = time.time()
+        _run_command([cl, 'new', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with Timer(0.3):
+        start = time.time()
+        _run_command([cl, 'work', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+    with Timer(0.2):
+        start = time.time()
+        _run_command([cl, 'wrm', 'test-worksheet'])
+        duration = time.time() - start
+        print(f"{duration}")
+
+    # Removing a bundle
+    with Timer(0.2):
+        start = time.time()
+        _run_command([cl, 'rm', uuid])
+        duration = time.time() - start
+        print(f"{duration}")
+
+
 @TestModule.register('link')
 def test_link(ctx):
     # Upload fails
@@ -1693,7 +2265,6 @@ def test_run2(ctx):
         [cl, 'run', 'dir3:%s' % dir3, 'for x in {1..10}; do ls dir3 && sleep 1; done']
     )
     wait(uuid2)
-    check_equals(State.RUNNING, get_info(uuid1, 'state'))
     wait(uuid1)
 
     # Test that content of dependency is mounted at the top when . is specified as the dependency key
@@ -1810,8 +2381,7 @@ def test_kill(ctx):
     uuid = _run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_state(uuid, State.RUNNING)
     check_equals(uuid, _run_command([cl, 'kill', uuid]))
-    _run_command([cl, 'wait', uuid], 1)
-    _run_command([cl, 'wait', uuid], 1)
+    wait_until_state(uuid, State.KILLED)
     check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 
@@ -1829,16 +2399,12 @@ def test_write(ctx):
 
 @TestModule.register('mimic')
 def test_mimic(ctx):
-    def data_hash(uuid):
-        _run_command([cl, 'wait', uuid])
-        return get_info(uuid, 'data_hash')
-
     simple_name = random_name()
 
-    input_uuid = _run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
+    input_uuid = _run_command([cl, 'upload', test_path('dir2'), '-n', simple_name + '-in1'])
     simple_out_uuid = _run_command([cl, 'make', input_uuid, '-n', simple_name + '-out'])
 
-    new_input_uuid = _run_command([cl, 'upload', test_path('a.txt')])
+    new_input_uuid = _run_command([cl, 'upload', test_path('dir2')])
 
     # Try three ways of mimicing, should all produce the same answer
     input_mimic_uuid = _run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
@@ -2019,7 +2585,7 @@ def test_resources(ctx):
     )
 
     # Test network access
-    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('https://www.google.com').read()" """
+    REQUEST_CMD = """python -c "import urllib.request; urllib.request.urlopen('http://www.msftconnecttest.com/connecttest.txt').read()" """
     # Network access is set to true by default
     wait(_run_command([cl, 'run', REQUEST_CMD], request_memory="10m"), 0)
     # --request-network should behave the same as above
@@ -2051,9 +2617,9 @@ def test_copy(ctx):
 
         # Upload to original worksheet, transfer to remote
         _run_command([cl, 'work', source_worksheet])
-        uuid = _run_command([cl, 'upload', test_path('')])
+        uuid = _run_command([cl, 'upload', test_path('a.txt')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
-        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
         # TODO: `cl cat` is not working even with the bundle available
         # compare_output_across_instances([cl, 'cat', uuid])
 
@@ -2061,7 +2627,7 @@ def test_copy(ctx):
         _run_command([cl, 'work', remote_worksheet])
         uuid = _run_command([cl, 'upload', test_path('')])
         _run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
-        compare_output_across_instances([cl, 'info', '-f', 'data_hash,name', uuid])
+        compare_output_across_instances([cl, 'info', '-f', 'name', uuid])
         # compare_output_across_instances([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local (metadata only)
@@ -2384,6 +2950,10 @@ def test_unicode(ctx):
 
 @TestModule.register('workers')
 def test_workers(ctx):
+    # Spin up a run in case a worker isn't already running, so it can be started by the worker manager.
+    uuid = _run_command([cl, 'run', 'echo'])
+    wait(uuid)
+
     result = _run_command([cl, 'workers'])
     lines = result.split("\n")
 
@@ -2416,6 +2986,39 @@ def test_workers(ctx):
     # Check number of not null values. First 7 columns should be not null. Column "tag" and "runs" could be empty.
     worker_info = lines[2].split()
     assert len(worker_info) >= 10
+
+    # Make sure that when we run a worker that uses resources, the worker's available resources are decremented accordingly.
+    cpus_original, gpus_original, free_memory_original, free_disk_original = worker_info[1:5]
+    cpus_available, cpus_total = (int(i) for i in cpus_original.split("/"))
+    gpus_available, gpus_total = (int(i) for i in gpus_original.split("/"))
+    uuid = _run_command(
+        [
+            cl,
+            'run',
+            'sleep 100',
+            '--request-cpus',
+            str(cpus_available),
+            '--request-gpus',
+            str(cpus_available),
+        ],
+        request_memory="100m",
+        request_disk="100m",
+    )
+    wait_until_state(uuid, State.RUNNING)
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+    worker_info = lines[2].split()
+    cpus, gpus, free_memory, free_disk = worker_info[1:5]
+    check_equals(f'0/{cpus_total}', cpus)
+    check_equals(f'0/{gpus_total}', gpus)
+
+    wait(uuid)
+    result = _run_command([cl, 'workers'])
+    lines = result.split("\n")
+    worker_info = lines[2].split()
+    cpus, gpus, free_memory, free_disk = worker_info[1:5]
+    check_equals(cpus_original, cpus)
+    check_equals(gpus_original, gpus)
 
 
 @TestModule.register('sharing_workers')

@@ -35,3 +35,13 @@ iframe {
 .ui.category.search > .results .category > .name {
     font-family: 'Roboto', 'Helvetica Neue', sans-serif !important;
 }
+
+// override ansi-to-react styles
+code {
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}

@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 1.4.2_
+_version 1.7.1_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -196,6 +196,7 @@ Name | Type
 `parent_uuid` | String
 `parent_path` | String
 `parent_name` | Method
+`parent_state` | Method
 
 ## bundle_locations
 
@@ -214,6 +215,7 @@ Name | Type
 
 Name | Type
 --- | ---
+`id` | String
 `bundle_uuid` | String
 `bundle_store_uuid` | String
 
@@ -238,8 +240,8 @@ Name | Type
 `uuid` | String
 `bundle_type` | String
 `command` | String
-`data_hash` | String
 `state` | String
+`state_details` | String
 `owner` | Relationship([users](#users))
 `frozen` | DateTime
 `is_anonymous` | Boolean
@@ -367,6 +369,9 @@ existing permissions on the same bundle-group pair.
 
 Fetch the bundle stores available to the user. No required arguments.
 
+Query parameters:
+- `name`: (Optional) name of bundle store. If specified, only query information about the bundle store with given name. If not, return information of all the bundle stores.
+
 Returns a list of bundle stores, each having the following parameters:
 - `uuid`: bundle store UUID
 - `owner_id`: (integer) owner of bundle store
@@ -475,6 +480,8 @@ Query parameters:
 - `worksheet`: UUID of the parent worksheet of the new bundle, add to
   this worksheet if not detached or shadowing another bundle. The new
   bundle also inherits permissions from this worksheet.
+- `bundle_store`: UUID of the bundle store that the new bundle
+  should be stored on. Optional.
 - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
   as an item immediately after this bundle in its parent worksheet).
 - `detached`: 1 if should not add new bundle to any worksheet,
@@ -523,10 +530,11 @@ Query parameters:
 
 ### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/locations/`
 
-Adds a new BundleLocation to a bundle. Request body must contain the fields in BundleLocationSchema.
+Adds a new BundleLocation to a bundle. If need to generate sas token, generate Azure SAS token and connection string. Request body must contain the fields in BundleLocationSchema.
 
 Query parameters:
-- `bundle_uuid`: Bundle UUID corresponding to the new location
+- `need_bypass`: (Optional) Bool. If true, if will return SAS token (for Azure) or signed url (for GCS) to bypass server upload.
+- `is_dir`: (Optional) Bool. Whether the uploaded file is directory.
 
 ### `GET /bundles/<bundle_uuid:re:%s>/locations/<bundle_store_uuid:re:%s>/`
 
@@ -535,6 +543,18 @@ Get info about a specific BundleLocation.
 Query parameters:
 - `bundle_uuid`: Bundle UUID to get the location for
 - `bundle_store_uuid`: Bundle Store UUID to get the location for
+
+### `POST /bundles/<bundle_uuid:re:0x[0-9a-f]{32}>/state`
+
+Updates a bundle state. Used to finalize a bundle's upload status
+after it is uploaded by the client directly to the bundle store,
+such as uploading to blob storage and bypassing the server.
+
+Query parameters:
+- `success`: The state of upload.
+- `state_on_success`: (Optional) String. New bundle state if success
+- `state_on_failure`: (Optional) String. Bundle UUID corresponding to the new location
+- `error_msg`: (Optional) String. Error message if upload fails.
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
@@ -591,6 +611,11 @@ Response format:
   }
 }
 ```
+
+### `PATCH /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/filesize/`
+
+This function is used to fix the file size field in the index.sqlite file.
+This only allows user to increase the file size for a single file.
 
 ### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/netcat/<port:int>/`
 
@@ -659,6 +684,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -666,6 +692,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -710,6 +737,7 @@ HTTP Response headers (for single-file targets):
 - `Content-Disposition: inline; filename=<bundle name or target filename>`
 - `Content-Type: <guess of mimetype based on file extension>`
 - `Content-Encoding: [gzip|identity]`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: file`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -717,6 +745,7 @@ HTTP Response headers (for directories):
 - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
 - `Content-Type: application/gzip`
 - `Content-Encoding: identity`
+- `Access-Control-Allow-Origin: *`
 - `Target-Type: directory`
 - `X-CodaLab-Target-Size: <size of the target>`
 
@@ -881,6 +910,21 @@ Provide secure services using OAuth2.
 Fetch authenticated user.
 ### `PATCH /user`
 Update one or multiple fields of the authenticated user.
+### `PATCH /user/increment_disk_used`
+
+Update the disk used for the user who makes the request to this endpoint.
+
+This is required because users who are bypassing the server to upload
+files straight to Azure will need their client to tell the server
+to increment their disk used as file chunks are uploaded. They cannot
+use the users/ PATCH endpoint since disk_used is in
+USER_READ_ONLY_FIELDS. We make this special function (which only allows
+positive disk increments so that users can't decrement their disk used) to ensure
+that we can safely increment user disk used without introducing a
+security flaw.
+
+The request body should look like: { 'disk_used_increment': len(to_send) }
+
 
 &uarr; [Back to Top](#table-of-contents)
 ## Users API

@@ -31,9 +31,10 @@ def verbose_contents_str(input_string):
     return contents_str(input_string, verbose=True)
 
 
-def size_str(size):
+def size_str(size, include_bytes=False):
     """
     size: number of bytes
+    include_bytes: whether or not to include 'bytes' string in the return value
     Return a human-readable string.
     """
     if size is None:
@@ -41,9 +42,15 @@ def size_str(size):
 
     for unit in ('', 'k', 'm', 'g', 't'):
         if size < 100 and size != int(size):
+            if unit == '' and include_bytes:
+                return '%.1f bytes' % size
             return '%.1f%s' % (size, unit)
+
         if size < 1024:
+            if unit == '' and include_bytes:
+                return '%d bytes' % size
             return '%d%s' % (size, unit)
+
         size /= 1024.0
 
 
@@ -95,7 +102,7 @@ def ratio_str(to_str, a, b):
     """
     Example: to_str = duration_str, a = 60, b = 120 => "1m / 2m (50%)"
     """
-    return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b)
+    return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b if b != 0 else 100.0)
 
 
 def parse_size(s):

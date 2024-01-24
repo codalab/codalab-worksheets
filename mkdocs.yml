@@ -37,6 +37,8 @@ nav:
     - Execution: Execution.md
     - Competitions: Competitions.md
     - Storage Externalization: Externalization.md
+    - Checkpoints: Checkpoints.md
+    - Lifecycle of a Bundle: Bundle-Lifecycle.md
   - Reference:
     - CLI Reference: CLI-Reference.md
     - REST API Reference: REST-API-Reference.md
@@ -45,6 +47,7 @@ nav:
     - Server Setup: Server-Setup.md
     - Worker Managers: Worker-Managers.md
     - Multiple Bundle Stores (in development): Multiple-Bundle-Stores.md
+    - Development Setup: Development-Setup.md
   - About:
     - About: About.md
     - Privacy: Privacy.md

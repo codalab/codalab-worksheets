@@ -1,12 +1,9 @@
 // @flow
 import * as React from 'react';
-import classNames from 'classnames';
-
 import { withStyles } from '@material-ui/core/styles';
-import HelpIcon from '@material-ui/icons/Help';
+import HelpOutlineOutlinedIcon from '@material-ui/icons/HelpOutlineOutlined';
 import Tooltip from '@material-ui/core/Tooltip';
 import Typography from '@material-ui/core/Typography';
-
 
 class ConfigLabel extends React.Component<{
     label: string,
@@ -16,20 +13,25 @@ class ConfigLabel extends React.Component<{
 }> {
     render() {
         const { classes, label, tooltip, inline, optional } = this.props;
+        const marginBottom = this.props.hasMargin ? 4 : 0;
         const contents = (
-            <span className={classes.label}>
-                <Typography variant='subtitle2' inline>{label}</Typography>
+            <span className={classes.label} style={{ marginBottom }}>
+                <Typography variant='subtitle2' inline>
+                    {label}
+                </Typography>
                 {!optional ? null : (
                     <Typography variant='subtitle2' inline className={classes.optional}>
-                        {"(optional)"}
+                        {'(optional)'}
                     </Typography>
                 )}
                 {!tooltip ? null : (
-                    <Tooltip title={tooltip}
-                             classes={{ tooltip: classes.tooltipBox }}>
-                            <span className={classes.tooltipIcon}>
-                                <HelpIcon fontSize='inherit' style={{ verticalAlign: 'middle' }}/>
-                            </span>
+                    <Tooltip title={tooltip} classes={{ tooltip: classes.tooltipBox }}>
+                        <span className={classes.tooltipIcon}>
+                            <HelpOutlineOutlinedIcon
+                                fontSize='inherit'
+                                style={{ verticalAlign: 'sub' }}
+                            />
+                        </span>
                     </Tooltip>
                 )}
             </span>
@@ -37,7 +39,6 @@ class ConfigLabel extends React.Component<{
         return inline === true ? contents : <div>{contents}</div>;
     }
 }
-
 
 // To inject styles into component
 // -------------------------------
@@ -54,10 +55,9 @@ const styles = (theme) => ({
     },
     tooltipBox: {
         fontSize: 14,
-        padding: `${theme.spacing.large}px ${theme.spacing.larger}px`,
     },
     tooltipIcon: {
-        color: theme.color.grey.base,
+        color: theme.color.grey.dark,
         paddingLeft: theme.spacing.unit,
         paddingRight: theme.spacing.unit,
         fontSize: 'small',

@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import closing
 import datetime
 import json
@@ -5,6 +6,7 @@ import logging
 import os
 import socket
 import time
+import websockets
 
 from sqlalchemy import and_, select
 
@@ -33,9 +35,10 @@ class WorkerModel(object):
        listen on these sockets for messages and send messages to these sockets.
     """
 
-    def __init__(self, engine, socket_dir):
+    def __init__(self, engine, socket_dir, ws_server):
         self._engine = engine
         self._socket_dir = socket_dir
+        self._ws_server = ws_server
 
     def worker_checkin(
         self,
@@ -52,6 +55,7 @@ class WorkerModel(object):
         tag_exclusive,
         exit_after_num_runs,
         is_terminating,
+        preemptible,
     ):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
@@ -69,6 +73,7 @@ class WorkerModel(object):
                 'tag_exclusive': tag_exclusive,
                 'exit_after_num_runs': exit_after_num_runs,
                 'is_terminating': is_terminating,
+                'preemptible': preemptible,
             }
 
             # Populate the group for this worker, if group_name is valid
@@ -206,6 +211,7 @@ class WorkerModel(object):
                 'tag_exclusive': row.tag_exclusive,
                 'exit_after_num_runs': row.exit_after_num_runs,
                 'is_terminating': row.is_terminating,
+                'preemptible': row.preemptible,
             }
             for row in worker_rows
         }
@@ -342,7 +348,7 @@ class WorkerModel(object):
                     sock.connect(self._socket_path(socket_id))
                     success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                 except socket.error:
-                    pass
+                    logging.debug("socket error when calling send_stream")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
@@ -357,7 +363,18 @@ class WorkerModel(object):
 
         return False
 
-    def send_json_message(self, socket_id, message, timeout_secs, autoretry=True):
+    def _ping_worker_ws(self, worker_id):
+        async def ping_ws():
+            async with websockets.connect(f"{self._ws_server}/main") as websocket:
+                await websocket.send(worker_id)
+
+        futures = [ping_ws()]
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(asyncio.wait(futures))
+        logging.warn(f"Pinged worker through websockets, worker id: {worker_id}")
+
+    def send_json_message(self, socket_id, worker_id, message, timeout_secs, autoretry=True):
         """
         Sends a JSON message to the given socket, retrying until it is received
         correctly.
@@ -368,6 +385,7 @@ class WorkerModel(object):
         Note, only the worker should call this method with autoretry set to
         False. See comments below.
         """
+        self._ping_worker_ws(worker_id)
         start_time = time.time()
         while time.time() - start_time < timeout_secs:
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
@@ -389,15 +407,14 @@ class WorkerModel(object):
                         success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                     else:
                         success = True
-                except socket.error:
-                    pass
+                except socket.error as e:
+                    logging.error(f"socket error when calling send_json_message: {e}")
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
-                    time.sleep(
-                        0.3
-                    )  # changed from 0.003 to keep from rate-limiting due to dead workers
+                    logging.error("Sleeping for 0.1 seconds.")
+                    time.sleep(0.3)
                     continue
 
                 if not autoretry:
@@ -412,7 +429,7 @@ class WorkerModel(object):
 
                 sock.sendall(json.dumps(message).encode())
                 return True
-
+        logging.info("Socket message timeout.")
         return False
 
     def has_reply_permission(self, user_id, worker_id, socket_id):

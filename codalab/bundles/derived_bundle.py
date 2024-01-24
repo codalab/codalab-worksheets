@@ -12,15 +12,18 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 class DerivedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)  # type: List
-    # Don't format specs
-    # fmt: off
     METADATA_SPECS.append(
-        MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies.', default=False,)
+        MetadataSpec(
+            'allow_failed_dependencies',
+            bool,
+            'Whether to allow this bundle to have failed or killed dependencies (allow_failed_dependencies).',
+            default=False,
+            lock_after_start=True,
+        )
     )
-    # fmt: on
 
     @classmethod
-    def construct(cls, targets, command, metadata, owner_id, uuid, data_hash, state):
+    def construct(cls, targets, command, metadata, owner_id, uuid, state):
         if not uuid:
             uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.
@@ -43,7 +46,6 @@ class DerivedBundle(NamedBundle):
                 'uuid': uuid,
                 'bundle_type': cls.BUNDLE_TYPE,
                 'command': command,
-                'data_hash': data_hash,
                 'state': state,
                 'metadata': metadata,
                 'dependencies': dependencies,

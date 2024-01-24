@@ -13,6 +13,7 @@ from codalab.lib.spec_util import generate_uuid
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.file_util import tar_gzip_directory
 from tests.unit.server.bundle_manager import TestBase
+from codalab.lib.beam.filesystems import get_azure_bypass_conn_str
 
 
 class BaseUploadDownloadBundleTest(TestBase):
@@ -258,3 +259,9 @@ class AzureBlobBundleStoreTest(BaseUploadDownloadBundleTest, unittest.TestCase):
     @property
     def storage_type(self):
         return StorageType.AZURE_BLOB_STORAGE.value
+
+
+class AzureBypassConnStrTest(unittest.TestCase):
+    def test_azure_bypass_conn_str(self):
+        bypass_conn_str = get_azure_bypass_conn_str()
+        self.assertEqual("AccountKey" in bypass_conn_str, False)

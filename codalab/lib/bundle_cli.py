@@ -32,7 +32,6 @@ from io import BytesIO
 from shlex import quote
 from typing import Dict
 import webbrowser
-
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
@@ -49,7 +48,7 @@ from codalab.common import (
     precondition,
     UsageError,
     ensure_str,
-    DiskQuotaExceededError,
+    parse_linked_bundle_url,
 )
 from codalab.lib import (
     file_util,
@@ -58,6 +57,7 @@ from codalab.lib import (
     path_util,
     spec_util,
     ui_actions,
+    upload_manager,
     worksheet_util,
     bundle_fuse,
 )
@@ -99,8 +99,6 @@ from codalab.worker.un_tar_directory import un_tar_directory
 from codalab.worker.download_util import BundleTarget
 from codalab.worker.bundle_state import State, LinkFormat
 from codalab.rest.worksheet_block_schemas import BlockModes
-from codalab.worker.file_util import get_path_size
-
 
 # Command groupings
 BUNDLE_COMMANDS = (
@@ -793,12 +791,7 @@ class BundleCLI(object):
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            try:
-                worksheet_uuid = self.resolve_worksheet_uuid(
-                    client, base_worksheet_uuid, parsed_spec
-                )
-            except ValueError:
-                raise UsageError('Invalid spec: "{}"'.format(spec))
+            worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, parsed_spec)
         return client, worksheet_uuid
 
     @staticmethod
@@ -1054,18 +1047,19 @@ class BundleCLI(object):
                 "url": args.url,
                 "authentication": args.authentication,
             }
+            if args.url is not None:
+                inferred_type = parse_linked_bundle_url(args.url).storage_type
+                if args.storage_type is None:
+                    bundle_store_info["storage_type"] = inferred_type
+                elif args.storage_type != inferred_type:
+                    raise UsageError(
+                        f"Bundle store {args.url} only supports storage type: {inferred_type}"
+                    )
             new_bundle_store = client.create('bundle_stores', bundle_store_info)
             print(new_bundle_store["id"], file=self.stdout)
         elif args.command == 'ls':
             bundle_stores = client.fetch('bundle_stores')
-            print("\t".join(["id", "name", "storage_type", "storage_format"]), file=self.stdout)
-            print(
-                "\n".join(
-                    "\t".join([b["id"], b["name"], b["storage_type"], b["storage_format"]])
-                    for b in bundle_stores
-                ),
-                file=self.stdout,
-            )
+            self.print_table(["id", "name", "storage_type", "storage_format"], bundle_stores)
         elif args.command == 'rm':
             client.delete('bundle_stores', resource_ids=[args.bundle_store_uuid])
             print(args.bundle_store_uuid, file=self.stdout)
@@ -1432,15 +1426,6 @@ class BundleCLI(object):
 
             # Canonicalize paths (e.g., removing trailing /)
             sources = [path_util.normalize(path) for path in args.path]
-            # Calculate size of sources
-            total_bundle_size = sum([get_path_size(source) for source in sources])
-            user = client.fetch('user')
-            disk_left = user['disk_quota'] - user['disk_used']
-            if disk_left - total_bundle_size <= 0:
-                raise DiskQuotaExceededError(
-                    'Attempted to upload bundle of size %s with only %s remaining in user\'s disk quota.'
-                    % (formatting.size_str(total_bundle_size), formatting.size_str(disk_left))
-                )
 
             print("Preparing upload archive...", file=self.stderr)
             if args.ignore:
@@ -1469,25 +1454,20 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
+
             print(
                 'Uploading %s (%s) to %s' % (packed['filename'], new_bundle['id'], client.address),
                 file=self.stderr,
             )
-            progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
-            with closing(packed['fileobj']), progress:
-                client.upload_contents_blob(
-                    new_bundle['id'],
-                    fileobj=packed['fileobj'],
-                    params={
-                        'filename': packed['filename'],
-                        'unpack': packed['should_unpack'],
-                        'state_on_success': State.READY,
-                        'finalize_on_success': True,
-                        'use_azure_blob_beta': args.use_azure_blob_beta,
-                        'store': metadata.get('store') or '',
-                    },
-                    progress_callback=progress.update,
-                )
+            uploader = upload_manager.ClientUploadManager(
+                client, stdout=self.stdout, stderr=self.stderr
+            )
+            uploader.upload_to_bundle_store(
+                bundle=new_bundle,
+                packed_source=packed,
+                use_azure_blob_beta=args.use_azure_blob_beta,
+                destination_bundle_store=metadata.get('store'),
+            )
 
         print(new_bundle['id'], file=self.stdout)
 
@@ -1720,10 +1700,26 @@ class BundleCLI(object):
         # Support anonymous make calls by replacing None keys with ''
         targets = [('' if key is None else key, val) for key, val in targets]
         metadata = self.get_missing_metadata(MakeBundle, args)
+
+        # Add new bundle's location. If the user specifies the storage using `--store`, the bundle will be added to that storage.
+        # Otherwise, the new MakeBundle will be added to default storage, which is set by the rest server.
+        destination_bundle_store = metadata.get('store')
+        params = {'worksheet': worksheet_uuid}
+        if destination_bundle_store:
+            # 1) Read destination store from --store if user has specified it
+            storage_info = client.fetch_one(
+                'bundle_stores',
+                params={
+                    'name': destination_bundle_store,
+                    'include': ['uuid', 'storage_type', 'url'],
+                },
+            )
+            params['bundle_store_uuid'] = storage_info['uuid']
+
         new_bundle = client.create(
             'bundles',
             self.derive_bundle(MakeBundle.BUNDLE_TYPE, None, targets, metadata),
-            params={'worksheet': worksheet_uuid},
+            params=params,
         )
 
         print(new_bundle['uuid'], file=self.stdout)
@@ -1758,6 +1754,7 @@ class BundleCLI(object):
                     'parent_path': parent_target.subpath,
                 }
             )
+
         return {
             'bundle_type': bundle_type,
             'command': command,
@@ -2425,7 +2422,6 @@ class BundleCLI(object):
         for key in (
             'bundle_type',
             'uuid',
-            'data_hash',
             'state',
             'command',
             'frozen',
@@ -4377,27 +4373,13 @@ class BundleCLI(object):
                 help='Perform all garbage collection and database updates instead of just printing what would happen',
                 action='store_true',
             ),
-            Commands.Argument(
-                '-d',
-                '--data-hash',
-                help='Compute the digest for every bundle and compare against data_hash for consistency',
-                action='store_true',
-            ),
-            Commands.Argument(
-                '-r',
-                '--repair',
-                help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles',
-                action='store_true',
-            ),
         ),
     )
     def do_bs_health_check(self, args):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         print('Performing Health Check...', file=sys.stderr)
-        self.manager.bundle_store().health_check(
-            self.manager.model(), args.force, args.data_hash, args.repair
-        )
+        self.manager.bundle_store().health_check(self.manager.model(), args.force)
 
     def _fail_if_headless(self, args):
         if self.headless:

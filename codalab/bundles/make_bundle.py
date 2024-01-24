@@ -6,16 +6,31 @@ from typing import List
 
 from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.worker.bundle_state import State
+from codalab.objects.metadata_spec import MetadataSpec
 
 
 class MakeBundle(DerivedBundle):
     BUNDLE_TYPE = 'make'
     METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)  # type: List
+    METADATA_SPECS.append(
+        MetadataSpec(
+            'staged_status',
+            str,
+            'Information about the status of the staged bundle (staged_status).',
+            generated=True,
+        )
+    )
+    METADATA_SPECS.append(
+        MetadataSpec(
+            'store',
+            str,
+            'The name of the bundle store where the bundle should be uploaded to (store). If unspecified, an optimal available bundle store will be chosen.',
+            default=None,
+            hidden=True,
+            optional=True,
+        )
+    )
 
     @classmethod
-    def construct(
-        cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED
-    ):
-        return super(MakeBundle, cls).construct(
-            targets, command, metadata, owner_id, uuid, data_hash, state
-        )
+    def construct(cls, targets, command, metadata, owner_id, uuid=None, state=State.CREATED):
+        return super(MakeBundle, cls).construct(targets, command, metadata, owner_id, uuid, state)

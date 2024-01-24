@@ -1,35 +1,28 @@
+import re
 from collections import namedtuple
 from typing import Any, Dict, List, Optional
+from codalab.lib.formatting import size_str
 
 
 class State(object):
     """
     An enumeration of states that a bundle can be in.
+
+    See get_bundle_state_details in bundle_util.py for bundle state details.
+    See Bundle-Lifecycle.md for public bundle state documentation.
     """
 
-    # Waiting for contents to be uploaded
     UPLOADING = 'uploading'
-    # Just created
     CREATED = 'created'
-    # All the dependencies are met
     STAGED = 'staged'
-    # Creating a make bundle.
     MAKING = 'making'
-    # Wait for the worker to start running the bundle.
     STARTING = 'starting'
-    # Wait for worker to download dependencies and docker images
     PREPARING = 'preparing'
-    # Actually running
     RUNNING = 'running'
-    # Run finished and finalized server-side, tell worker to discard it
     FINALIZING = 'finalizing'
-    # Done running and succeeded
     READY = 'ready'
-    # Done running and failed
     FAILED = 'failed'
-    # Killed by user
     KILLED = 'killed'
-    # Assigned worker has gone offline
     WORKER_OFFLINE = 'worker_offline'
 
     OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
@@ -72,7 +65,6 @@ class BundleInfo(object):
         bundle_type,  # type: str
         owner_id,  # type: str
         command,  # type: str
-        data_hash,  # type: str
         state,  # type: State
         frozen,  # type: Optional[str]
         is_anonymous,  # type: bool
@@ -85,7 +77,6 @@ class BundleInfo(object):
         self.bundle_type = bundle_type
         self.owner_id = owner_id
         self.command = command
-        self.data_hash = data_hash
         self.state = state
         self.frozen = frozen
         self.is_anonymous = is_anonymous
@@ -121,7 +112,6 @@ class BundleInfo(object):
             bundle_type=dct["bundle_type"],
             owner_id=dct["owner_id"],
             command=dct["command"],
-            data_hash=dct["data_hash"],
             state=dct["state"],
             frozen=dct.get("frozen"),
             is_anonymous=dct["is_anonymous"],
@@ -146,6 +136,9 @@ class RunResources(object):
         memory,  # type: int
         disk,  # type: int
         network,  # type: bool
+        tag,  # type: str
+        tag_exclusive,  # type: bool
+        runs_left,  # type: int
     ):
         self.cpus = cpus
         self.gpus = gpus
@@ -154,6 +147,9 @@ class RunResources(object):
         self.memory = memory
         self.disk = disk
         self.network = network
+        self.tag = tag
+        self.tag_exclusive = tag_exclusive
+        self.runs_left = runs_left
 
     @property
     def as_dict(self):
@@ -169,7 +165,96 @@ class RunResources(object):
             memory=int(dct["memory"]),
             disk=int(dct["disk"]),
             network=bool(dct["network"]),
+            tag=dct["tag"],
+            tag_exclusive=bool(dct["tag_exclusive"]),
+            runs_left=dct["runs_left"],
         )
+
+    def has_tag_match(self, run_resources):
+        """
+        :param self: RunResources
+        :param run_resources: RunResources
+
+        Returns True if self and run_resources have matching tags.
+        """
+        tag_match = re.match('(?:tag=)?(.+)', run_resources.tag)
+        if tag_match is not None:
+            return self.tag == tag_match.group(1)
+
+    def dominates(self, run_resources, strict=False):
+        """
+        :param self: RunResources
+        :param run_resources: RunResources
+        :param strict: bool
+
+        Returns True if self's resources dominate resources in run_resources.
+        If strict = True, returns False if self and run_resources are equivalent.
+        """
+        # Check tags.
+        if run_resources.tag:
+            if not self.has_tag_match(run_resources):
+                return False
+        else:
+            if self.tag_exclusive and self.tag:
+                return False
+
+        # Check the number of runs left.
+        if self.runs_left == 0:
+            return False
+
+        # Check all other resources.
+        if strict:
+            if self.cpus <= run_resources.cpus:
+                return False
+            if self.gpus <= run_resources.gpus:
+                return False
+            if self.memory <= run_resources.memory:
+                return False
+            if self.disk <= run_resources.disk:
+                return False
+            return True
+        else:
+            if self.cpus < run_resources.cpus:
+                return False
+            if self.gpus < run_resources.gpus:
+                return False
+            if self.memory < run_resources.memory:
+                return False
+            if self.disk < run_resources.disk:
+                return False
+            return True
+
+    def get_comparison(self, run_resources):
+        """
+        :param self: RunResources
+        :param run_resources: RunResources
+
+        Compares resources in self with resources in run_resources and returns
+        a resource comparison between the two.
+
+        Example Output: '2 CPUs (3 requested), 2g memory (4g requested)'
+        """
+        comparisons = []
+        if run_resources.tag and (run_resources.tag != self.tag):
+            queue = self.tag or 'No'
+            comparisons.append(f'{queue} queue ({run_resources.tag} requested)')
+
+        if self.cpus < run_resources.cpus:
+            comparisons.append(f'{self.cpus} CPUs ({run_resources.cpus} requested)')
+
+        if self.gpus < run_resources.gpus:
+            comparisons.append(f'{self.gpus} GPUs ({run_resources.gpus} requested)')
+
+        if self.memory < run_resources.memory:
+            memory = size_str(self.memory)
+            requested_memory = size_str(run_resources.memory)
+            comparisons.append(f'{memory} memory ({requested_memory} requested)')
+
+        if self.disk < run_resources.disk:
+            disk = size_str(self.disk)
+            requested_disk = size_str(run_resources.disk)
+            comparisons.append(f'{disk} disk ({requested_disk} requested)')
+        return f"[{', '.join(comparisons)}]"
 
 
 class BundleCheckinState(object):
@@ -194,6 +279,7 @@ class BundleCheckinState(object):
         bundle_profile_stats,  # type: dict
         cpu_usage,  # type: float
         memory_usage,  # type: int
+        disk_utilization,  # type: int
     ):
         self.uuid = uuid
         self.run_status = run_status
@@ -206,9 +292,10 @@ class BundleCheckinState(object):
         self.remote = remote
         self.exitcode = exitcode
         self.failure_message = failure_message
+        self.bundle_profile_stats = bundle_profile_stats
         self.cpu_usage = cpu_usage
         self.memory_usage = memory_usage
-        self.bundle_profile_stats = bundle_profile_stats
+        self.disk_utilization = disk_utilization
 
     @classmethod
     def from_dict(cls, dct):
@@ -224,9 +311,10 @@ class BundleCheckinState(object):
             remote=dct['remote'],
             exitcode=dct['exitcode'],
             failure_message=dct['failure_message'],
+            bundle_profile_stats=dct.get('bundle_profile_stats'),
             cpu_usage=dct.get('cpu_usage'),
             memory_usage=dct.get('memory_usage'),
-            bundle_profile_stats=dct.get('bundle_profile_stats'),
+            disk_utilization=dct.get('disk_utilization'),
         )
 
     @property

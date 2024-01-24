@@ -10,11 +10,12 @@ import time
 import logging
 import json
 
+from dataclasses import dataclass
 from dateutil import parser
 from uuid import uuid4
-
-from sqlalchemy import and_, or_, not_, select, union, desc, func
+from sqlalchemy import and_, or_, select, union, desc, func, Table
 from sqlalchemy.sql.expression import literal, true
+from sqlalchemy.orm import aliased
 
 from codalab.bundles import get_bundle_subclass
 from codalab.bundles.run_bundle import RunBundle
@@ -45,7 +46,6 @@ from codalab.model.tables import (
     worksheet_tag as cl_worksheet_tag,
     worksheet_item as cl_worksheet_item,
     user as cl_user,
-    chat as cl_chat,
     user_verification as cl_user_verification,
     user_reset_code as cl_user_reset_code,
     oauth2_client,
@@ -62,12 +62,13 @@ from codalab.objects.dependency import Dependency
 from codalab.rest.util import get_group_info
 from codalab.worker.bundle_state import State
 from codalab.worker.worker_run_state import RunStage
-from typing import List
+from typing import Any, List
 
 logger = logging.getLogger(__name__)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 SEARCH_RESULTS_LIMIT = 10
+EDU_USER_REGEXES = re.compile('@[\w\.-]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$')
 
 
 def str_key_dict(row):
@@ -78,6 +79,28 @@ def str_key_dict(row):
     This function converts the keys to strings.
     """
     return dict((str(k), v) for k, v in row.items())
+
+
+def is_academic_email(email):
+    """
+    This is a basic function that can be used to compare the email domain suffix with a list of academic email domains.
+    Academic emails typically have domains such as "yy.edu" or "xyz.edu.xx" (where "edu" is followed by a country code).
+    """
+    email_suffix = EDU_USER_REGEXES.findall(email.lower())
+    return len(email_suffix) > 0
+
+
+@dataclass
+class Join:
+    """
+    Class that stores data for joins used in final SQL query in search_bundles.
+    By default, becomes an inner join. Becomes left outer join if left_outer_join is True.
+
+    """
+
+    table: Table
+    condition: Any
+    left_outer_join: bool = False
 
 
 class BundleModel(object):
@@ -134,8 +157,7 @@ class BundleModel(object):
         #   - Some dialects do not support multiple inserts in a single statement,
         #     which we deal with by using the DBAPI execute_many pattern.
         if values:
-            with connection.begin():
-                connection.execute(table.insert(), values)
+            connection.execute(table.insert(), values)
 
     @staticmethod
     def make_clause(key, value):
@@ -209,16 +231,15 @@ class BundleModel(object):
         if len(uuids) == 0:
             return []
         with self.engine.begin() as connection:
-            rows = connection.execute(
-                select(
-                    [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
-                ).where(
-                    and_(
-                        cl_bundle_metadata.c.metadata_key == metadata_key,
-                        cl_bundle_metadata.c.bundle_uuid.in_(uuids),
-                    )
+            query = select(
+                [cl_bundle_metadata.c.bundle_uuid, cl_bundle_metadata.c.metadata_value]
+            ).where(
+                and_(
+                    cl_bundle_metadata.c.metadata_key == metadata_key,
+                    cl_bundle_metadata.c.bundle_uuid.in_(uuids),
                 )
-            ).fetchall()
+            )
+            rows = connection.execute(query).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
     def get_owner_ids(self, table, uuids):
@@ -378,17 +399,15 @@ class BundleModel(object):
         - .sum: add up the numbers
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
-        """
-        clauses = []
-        offset = 0
-        limit = SEARCH_RESULTS_LIMIT
-        format_func = None
-        count = False
-        sort_key = [None]
-        sum_key = [None]
-        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
 
-        # Number nested subqueries
+        Iterates over keywords. For each keyword (except a few special keywords like .count, .offset, .limit, and .format), creates a new boolean condition
+        that must be satisfied by any bundles returned in the resulting query. These are stored in the where_clause_conjuncts list.
+        The final SQL query ANDs these boolean conditions together in the WHERE clause (since every condition specified by the keywords must be satisfied by
+        bundles returned in the result).
+        To express boolean conditions which reference data in tables aside from cl_bundle without subqueries, we use joins. We maintain a list of Joins
+        to join on (in the joins array) and add to this using the add_join function.
+        In the final query, we join cl_bundle with all the Joins in the joins array and then select rows from this table which satisfy the final WHERE clause.
+        """
         subquery_index = [0]
 
         def alias(clause):
@@ -399,6 +418,10 @@ class BundleModel(object):
             return key != 'name'
 
         def make_condition(key, field, value):
+            """
+            If value is a special value (e.g. for sorting), modify aux_fields.
+            Otherwise, return an SQL expression checking some form of equality between field and value
+            """
             # Special
             if value == '.sort':
                 aux_fields.append(field)
@@ -421,9 +444,28 @@ class BundleModel(object):
                 return field == value
             return None
 
+        def add_join(table: Table, condition: Any, left_outer_join: bool = False):
+            """
+            Add table and join condition for the final SQL query.
+            """
+            joins.append(Join(table, condition, left_outer_join))
+
         shortcuts = {'type': 'bundle_type', 'size': 'data_size', 'worksheet': 'host_worksheet'}
 
+        offset = 0
+        limit = SEARCH_RESULTS_LIMIT
+        format_func = None
+        count = False
+        sort_key = [None]
+        sum_key = [None]
+        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
+
+        joins: List[Join] = list()
+        where_clause_conjuncts: List[Any] = list()  # list of sqlalchemy expressions
+
         for keyword in keywords:
+            conjunct = None  # Conjunct to add to final where_clause.
+
             keyword = keyword.replace('.*', '%')
             # Sugar
             if keyword == '.mine':
@@ -437,14 +479,12 @@ class BundleModel(object):
                 limit = None
                 continue
             elif keyword == '.floating':
-                # Get bundles that have host worksheets, and then take the complement.
-                with_hosts = alias(
-                    select([cl_bundle.c.uuid]).where(
-                        cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid
-                    )
+                add_join(
+                    cl_worksheet_item,
+                    cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid,
+                    left_outer_join=True,
                 )
-                clause = not_(cl_bundle.c.uuid.in_(with_hosts))
-                clauses.append(clause)
+                where_clause_conjuncts.append(cl_worksheet_item.c.id == None)  # noqa: E711
                 continue
 
             m = SEARCH_KEYWORD_REGEX.match(keyword)  # key=value
@@ -456,7 +496,7 @@ class BundleModel(object):
             else:
                 key, value = 'uuid_name', keyword
 
-            clause = None
+            conjunct = None
             # Special functions
             if key == '.offset':
                 offset = int(value)
@@ -465,72 +505,70 @@ class BundleModel(object):
             elif key == '.format':
                 format_func = value
             # Bundle fields
-            elif key in ('bundle_type', 'id', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
-                clause = make_condition(key, getattr(cl_bundle.c, key), value)
+            elif key in ('bundle_type', 'id', 'uuid', 'state', 'command', 'owner_id'):
+                conjunct = make_condition(key, getattr(cl_bundle.c, key), value)
             elif key == '.shared':  # shared with any group I am in with read permission
-                clause = cl_bundle.c.uuid.in_(
-                    select([cl_group_bundle_permission.c.object_uuid]).where(
-                        and_(
-                            cl_group_bundle_permission.c.group_uuid.in_(
-                                alias(
-                                    select([cl_user_group.c.group_uuid]).where(
-                                        cl_user_group.c.user_id == user_id
-                                    )
-                                )
-                            ),
-                            cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
-                        )
-                    )
+                add_join(
+                    cl_group_bundle_permission,
+                    cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                )
+                add_join(
+                    cl_user_group,
+                    cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid,
+                )
+
+                conjunct = and_(
+                    cl_user_group.c.user_id == user_id,
+                    cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
                 )
             elif key == 'group':  # shared with group with read permission
+                add_join(
+                    cl_group_bundle_permission,
+                    cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                )
                 group_uuid = get_group_info(value, False)['uuid']
-                clause = cl_bundle.c.uuid.in_(
-                    select([cl_group_bundle_permission.c.object_uuid]).where(
-                        and_(
-                            cl_group_bundle_permission.c.group_uuid == group_uuid,
-                            cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
-                        )
-                    )
+                conjunct = and_(
+                    cl_group_bundle_permission.c.group_uuid == group_uuid,
+                    cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,
                 )
             # Special fields
             elif key == 'dependency':
                 # Match uuid of dependency
                 condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
                 if condition is None:  # top-level
-                    clause = cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
+                    conjunct = cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
                 else:  # embedded
-                    clause = cl_bundle.c.uuid.in_(
-                        alias(select([cl_bundle_dependency.c.child_uuid]).where(condition))
+                    add_join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
                     )
+                    conjunct = condition
             elif key.startswith('dependency/'):
                 _, name = key.split('/', 1)
                 condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
                 if condition is None:  # top-level
-                    clause = and_(
+                    conjunct = and_(
                         cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
                         cl_bundle_dependency.c.child_path
                         == name,  # Match the 'type' of dependent (child_path)
                     )
                 else:  # embedded
-                    clause = cl_bundle.c.uuid.in_(
-                        alias(
-                            select([cl_bundle_dependency.c.child_uuid]).where(
-                                and_(
-                                    cl_bundle_dependency.c.child_path
-                                    == name,  # Match the 'type' of dependent (child_path)
-                                    condition,
-                                )
-                            )
-                        )
+                    add_join(
+                        cl_bundle_dependency, cl_bundle.c.uuid == cl_bundle_dependency.c.child_uuid
+                    )
+                    conjunct = and_(
+                        cl_bundle_dependency.c.child_path
+                        == name,  # Match the 'type' of dependent (child_path)
+                        condition,
                     )
             elif key == 'host_worksheet':
                 condition = make_condition(key, cl_worksheet_item.c.worksheet_uuid, value)
                 if condition is None:  # top-level
-                    clause = cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid  # Join constraint
+                    conjunct = (
+                        cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid
+                    )  # Join constraint
                 else:
-                    clause = cl_bundle.c.uuid.in_(
-                        alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
-                    )
+                    add_join(cl_worksheet_item, cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
+                    conjunct = condition
             elif key in ('.before', '.after'):
                 try:
                     target_datetime = parser.isoparse(value)
@@ -540,113 +578,108 @@ class BundleModel(object):
                     )
 
                 subclause = None
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
                 if key == '.before':
-                    subclause = cl_bundle_metadata.c.metadata_value <= int(
+                    subclause = aliased_bundle_metadata.c.metadata_value <= int(
                         target_datetime.timestamp()
                     )
                 if key == '.after':
-                    subclause = cl_bundle_metadata.c.metadata_value >= int(
+                    subclause = aliased_bundle_metadata.c.metadata_value >= int(
                         target_datetime.timestamp()
                     )
-
-                clause = cl_bundle.c.uuid.in_(
-                    alias(
-                        select([cl_bundle_metadata.c.bundle_uuid]).where(
-                            and_(cl_bundle_metadata.c.metadata_key == 'created', subclause)
-                        )
-                    )
+                add_join(
+                    aliased_bundle_metadata,
+                    cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
                 )
+                conjunct = and_(aliased_bundle_metadata.c.metadata_key == 'created', subclause)
             elif key == 'uuid_name':  # Search uuid and name by default
-                clause = []
-                clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
-                clause.append(
-                    cl_bundle.c.uuid.in_(
-                        alias(
-                            select([cl_bundle_metadata.c.bundle_uuid]).where(
-                                and_(
-                                    cl_bundle_metadata.c.metadata_key == 'name',
-                                    cl_bundle_metadata.c.metadata_value.like('%' + value + '%'),
-                                )
-                            )
-                        )
-                    )
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
+                add_join(
+                    aliased_bundle_metadata,
+                    cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
                 )
-                clause = or_(*clause)
+
+                conjunct = or_(
+                    cl_bundle.c.uuid.like('%' + value + '%'),
+                    and_(
+                        aliased_bundle_metadata.c.metadata_key == 'name',
+                        aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),
+                    ),
+                )
             elif key == '':  # Match any field
-                clause = []
-                clause.append(cl_bundle.c.uuid.like('%' + value + '%'))
-                clause.append(cl_bundle.c.command.like('%' + value + '%'))
-                clause.append(
-                    cl_bundle.c.uuid.in_(
-                        alias(
-                            select([cl_bundle_metadata.c.bundle_uuid]).where(
-                                cl_bundle_metadata.c.metadata_value.like('%' + value + '%')
-                            )
-                        )
-                    )
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
+                add_join(
+                    aliased_bundle_metadata,
+                    cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
                 )
-                clause = or_(*clause)
+
+                conjunct = or_(
+                    cl_bundle.c.uuid.like('%' + value + '%'),
+                    cl_bundle.c.command.like('%' + value + '%'),
+                    aliased_bundle_metadata.c.metadata_value.like('%' + value + '%'),
+                )
             # Otherwise, assume metadata.
             else:
-                condition = make_condition(key, cl_bundle_metadata.c.metadata_value, value)
+                aliased_bundle_metadata = aliased(cl_bundle_metadata)
+                condition = make_condition(key, aliased_bundle_metadata.c.metadata_value, value)
                 if condition is None:  # top-level
-                    clause = and_(
-                        cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid,
-                        cl_bundle_metadata.c.metadata_key == key,
+                    conjunct = and_(
+                        cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
+                        aliased_bundle_metadata.c.metadata_key == key,
                     )
                 else:  # embedded
-                    clause = cl_bundle.c.uuid.in_(
-                        select([cl_bundle_metadata.c.bundle_uuid]).where(
-                            and_(cl_bundle_metadata.c.metadata_key == key, condition)
-                        )
+                    add_join(
+                        aliased_bundle_metadata,
+                        cl_bundle.c.uuid == aliased_bundle_metadata.c.bundle_uuid,
                     )
 
-            if clause is not None:
-                clauses.append(clause)
+                    conjunct = and_(aliased_bundle_metadata.c.metadata_key == key, condition)
 
-        clause = and_(*clauses)
+            if conjunct is not None:
+                where_clause_conjuncts.append(conjunct)
+
+        where_clause = and_(*where_clause_conjuncts)
 
         if user_id != self.root_user_id:
             # Restrict to the bundles that we have access to.
-            access_via_owner = cl_bundle.c.owner_id == user_id
-            access_via_group = cl_bundle.c.uuid.in_(
-                select([cl_group_bundle_permission.c.object_uuid]).where(
-                    and_(
-                        or_(  # Join constraint (group)
-                            cl_group_bundle_permission.c.group_uuid
-                            == self.public_group_uuid,  # Public group
-                            cl_group_bundle_permission.c.group_uuid.in_(
-                                alias(
-                                    select([cl_user_group.c.group_uuid]).where(
-                                        cl_user_group.c.user_id == user_id
-                                    )
-                                )
-                            ),  # Private group
-                        ),
-                        cl_group_bundle_permission.c.permission
-                        >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
-                    )
-                )
+            add_join(
+                cl_group_bundle_permission,
+                cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
             )
-            clause = and_(clause, or_(access_via_owner, access_via_group))
+            add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join=True)
+            access_via_owner = cl_bundle.c.owner_id == user_id
+            access_via_group = and_(
+                or_(  # Join constraint (group)
+                    cl_group_bundle_permission.c.group_uuid
+                    == self.public_group_uuid,  # Public group
+                    cl_user_group.c.user_id == user_id,
+                ),
+                cl_group_bundle_permission.c.permission
+                >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
+            )
 
+            where_clause = and_(where_clause, or_(access_via_owner, access_via_group))
+
+        # Join the cl_bundle table with other tables in joins.
+        table = cl_bundle
+        for join_table in joins:
+            table = table.join(
+                join_table.table, join_table.condition, isouter=join_table.left_outer_join
+            )
         # Aggregate (sum)
         if sum_key[0] is not None:
             # Construct a table with only the uuid and the num (and make sure it's distinct!)
             query = alias(
-                select([cl_bundle.c.uuid, sum_key[0].label('num')]).distinct().where(clause)
+                select([cl_bundle.c.uuid, sum_key[0].label('num')])
+                .select_from(table)
+                .distinct()
+                .where(where_clause)
             )
             # Sum the numbers
             query = select([func.sum(query.c.num)])
         else:
-            query = (
-                select([cl_bundle.c.uuid] + aux_fields)
-                .distinct()
-                .where(clause)
-                .offset(offset)
-                .limit(limit)
-            )
-
+            query = select([cl_bundle.c.uuid] + aux_fields).select_from(table)
+            query = query.distinct().where(where_clause).offset(offset).limit(limit)
         # Sort
         if sort_key[0] is not None:
             query = query.order_by(sort_key[0])
@@ -709,6 +742,10 @@ class BundleModel(object):
                 query = select([cl_bundle.c.uuid]).where(clause)
                 query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
 
+        return self._execute_query(query)
+
+    def get_all_bundle_uuids(self, max_results=100):
+        query = select([cl_bundle.c.uuid]).limit(max_results)
         return self._execute_query(query)
 
     def get_memoized_bundles(self, user_id, command, dependencies):
@@ -894,6 +931,9 @@ class BundleModel(object):
                 for spec in RunBundle.METADATA_SPECS
                 if spec.generated and spec.key not in ['actions', 'created']
             }
+            metadata_update[
+                'staged_status'
+            ] = "Bundle's dependencies are all ready. Waiting for the bundle to be assigned to a worker to be run."
             bundle_update = {'state': State.STAGED, 'metadata': metadata_update}
             self.update_bundle(bundle, bundle_update, connection)
             connection.execute(
@@ -915,10 +955,23 @@ class BundleModel(object):
             ).fetchone()
             if not run_row or run_row.user_id != user_id or run_row.worker_id != worker_id:
                 return False
+            worker_row = connection.execute(
+                cl_worker.select().where(and_(cl_worker.c.worker_id == worker_id))
+            ).fetchone()
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'started': start_time, 'last_updated': start_time, 'remote': remote},
+                'metadata': {
+                    'run_status': 'Waiting for worker to download bundle dependencies and Docker image to run the bundle.',
+                    'started': start_time,
+                    'last_updated': start_time,
+                    'remote': remote,
+                    'on_preemptible_worker': worker_row.preemptible,
+                    'remote_history': getattr(bundle.metadata, "remote_history", [])
+                    + [
+                        remote
+                    ],  # Store the history of which workers ran this bundle before in the bundle metadata.
+                },
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -961,6 +1014,22 @@ class BundleModel(object):
             'cpu_usage': cpu_usage,
             'memory_usage': memory_usage,
         }
+        if self.get_bundle_state(bundle.uuid) != State.FAILED:
+            # If the bundle state is failed, it means it failed on uploading_results and data_size was wiped.
+            metadata_update['data_size'] = worker_run.disk_utilization
+
+        # Increment user time and disk as we go to ensure user doesn't go over quota.
+        # time increment is the change in running time for this bundle since the last checkin.
+        # disk increment is the change in disk quota used for this bundle since the last checkin.
+        if user_id == self.root_user_id:
+            time_increment = worker_run.container_time_total
+            if hasattr(bundle.metadata, 'time'):
+                time_increment -= bundle.metadata.time
+            self.increment_user_time_used(bundle.owner_id, time_increment)
+        disk_increment = worker_run.disk_utilization
+        if hasattr(bundle.metadata, 'data_size'):
+            disk_increment -= bundle.metadata.data_size
+        self.increment_user_disk_used(bundle.owner_id, disk_increment)
 
         if worker_run.docker_image is not None:
             metadata_update['docker_image'] = worker_run.docker_image
@@ -990,32 +1059,42 @@ class BundleModel(object):
         Transitions bundle to WORKER_OFFLINE state:
             Updates the last_updated metadata.
             Removes the corresponding row from worker_run if it exists.
+
+        If the bundle is preemptible, move the bundle to the STAGED state instead.
         """
         with self.engine.begin() as connection:
             # Check that it still exists and is running
             row = connection.execute(
                 cl_bundle.select().where(
-                    cl_bundle.c.id == bundle.id
-                    and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING)
+                    and_(
+                        cl_bundle.c.id == bundle.id,
+                        cl_bundle.c.state.in_((State.RUNNING, State.PREPARING, State.FINALIZING)),
+                    )
                 )
             ).fetchone()
             if not row:
                 # The user deleted the bundle or the bundle finished
                 return False
 
+            if getattr(bundle.metadata, "on_preemptible_worker", False):
+                # If the bundle is running on a preemptible worker, move the bundle to the STAGED state instead.
+                bundle_update = {
+                    'state': State.STAGED,
+                    'metadata': {'last_updated': int(time.time())},
+                }
+            else:
+                bundle_update = {
+                    'state': State.WORKER_OFFLINE,
+                    'metadata': {'last_updated': int(time.time())},
+                }
             # Delete row in worker_run
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
-
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {'last_updated': int(time.time())},
-            }
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def transition_bundle_finalizing(self, bundle, worker_run, connection):
+    def transition_bundle_finalizing(self, bundle, worker_run, user_id, connection):
         """
         Transitions bundle to FINALIZING state:
             Saves the failure message and exit code from the worker
@@ -1025,6 +1104,7 @@ class BundleModel(object):
         failure_message, exitcode = worker_run.failure_message, worker_run.exitcode
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
+
         # Build metadata
         metadata = {}
         if failure_message is not None:
@@ -1047,18 +1127,8 @@ class BundleModel(object):
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
         state = State.FAILED if failure_message or exitcode else State.READY
-        if failure_message == 'Kill requested':
+        if failure_message and 'Kill requested' in failure_message:
             state = State.KILLED
-
-        worker = self.get_bundle_worker(bundle.uuid)
-
-        # Increment the amount of time used for the user whose bundles run on CodaLab's public instances
-        if worker['user_id'] == self.root_user_id:
-            self.increment_user_time_used(bundle.owner_id, metadata.get('time', 0))
-
-        if worker['shared_file_system']:
-            # TODO(Ashwin): fix for --link.
-            self.update_disk_metadata(bundle, bundle_location)
 
         metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
@@ -1072,10 +1142,9 @@ class BundleModel(object):
     # Bundle state machine helper functions
     # ==========================================================================
 
-    def update_disk_metadata(self, bundle, bundle_location, enforce_disk_quota=False):
+    def get_data_size(self, bundle_location):
         """
-        Computes the disk use and data hash of the given bundle.
-        Updates the database rows for the bundle and user with the new disk use
+        Returns data_size (in bytes) of bundle at bundle_location
         """
         dirs_and_files = None
         if os.path.isdir(bundle_location):
@@ -1084,17 +1153,28 @@ class BundleModel(object):
             dirs_and_files = [], [bundle_location]
 
         # TODO(Ashwin): make this non-fs specific
-        data_hash = '0x%s' % (path_util.hash_directory(bundle_location, dirs_and_files))
-        data_size = path_util.get_size(bundle_location, dirs_and_files)
-        if enforce_disk_quota:
-            disk_left = self.get_user_disk_quota_left(bundle.owner_id)
-            if data_size > disk_left:
-                raise UsageError(
-                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
-                    % (data_size, disk_left)
-                )
+        return path_util.get_size(bundle_location, dirs_and_files)
 
-        bundle_update = {'data_hash': data_hash, 'metadata': {'data_size': data_size}}
+    def enforce_disk_quota(self, bundle, bundle_location):
+        """
+        Throws an error if saving bundle will cause user to go over disk quota left.
+        """
+        data_size = self.get_data_size(bundle_location)
+        disk_left = self.get_user_disk_quota_left(bundle.owner_id)
+        if data_size > disk_left:
+            raise UsageError(
+                "Can't save bundle, user disk quota exceeded. Bundle size %s greater than user's disk quota left: %s"
+                % (data_size, disk_left)
+            )
+
+    def update_disk_metadata(self, bundle, bundle_location):
+        """
+        Update user's disk used with the size of the new bundle.
+
+        Only used by bundle_manager when creating make bundles.
+        """
+        data_size = self.get_data_size(bundle_location)
+        bundle_update = {'metadata': {'data_size': data_size}}
         self.update_bundle(bundle, bundle_update)
         self.update_user_disk_used(bundle.owner_id)
 
@@ -1119,7 +1199,7 @@ class BundleModel(object):
                 self.transition_bundle_running(
                     bundle, worker_run, row, user_id, worker_id, connection
                 )
-                return self.transition_bundle_finalizing(bundle, worker_run, connection)
+                return self.transition_bundle_finalizing(bundle, worker_run, user_id, connection)
 
             if worker_run.state in [State.PREPARING, State.RUNNING]:
                 return self.transition_bundle_running(
@@ -1129,9 +1209,11 @@ class BundleModel(object):
             # State isn't one we can check in for
             return False
 
-    def save_bundle(self, bundle):
+    def save_bundle(self, bundle, bundle_store_uuid=None):
         """
         Save a bundle. On success, sets the Bundle object's id from the result.
+        Parameters:
+        `bundle_store_uuid`: If set, bundle location is set to this value. Optional.
         """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
@@ -1145,6 +1227,12 @@ class BundleModel(object):
             result = connection.execute(cl_bundle.insert().values(bundle_value))
             self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
             self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            if bundle_store_uuid:
+                bundle_location_value = {
+                    'bundle_uuid': bundle.uuid,
+                    'bundle_store_uuid': bundle_store_uuid,
+                }
+                connection.execute(cl_bundle_location.insert().values(bundle_location_value))
             bundle.id = result.lastrowid
 
     def update_bundle(self, bundle, update, connection=None, delete=False):
@@ -1290,12 +1378,6 @@ class BundleModel(object):
             # In case something goes wrong, delete bundles that are currently running on workers.
             connection.execute(cl_worker_run.delete().where(cl_worker_run.c.run_uuid.in_(uuids)))
             connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
-
-    def remove_data_hash_references(self, uuids):
-        with self.engine.begin() as connection:
-            connection.execute(
-                cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None})
-            )
 
     # ==========================================================================
     # Worksheet-related model methods follow!
@@ -2166,76 +2248,6 @@ class BundleModel(object):
         """
         return obj.isoformat() if isinstance(obj, (datetime.date, datetime.datetime)) else None
 
-    def add_chat_log_info(self, query_info):
-        """
-        Add the given chat into the database
-        Return a list of chats that the sender have had
-        """
-        sender_user_id = query_info.get('sender_user_id')
-        recipient_user_id = query_info.get('recipient_user_id')
-        message = query_info.get('message')
-        worksheet_uuid = query_info.get('worksheet_uuid')
-        bundle_uuid = query_info.get('bundle_uuid')
-        with self.engine.begin() as connection:
-            info = {
-                'time': datetime.datetime.fromtimestamp(time.time()),
-                'sender_user_id': sender_user_id,
-                'recipient_user_id': recipient_user_id,
-                'message': message,
-                'worksheet_uuid': worksheet_uuid,
-                'bundle_uuid': bundle_uuid,
-            }
-            connection.execute(cl_chat.insert().values(info))
-        result = self.get_chat_log_info({'user_id': sender_user_id})
-        return result
-
-    def get_chat_log_info(self, query_info):
-        """
-        |query_info| specifies the user_id of the user that you are querying about.
-        Example: query_info = {
-            user_id: 2,   // get the chats sent by and received by the user with user_id 2
-            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
-        }
-        Return a list of chats that the user have had given the user_id
-        """
-        user_id1 = query_info.get('user_id')
-        if user_id1 is None:
-            return None
-        limit = query_info.get('limit')
-        with self.engine.begin() as connection:
-            query = select(
-                [
-                    cl_chat.c.time,
-                    cl_chat.c.sender_user_id,
-                    cl_chat.c.recipient_user_id,
-                    cl_chat.c.message,
-                ]
-            )
-            clause = []
-            # query all chats that this user sends or receives
-            clause.append(cl_chat.c.sender_user_id == user_id1)
-            clause.append(cl_chat.c.recipient_user_id == user_id1)
-            if user_id1 == self.root_user_id:
-                # if this user is root user, also query all chats that system user sends or receives
-                clause.append(cl_chat.c.sender_user_id == self.system_user_id)
-                clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
-            clause = or_(*clause)
-            query = query.where(clause)
-            if limit is not None:
-                query = query.limit(limit)
-            # query = query.order_by(cl_chat.c.id.desc())
-            rows = connection.execute(query).fetchall()
-            result = [
-                {
-                    'message': row.message,
-                    'time': row.time.strftime("%Y-%m-%d %H:%M:%S"),
-                    'sender_user_id': row.sender_user_id,
-                    'recipient_user_id': row.recipient_user_id,
-                }
-                for row in rows
-            ]
-            return result
-
     # ===========================================================================
     # User-related methods follow!
     # ===========================================================================
@@ -2470,9 +2482,21 @@ class BundleModel(object):
         :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
+
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
             user_id = user_id or '0x%s' % uuid4().hex
+
+            time_quota = (
+                self.default_user_info['edu_time_quota']
+                if is_academic_email(email)
+                else self.default_user_info['time_quota']
+            )
+            disk_quota = (
+                self.default_user_info['edu_disk_quota']
+                if is_academic_email(email)
+                else self.default_user_info['disk_quota']
+            )
 
             connection.execute(
                 cl_user.insert().values(
@@ -2488,12 +2512,11 @@ class BundleModel(object):
                         "date_joined": now,
                         "has_access": has_access,
                         "is_verified": is_verified,
-                        "is_superuser": False,
                         "password": User.encode_password(password, crypt_util.get_random_string()),
-                        "time_quota": self.default_user_info['time_quota'],
+                        "time_quota": time_quota,
                         "parallel_run_quota": self.default_user_info['parallel_run_quota'],
                         "time_used": time_used,
-                        "disk_quota": self.default_user_info['disk_quota'],
+                        "disk_quota": disk_quota,
                         "disk_used": disk_used,
                         "affiliation": affiliation,
                         "url": None,
@@ -2549,13 +2572,6 @@ class BundleModel(object):
 
             # User Groups
             connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
-
-            # Chat
-            connection.execute(
-                cl_chat.delete().where(
-                    cl_chat.c.sender_user_id == user_id or cl_chat.c.recipient_user_id == user_id
-                )
-            )
 
             # Delete User
             connection.execute(cl_user.delete().where(cl_user.c.user_id == user_id))
@@ -2721,13 +2737,41 @@ class BundleModel(object):
                 cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info)
             )
 
-    def increment_user_time_used(self, user_id, amount):
+    def increment_user_disk_used(self, user_id: str, amount: int):
+        """
+        Increment disk_used for user by amount.
+        When incrementing values, we have to use a special query to ensure that we avoid
+        race conditions or deadlock arising from multiple threads calling functions
+        concurrently. We do this using with_for_update() and commit().
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.disk_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            disk_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(disk_used=disk_used)
+            )
+            connection.commit()
+
+    def increment_user_time_used(self, user_id: str, amount: int):
         """
         User used some time.
+        See comment for increment_user_disk_used.
         """
-        user_info = self.get_user_info(user_id)
-        user_info['time_used'] += amount
-        self.update_user_info(user_info)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select([cl_user.c.time_used]).where(cl_user.c.user_id == user_id).with_for_update()
+            )
+            if not rows:
+                raise NotFoundError("User with ID %s not found" % user_id)
+            time_used = rows.first()[0] + amount
+            connection.execute(
+                cl_user.update().where(cl_user.c.user_id == user_id).values(time_used=time_used)
+            )
+            connection.commit()
 
     def get_user_time_quota_left(self, user_id, user_info=None):
         if not user_info:
@@ -2735,6 +2779,21 @@ class BundleModel(object):
         time_quota = user_info['time_quota']
         time_used = user_info['time_used']
         return time_quota - time_used
+
+    def get_user_disk_quota_left(self, user_id, user_info=None):
+        if not user_info:
+            user_info = self.get_user_info(user_id)
+        return user_info['disk_quota'] - user_info['disk_used']
+
+    def _get_disk_used(self, user_id):
+        # TODO(Ashwin): don't include linked bundles
+        return self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id])['result'] or 0
+
+    def update_user_disk_used(self, user_id):
+        user_info = self.get_user_info(user_id)
+        # Compute from scratch for simplicity
+        user_info['disk_used'] = self._get_disk_used(user_id)
+        self.update_user_info(user_info)
 
     def get_user_parallel_run_quota_left(self, user_id, user_info=None):
         if not user_info:
@@ -2760,26 +2819,6 @@ class BundleModel(object):
         Update user's last login date to now.
         """
         self.update_user_info({'user_id': user_id, 'last_login': datetime.datetime.utcnow()})
-
-    def _get_disk_used(self, user_id):
-        # TODO(Ashwin): don't include linked bundles
-        return (
-            self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])[
-                'result'
-            ]
-            or 0
-        )
-
-    def get_user_disk_quota_left(self, user_id, user_info=None):
-        if not user_info:
-            user_info = self.get_user_info(user_id)
-        return user_info['disk_quota'] - user_info['disk_used']
-
-    def update_user_disk_used(self, user_id):
-        user_info = self.get_user_info(user_id)
-        # Compute from scratch for simplicity
-        user_info['disk_used'] = self._get_disk_used(user_id)
-        self.update_user_info(user_info)
 
     # ===========================================================================
     # OAuth-related methods follow!
@@ -3041,6 +3080,8 @@ class BundleModel(object):
                     )
                 )
             ).fetchone()
+            if row is None:
+                raise UsageError(f"Can not find the BundleStore with name {name}.")
             return {
                 'uuid': row.uuid,
                 'owner_id': row.owner_id,
