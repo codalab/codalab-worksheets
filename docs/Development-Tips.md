@@ -15,12 +15,6 @@ docker exec -it codalab_worker_1 /bin/bash
 # connect to prod instance from the CLI
 cl work https://worksheets.codalab.org::
 
-# connect to dev instance from the CLI
-cl work https://worksheets-dev.codalab.org::
-
-# connect to stanford instance from the CLI
-cl work https://codalab.stanford.edu::
-
 # connect to local instance from the CLI
 cl work localhost::
 
