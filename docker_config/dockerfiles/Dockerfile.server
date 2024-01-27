@@ -7,27 +7,27 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends software-properties-common && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    git \
-    libfuse-dev \
-    libjpeg-dev \
-    libmysqlclient-dev \
-    libssl-dev \
-    mysql-client \
-    zip \
-    unzip \
-    rsync && \
-    rm -rf /var/lib/apt/lists/*;
+  build-essential \
+  curl \
+  git \
+  libfuse-dev \
+  libjpeg-dev \
+  libmysqlclient-dev \
+  libssl-dev \
+  mysql-client \
+  zip \
+  unzip \
+  rsync && \
+  rm -rf /var/lib/apt/lists/*;
 
 ### Without this Python thinks we're ASCII and unicode chars fail
 ENV LANG C.UTF-8
 
-# Miniconda 4.5.11 installs Python 3.7 by default.
-RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh && \
-     chmod +x ~/miniconda.sh && \
-     ~/miniconda.sh -b -p /opt/conda && \
-     rm ~/miniconda.sh
+# Python 3.9 Version of miniconda 23.5.2
+RUN curl -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-py39_23.5.2-0-Linux-x86_64.sh && \
+  chmod +x ~/miniconda.sh && \
+  ~/miniconda.sh -b -p /opt/conda && \
+  rm ~/miniconda.sh
 ENV PATH /opt/conda/bin:$PATH
 RUN conda --version
 

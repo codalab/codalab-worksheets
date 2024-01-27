@@ -70,4 +70,4 @@ class MySQLModel(BundleModel):
         return value.encode()
 
     def decode_str(self, value):
-        return array.array('B', [ord(char) for char in value]).tostring().decode()
+        return array.array('B', [ord(char) for char in value]).tobytes().decode()

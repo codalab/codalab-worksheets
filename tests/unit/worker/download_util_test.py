@@ -129,7 +129,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 0)
         target_info.pop("resolved_target")
         self.assertEqual(
-            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 249, 'perm': 0o755}
+            target_info, {'name': bundle_uuid, 'type': 'directory', 'size': 246, 'perm': 0o755}
         )
 
         target_info = get_target_info(bundle_path, BundleTarget(bundle_uuid, None), 1)
@@ -139,7 +139,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
             {
                 'name': bundle_uuid,
                 'type': 'directory',
-                'size': 249,
+                'size': 246,
                 'perm': 0o755,
                 'contents': [
                     {'name': 'README.md', 'type': 'file', 'size': 11, 'perm': 0o644},
@@ -214,7 +214,7 @@ class AzureBlobGetTargetInfoTest(AzureBlobTestBase, unittest.TestCase):
         self.assertEqual(
             list(results),
             [
-                {'name': '', 'type': 'directory', 'size': 249, 'perm': 0o755, 'contents': None},
+                {'name': '', 'type': 'directory', 'size': 246, 'perm': 0o755, 'contents': None},
                 {'name': 'README.md', 'size': 11, 'perm': 0o644, 'type': 'file', 'contents': None,},
                 {'name': 'dist', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None,},
                 {'name': 'dist/a', 'size': 0, 'perm': 0o644, 'type': 'directory', 'contents': None},
