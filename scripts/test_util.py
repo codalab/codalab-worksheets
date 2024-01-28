@@ -185,6 +185,7 @@ def cleanup(cl, tag, should_wait=True):
     print('Removed {} bundles and {} worksheets.'.format(bundles_removed, worksheets_removed))
 
 
+
 class Timer:
     """
     Class that uses signal to interrupt functions while they're running
@@ -219,10 +220,7 @@ class Timer:
         self.start_time = time.time()
         if self.handle_timeouts:
             signal.signal(signal.SIGALRM, self.handle_timeout)
-            signal.setitimer(signal.ITIMER_REAL, self.timeout_seconds, self.timeout_seconds)
-
-            # now, reset itimer.
-            signal.setitimer(signal.ITIMER_REAL, 0, 0)
+            signal.alarm(self.timeout_seconds)
 
     def __exit__(self, type, value, traceback):
         self.time_elapsed = time.time() - self.start_time
