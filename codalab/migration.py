@@ -33,6 +33,7 @@ import argparse
 import os
 import signal
 import tarfile
+import random
 from apache_beam.io.filesystems import FileSystems
 from codalab.common import (
     StorageType,
@@ -52,6 +53,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.file_util import (
     OpenFile,
     read_file_section,
+    read_file_section_gzip,
     tar_gzip_directory,
 )
 
@@ -148,12 +150,13 @@ class Migration:
     ATTENTION: this class will modify real bundle database.
     """
 
-    def __init__(self, target_store_name, change_db, delete, proc_id) -> None:
+    def __init__(self, target_store_name, change_db, delete, proc_id, sanity_check_number) -> None:
         self.target_store_name = target_store_name
         self.change_db = change_db
         self.delete = delete
         self.times = defaultdict(list)
         self.proc_id = proc_id
+        self.sanity_check_count = sanity_check_number
 
         self.setUp()
 
@@ -334,42 +337,88 @@ class Migration:
     def sanity_check(self, bundle_uuid, bundle_location, bundle_info, is_dir, new_location=None):
         if new_location is None:
             new_location = self.get_bundle_location(bundle_uuid)
+
+        success, reason = None, None
+
         if is_dir:
             # For dirs, check the folder contains same files
             with OpenFile(new_location, gzipped=True) as f:
                 new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
                 new_file_list.sort()
 
-            (files, dirs) = path_util.recursive_ls(bundle_location)
+            (dirs, files) = path_util.recursive_ls(bundle_location)
+            files = [n.replace(bundle_location, '.') for n in files]
+            dirs = [n.replace(bundle_location, '.') for n in dirs]
             old_file_list = files + dirs
-            old_file_list = [n.replace(bundle_location, '.') for n in old_file_list]
             old_file_list.sort()
-            if old_file_list != new_file_list:
+            if old_file_list!= new_file_list:
                 return False, "Directory file lists differ."
+            
+            # Sanity check files
+            if self.sanity_check_count == 0 or self.sanity_check_count > len(files):
+                # Check all files
+                success, reason = self.dir_file_sanity_check(bundle_location, new_location, files)
+            else:
+                # Check sanity_check_count files, excluding directories
+                file_sample = random.sample(files, self.sanity_check_count)
+                success, reason = self.dir_file_sanity_check(bundle_location, new_location, file_sample)
 
         else:
             # For files, check the file has same contents
-            old_content = read_file_section(bundle_location, 5, 10)
-            new_content = read_file_section(new_location, 5, 10)
+            success, reason = self.file_sanity_check(bundle_location, new_location)
+
+        return success, reason
+
+    def file_sanity_check(self, bundle_location, new_location):
+        # For files, check the file has same contents
+        old_content = read_file_section(bundle_location, 5, 10)
+        new_content = read_file_section(new_location, 5, 10)
+        if old_content != new_content:
+            return False, "First 5 bytes differ."
+
+        old_file_size = path_util.get_path_size(bundle_location)
+        new_file_size = path_util.get_path_size(new_location)
+        if old_file_size != new_file_size:
+            return False, "File sizes differ"
+
+        # check file contents of last 10 bytes
+        if old_file_size < 10:
+            if read_file_section(bundle_location, 0, 10) != read_file_section(
+                new_location, 0, 10
+            ):
+                return False, "First 10 bytes differ."
+        else:
+            if read_file_section(bundle_location, old_file_size - 10, 10) != read_file_section(
+                new_location, old_file_size - 10, 10
+            ):
+                return False, "Last 10 bytes differ."
+
+        return True, ""
+
+    def dir_file_sanity_check(self, bundle_location, new_location, file_list):
+        for file in file_list:
+            file_location = bundle_location + "/" + file
+            
+            # For files, check the file has same contents
+            old_content = read_file_section(file_location, 5, 10)
+            new_content = read_file_section_gzip(new_location, file, 5, 10)
             if old_content != new_content:
                 return False, "First 5 bytes differ."
 
-            old_file_size = path_util.get_path_size(bundle_location)
-            new_file_size = path_util.get_path_size(new_location)
-            if old_file_size != new_file_size:
-                return False, "File sizes differ"
+            old_file_size = path_util.get_path_size(file_location)
 
             # check file contents of last 10 bytes
             if old_file_size < 10:
-                if read_file_section(bundle_location, 0, 10) != read_file_section(
-                    new_location, 0, 10
+                if read_file_section(file_location, 0, 10) != read_file_section_gzip(
+                    new_location, file, 0, 10
                 ):
                     return False, "First 10 bytes differ."
             else:
-                if read_file_section(bundle_location, old_file_size - 10, 10) != read_file_section(
-                    new_location, old_file_size - 10, 10
+                if read_file_section(file_location, old_file_size - 10, 10) != read_file_section_gzip(
+                    new_location, file, old_file_size - 10, 10
                 ):
                     return False, "Last 10 bytes differ."
+                
         return True, ""
 
     def delete_original_bundle(self, uuid):
@@ -417,23 +466,17 @@ class Migration:
                 # Create bundle migration status
                 self.logger.info("Getting Bundle Migration Status")
                 bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
-                # print("STATUS FIRST ", bundle_migration_status)
                 if self.existing_bundle_migration_statuses is not None: 
                     existing_bundle_migration_status = self.existing_bundle_migration_statuses[
                         self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
                     ].to_dict('records')
                     if existing_bundle_migration_status:
-                        # print("found status")
                         bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
-
-                print("STATUS ", bundle_migration_status)
 
                 # Get bundle information
                 self.logger.info("Getting Bundle info")
                 bundle = self.get_bundle(bundle_uuid)
                 bundle_location = self.get_bundle_location(bundle_uuid)
-                # print(bundle)   
-                print(bundle_location)
 
                 # This is for handling cases where rm -d was run on the bundle
                 is_bundle_rm = False
@@ -459,8 +502,6 @@ class Migration:
                     else:
                         raise e
 
-                print(is_bundle_rm)
-                    
                 # Normal Migration
                 if not is_bundle_rm:
                     is_dir = bundle_info['type'] == 'directory'
@@ -568,7 +609,7 @@ class Migration:
                 self.write_bundle_statuses()
 
 
-def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_result, num_processes, proc_id):
+def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_result, num_processes, sanity_check_number, proc_id):
     """A function for running the migration in parallel.
 
     NOTE: I know this is bad styling since we re-create the Migration object and the
@@ -578,7 +619,7 @@ def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_resul
     (BundleManager, CodalabManager, etc.), and so this is the compromise we came up with.
     """
     # Setup Migration.
-    migration = Migration(target_store_name, change_db, delete, proc_id)
+    migration = Migration(target_store_name, change_db, delete, proc_id, sanity_check_number)
 
     # Get bundle uuids (if not already provided)
     if not bundle_uuids:
@@ -634,6 +675,9 @@ if __name__ == '__main__':
         default=multiprocessing.cpu_count(),
     )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
+    parser.add_argument(
+        '-s', '--sanity_check_number', type=int, help='Sanity check directories on N files, default is 10, set to 0 for infinity', default=10
+    )
     args = parser.parse_args()
 
     # Run the program with multiprocessing
@@ -646,6 +690,7 @@ if __name__ == '__main__':
         args.bundle_uuids,
         args.max_result,
         args.num_processes,
+        args.sanity_check_number,
     )
     with multiprocessing.Pool(processes=args.num_processes) as pool:
         pool.map(f, list(range(args.num_processes)))
