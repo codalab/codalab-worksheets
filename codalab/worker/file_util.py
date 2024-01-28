@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import bz2
 import hashlib
+import tarfile
 import stat
 
 from codalab.common import BINARY_PLACEHOLDER, UsageError
@@ -462,6 +463,22 @@ def read_file_section(file_path, offset, length):
     if offset >= get_file_size(file_path):
         return b''
     with OpenFile(file_path, 'rb') as fileobj:
+        fileobj.seek(offset, os.SEEK_SET)
+        return fileobj.read(length)
+
+
+def read_file_section_gzip(bundle_path, file_name, offset, length):
+    """
+    TODO: UNSAFE
+
+    Given a tar.gz file, reads length bytes of given file_name from the
+    given offset.
+    Return bytes.
+    """
+    with OpenFile(bundle_path, 'rb', gzipped=True) as bundle:
+        tf = tarfile.open(fileobj=bundle, mode='r:gz')
+        member = tf.getmember(file_name)
+        fileobj = tf.extractfile(member)
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
