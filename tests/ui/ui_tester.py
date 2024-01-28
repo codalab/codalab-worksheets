@@ -306,6 +306,8 @@ class UITester(ABC):
         return output_dir
 
     def _get_browser_name(self):
+        if self.browser.capabilities['browserName'] == 'chrome-headless-shell':
+            return 'chrome'
         return self.browser.capabilities['browserName']
 
 
