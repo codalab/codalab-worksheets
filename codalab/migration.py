@@ -492,7 +492,8 @@ class Migration:
                 new_bundle_location = bundle_location[:-2] + "tar.gz"
                 # print(new_bundle_location)
                 # print(self.get_bundle_info(bundle_uuid, new_bundle_location))
-                # linked_info = parse_linked_bundle_url(bundle_location)
+                # linked_info = parse_linked_bundle_url(bundle_location).is_archive_dir
+                # print(linked_info)
 
                 try:
                     bundle_info = self.get_bundle_info(bundle_uuid, bundle_location)
@@ -524,91 +525,91 @@ class Migration:
                     else:
                         pass
 
-                # if not bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                #     self.bundle_manager._model.update_bundle(
-                #         bundle,
-                #         {
-                #             'is_dir': bundle_info['type'] == 'directory',
-                #         }
-                #     )
+                if not bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+                    self.bundle_manager._model.update_bundle(
+                        bundle,
+                        {
+                            'is_dir': bundle_info['type'] == 'directory',
+                        }
+                    )
                     
                 print(bundle_info, bundle_location, is_bundle_rm)
                 # print(bundle_migration_status)
                 
                 # Normal Migration
-                # if not is_bundle_rm:
-                #     is_dir = bundle_info['type'] == 'directory'
-                #     target_location = self.blob_target_location(bundle_uuid, is_dir)
-                #     disk_location = self.get_bundle_disk_location(bundle_uuid)
+                if not is_bundle_rm:
+                    is_dir = bundle_info['type'] == 'directory'
+                    target_location = self.blob_target_location(bundle_uuid, is_dir)
+                    disk_location = self.get_bundle_disk_location(bundle_uuid)
 
-                #     # print(1)
+                    # print(1)
 
-                #     # Don't migrate currently running bundles
-                #     if bundle.state not in State.FINAL_STATES:
-                #         bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
-                #         return
+                    # Don't migrate currently running bundles
+                    if bundle.state not in State.FINAL_STATES:
+                        bundle_migration_status.status = MigrationStatus.SKIPPED_NOT_FINAL
+                        return
 
-                #     # Don't migrate linked bundles
-                #     if self.is_linked_bundle(bundle_uuid):
-                #         bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
-                #         return
+                    # Don't migrate linked bundles
+                    if self.is_linked_bundle(bundle_uuid):
+                        bundle_migration_status.status = MigrationStatus.SKIPPED_LINKED
+                        return
 
-                #     # print(bundle_migration_status)
-                #     # print(2)
+                    # print(bundle_migration_status)
+                    # print(2)
 
-                #     # if db already changed
-                #     # TODO: Check if bundle_location is azure (see other places in code base.)
-                #     if bundle_migration_status.status == MigrationStatus.FINISHED and bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                #         bundle_migration_status.error_message = ''
-                #         return
-                #     # elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
-                #     #     bundle_migration_status.status = MigrationStatus.CHANGED_DB
-                #     #     bundle_migration_status.error_message = ''
-                #     # elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
-                #     #         bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                #     #     )[0]):
-                #     #     bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
-                #     #     bundle_migration_status.error_message = ''
+                    # if db already changed
+                    # TODO: Check if bundle_location is azure (see other places in code base.)
+                    if bundle_migration_status.status == MigrationStatus.FINISHED and bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+                        bundle_migration_status.error_message = ''
+                        return
+                    # elif bundle_migration_status.changed_db() or bundle_location.startswith(StorageURLScheme.AZURE_BLOB_STORAGE.value):
+                    #     bundle_migration_status.status = MigrationStatus.CHANGED_DB
+                    #     bundle_migration_status.error_message = ''
+                    # elif bundle_migration_status.uploaded_to_azure() or (FileSystems.exists(target_location) and self.sanity_check(
+                    #         bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                    #     )[0]):
+                    #     bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+                    #     bundle_migration_status.error_message = ''
 
-                #     # Upload to Azure.
-                #     # print(bundle_migration_status.uploaded_to_azure(), os.path.lexists(disk_location))
-                #     if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
-                #         print("UPLOADING")
-                #         self.logger.info("Uploading to Azure")
-                #         start_time = time.time()
-                #         self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
-                #         self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
-                #         success, reason = self.sanity_check(
-                #             bundle_uuid, bundle_location, bundle_info, is_dir, target_location
-                #         )
-                #         if not success:
-                #             raise ValueError(f"SanityCheck failed with {reason}")
-                #         bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
-                #         bundle_migration_status.error_message = None
+                    # Upload to Azure.
+                    # print(bundle_migration_status.uploaded_to_azure(), os.path.lexists(disk_location))
+                    if not bundle_migration_status.uploaded_to_azure() and os.path.lexists(disk_location):
+                        print("UPLOADING")
+                        self.logger.info("Uploading to Azure")
+                        start_time = time.time()
+                        self.adjust_quota_and_upload_to_blob(bundle_uuid, bundle_location, is_dir)
+                        self.times["adjust_quota_and_upload_to_blob"].append(time.time() - start_time)
+                        success, reason = self.sanity_check(
+                            bundle_uuid, bundle_location, bundle_info, is_dir, target_location
+                        )
+                        if not success:
+                            raise ValueError(f"SanityCheck failed with {reason}")
+                        bundle_migration_status.status = MigrationStatus.UPLOADED_TO_AZURE
+                        bundle_migration_status.error_message = None
 
-                # # Change bundle metadata in database to point to the Azure Blob location (not disk)
-                # if (self.change_db or is_bundle_rm) and not bundle_migration_status.changed_db() and not bundle_migration_status.error_message:
-                #     print("Changing DB")
-                #     self.logger.info("Changing DB")
-                #     start_time = time.time()
-                #     self.modify_bundle_data(bundle, bundle_uuid, is_dir)
-                #     self.times["modify_bundle_data"].append(time.time() - start_time)
-                #     bundle_migration_status.status = MigrationStatus.CHANGED_DB
-                #     bundle_migration_status.error_message = None
+                # Change bundle metadata in database to point to the Azure Blob location (not disk)
+                if (self.change_db or is_bundle_rm) and not bundle_migration_status.changed_db() and not bundle_migration_status.error_message:
+                    print("Changing DB")
+                    self.logger.info("Changing DB")
+                    start_time = time.time()
+                    self.modify_bundle_data(bundle, bundle_uuid, is_dir)
+                    self.times["modify_bundle_data"].append(time.time() - start_time)
+                    bundle_migration_status.status = MigrationStatus.CHANGED_DB
+                    bundle_migration_status.error_message = None
 
-                # # Delete the bundle from disk.
-                # if self.delete and not is_bundle_rm:
-                #     self.logger.info("Deleting from disk")
-                #     start_time = time.time()
-                #     delete_status = self.delete_original_bundle(bundle_uuid)
-                #     if not delete_status:
-                #         self.logger.info(f"Bundle location not on disk or bundle already deleted for bundle {bundle_uuid}")
-                #     # if os.path.lexists(disk_location):
-                #     #     # Delete it.
-                #     #     path_util.remove(disk_bundle_location)
-                #     self.times["delete_original_bundle"].append(time.time() - start_time)
-                #     bundle_migration_status.status = MigrationStatus.FINISHED
-                #     bundle_migration_status.error_message = None
+                # Delete the bundle from disk.
+                if self.delete and not is_bundle_rm:
+                    self.logger.info("Deleting from disk")
+                    start_time = time.time()
+                    delete_status = self.delete_original_bundle(bundle_uuid)
+                    if not delete_status:
+                        self.logger.info(f"Bundle location not on disk or bundle already deleted for bundle {bundle_uuid}")
+                    # if os.path.lexists(disk_location):
+                    #     # Delete it.
+                    #     path_util.remove(disk_bundle_location)
+                    self.times["delete_original_bundle"].append(time.time() - start_time)
+                    bundle_migration_status.status = MigrationStatus.FINISHED
+                    bundle_migration_status.error_message = None
 
                 self.times["migrate_bundle"].append(time.time() - total_start_time)
         
