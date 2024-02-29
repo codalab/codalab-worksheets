@@ -1506,6 +1506,8 @@ class BundleCLI(object):
             default_client, default_worksheet_uuid, args.target_spec
         )
 
+        print(default_worksheet_uuid)
+
         # Figure out where to download.
         info = client.fetch('bundles', target.bundle_uuid)
         if args.output_path:
@@ -1516,6 +1518,8 @@ class BundleCLI(object):
                 if target.subpath == ''
                 else os.path.basename(target.subpath)
             )
+
+        print(info)
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
             if args.force:
