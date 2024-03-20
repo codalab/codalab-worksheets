@@ -141,7 +141,7 @@ class StressTestRunner:
 
     def run(self):
         print('Cleaning up stress test files from other runs...')
-        cleanup(self._cl, self._TAG, should_wait=True)
+        self.cleanup()
 
         print('Running stress tests...')
         self._start_heartbeat()
