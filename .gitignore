@@ -28,6 +28,7 @@ Thumbs.db
 *MANIFEST
 *.egg-info
 venv*/
+*/__pycache__/*
 
 /nav
 /tags

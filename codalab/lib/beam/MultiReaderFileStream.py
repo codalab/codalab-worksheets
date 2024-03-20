@@ -2,7 +2,7 @@ from io import BytesIO
 from threading import Lock
 
 from codalab.worker.un_gzip_stream import BytesBuffer
-
+import threading
 
 class MultiReaderFileStream(BytesIO):
     """
@@ -10,11 +10,16 @@ class MultiReaderFileStream(BytesIO):
     """
     NUM_READERS = 2
 
+    # MAX memory usage <= MAX_BUF_SIZE + max(num_bytes called in read)
+    MAX_BUF_SIZE = 1024 * 1024 * 1024  # 10 MiB for test
+
     def __init__(self, fileobj):
         self._bufs = [BytesBuffer() for _ in range(0, self.NUM_READERS)]
         self._pos = [0 for _ in range(0, self.NUM_READERS)]
         self._fileobj = fileobj
         self._lock = Lock()  # lock to ensure one does not concurrently read self._fileobj / write to the buffers.
+        self._current_max_buf_length = 0
+        self._buffer_condition = threading.Condition()
 
         class FileStreamReader(BytesIO):
             def __init__(s, index):
@@ -36,15 +41,46 @@ class MultiReaderFileStream(BytesIO):
                     break
                 for i in range(0, self.NUM_READERS):
                     self._bufs[i].write(s)
+                self.find_largest_buffer()
 
+    def find_largest_buffer(self):
+        self._current_max_buf_length = len(self._bufs[0])
+        for i in range(1, self.NUM_READERS):
+            self._current_max_buf_length = max(self._current_max_buf_length, len(self._bufs[i]))
+        # Notify the condition variable when the buffer length condition is met
+        if self._current_max_buf_length <= self.MAX_BUF_SIZE:
+            with self._buffer_condition:
+                self._buffer_condition.notifyAll()
+        
     def read(self, index: int, num_bytes=None):  # type: ignore
         """Read the specified number of bytes from the associated file.
         index: index that specifies which reader is reading.
         """
+
+        # print(f"calling read() in thread {threading.current_thread().name}, num_bytes={num_bytes}")
+        # busy waiting until t
+        # while(self._current_max_buf_length > self.MAX_BUF_SIZE and len(self._bufs[index]) < self._current_max_buf_length):
+        #     # only the slowest reader could read
+        #     # print(f"Busy waiting in thread: {threading.current_thread().name}, current max_len = {self._current_max_buf_length}, current_buf_size = {len(self._bufs[index])}")
+        #     pass
+
+        # Wait until the buffer length condition is satisfied
+        with self._buffer_condition:
+            while self._current_max_buf_length > self.MAX_BUF_SIZE and len(self._bufs[index]) < self._current_max_buf_length:
+                # Wait for the condition variable to be notified
+                self._buffer_condition.wait()
+
+        # If current thread is the slowest reader, continue read.
+        # If current thread is the slowest reader, and num_bytes > len(self._buf[index]) / num_bytes = None, will continue grow the buffer.
+        # max memory usage <= MAX_BUF_SIZE + max(num_bytes called in read)
         self._fill_buf_bytes(index, num_bytes)
+        assert self._current_max_buf_length <= 2 * self.MAX_BUF_SIZE
         if num_bytes is None:
             num_bytes = len(self._bufs[index])
         s = self._bufs[index].read(num_bytes)
+        self.find_largest_buffer()
+        # print("Current thread name: ", threading.current_thread().name)
+
         self._pos[index] += len(s)
         return s
 
