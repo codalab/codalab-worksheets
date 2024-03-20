@@ -46,13 +46,15 @@ class KubernetesWorkerManager(WorkerManager):
             '--cert-path',
             type=str,
             help='Path to the SSL cert for the Kubernetes cluster',
-            required=True,
+            required=False,
+            default=os.getenv('CODALAB_CERT_PATH', '/dev/null'),
         )
         subparser.add_argument(
             '--cert',
             type=str,
             help='Contents of the SSL cert for the Kubernetes cluster',
-            required=True,
+            required=False,
+            default=os.getenv('CODALAB_CERT', '/dev/null'),
         )
         subparser.add_argument(
             '--nfs-volume-name', type=str, help='Name of the persistent volume for the NFS server.',
@@ -94,11 +96,9 @@ class KubernetesWorkerManager(WorkerManager):
             # Create temp file to store kubernetes cert, as we need to pass in a file path.
             # TODO: Delete the file afterwards (upon CodaLab service stop?)
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                f.write(
-                    args.cert.replace(r'\n', '\n')
-                )  # Properly add newlines, which appear as "\n" if specified in the environment variable.
+                f.write(args.cert)
                 cert_path = f.name
-                logger.info('Temporarily writing kubernetes cert to: %s', cert_path)
+            logger.info('Temporarily writing kubernetes cert to: %s', cert_path)
         else:
             cert_path = args.cert_path
         configuration.ssl_ca_cert = cert_path
