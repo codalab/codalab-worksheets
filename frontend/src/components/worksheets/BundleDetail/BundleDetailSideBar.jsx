@@ -37,6 +37,8 @@ class BundleDetailSideBar extends React.Component {
         const { bundleInfo, classes, hidePageLink, onUpdate, onMetadataChange } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
+        console.log(bundle)
+        console.log(bundleInfo)
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
         const state = bundle.state.value;
