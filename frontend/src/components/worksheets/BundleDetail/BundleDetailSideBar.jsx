@@ -54,10 +54,10 @@ class BundleDetailSideBar extends React.Component {
             .then((response) => {
                 console.log('~~~~~~~~');
                 console.log(response);
-                console.log(response.data);
-                console.log(response.data.attributes);
-                console.log(response.data.attributes.name);
-                bundleStore = response.data.attributes.name;
+                console.log(response.data[0]);
+                console.log(response.data[0].attributes);
+                console.log(response.data[0].attributes.name);
+                bundleStore = response.data[0].attributes.name;
                 console.log(bundleStore);
                 console.log('!!!!!!!!'); console.log(response);});
         return (
