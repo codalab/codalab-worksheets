@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
-import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
+import { apiWrapper, fetchBundleStores, fetchFileSummary } from '../../../util/apiWrapper';
 
 import ConfigPanel from '../ConfigPanel';
 import ErrorMessage from '../ErrorMessage';
@@ -205,6 +205,11 @@ const BundleDetail = ({
             setContentErrors([]);
         },
     });
+
+    fetchBundleStores(uuid)
+        .then((response) => {
+            const bundleStore = response.data[0].attributes.name;
+            bundleInfo.bundleStore = bundleStore;});
 
     const scrollToNewlyOpenedDetail = (node) => {
         // Only scroll to the bundle detail when it is opened

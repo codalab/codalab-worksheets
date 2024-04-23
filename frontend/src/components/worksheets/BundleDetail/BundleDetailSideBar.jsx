@@ -50,12 +50,6 @@ class BundleDetailSideBar extends React.Component {
         const showDependencies = !!bundle.dependencies?.value?.length;
         const showHostWorksheets = !!bundle.host_worksheets?.value.length;
 
-        let bundleStoreResponse = await fetchBundleStores(uuid);
-        const bundleStore = bundleStoreResponse.data[0].attributes.name;
-        console.log('!!!!!!!!'); 
-        console.log(bundleStoreResponse);
-        console.log(bundleStore);
-
         return (
             <div className={classes.sidebar}>
                 {showPageLink && (
@@ -116,7 +110,7 @@ class BundleDetailSideBar extends React.Component {
                     {(showRunFields || showDatasetFields) && (
                         <BundleFieldRow
                             label='Store'
-                            field={bundleStore}
+                            field={bundleInfo.bundleStore}
                             onChange={(store) => onUpdate({ store })}
                         />
                     )}
