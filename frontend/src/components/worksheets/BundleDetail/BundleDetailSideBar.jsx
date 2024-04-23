@@ -116,8 +116,8 @@ class BundleDetailSideBar extends React.Component {
                     {(showRunFields || showDatasetFields) && (
                         <BundleFieldRow
                             label='Store'
-                            field={bundleStore}
-                            onChange={(store) => onUpdate({ store })}
+                            field={bundle.bundleStore}
+                            onChange={(bundleStore) => onUpdate({ bundleStore })}
                         />
                     )}
                 </BundleFieldTable>
