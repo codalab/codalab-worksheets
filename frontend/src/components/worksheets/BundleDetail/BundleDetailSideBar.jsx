@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
-import { fetchBundleStores } from '../../../util/apiWrapper';
 import { formatBundle } from '../../../util/worksheet_utils';
 import { FINAL_BUNDLE_STATES } from '../../../constants';
 import CollapseButton from '../../CollapseButton';
