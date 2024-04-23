@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { withStyles } from '@material-ui/core';
+import { fetchBundleStores } from '../../../util/apiWrapper';
 import { formatBundle } from '../../../util/worksheet_utils';
 import { FINAL_BUNDLE_STATES } from '../../../constants';
 import CollapseButton from '../../CollapseButton';
@@ -48,6 +49,9 @@ class BundleDetailSideBar extends React.Component {
         const showOwner = !bundle.is_anonymous.value;
         const showDependencies = !!bundle.dependencies?.value?.length;
         const showHostWorksheets = !!bundle.host_worksheets?.value.length;
+
+        let bundleStoreResponse = await fetchBundleStores(uuid);
+        const bundleStore = bundleStoreResponse.data[0].attributes.name;
 
         return (
             <div className={classes.sidebar}>
@@ -109,7 +113,7 @@ class BundleDetailSideBar extends React.Component {
                     {(showRunFields || showDatasetFields) && (
                         <BundleFieldRow
                             label='Store'
-                            field={bundle.store}
+                            field={bundleStore}
                             onChange={(store) => onUpdate({ store })}
                         />
                     )}
