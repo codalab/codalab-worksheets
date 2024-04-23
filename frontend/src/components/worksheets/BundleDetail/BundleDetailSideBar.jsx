@@ -41,8 +41,9 @@ class BundleDetailSideBar extends React.Component {
         console.log(bundleInfo);
         const bundle = formatBundle(bundleInfo);
         console.log(bundle);
-        const bundleStore = bundle.bundleStore.value;
+        const bundleStore = bundle.bundleStore?.value;
         console.log(bundleStore);
+        console.log(bundleInfo.bundleStore);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
         const state = bundle.state.value;
