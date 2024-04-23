@@ -38,8 +38,6 @@ class BundleDetailSideBar extends React.Component {
         const { bundleInfo, classes, hidePageLink, onUpdate, onMetadataChange } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
         const bundle = formatBundle(bundleInfo);
-        console.log(bundle)
-        console.log(bundleInfo)
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
         const state = bundle.state.value;
@@ -54,9 +52,12 @@ class BundleDetailSideBar extends React.Component {
         let bundleStore;
         fetchBundleStores(uuid)
             .then((response) => {
-                const {
-                    data: { attributes: { name: bundleStore } },
-                } = response;
+                console.log('~~~~~~~~');
+                console.log(response);
+                console.log(response.data);
+                console.log(response.data.attributes);
+                console.log(response.data.attributes.name);
+                bundleStore = response.data.attributes.name;
                 console.log(bundleStore);
                 console.log('!!!!!!!!'); console.log(response);});
         return (
