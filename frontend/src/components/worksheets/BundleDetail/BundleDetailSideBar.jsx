@@ -37,7 +37,12 @@ class BundleDetailSideBar extends React.Component {
     render() {
         const { bundleInfo, classes, hidePageLink, onUpdate, onMetadataChange } = this.props;
         const { expandPermissons, showMoreDetail } = this.state;
+        console.log('~~~~~~~~~hello');
+        console.log(bundleInfo);
         const bundle = formatBundle(bundleInfo);
+        console.log(bundle);
+        const bundleStore = bundle.bundleStore.value;
+        console.log(bundleStore);
         const bundleType = bundle.bundle_type.value;
         const uuid = bundle.uuid.value;
         const state = bundle.state.value;
@@ -110,7 +115,7 @@ class BundleDetailSideBar extends React.Component {
                     {(showRunFields || showDatasetFields) && (
                         <BundleFieldRow
                             label='Store'
-                            field={bundleInfo.bundleStore}
+                            field={bundleStore}
                             onChange={(store) => onUpdate({ store })}
                         />
                     )}
