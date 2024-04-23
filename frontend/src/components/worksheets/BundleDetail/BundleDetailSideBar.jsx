@@ -49,17 +49,13 @@ class BundleDetailSideBar extends React.Component {
         const showOwner = !bundle.is_anonymous.value;
         const showDependencies = !!bundle.dependencies?.value?.length;
         const showHostWorksheets = !!bundle.host_worksheets?.value.length;
-        let bundleStore;
-        fetchBundleStores(uuid)
-            .then((response) => {
-                console.log('~~~~~~~~');
-                console.log(response);
-                console.log(response.data[0]);
-                console.log(response.data[0].attributes);
-                console.log(response.data[0].attributes.name);
-                bundleStore = response.data[0].attributes.name;
-                console.log(bundleStore);
-                console.log('!!!!!!!!'); console.log(response);});
+
+        let bundleStoreResponse = await fetchBundleStores(uuid);
+        const bundleStore = bundleStoreResponse.data[0].attributes.name;
+        console.log('!!!!!!!!'); 
+        console.log(bundleStoreResponse);
+        console.log(bundleStore);
+
         return (
             <div className={classes.sidebar}>
                 {showPageLink && (
