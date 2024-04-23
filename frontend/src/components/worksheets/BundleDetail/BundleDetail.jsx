@@ -208,8 +208,14 @@ const BundleDetail = ({
 
     fetchBundleStores(uuid)
         .then((response) => {
+            console.log('~~~~~~~~~~~~~');
             const bundleStore = response.data[0].attributes.name;
-            bundleInfo.bundleStore = bundleStore;});
+            console.log(bundleStore);
+            console.log(bundleInfo);
+            bundleInfo.bundleStore = bundleStore;
+            console.log(bundleInfo);
+            setBundleInfo(bundleInfo);
+            });
 
     const scrollToNewlyOpenedDetail = (node) => {
         // Only scroll to the bundle detail when it is opened
