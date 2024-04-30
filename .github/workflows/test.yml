@@ -50,6 +50,7 @@ jobs:
           key: pip-${{ hashFiles('requirements.txt') }}-${{ matrix.python-version }}
           restore-keys: |
             pip-
+      - run: python -m pip install --upgrade pip
       - run: pip install -e .
       - run: cl
   
