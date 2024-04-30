@@ -112,12 +112,11 @@ const BundleDetail = ({
             setBundleInfo(bundleInfo);
             setMetadataErrors([]);
 
-            fetchBundleStores(uuid)
-                .then((response) => {
-                    const bundleStore = response.data[0].attributes.name;
-                    bundleInfo.bundleStore = bundleStore;
-                    setBundleInfo(bundleInfo);
-                });
+            fetchBundleStores(uuid).then((response) => {
+                const bundleStore = response.data[0].attributes.name;
+                bundleInfo.bundleStore = bundleStore;
+                setBundleInfo(bundleInfo);
+            });
         },
     });
 
