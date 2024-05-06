@@ -1,3 +1,4 @@
+wheel==0.43.0
 apache-beam[azure]==2.38.0
 
 # GCP requirements for apache-beam. Note: when upgrading
@@ -35,7 +36,6 @@ sentry-sdk==1.14.0
 requests-oauthlib==1.1.0
 oauthlib==2.1.0
 markdown2==2.4.0
-wheel==0.43.0
 urllib3==1.26.11
 retry==0.9.2
 spython==0.1.14
