@@ -1,4 +1,4 @@
-apache-beam[azure]==2.43.0
+apache-beam[azure]==2.38.0
 
 # GCP requirements for apache-beam. Note: when upgrading
 # apache-beam, make sure these requirements are also upgraded
