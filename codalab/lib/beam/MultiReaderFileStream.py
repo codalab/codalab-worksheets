@@ -134,7 +134,10 @@ class MultiReaderFileStream(BytesIO):
         return s
 
     def seek(self, index: int, offset: int, whence=SEEK_SET):
-        pass
-
+        if whence == SEEK_END:
+            super().seek(offset, whence)
+        else:
+            pass
+            
     def close(self):
         self.__input.close()
