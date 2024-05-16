@@ -24,10 +24,11 @@ class MinMaxHeap:
         else:
             raise IndexError("pop from an empty heap")
     
-    def update(self, old_item, new_item):
-        index = self.item_index.pop(old_item)
+    def update(self, index, new_item):
+        old_item = self.heap[index]
         self.heap[index] = new_item
         self.item_index[new_item] = index
+        del self.item_index[old_item]
         heapq._siftup(self.heap, index)
         heapq._siftdown(self.heap, 0, index)
     
