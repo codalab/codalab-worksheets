@@ -50,7 +50,7 @@ class MultiReaderFileStream(BytesIO):
             if new_bytes_needed > 0:
                 self._fill_buf_bytes(new_bytes_needed)
         while (self._pos[index] + num_bytes) - self._buffer_pos > self.MAX_THRESHOLD:
-            time.sleep(.1) # 100 ms
+            time.sleep(10) # 100 ms
 
         with self._lock:
             old_position = self._pos[index] - self._buffer_pos
