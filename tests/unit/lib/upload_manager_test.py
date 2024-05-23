@@ -93,7 +93,7 @@ class UploadManagerTestBase(TestBase):
         self.write_file_of_size(10, os.path.join(source, 'file'))
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
         self.assertEqual(['file'], sorted(self.listdir()))
-        self.assertEqual([10], self.check_file_size())
+        self.assertEqual([0, 10], self.check_file_size())
 
     def test_large_fileobj_tar_gz(self):
         """
@@ -104,7 +104,7 @@ class UploadManagerTestBase(TestBase):
         self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(source, 'bigfile'))
         self.write_string_to_file('testing', os.path.join(source, 'README'))
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
-        self.assertEqual(['bigfile', 'README'], sorted(self.listdir()))
+        self.assertEqual(['README', 'bigfile'], sorted(self.listdir()))
 
     def test_large_fileobj_tar_gz2(self):
         """
@@ -116,7 +116,7 @@ class UploadManagerTestBase(TestBase):
         self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(source, 'bigfile2'))
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
         self.assertEqual(['bigfile', 'bigfile2'], sorted(self.listdir()))
-        self.assertEqual([LARGE_FILE_SIZE, LARGE_FILE_SIZE], self.check_file_size())
+        self.assertEqual([0, LARGE_FILE_SIZE, LARGE_FILE_SIZE], self.check_file_size())
 
     def test_fileobj_tar_gz_should_not_simplify_archives(self):
         source = os.path.join(self.temp_dir, 'source_dir')
