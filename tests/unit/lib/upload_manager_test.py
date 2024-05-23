@@ -10,6 +10,7 @@ import urllib
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from io import BytesIO
+from memory_profiler import memory_usage
 from typing import IO, cast
 from unittest.mock import MagicMock
 from urllib.response import addinfourl
@@ -190,7 +191,12 @@ class UploadManagerTestBase(TestBase):
 
     def test_upload_memory(self):
         self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(self.temp_dir, 'bigfile'))
-        self.do_upload(('bigfile', os.path.join(self.temp_dir, 'bigfile')))
+        mem_usage = memory_usage(
+            (self.do_upload(('bigfile', os.path.join(self.temp_dir, 'bigfile'))), ),
+            interval=0.1,
+            timeout=1
+        )
+        self.assertEqual(max(memory_usage) < 40000000, True)
 
     def write_string_to_file(self, string, file_path):
         with open(file_path, 'w') as f:
