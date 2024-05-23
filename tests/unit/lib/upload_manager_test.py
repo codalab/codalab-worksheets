@@ -19,6 +19,7 @@ from tests.unit.server.bundle_manager import TestBase
 
 urlopen_real = urllib.request.urlopen
 LARGE_FILE_SIZE = 16777216 #16MB
+EXTRA_LARGE_FILE_SIZE = 134217728 #128MB for Memory Profiling Only
 
 class UploadManagerTestBase(TestBase):
     """A class that contains the base for an UploadManager test. Subclasses
@@ -89,6 +90,7 @@ class UploadManagerTestBase(TestBase):
         source = os.path.join(self.temp_dir, 'source_dir')
         os.mkdir(source)
         self.write_file_of_size(10, os.path.join(source, 'file'))
+        self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
         self.assertEqual(['file'], sorted(self.listdir()))
         self.assertEqual([10], self.check_file_size())
 
@@ -185,6 +187,10 @@ class UploadManagerTestBase(TestBase):
         # This test hits the real GitHub repository. If the contents of README.md at https://github.com/codalab/test
         # change, then update this test.
         self.check_file_equals_string('testfile.md', '# test\nUsed for testing\n')
+
+    def test_upload_memory(self):
+        self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(self.temp_dir, 'bigfile'))
+        self.do_upload(('bigfile', os.path.join(self.temp_dir, 'bigfile')))
 
     def write_string_to_file(self, string, file_path):
         with open(file_path, 'w') as f:
