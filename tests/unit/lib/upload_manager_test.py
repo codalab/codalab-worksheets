@@ -50,7 +50,7 @@ class UploadManagerTestBase(TestBase):
         with FileSystems.open(
             self.bundle_location, compression_type=CompressionTypes.UNCOMPRESSED
         ) as f, tarfile.open(fileobj=f, mode='r:gz') as tf:
-            return [tarinfo.size for tarinfo in tf]
+            return [tarinfo.size for tarinfo in tf.getmembers()]
 
     @property
     def bundle_location(self):
