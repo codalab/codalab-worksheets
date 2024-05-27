@@ -7,7 +7,7 @@ class MultiReaderFileStream(BytesIO):
     """
     NUM_READERS = 2
     LOOKBACK_LENGTH = 33554432
-    MAX_THRESHOLD = LOOKBACK_LENGTH * 4
+    MAX_THRESHOLD = LOOKBACK_LENGTH * 2
 
     def __init__(self, fileobj):
         self._buffer = bytes()
