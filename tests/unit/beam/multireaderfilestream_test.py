@@ -10,12 +10,6 @@ FILESIZE = 100000000
 CHUNKSIZE = FILESIZE/10
 
 class MultiReaderFileStreamTest(unittest.TestCase):
-    def write_file_of_size(self, size: int, file_path: str):
-        with open(file_path, "wb") as f:
-            f.seek(size - 1)
-            f.write(b"\0")
-
-
     def test_reader_distance(self):
         with tempfile.NamedTemporaryFile(delete=True) as f:
             f.seek(FILESIZE - 1)
