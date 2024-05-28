@@ -53,7 +53,8 @@ class MultiReaderFileStream(BytesIO):
         
         with self._lock:
             # Calculate how many new bytes need to be read
-            new_bytes_needed = num_bytes - (max(self._pos) - self._pos[index])
+            new_pos = self._pos[index] + num_bytes
+            new_bytes_needed = new_pos - max(self._pos)
             if new_bytes_needed > 0:
                 self._fill_buf_bytes(new_bytes_needed)
 
