@@ -11,6 +11,10 @@ CHUNKSIZE = FILESIZE/10
 
 class MultiReaderFileStreamTest(unittest.TestCase):
     def test_reader_distance(self):
+        """
+        This test verifies that both readers in the Multireaderfilestream
+        are within the limits defined in the class
+        """
         with tempfile.NamedTemporaryFile(delete=True) as f:
             f.seek(FILESIZE - 1)
             f.write(b"\0")
@@ -38,13 +42,13 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             # Sleep a little for thread 1 to start reading
             time.sleep(3)
 
-            # Assert that the first reader has not read past the Maximum threshold
+            # Assert that the first reader has not read past the maximum threshold
             self.assertGreater(70000000, m_stream._pos[0])
 
             t2.start()
 
             # Sleep a little for thread 2 to start reading
-            time.sleep(3)
+            time.sleep(1)
 
             # Assert that the first reader is at 100000000, second reader is at 40000000
             self.assertEqual(100000000, m_stream._pos[0])
@@ -54,12 +58,16 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             self.assertEqual(6445568, m_stream._buffer_pos)
 
             # Assert that the buffer is length 100000000 - 6445568 
-            self.assertEqual(93554432, m_stream._size)
+            self.assertEqual(93554432, len(m_stream._buffer))
 
             t1.join()
             t2.join()
     
-    def test_seek(self):
+    def test_backwards_seek(self):
+        """
+        This test verifies that a backwards seek within the lookback length
+        defined in the Multireaderfilestream class behaves as expected
+        """
         with tempfile.NamedTemporaryFile(delete=True) as f:
             f.seek(FILESIZE - 1)
             f.write(b"\0")
@@ -105,6 +113,11 @@ class MultiReaderFileStreamTest(unittest.TestCase):
 
 
     def test_toofar_seek(self):
+        """
+        This test verifies that a backwards seek past the lookback length
+        defined in the Multireaderfilestream class behaves as expected with
+        an AssertionError
+        """
         with tempfile.NamedTemporaryFile(delete=True) as f:
             f.seek(FILESIZE - 1)
             f.write(b"\0")
@@ -124,7 +137,7 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             def thread2():
                 # This reader will only read 4/10 of the file, then seek to the beginning
                 for _ in range(4):
-                    status = reader_2.read(CHUNKSIZE)
+                    reader_2.read(CHUNKSIZE)
                 
                 try:
                     reader_2.seek(0)
