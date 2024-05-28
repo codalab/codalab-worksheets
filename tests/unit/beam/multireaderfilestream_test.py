@@ -16,8 +16,8 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             f.write(b"\0")
 
             m_stream = MultiReaderFileStream(f)
-            reader_1 = m_stream[0]
-            reader_2 = m_stream[1]
+            reader_1 = m_stream.readers[0]
+            reader_2 = m_stream.readers[1]
 
             def thread1():
                 while True:
@@ -65,8 +65,8 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             f.write(b"\0")
 
             m_stream = MultiReaderFileStream(f)
-            reader_1 = m_stream[0]
-            reader_2 = m_stream[1]
+            reader_1 = m_stream.readers[0]
+            reader_2 = m_stream.readers[1]
 
             result = None
 
@@ -110,8 +110,8 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             f.write(b"\0")
 
             m_stream = MultiReaderFileStream(f)
-            reader_1 = m_stream[0]
-            reader_2 = m_stream[1]
+            reader_1 = m_stream.readers[0]
+            reader_2 = m_stream.readers[1]
 
             result = None
 

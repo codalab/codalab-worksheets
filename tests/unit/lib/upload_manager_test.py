@@ -196,7 +196,7 @@ class UploadManagerTestBase(TestBase):
             interval=0.1,
             timeout=1
         )
-        self.assertEqual(max(memory_usage) < 100000000, True)
+        self.assertEqual(max(mem_usage) < 100000000, True)
 
     def write_string_to_file(self, string, file_path):
         with open(file_path, 'w') as f:
