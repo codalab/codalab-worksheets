@@ -40,7 +40,7 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             t1.start()
 
             # Sleep a little for thread 1 to start reading
-            time.sleep(3)
+            time.sleep(.5)
 
             # Assert that the first reader has not read past the maximum threshold
             self.assertGreater(70000000, m_stream._pos[0])
@@ -48,7 +48,7 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             t2.start()
 
             # Sleep a little for thread 2 to start reading
-            time.sleep(1)
+            time.sleep(.5)
 
             # Assert that the first reader is at 100000000, second reader is at 40000000
             self.assertEqual(100000000, m_stream._pos[0])

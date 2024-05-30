@@ -255,6 +255,7 @@ class BlobStorageUploader(Uploader):
             conn_str = os.environ.get('AZURE_STORAGE_CONNECTION_STRING', '')
             os.environ['AZURE_STORAGE_CONNECTION_STRING'] = bundle_conn_str
         try:
+            # Chunk size set to 1MiB for performance
             CHUNK_SIZE = 1024 * 1024
 
             def upload_file_content():

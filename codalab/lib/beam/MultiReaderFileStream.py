@@ -35,7 +35,7 @@ class MultiReaderFileStream(BytesIO):
 
         self.readers = [FileStreamReader(i) for i in range(0, self.NUM_READERS)]
 
-    def _fill_buf_bytes(self, num_bytes=None):
+    def _fill_buf_bytes(self, num_bytes=0):
         """
         Fills the buffer with bytes from the fileobj
         """
@@ -44,24 +44,17 @@ class MultiReaderFileStream(BytesIO):
             return
         self._buffer += s
 
-    def read(self, index: int, num_bytes=0):  # type: ignore
+
+    def read(self, index: int, num_bytes=None):  # type: ignore
         """Read the specified number of bytes from the associated file.
         index: index that specifies which reader is reading.
         """
-        while (self._pos[index] + num_bytes) - self._buffer_pos > self.MAX_THRESHOLD:
-            time.sleep(.1) # 100 ms
-        
+        if num_bytes == None:
+            # Read remaining in buffer
+            num_bytes = (self._buffer_pos + len(self._buffer)) - self._pos[index]
+
+        s = self.peek(index, num_bytes)
         with self._lock:
-            # Calculate how many new bytes need to be read
-            new_pos = self._pos[index] + num_bytes
-            new_bytes_needed = new_pos - max(self._pos)
-            if new_bytes_needed > 0:
-                self._fill_buf_bytes(new_bytes_needed)
-
-            # Get the bytes in the buffer that correspond to the read function call
-            buffer_index = self._pos[index] - self._buffer_pos
-            s = self._buffer[buffer_index:buffer_index + num_bytes]
-
             # Modify reader position in fileobj
             self._pos[index] += len(s)
 
@@ -74,20 +67,21 @@ class MultiReaderFileStream(BytesIO):
                 self._buffer_pos += diff
         return s
 
-    def peek(self, index: int, num_bytes):   # type: ignore
-        while (self._pos[index] + num_bytes) - self._buffer_pos > self.MAX_THRESHOLD:
+    def peek(self, index: int, num_bytes: int):   # type: ignore
+        new_pos = self._pos[index] + num_bytes
+        while (new_pos) - self._buffer_pos > self.MAX_THRESHOLD:
             time.sleep(.1) # 100 ms
         
         with self._lock:
             # Calculate how many new bytes need to be read
-            new_pos = self._pos[index] + num_bytes
             new_bytes_needed = new_pos - max(self._pos)
             if new_bytes_needed > 0:
                 self._fill_buf_bytes(new_bytes_needed)
-        
+
             # Get the bytes in the buffer that correspond to the read function call
             buffer_index = self._pos[index] - self._buffer_pos
             s = self._buffer[buffer_index:buffer_index + num_bytes]
+
         return s
 
     def seek(self, index: int, offset: int, whence=SEEK_SET):
