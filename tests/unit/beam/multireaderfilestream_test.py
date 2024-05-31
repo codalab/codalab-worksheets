@@ -12,8 +12,9 @@ CHUNKSIZE = FILESIZE/10
 class MultiReaderFileStreamTest(unittest.TestCase):
     def test_reader_distance(self):
         """
-        This test verifies that both readers in the Multireaderfilestream
-        are within the limits defined in the class
+        This test verifies that both readers in the MultiReaderFileStream
+        are within the limits defined in the class:
+        - Slowest reader is at most MAX_THRESHOLD behind the fastest reader
         """
         with tempfile.NamedTemporaryFile(delete=True) as f:
             f.seek(FILESIZE - 1)
@@ -43,7 +44,7 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             time.sleep(.5)
 
             # Assert that the first reader has not read past the maximum threshold
-            self.assertGreater(70000000, m_stream._pos[0])
+            self.assertGreater(m_stream.MAX_THRESHOLD + 1, m_stream._pos[0])
 
             t2.start()
 
@@ -51,14 +52,15 @@ class MultiReaderFileStreamTest(unittest.TestCase):
             time.sleep(.5)
 
             # Assert that the first reader is at 100000000, second reader is at 40000000
-            self.assertEqual(100000000, m_stream._pos[0])
+            self.assertEqual(FILESIZE, m_stream._pos[0])
             self.assertEqual(40000000, m_stream._pos[1])
 
             # Assert that the buffer is at 6445568 (40000000 - LOOKBACK_LENGTH)
-            self.assertEqual(6445568, m_stream._buffer_pos)
+            calculated_buffer_start_pos = 40000000 - m_stream.LOOKBACK_LENGTH
+            self.assertEqual(calculated_buffer_start_pos, m_stream._buffer_start_pos)
 
             # Assert that the buffer is length 100000000 - 6445568 
-            self.assertEqual(93554432, len(m_stream._buffer))
+            self.assertEqual(FILESIZE - calculated_buffer_start_pos, len(m_stream._buffer))
 
             t1.join()
             t2.join()
@@ -66,7 +68,7 @@ class MultiReaderFileStreamTest(unittest.TestCase):
     def test_backwards_seek(self):
         """
         This test verifies that a backwards seek within the lookback length
-        defined in the Multireaderfilestream class behaves as expected
+        defined in the MultiReaderFileStream class behaves as expected
         """
         with tempfile.NamedTemporaryFile(delete=True) as f:
             f.seek(FILESIZE - 1)
@@ -109,13 +111,13 @@ class MultiReaderFileStreamTest(unittest.TestCase):
 
             # Check that reader 2 is at 50000000 and buffer position is correct
             self.assertEqual(50000000, m_stream._pos[1])
-            self.assertEqual(16445568, m_stream._buffer_pos)
+            self.assertEqual(50000000 - m_stream.LOOKBACK_LENGTH, m_stream._buffer_start_pos)
 
 
-    def test_toofar_seek(self):
+    def test_too_far_seek(self):
         """
         This test verifies that a backwards seek past the lookback length
-        defined in the Multireaderfilestream class behaves as expected with
+        defined in the MultiReaderFileStream class behaves as expected with
         an AssertionError
         """
         with tempfile.NamedTemporaryFile(delete=True) as f:
