@@ -260,7 +260,7 @@ class BlobStorageUploader(Uploader):
 
             def upload_file_content():
                 iteration = 0
-                ITERATIONS_PER_DISK_CHECK = 2000
+                ITERATIONS_PER_DISK_CHECK = 32
                 bytes_uploaded = 0
 
                 with FileSystems.create(
