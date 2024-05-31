@@ -10,6 +10,7 @@ import urllib
 from apache_beam.io.filesystem import CompressionTypes
 from apache_beam.io.filesystems import FileSystems
 from io import BytesIO
+from memory_profiler import memory_usage
 from typing import IO, cast
 from unittest.mock import MagicMock
 from urllib.response import addinfourl
@@ -18,7 +19,8 @@ from codalab.worker.file_util import gzip_bytestring, remove_path, tar_gzip_dire
 from tests.unit.server.bundle_manager import TestBase
 
 urlopen_real = urllib.request.urlopen
-
+LARGE_FILE_SIZE = 16777216 #16MB
+EXTRA_LARGE_FILE_SIZE = 134217728 #128MB for Memory Profiling Only
 
 class UploadManagerTestBase(TestBase):
     """A class that contains the base for an UploadManager test. Subclasses
@@ -42,6 +44,13 @@ class UploadManagerTestBase(TestBase):
     def listdir(self):
         """List the files in the current bundle location."""
         raise NotImplementedError
+    
+    def check_file_size(self):
+        """Check the file sizes in the current bundle location"""
+        with FileSystems.open(
+            self.bundle_location, compression_type=CompressionTypes.UNCOMPRESSED
+        ) as f, tarfile.open(fileobj=f, mode='r:gz') as tf:
+            return [tarinfo.size for tarinfo in tf.getmembers()]
 
     @property
     def bundle_location(self):
@@ -78,6 +87,37 @@ class UploadManagerTestBase(TestBase):
         self.do_upload(('source.gz', BytesIO(gzip_bytestring(b'testing'))))
         self.check_file_equals_string('', 'testing')
 
+    def test_fileobj_tar_gz(self):
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_file_of_size(10, os.path.join(source, 'file'))
+        self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
+        self.assertEqual(['file'], sorted(self.listdir()))
+        self.assertEqual([0, 10], self.check_file_size())
+
+    def test_large_fileobj_tar_gz(self):
+        """
+        Large bundles should not cause issues
+        """
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(source, 'bigfile'))
+        self.write_string_to_file('testing', os.path.join(source, 'README'))
+        self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
+        self.assertEqual(['README', 'bigfile'], sorted(self.listdir()))
+
+    def test_large_fileobj_tar_gz2(self):
+        """
+        Large bundles should not cause issues
+        """
+        source = os.path.join(self.temp_dir, 'source_dir')
+        os.mkdir(source)
+        self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(source, 'bigfile'))
+        self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(source, 'bigfile2'))
+        self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
+        self.assertEqual(['bigfile', 'bigfile2'], sorted(self.listdir()))
+        self.assertEqual([0, LARGE_FILE_SIZE, LARGE_FILE_SIZE], self.check_file_size())
+
     def test_fileobj_tar_gz_should_not_simplify_archives(self):
         source = os.path.join(self.temp_dir, 'source_dir')
         os.mkdir(source)
@@ -108,7 +148,7 @@ class UploadManagerTestBase(TestBase):
         self.write_string_to_file('testing', os.path.join(source, '.DS_Store'))
         self.do_upload(('source.tar.gz', tar_gzip_directory(source)))
         self.assertEqual(['.DS_Store', 'README', 'README2'], sorted(self.listdir()))
-
+    
     def mock_url_source(self, fileobj, ext=""):
         """Returns a URL that is mocked to return the contents of fileobj.
         The URL will end in the extension "ext", if given.
@@ -149,10 +189,23 @@ class UploadManagerTestBase(TestBase):
         # change, then update this test.
         self.check_file_equals_string('testfile.md', '# test\nUsed for testing\n')
 
+    def test_upload_memory(self):
+        self.write_file_of_size(LARGE_FILE_SIZE, os.path.join(self.temp_dir, 'bigfile'))
+        mem_usage = memory_usage(
+            (self.do_upload(('bigfile', os.path.join(self.temp_dir, 'bigfile'))), ),
+            interval=0.1,
+            timeout=1
+        )
+        self.assertEqual(max(mem_usage) < 100000000, True)
+
     def write_string_to_file(self, string, file_path):
         with open(file_path, 'w') as f:
             f.write(string)
 
+    def write_file_of_size(self, size: int, file_path: str):
+        with open(file_path, "wb") as f:
+            f.seek(size - 1)
+            f.write(b"\0")
 
 class UploadManagerDiskStorageTest(UploadManagerTestBase, unittest.TestCase):
     """Tests for UploadManager that upload files to disk storage."""
