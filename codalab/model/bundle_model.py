@@ -3175,6 +3175,17 @@ class BundleModel(object):
             }
             connection.execute(cl_bundle_location.insert().values(bundle_location_value))
 
+    def remove_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> None:
+        """
+        Removes a new bundle location to the specified bundle.
+
+        Args:
+            bundle_uuid (str): The uuid for the bundle which we want to remove a BundleLocation to.
+            bundle_store_uuid (str): The uuid for the bundle store we are associating with the new BundleLocation.
+        """
+        with self.engine.begin() as connection:
+            connection.execute(cl_bundle_location.delete().where((cl_bundle_location.c.bundle_uuid == bundle_uuid) & (cl_bundle_location.c.bundle_store_uuid == bundle_store_uuid)))
+
     def get_bundle_location(self, bundle_uuid: str, bundle_store_uuid: str) -> dict:
         """
         Returns data about the location associated with the specified bundle and bundle store.
