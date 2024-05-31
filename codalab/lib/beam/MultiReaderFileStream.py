@@ -61,7 +61,7 @@ class MultiReaderFileStream(BytesIO):
             # NOTE: it's possible for diff < 0 if seek backwards occur
             if diff > 0:
                 self._buffer = self._buffer[diff:]
-                self._buffer_pos += diff
+                self._buffer_start_pos += diff
         return s
 
     def peek(self, index: int, num_bytes: int):   # type: ignore
@@ -76,7 +76,7 @@ class MultiReaderFileStream(BytesIO):
                 self._fill_buf_bytes(new_bytes_needed)
 
             # Get the bytes in the buffer that correspond to the read function call
-            buffer_index = self._pos[index] - self._buffer_pos
+            buffer_index = self._pos[index] - self._buffer_start_pos
             s = self._buffer[buffer_index:buffer_index + num_bytes]
 
         return s
