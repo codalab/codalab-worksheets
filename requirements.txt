@@ -44,3 +44,4 @@ websockets==9.1
 kubernetes==12.0.1
 google-cloud-storage==2.0.0
 httpio==0.3.0
+pandas==1.1.5
