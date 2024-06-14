@@ -571,7 +571,7 @@ class BundleModel(object):
                     conjunct = condition
             elif key in ('.before', '.after'):
                 try:
-                    target_datetime = parser.isoparse(value)
+                    target_datetime = parser.parse(value)
                 except ValueError:
                     raise UsageError(
                         "Unable to parse datetime. Datetime must be specified as an ISO-8601 datetime string such as YYYY-MM-DD."
