@@ -147,7 +147,8 @@ class Worker:
             docker_network_external=self.docker_network_external,
             docker_runtime=docker_runtime,
             upload_bundle_callback=self.upload_bundle_contents,
-            assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
+            cpuset=self.cpuset,
+            gpuset=self.gpuset,
             shared_file_system=self.shared_file_system,
             shared_memory_size_gb=shared_memory_size_gb,
             bundle_runtime=bundle_runtime,
@@ -600,44 +601,6 @@ class Worker:
                 for uuid, run_state in self.runs.items()
                 if run_state.stage != RunStage.FINISHED
             }
-
-    def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
-        """
-        Propose a cpuset and gpuset to a bundle based on given requested resources.
-        Note: no side effects (this is important: we don't want to maintain more state than necessary)
-
-        Arguments:
-            request_cpus: integer
-            request_gpus: integer
-
-        Returns a 2-tuple:
-            cpuset: assigned cpuset (str indices).
-            gpuset: assigned gpuset (str indices).
-
-        Throws an exception if unsuccessful.
-        """
-        cpuset, gpuset = set(map(str, self.cpuset)), set(map(str, self.gpuset))
-
-        for run_state in self.runs.values():
-            if run_state.stage == RunStage.RUNNING:
-                cpuset -= run_state.cpuset
-                gpuset -= run_state.gpuset
-
-        if len(cpuset) < request_cpus:
-            raise Exception(
-                "Requested more CPUs (%d) than available (%d currently out of %d on the machine)"
-                % (request_cpus, len(cpuset), len(self.cpuset))
-            )
-        if len(gpuset) < request_gpus:
-            raise Exception(
-                "Requested more GPUs (%d) than available (%d currently out of %d on the machine)"
-                % (request_gpus, len(gpuset), len(self.gpuset))
-            )
-
-        def propose_set(resource_set, request_count):
-            return set(str(el) for el in list(resource_set)[:request_count])
-
-        return propose_set(cpuset, request_cpus), propose_set(gpuset, request_gpus)
 
     @property
     def all_runs(self):
