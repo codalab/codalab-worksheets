@@ -5,7 +5,7 @@ import ContentWrapper from '../ContentWrapper';
 import { renderFormat } from '../../util/worksheet_utils';
 import './Store.scss';
 import ErrorMessage from '../worksheets/ErrorMessage';
-import { fetchStores } from '../../util/apiWrapper';
+import { fetchBundleStores } from '../../util/apiWrapper';
 
 class Store extends React.Component {
     state = {
@@ -16,7 +16,8 @@ class Store extends React.Component {
      */
     refreshStore = () => {
         const { uuid } = this.props;
-        fetchStores(uuid)
+        console.log('hello!!!')
+        fetchBundleStores(uuid)
             .then((response) => {
                 const {
                     data: { attributes: storeInfo },

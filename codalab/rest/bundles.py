@@ -498,7 +498,7 @@ def _add_bundle_location(bundle_uuid: str):
                 new_location['bundle_uuid'], default_bundle_store['uuid']
             )
             local.model.update_bundle(
-                bundle, {'storage_type': default_bundle_store['storage_type'], 'is_dir': is_dir},
+                bundle, {'storage_type': default_bundle_store['storage_type'], 'is_dir': is_dir, 'metadata': {'store': default_store_name}},
             )
             bundle_url = local.bundle_store.get_bundle_location(
                 bundle_uuid, default_bundle_store['uuid']

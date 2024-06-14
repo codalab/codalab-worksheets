@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { findDOMNode } from 'react-dom';
 import useSWR from 'swr';
-import { apiWrapper, fetchFileSummary } from '../../../util/apiWrapper';
+import { apiWrapper, fetchBundleStores, fetchFileSummary } from '../../../util/apiWrapper';
 
 import ConfigPanel from '../ConfigPanel';
 import ErrorMessage from '../ErrorMessage';
@@ -50,6 +50,8 @@ const BundleDetail = ({
         }
     }, [uuid]);
 
+    console.log('bundleINfoFromRow')
+    console.log(bundleInfoFromRow)
     // If info is not available yet, fetch
     // If bundle is in a state that is possible to transition to a different state, fetch data
     // we have ignored ready|failed|killed states here
@@ -100,17 +102,36 @@ const BundleDetail = ({
             include: 'owner,group_permissions,host_worksheets',
         }).toString();
 
+    console.log('fetcherMetadata')
+    console.log(fetcherMetadata)
+    console.log('urlMetadata')
+    console.log(urlMetadata)
     const { mutate: mutateMetadata } = useSWR(urlMetadata, fetcherMetadata, {
         revalidateOnMount: true,
         refreshInterval: refreshInterval,
         onSuccess: (response) => {
+            console.log('response')
+            console.log(response)
             // Normalize JSON API doc into simpler object
             const bundleInfo = new JsonApiDataStore().sync(response);
+            console.log('bundleINfo')
+            console.log(bundleInfo)
             bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
             bundleInfo.metadataDescriptions = response.data.meta.metadata_descriptions;
             bundleInfo.metadataTypes = response.data.meta.metadata_type;
             setBundleInfo(bundleInfo);
             setMetadataErrors([]);
+
+            fetchBundleStores(uuid)
+                .then((response) => {
+                    console.log('~~~~~~~~~~~~~');
+                    const bundleStore = response.data[0].attributes.name;
+                    console.log(bundleStore);
+                    console.log(bundleInfo);
+                    bundleInfo.bundleStore = bundleStore;
+                    console.log(bundleInfo);
+                    setBundleInfo(bundleInfo);
+                });
         },
     });
 
