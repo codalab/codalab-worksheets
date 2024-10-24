@@ -1,14 +1,15 @@
 # A script to migrate bundles from disk storage to Azure storage (UploadBundles, MakeBundles, RunBundles?)
 
 """
+docker exec codalab_rest-server_1 -ti bash
+pip install pandas
+cd /data/codalab0/migration
+python codalab-worksheets/scripts/migrate-disk-to-blob.py
+
 python migration.py -c -t blob-prod
 python migration.py -c -t blob-prod --disable_logging
 python migration.py -c -t blob-prod --disable_logging -p 5
 
-To run this on prod:
-cd codalab-worksheets
-wget https://raw.githubusercontent.com/codalab/codalab-worksheets/new-migration/codalab/migration.py -O codalab/migration.py
-vim codalab/migration.py
 docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -t blob-prod"
 
 docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/codalab/migration.py && time docker exec -it codalab_rest-server_1 /bin/bash -c "python codalab/migration.py -c -t blob-prod"
@@ -16,7 +17,7 @@ docker cp codalab/migration.py codalab_rest-server_1:/opt/codalab-worksheets/cod
 docker exec codalab_rest-server_1 rm /opt/codalab-worksheets/migrated-bundles.txt
 
 
-docker cp codalab_rest-server_1:/opt/codalab-worksheets/migrated-bundles.txt migrated-bundles.txt && cat migrated-bundles.txt 
+docker cp codalab_rest-server_1:/opt/codalab-worksheets/migrated-bundles.txt migrated-bundles.txt && cat migrated-bundles.txt
 
 """
 
@@ -53,7 +54,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.worker.file_util import (
     OpenFile,
     read_file_section,
-    read_file_section_gzip,
+    #read_file_section_gzip,
     tar_gzip_directory,
 )
 
@@ -72,7 +73,7 @@ class MigrationStatus(str, Enum):
     UPLOADED_TO_AZURE = "UPLOADED_TO_AZURE"
     CHANGED_DB = "CHANGED_DB"
     FINISHED = "FINISHED"  # Meaning it is uploaded to Azure, DB updated, and deleted from disk.
-    
+
     ERROR = "ERROR"
     SKIPPED_NOT_FINAL = "SKIPPED_NOT_FINAL"
     SKIPPED_LINKED = "SKIPPED_LINKED"
@@ -134,7 +135,7 @@ class BundleMigrationStatus:
             "status": self.status,
             "error_message": self.error_message
         }
-    
+
     def uploaded_to_azure(self):
         return self.status == MigrationStatus.UPLOADED_TO_AZURE or self.status == MigrationStatus.CHANGED_DB or self.status == MigrationStatus.FINISHED
 
@@ -189,13 +190,13 @@ class Migration:
 
         # This file is used to log those bundles's location that has been changed in database.
         self.logger = self.get_logger()
-    
+
     def get_log_file_path(self):
-        return os.path.join(self.codalab_manager.codalab_home, f"migration-{self.proc_id}.log")
+        return f"migration-{self.proc_id}.log"
     def get_bundle_statuses_path(self):
-        return os.path.join(self.codalab_manager.codalab_home, f'bundle_statuses_proc_{self.proc_id}.csv')
+        return f'bundle_statuses_proc_{self.proc_id}.csv'
     def get_bundle_ids_path(self):
-        return os.path.join(self.codalab_manager.codalab_home, f'bundle_ids_{self.proc_id}.csv')
+        return f'bundle_ids_{self.proc_id}.csv'
 
 
     def get_logger(self):
@@ -272,7 +273,7 @@ class Migration:
 
         if FileSystems.exists(target_location):
             path_util.remove(target_location)
-        
+
         uploader = BlobStorageUploader(
             bundle_model=self.bundle_manager._model,
             bundle_store=self.bundle_manager._bundle_store,
@@ -353,7 +354,7 @@ class Migration:
             old_file_list.sort()
             if old_file_list!= new_file_list:
                 return False, "Directory file lists differ."
-            
+
             # Sanity check files
             if self.sanity_check_count == 0 or self.sanity_check_count > len(files):
                 # Check all files
@@ -398,7 +399,7 @@ class Migration:
     def dir_file_sanity_check(self, bundle_location, new_location, file_list):
         for file in file_list:
             file_location = bundle_location + "/" + file
-            
+
             # For files, check the file has same contents
             old_content = read_file_section(file_location, 5, 10)
             new_content = read_file_section_gzip(new_location, file, 5, 10)
@@ -418,7 +419,7 @@ class Migration:
                     new_location, file, old_file_size - 10, 10
                 ):
                     return False, "Last 10 bytes differ."
-                
+
         return True, ""
 
     def delete_original_bundle(self, uuid):
@@ -458,15 +459,16 @@ class Migration:
             raise e  # still raise the expcetion to outer try-catch wrapper
 
     def migrate_bundle(self, bundle_uuid):
+        print(f"migrate_bundle({bundle_uuid})")
         try:
             # TEMPORARY: Wrap with timer.
             with Timer(300, uuid=bundle_uuid):
                 total_start_time = time.time()
 
                 # Create bundle migration status
-                self.logger.info("Getting Bundle Migration Status")
+                print("Getting bundle migration status")
                 bundle_migration_status = BundleMigrationStatus(uuid=bundle_uuid)
-                if self.existing_bundle_migration_statuses is not None: 
+                if self.existing_bundle_migration_statuses is not None:
                     existing_bundle_migration_status = self.existing_bundle_migration_statuses[
                         self.existing_bundle_migration_statuses["uuid"] == bundle_uuid
                     ].to_dict('records')
@@ -474,8 +476,9 @@ class Migration:
                         bundle_migration_status = BundleMigrationStatus(**existing_bundle_migration_status[0])
 
                 # Get bundle information
-                self.logger.info("Getting Bundle info")
+                print("Getting bundle info")
                 bundle = self.get_bundle(bundle_uuid)
+                print("Getting bundle location")
                 bundle_location = self.get_bundle_location(bundle_uuid)
 
                 # This is for handling cases where rm -d was run on the bundle
@@ -504,9 +507,11 @@ class Migration:
 
                 # Normal Migration
                 if not is_bundle_rm:
+                    print("Normal migration")
                     is_dir = bundle_info['type'] == 'directory'
                     target_location = self.blob_target_location(bundle_uuid, is_dir)
                     disk_location = self.get_bundle_disk_location(bundle_uuid)
+                    print(f"{disk_location} => {target_location}")
 
                     # Don't migrate currently running bundles
                     if bundle.state not in State.FINAL_STATES:
@@ -564,12 +569,12 @@ class Migration:
                     bundle_migration_status.status = MigrationStatus.FINISHED
 
                 self.times["migrate_bundle"].append(time.time() - total_start_time)
-        
+
         except Exception as e:
             self.logger.error(f"Error for {bundle_uuid}: {traceback.format_exc()}")
             bundle_migration_status.error_message = str(e)
             bundle_migration_status.status = MigrationStatus.ERROR
-        
+
         finally:
             if bundle_migration_status.error_message:
                 bundle_migration_status.status = MigrationStatus.ERROR
@@ -587,7 +592,7 @@ class Migration:
                 "min": np.min(v),
             }
         self.logger.info(json.dumps(output_dict, sort_keys=True, indent=4))
-    
+
     def write_bundle_statuses(self):
         new_records = pd.DataFrame.from_records([b_m_s.to_dict() for b_m_s in self.bundle_migration_statuses])
         if self.existing_bundle_migration_statuses is None:
@@ -609,7 +614,7 @@ class Migration:
                 self.write_bundle_statuses()
 
 
-def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_result, num_processes, sanity_check_number, proc_id):
+def run_job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_result, num_processes, sanity_check_number, proc_id):
     """A function for running the migration in parallel.
 
     NOTE: I know this is bad styling since we re-create the Migration object and the
@@ -628,16 +633,18 @@ def job(target_store_name, change_db, delete, worksheet, bundle_uuids, max_resul
         )
         bundle_uuids_df = pd.DataFrame(bundle_uuids)
         bundle_uuids_df.to_csv(migration.get_bundle_ids_path(), index=False, mode='w')
-        print(f"[migration] Recorded all bundle ids to be migrated")
+        print(f"[migration] Recorded total {len(bundle_uuids)} bundle ids to be migrated")
 
     # Sort according to what process you are.
     chunk_size = len(bundle_uuids) // num_processes
     start_idx = chunk_size * proc_id
-    end_idx = len(bundle_uuids) if proc_id == num_processes - 1 else chunk_size * (proc_id + 1)
-    print(f"[migration] ProcessID{proc_id}\tChunk: {chunk_size}\tstart:{start_idx}\tend:{end_idx}")
+    #end_idx = len(bundle_uuids) if proc_id == num_processes - 1 else chunk_size * (proc_id + 1)
+    end_idx = 1  # TMP
+
+    print(f"[migration] Process {proc_id}: migrating {chunk_size} bundles {start_idx}:{end_idx}")
     bundle_uuids = bundle_uuids[start_idx:end_idx]
 
-    # Do the migration.
+    # Do the migration
     print(f"[migration] Start migrating {len(bundle_uuids)} bundles")
     migration.migrate_bundles(bundle_uuids)
     print(f"[migration] Finish migrating {len(bundle_uuids)} bundles")
@@ -649,7 +656,7 @@ if __name__ == '__main__':
         description='Manages your local CodaLab Worksheets service deployment'
     )
     parser.add_argument(
-        '-k', '--max-result', type=int, help='The worksheet uuid that needs migration', default=1e9
+        '--max-result', type=int, help='Maximum number of bundles to migrate', default=1e9
     )
     parser.add_argument(
         '-w', '--worksheet', type=str, help='The worksheet uuid that needs migration'
@@ -662,7 +669,8 @@ if __name__ == '__main__':
         '--target_store_name',
         type=str,
         help='The destination bundle store name',
-        default="azure-store-default",
+        #default="azure-store-default",
+        default="blob-prod",
     )
     parser.add_argument(
         '-c', '--change_db', help='Change the bundle location in the database', action='store_true',
@@ -672,7 +680,8 @@ if __name__ == '__main__':
         '--num_processes',
         type=int,
         help="Number of processes for multiprocessing",
-        default=multiprocessing.cpu_count(),
+        default=1,
+        #default=multiprocessing.cpu_count(),
     )
     parser.add_argument('-d', '--delete', help='Delete the original database', action='store_true')
     parser.add_argument(
@@ -682,7 +691,7 @@ if __name__ == '__main__':
 
     # Run the program with multiprocessing
     f = partial(
-        job,
+        run_job,
         args.target_store_name,
         args.change_db,
         args.delete,
