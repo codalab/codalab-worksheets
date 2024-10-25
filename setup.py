@@ -82,11 +82,11 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     classifiers=[
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: Apache Software License",
     ],
     py_modules=['codalab_service'],
-    python_requires='~=3.6',
+    python_requires='~=3.9',
     cmdclass={'install': Install},
     include_package_data=True,
     install_requires=get_requirements('requirements.txt'),

@@ -317,5 +317,4 @@ def compute_target_info_blob_descendants_flat(path: str) -> Generator[TargetInfo
 
     yield cast(TargetInfo, dict(target_info, contents=None, name=""))
     for t in target_info.get('contents') or []:
-        print("CONTENTT", t)
         yield from get_results(t)
