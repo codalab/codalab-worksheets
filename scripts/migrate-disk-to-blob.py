@@ -7,8 +7,9 @@ python codalab-worksheets/scripts/migrate-disk-to-blob.py
 """
 
 import multiprocessing
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from functools import partial
+import hashlib
 import time
 from collections import defaultdict
 import json
@@ -17,6 +18,7 @@ import traceback
 import argparse
 import os
 import signal
+import sys
 import tarfile
 import random
 from apache_beam.io.filesystems import FileSystems
@@ -47,13 +49,17 @@ from dataclasses import dataclass
 
 import signal
 
-@dataclass
+def compute_hash(s: str):
+    return int(hashlib.sha256(s.encode()).hexdigest(), 16)
+
+@dataclass(unsafe_hash=True)
 class MigrationState:
     on_disk: bool
     on_azure: bool
     changed_db: bool
     verified: bool
-    messages: List[str]
+    success: Optional[bool]
+    reason: Optional[str]
 
 class Timer:
     """
@@ -150,8 +156,8 @@ class Migration:
             print(json.dumps(dict((uuid, asdict(state)) for uuid, state in self.migration_states.items())), file=f)
 
     def get_bundle_uuids(self, max_bundles):
-        bundle_uuids = self.model.get_all_bundle_uuids(max_results=max_bundles)
-        return sorted(list(set(bundle_uuids)))
+        bundle_uuids = self.model.get_all_bundle_uuids(max_results=1e9)
+        return sorted(list(set(bundle_uuids)))[:max_bundles]
 
     def is_linked_bundle(self, bundle_uuid):
         bundle_link_url = self.model.get_bundle_metadata(
@@ -226,8 +232,13 @@ class Migration:
         # Upload file content and generate index file
         # NOTE: We added a timeout (using the Timer class) since sometimes bundles just never uploaded
         # SET TO BE VERY AGGRESSIVE TIMEOUT RIGHT NOW so we can get through most bundles pretty quick.
-        with Timer(90, uuid=bundle_uuid):
-            uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack)
+        def callback(bytes_uploaded):
+            print(f"\r{bytes_uploaded}/{size} ({round(bytes_uploaded/size*100)}%)", end="")
+            sys.stdout.flush()
+            return True
+        with Timer(600, uuid=bundle_uuid):
+            uploader.write_fileobj(source_ext, source_fileobj, target_location, unpack_archive=unpack, progress_callback=callback)
+        print("")
 
         assert FileSystems.exists(target_location)
         return target_location
@@ -274,10 +285,13 @@ class Migration:
             return False, f"Unable to read info: {e}"
 
         if is_dir:
-            # For dirs, check the folder contains same files
-            with OpenFile(target_location, gzipped=True) as f:
-                new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
-                new_file_list.sort()
+            try:
+                # For dirs, check the folder contains same files
+                with OpenFile(target_location, gzipped=True) as f:
+                    new_file_list = tarfile.open(fileobj=f, mode='r:gz').getnames()
+                    new_file_list.sort()
+            except Exception as e:
+                return False, f"Unable to read: {e}"
 
             (dirs, files) = path_util.recursive_ls(disk_location)
             files = [n.replace(disk_location, '.') for n in files]
@@ -344,8 +358,8 @@ class Migration:
             )
             raise e  # still raise the expcetion to outer try-catch wrapper
 
-    def migrate_bundle(self, bundle_uuid):
-        print(f"migrate_bundle({bundle_uuid})")
+    def migrate_bundle(self, prefix, bundle_uuid):
+        #print(f"migrate_bundle({bundle_uuid})")
         try:
             # TEMPORARY: Wrap with timer.
             with Timer(300, uuid=bundle_uuid):
@@ -379,69 +393,85 @@ class Migration:
                         on_azure=on_azure,
                         changed_db=changed_db,
                         verified=False,
-                        messages=[],
+                        success=None,
+                        reason=None,
                     )
                     self.migration_states[bundle_uuid] = state
 
-                print(f"  {bundle_uuid}: {state}")
-                print(f"  {bundle_uuid}: current location {bundle_location}")
+                print(f"{prefix} {bundle_uuid}: {state}")
+                #print(f"  {bundle_uuid}: current location {bundle_location}")
 
-                # Sanity check the state
-                assert on_disk == state.on_disk
-                assert on_azure == state.on_azure
-                assert changed_db == state.changed_db
-
-                should_upload = self.upload and state.on_disk and not state.on_azure
-                should_verify = self.verify and state.on_azure and not state.verified
-                should_change_db = self.change_db and state.on_azure and not state.changed_db
-                should_delete_disk = self.delete_disk and state.changed_db and state.on_azure and state.on_disk
-                should_delete_target = self.delete_target and state.on_azure
+                # Make sure we have the latest
+                state.on_disk = on_disk
+                state.on_azure = on_azure
+                state.changed_db = changed_db
 
                 # Upload to Azure
-                if should_upload:
-                    print(f"  PERFORM: upload {bundle_uuid}")
-                    start_time = time.time()
-                    self.adjust_quota_and_upload_to_blob(bundle_uuid, disk_location, is_dir)
-                    self.times["upload"].append(time.time() - start_time)
-                    state.on_azure = True
-
-                # Change bundle metadata in database to point to Azure
-                if should_change_db:
-                    print(f"  PERFORM: change db {bundle_uuid}")
-                    start_time = time.time()
-                    self.modify_bundle_data(bundle, bundle_uuid, is_dir)
-                    self.times["change_db"].append(time.time() - start_time)
-                    state.changed_db = True
+                def do_upload():
+                    should_upload = self.upload and state.on_disk and not state.on_azure
+                    if should_upload:
+                        print(f"  PERFORM: upload {bundle_uuid}")
+                        start_time = time.time()
+                        self.adjust_quota_and_upload_to_blob(bundle_uuid, disk_location, is_dir)
+                        self.times["upload"].append(time.time() - start_time)
+                        state.on_azure = True
 
                 # Verify
-                if should_verify:
-                    print(f"  PERFORM: verify {bundle_uuid}")
-                    start_time = time.time()
-                    success, reason = self.sanity_check(bundle_uuid, disk_location, is_dir, target_location, index_location)
-                    self.times["verify"].append(time.time() - start_time)
-                    state.verified = success
-                    state.messages.append(reason)
+                def do_verify():
+                    should_verify = self.verify and state.on_azure and not state.verified
+                    if should_verify:
+                        print(f"  PERFORM: verify {bundle_uuid}")
+                        start_time = time.time()
+                        success, reason = self.sanity_check(bundle_uuid, disk_location, is_dir, target_location, index_location)
+                        self.times["verify"].append(time.time() - start_time)
+                        state.verified = True
+                        state.success = success
+                        state.reason = reason
+
+                # Change bundle metadata in database to point to Azure
+                def do_change_db():
+                    should_change_db = self.change_db and state.on_azure and not state.changed_db
+                    if should_change_db:
+                        print(f"  PERFORM: change db {bundle_uuid}")
+                        start_time = time.time()
+                        self.modify_bundle_data(bundle, bundle_uuid, is_dir)
+                        self.times["change_db"].append(time.time() - start_time)
+                        state.changed_db = True
 
                 # Delete from disk
-                if should_delete_disk:
-                    print("  PERFORM: delete disk")
-                    start_time = time.time()
-                    path_util.remove(disk_location)
-                    self.times["delete_disk"].append(time.time() - start_time)
-                    state.on_disk = False
+                def do_delete_disk():
+                    should_delete_disk = self.delete_disk and state.changed_db and state.on_azure and state.on_disk
+                    if should_delete_disk:
+                        print("  PERFORM: delete disk")
+                        start_time = time.time()
+                        path_util.remove(disk_location)
+                        self.times["delete_disk"].append(time.time() - start_time)
+                        state.on_disk = False
 
                 # Delete from target (to undo failed uploads)
-                if should_delete_target:
-                    print("  PERFORM: delete target")
-                    start_time = time.time()
-                    FileSystems.delete([target_location, index_location])
-                    self.times["delete_target"].append(time.time() - start_time)
-                    state.on_azure = False
-                    state.verified = False
+                def do_delete_target():
+                    should_delete_target = self.delete_target and state.on_azure and state.success == False
+                    if should_delete_target:
+                        print("  PERFORM: delete target")
+                        start_time = time.time()
+                        FileSystems.delete([target_location, index_location])
+                        self.times["delete_target"].append(time.time() - start_time)
+                        state.on_azure = False
+                        state.verified = False
+                        state.success = None
+                        state.reason = None
+
+                do_verify()          # See where we are
+                do_delete_target()   # Delete failed uploads
+                do_upload()          # Upload
+                do_verify()          # Check
+                do_change_db()       # If good, change db
+                do_delete_disk()     # Finally, delete the disk
 
         except Exception as e:
-            print(f"Error for {bundle_uuid}: {traceback.format_exc()}")
-            self.migration_states[bundle_uuid].messages.append(str(e))
+            print(f"ERROR for {bundle_uuid}: {traceback.format_exc()}")
+            state.success = False
+            state.reason = str(e)
 
     def log_times(self):
         output_dict = dict()
@@ -454,12 +484,12 @@ class Migration:
                 "max": np.max(v),
                 "min": np.min(v),
             }
-        print("TIMES", json.dumps(output_dict, sort_keys=True, indent=4))
+        print("TIMES", json.dumps(output_dict, sort_keys=True, indent=2))
 
     def migrate_bundles(self, bundle_uuids, log_interval=100):
         total = len(bundle_uuids)
         for i, uuid in enumerate(bundle_uuids):
-            self.migrate_bundle(uuid)
+            self.migrate_bundle(f"{i}/{total}", uuid)
             if i > 0 and i % log_interval == 0 or i == len(bundle_uuids) - 1:
                 self.log_times()
                 self.write_migration_states()
@@ -491,9 +521,17 @@ def run_job(target_store_name, upload, change_db, verify, delete_disk, delete_ta
         bundle_uuids = migration.get_bundle_uuids(max_bundles=max_bundles)
 
     # Keep only the ones for this process
-    selected_bundle_uuids = [uuid for uuid in bundle_uuids if hash(uuid) % num_processes == proc_id]
+    selected_bundle_uuids = [uuid for uuid in bundle_uuids if compute_hash(uuid) % num_processes == proc_id]
 
     migration.migrate_bundles(selected_bundle_uuids)
+
+    # Print out stats
+    state_to_uuids = defaultdict(list)
+    for uuid, state in migration.migration_states.items():
+        state_to_uuids[replace(state, reason="*")].append(uuid)
+    print("Breakdown")
+    for state, uuids in state_to_uuids.items():
+        print(f"  {state}: {len(uuids)} {' '.join(uuids[:1])}")
 
 
 if __name__ == '__main__':
@@ -505,8 +543,9 @@ if __name__ == '__main__':
     parser.add_argument('-C', '--change-db', help='Change the db', action='store_true')
     parser.add_argument('-V', '--verify', help='Verify contents', action='store_true')
     parser.add_argument('-D', '--delete-disk', help='Delete the disk version', action='store_true')
-    parser.add_argument('--delete-target', help='Delete the target version (to redo)', action='store_true')
-    parser.add_argument('-p', '--num-processes', type=int, help="Number of processes for multiprocessing", default=1)
+    parser.add_argument('-T', '--delete-target', help='Delete the target version (to redo)', action='store_true')
+    parser.add_argument('-p', '--num-processes', type=int, help="Number of processes for multiprocessing", required=True)
+    parser.add_argument('-i', '--proc-id', type=int, help="Which process to run", required=True)
     args = parser.parse_args()
 
     # Run the program with multiprocessing
@@ -522,5 +561,8 @@ if __name__ == '__main__':
         args.max_bundles,
         args.num_processes,
     )
-    with multiprocessing.Pool(processes=args.num_processes) as pool:
-        pool.map(f, list(range(args.num_processes)))
+    if args.proc_id is not None:
+        f(args.proc_id)
+    else:
+        with multiprocessing.Pool(processes=args.num_processes) as pool:
+            pool.map(f, list(range(args.num_processes)))
