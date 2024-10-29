@@ -45,7 +45,10 @@ class TarFileStream(BytesIO):
         """Read the specified number of bytes from the associated file.
         """
         while (self.pos < self.finfo.size) and (num_bytes is None or len(self._buffer) < num_bytes):
+            old_pos = self.pos
             self._read_from_tar(num_bytes)
+            if old_pos == self.pos:
+                raise Exception(f"At {self.pos} < {self.finfo.size}, but read did not advance (prevent infinite loop)")
         if num_bytes is None:
             num_bytes = len(self._buffer)
         return self._buffer.read(num_bytes)
