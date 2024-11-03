@@ -3,7 +3,12 @@
 """
 docker exec -ti codalab_rest-server_1 bash
 cd /data/codalab0/migration
-python codalab-worksheets/scripts/migrate-disk-to-blob.py
+time python codalab-worksheets/scripts/migrate-disk-to-blob.py -p 4 -i 0 -TUVC
+time python codalab-worksheets/scripts/migrate-disk-to-blob.py -p 4 -i 1 -TUVC
+time python codalab-worksheets/scripts/migrate-disk-to-blob.py -p 4 -i 2 -TUVC
+time python codalab-worksheets/scripts/migrate-disk-to-blob.py -p 4 -i 3 -TUVC
+
+Took ~1 week.
 """
 
 import multiprocessing
@@ -164,7 +169,10 @@ class Migration:
 
     def get_bundle_uuids(self, max_bundles):
         bundle_uuids = self.model.get_all_bundle_uuids(max_results=1e9)
-        return sorted(list(set(bundle_uuids)))[:max_bundles]
+        bundle_uuids = sorted(list(set(bundle_uuids)))
+        if max_bundles:
+            bundle_uuids = bundle_uuids[:max_bundles]
+        return bundle_uuids
 
     def is_linked_bundle(self, bundle_uuid):
         bundle_link_url = self.model.get_bundle_metadata(
@@ -514,7 +522,7 @@ class Migration:
         for i, uuid in enumerate(bundle_uuids):
             self.migrate_bundle(f"{i}/{total}", uuid)
             now = time.time()
-            if i == len(bundle_uuids) - 1 or now - self.last_write_time > 60:  # 1 minute
+            if i == len(bundle_uuids) - 1 or now - self.last_write_time > 20:  # every N seconds
                 self.log_times()
                 self.write_migration_states()
                 self.last_write_time = now
@@ -561,7 +569,7 @@ def run_job(target_store_name, upload, change_db, verify, delete_disk, delete_ta
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--max-bundles', type=int, help='Maximum number of bundles to migrate', default=1e9)
+    parser.add_argument('-m', '--max-bundles', type=int, help='Maximum number of bundles to migrate')
     parser.add_argument('-u', '--bundle-uuids', type=str, nargs='*', default=None, help='List of bundle UUIDs to migrate.')
     parser.add_argument('-t', '--target-store-name', type=str, help='The destination bundle store name', default="blob-prod")
     parser.add_argument('-U', '--upload', help='Upload', action='store_true')
