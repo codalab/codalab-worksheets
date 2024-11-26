@@ -1,16 +1,16 @@
 queue_rules:
   - name: default
-    conditions:
-      - check-success=All CI tasks complete
-
-pull_request_rules:
-  - name: Automatic merge on approval
-    conditions:
+    queue_conditions:
       - "#approved-reviews-by>=1"
       - base=master
       - label=ready-to-merge
       - check-success=All CI tasks complete
+    merge_conditions:
+      - check-success=All CI tasks complete
+    merge_method: squash
+
+pull_request_rules:
+  - name: Automatic merge on approval
+    conditions: []
     actions:
       queue:
-        name: default
-        method: squash
