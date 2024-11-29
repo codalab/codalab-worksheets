@@ -642,20 +642,29 @@ class BundleModel(object):
 
         if user_id != self.root_user_id:
             # Restrict to the bundles that we have access to.
+            aliased_group_bundle_permission = aliased(cl_group_bundle_permission)
             add_join(
-                cl_group_bundle_permission,
-                cl_bundle.c.uuid == cl_group_bundle_permission.c.object_uuid,
+                aliased_group_bundle_permission,
+                cl_bundle.c.uuid == aliased_group_bundle_permission.c.object_uuid,
+                left_outer_join=True,
             )
-            add_join(cl_user_group, cl_user_group.c.user_id == user_id, left_outer_join=True)
+            aliased_cl_user_group = aliased(cl_user_group)
+            add_join(
+                aliased_cl_user_group,
+                aliased_cl_user_group.c.user_id == user_id,
+                left_outer_join=True,
+            )
             access_via_owner = cl_bundle.c.owner_id == user_id
             access_via_group = and_(
                 or_(  # Join constraint (group)
-                    cl_group_bundle_permission.c.group_uuid
+                    aliased_group_bundle_permission.c.group_uuid
                     == self.public_group_uuid,  # Public group
-                    cl_user_group.c.user_id == user_id,
+                    aliased_group_bundle_permission.c.group_uuid
+                    == aliased_cl_user_group.c.group_uuid,  # Private group
                 ),
-                cl_group_bundle_permission.c.permission
+                aliased_group_bundle_permission.c.permission
                 >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
+                aliased_group_bundle_permission.c.group_uuid is not None,
             )
 
             where_clause = and_(where_clause, or_(access_via_owner, access_via_group))
