@@ -118,9 +118,7 @@ class TarSubdirStream(BytesIO):
             assert self.output.fileobj is not None
             self.output.fileobj.write(chunk)
             self.current_desc.pos += len(chunk)
-            # We're ignoring types here because the TarFile.offset type is missing.
-            # TODO: Remove "# type: ignore" annotations once this PR is merged: https://github.com/python/typeshed/pull/5210
-            self.output.offset += len(chunk)  # type: ignore
+            self.output.offset += len(chunk)
         else:
             # We've finished reading the entire current descendant.
             # Write the remainder of the block, if needed, and then reset the descendant so it is empty.
@@ -132,7 +130,7 @@ class TarSubdirStream(BytesIO):
                     assert self.output.fileobj is not None
                     self.output.fileobj.write(tarfile.NUL * (tarfile.BLOCKSIZE - remainder))
                     blocks += 1
-                self.output.offset += blocks * tarfile.BLOCKSIZE  # type: ignore
+                self.output.offset += blocks * tarfile.BLOCKSIZE
             self.current_desc = CurrentDescendant(
                 desc=None, pos=0, finfo=EmptyFileInfo, tinfo=tarfile.TarInfo(),
             )
