@@ -22,7 +22,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         if self.SERVER_PROCESS:
             self.SERVER_PROCESS.kill()
 
-        self.SERVER_PROCESS = subprocess.Popen(self.argv)
+        self.SERVER_PROCESS = subprocess.Popen(self.argv, shell=False)
 
     def on_any_event(self, event):
         pass
