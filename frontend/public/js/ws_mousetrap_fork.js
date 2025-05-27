@@ -893,8 +893,12 @@
          * @returns void
          */
         trigger: function(keys, action) {
-            if (_directMap[keys + ':' + action]) {
-                _directMap[keys + ':' + action]({}, keys);
+            var combinationKey = keys + ':' + action;
+            if (_directMap.hasOwnProperty(combinationKey)) {
+                var callback = _directMap[combinationKey];
+                if (typeof callback === 'function') {
+                    callback({}, keys);
+                }
             }
             return this;
         },
