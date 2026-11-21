@@ -217,13 +217,18 @@ class OpenIndexedArchiveFile(object):
             )
 
     def __enter__(self) -> SQLiteIndexedTar:
-        return SQLiteIndexedTar(
-            fileObject=self.f,
-            tarFileName="contents",
-            writeIndex=False,
-            clearIndexCache=False,
-            indexFilePath=self.index_file_name,
-        )
+        try:
+            return SQLiteIndexedTar(
+                fileObject=self.f,
+                tarFileName="contents",
+                writeIndex=False,
+                clearIndexCache=False,
+                indexFilePath=self.index_file_name,
+            )
+        except Exception:
+            # __exit__ is not called when __enter__ raises, so clean up the temp index here.
+            os.remove(self.index_file_name)
+            raise
 
     def __exit__(self, type, value, traceback):
         os.remove(self.index_file_name)

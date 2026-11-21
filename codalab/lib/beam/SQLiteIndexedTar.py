@@ -1476,7 +1476,8 @@ class SQLiteIndexedTar(MountSource):
                 # against this. Therefore, collate all error checking by catching exceptions.
 
                 try:
-                    gzindex = tempfile.mkstemp(dir=tmpDir)[1]
+                    fd, gzindex = tempfile.mkstemp(dir=tmpDir)
+                    os.close(fd)  # Only the path is needed; leaking the fd pins the file on disk after removal.
                     with open(gzindex, 'wb') as file:
                         if 'gzipindexes' in tables:
                             # Try to read index files containing very large gzip indexes
@@ -1520,7 +1521,8 @@ class SQLiteIndexedTar(MountSource):
             # Therefore, try different paths, starting with the location where the index resides.
             gzindex = None
             for tmpDir in [os.path.dirname(self.indexFilePath), None]:
-                gzindex = tempfile.mkstemp(dir=tmpDir)[1]
+                fd, gzindex = tempfile.mkstemp(dir=tmpDir)
+                os.close(fd)  # Only the path is needed; leaking the fd pins the file on disk after removal.
                 try:
                     fileObject.export_index(filename=gzindex)
                     break
