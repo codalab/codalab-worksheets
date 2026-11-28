@@ -183,6 +183,49 @@ def _compute_target_info_local(path: str, depth: Union[int, float]) -> TargetInf
     return result
 
 
+def _get_archive_target_info(
+    tf: Any, path: str, depth: Union[int, float], process_contents: Any
+) -> TargetInfo:
+    """Gets the target info of the specified path within an opened indexed archive (tf).
+    If the specified path is a directory and additional depth is requested, this
+    function is recursively called to retrieve the target info of files within
+    the directory, much like _compute_target_info_local.
+
+    This is a module-level function (rather than a recursive closure) on purpose: a
+    recursive closure references itself through its closure cell, creating a reference
+    cycle that also captures tf. That kept every opened archive (its SQLite index
+    connection, temp files and in-memory gzip index) alive until the cyclic garbage
+    collector happened to run, leaking memory and disk on the REST server.
+    """
+    if not path.startswith("/"):
+        path = "/" + path
+    finfo = cast(FileInfo, tf.getFileInfo(path))
+    if finfo is None:
+        # Not found
+        raise PathException("File not found.")
+    result: TargetInfo = {
+        'name': os.path.basename(path),  # get last part of path
+        'size': finfo.size,
+        'perm': finfo.mode & 0o777,
+        'type': '',
+    }
+    if stat.S_ISLNK(finfo.mode):
+        result['type'] = 'link'
+        result['link'] = finfo.linkname
+    elif not stat.S_ISDIR(finfo.mode):
+        result['type'] = 'file'
+    else:
+        result['type'] = 'directory'
+        if depth > 0:
+            listing = cast(Dict[str, FileInfo], tf.listDir(path) or {})
+            result['contents'] = process_contents(
+                _get_archive_target_info(tf, path + "/" + file_name, depth - 1, process_contents)
+                for file_name in listing
+                if file_name != "."
+            )
+    return result
+
+
 def _compute_target_info_blob(
     path: str, depth: Union[int, float], return_generators=False
 ) -> TargetInfo:
@@ -216,44 +259,9 @@ def _compute_target_info_blob(
     process_contents = list if return_generators is False else lambda x: x
 
     with OpenIndexedArchiveFile(linked_bundle_path.bundle_path) as tf:
-        islink = lambda finfo: stat.S_ISLNK(finfo.mode)
-        readlink = lambda finfo: finfo.linkname
-        isfile = lambda finfo: not stat.S_ISDIR(finfo.mode)
-        isdir = lambda finfo: stat.S_ISDIR(finfo.mode)
-        listdir = lambda path: cast(Dict[str, FileInfo], tf.listDir(path) or {})
-
+        # Non-recursive wrapper; see _get_archive_target_info for why recursion lives at module level.
         def _get_info(path: str, depth: Union[int, float]) -> TargetInfo:
-            """This function is called to get the target info of the specified path.
-            If the specified path is a directory and additional depth is requested, this
-            function is recursively called to retrieve the target info of files within
-            the directory, much like _compute_target_info_local.
-            """
-            if not path.startswith("/"):
-                path = "/" + path
-            finfo = cast(FileInfo, tf.getFileInfo(path))
-            if finfo is None:
-                # Not found
-                raise PathException("File not found.")
-            result: TargetInfo = {
-                'name': os.path.basename(path),  # get last part of path
-                'size': finfo.size,
-                'perm': finfo.mode & 0o777,
-                'type': '',
-            }
-            if islink(finfo):
-                result['type'] = 'link'
-                result['link'] = readlink(finfo)
-            elif isfile(finfo):
-                result['type'] = 'file'
-            elif isdir(finfo):
-                result['type'] = 'directory'
-                if depth > 0:
-                    result['contents'] = process_contents(
-                        _get_info(path + "/" + file_name, depth - 1)
-                        for file_name in listdir(path)
-                        if file_name != "."
-                    )
-            return result
+            return _get_archive_target_info(tf, path, depth, process_contents)
 
         if not linked_bundle_path.is_archive_dir:
             # Return the contents of the single .gz file.
@@ -290,7 +298,7 @@ def _compute_target_info_blob(
             if depth > 0:
                 result['contents'] = process_contents(
                     _get_info(file_name, depth - 1)
-                    for file_name in listdir("/")
+                    for file_name in cast(Dict[str, FileInfo], tf.listDir("/") or {})
                     if file_name != "."
                 )
             return result
